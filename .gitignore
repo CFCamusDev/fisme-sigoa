@@ -1,12 +1,37 @@
+# Dependencias
 node_modules/
+.pnpm-store/
+
+# Build
 dist/
 build/
+*.tsbuildinfo
+
+# Pruebas
 coverage/
+playwright-report/
+test-results/
+blob-report/
+
+# Entorno
 .env
 .env.*
 !.env.example
+
+# Logs
+logs/
 *.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Documentación de trabajo local
+docs/*.md
+!docs/DEFINITION_OF_DONE.md
+docs/backlog.csv
+
+# Sistema y editores
 .DS_Store
 Thumbs.db
-playwright-report/
-test-results/
+.idea/
+.vscode/*
+!.vscode/extensions.json
