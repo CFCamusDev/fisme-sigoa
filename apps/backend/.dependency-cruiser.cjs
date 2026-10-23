@@ -38,6 +38,7 @@ module.exports = {
       severity: 'error',
       from: { path: '^src/modules/([^/]+)/domain' },
       to: {
+        dependencyTypesNot: ['core'],
         pathNot: [
           '^src/modules/$1/domain',
           '^src/shared/errors',
