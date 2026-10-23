@@ -10,12 +10,13 @@
   },
   "scripts": {
     "build:shared": "pnpm --filter @sigoa/shared build",
+    "db:generate": "pnpm --filter backend db:generate",
     "lint": "pnpm -r --if-present lint",
     "format": "pnpm -r --if-present format",
     "format:check": "pnpm -r --if-present format:check",
-    "typecheck": "pnpm build:shared && pnpm -r --if-present typecheck",
-    "test": "pnpm build:shared && pnpm -r --if-present test",
-    "test:coverage": "pnpm build:shared && pnpm -r --if-present test:coverage",
+    "typecheck": "pnpm build:shared && pnpm db:generate && pnpm -r --if-present typecheck",
+    "test": "pnpm build:shared && pnpm db:generate && pnpm -r --if-present test",
+    "test:coverage": "pnpm build:shared && pnpm db:generate && pnpm -r --if-present test:coverage",
     "build": "pnpm -r --if-present build",
     "depcruise": "pnpm --filter backend --if-present depcruise",
     "prepare": "husky"

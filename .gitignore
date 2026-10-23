@@ -6,6 +6,8 @@ node_modules/
 dist/
 build/
 *.tsbuildinfo
+src/shared/prisma/generated/
+apps/backend/src/shared/prisma/generated/
 
 # Pruebas
 coverage/

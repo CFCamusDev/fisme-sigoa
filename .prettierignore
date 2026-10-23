@@ -1,5 +1,6 @@
 **/node_modules/**
 **/dist/**
+**/src/shared/prisma/generated/**
 .pnpm-store
 pnpm-lock.yaml
 **/coverage/**

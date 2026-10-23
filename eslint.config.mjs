@@ -8,6 +8,7 @@ export default tseslint.config(
       '**/node_modules/**',
       '**/dist/**',
       '**/coverage/**',
+      '**/src/shared/prisma/generated/**',
       '.git/**',
       'docs/**',
       'pnpm-lock.yaml',
