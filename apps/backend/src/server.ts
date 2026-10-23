@@ -1,4 +1,8 @@
-import { healthResponseSchema } from '@sigoa/shared';
+import { createApp } from './app.js';
 
-export const BACKEND_STUB = 'backend';
-export const HEALTH_SCHEMA = healthResponseSchema;
+const PORT = Number(process.env['PORT']) || 3000;
+const app = createApp();
+
+export const server = app.listen(PORT, () => {
+  // Punto de entrada del servidor backend
+});
