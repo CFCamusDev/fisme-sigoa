@@ -1,0 +1,12 @@
+{
+  "name": "fisme-sigoa",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sistema Integrado de Gestion de Objetivos Educacionales y Atributos del Graduado (EPIS UNTRM)",
+  "packageManager": "pnpm@10.8.0",
+  "engines": {
+    "node": ">=20.19.0",
+    "pnpm": ">=10.0.0"
+  },
+  "scripts": {}
+}
