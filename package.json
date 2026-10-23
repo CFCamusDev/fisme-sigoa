@@ -13,6 +13,10 @@
     "format": "pnpm -r --if-present format",
     "format:check": "pnpm -r --if-present format:check",
     "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "test:coverage": "pnpm -r --if-present test:coverage",
+    "build": "pnpm -r --if-present build",
+    "depcruise": "pnpm --filter backend --if-present depcruise",
     "prepare": "husky"
   },
   "lint-staged": {
