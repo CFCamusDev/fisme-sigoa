@@ -17,7 +17,7 @@
     "start": "node dist/server.js",
     "test": "vitest run",
     "test:coverage": "vitest run",
-    "depcruise": "node -e \"process.exit(0)\""
+    "depcruise": "depcruise src --config .dependency-cruiser.cjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.1",
@@ -38,6 +38,7 @@
     "@types/node": "^26.6.5",
     "@types/pg": "^8.23.1",
     "@types/supertest": "^7.2.1",
+    "dependency-cruiser": "^18.7.0",
     "pino-pretty": "^13.2.0",
     "prisma": "^7.10.1",
     "supertest": "^7.3.1",

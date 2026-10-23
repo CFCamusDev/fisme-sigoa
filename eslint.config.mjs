@@ -9,6 +9,8 @@ export default tseslint.config(
       '**/dist/**',
       '**/coverage/**',
       '**/src/shared/prisma/generated/**',
+      '**/test-fixtures/**',
+      '**/.dependency-cruiser.cjs',
       '.git/**',
       'docs/**',
       'pnpm-lock.yaml',
