@@ -9,9 +9,17 @@
     "pnpm": ">=10.0.0"
   },
   "scripts": {
+    "lint": "pnpm -r --if-present lint",
+    "format": "pnpm -r --if-present format",
+    "format:check": "pnpm -r --if-present format:check",
     "typecheck": "pnpm -r --if-present typecheck"
   },
   "devDependencies": {
-    "typescript": "^7.0.2"
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.13.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.9.10",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.72.0"
   }
 }

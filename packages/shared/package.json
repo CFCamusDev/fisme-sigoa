@@ -6,6 +6,9 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "scripts": {
+    "lint": "eslint .",
+    "format:check": "prettier --check .",
+    "format": "prettier --write .",
     "typecheck": "tsc --noEmit"
   }
 }

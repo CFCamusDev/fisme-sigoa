@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "lint": "eslint .",
+    "format:check": "prettier --check .",
+    "format": "prettier --write .",
     "typecheck": "tsc --noEmit"
   }
 }
