@@ -56,6 +56,27 @@ Sigue estos pasos para clonar e inicializar el entorno de desarrollo:
    - Cada aplicación (`apps/backend`, `apps/frontend`) utilizará su respectivo archivo `.env`.
    - Consulta los archivos de plantilla `.env.example` en cada módulo para configurar las variables requeridas antes de arrancar los servicios.
 
+### Base de datos local (PostgreSQL)
+
+Para iniciar una instancia local de PostgreSQL en desarrollo utilizando Docker:
+
+```bash
+docker run --name fisme-postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=sigoa_dev -p 5432:5432 -d postgres:16
+```
+
+Configura en `apps/backend/.env`:
+
+```text
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/sigoa_dev?schema=public"
+```
+
+Aplica las migraciones y ejecuta el semillero inicial (idempotente):
+
+```bash
+pnpm --filter backend db:migrate
+pnpm --filter backend db:seed
+```
+
 ---
 
 ## 4. Scripts disponibles
