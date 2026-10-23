@@ -90,4 +90,32 @@ describe('env configuration', () => {
       }),
     ).toThrow(/CORS_ORIGIN/);
   });
+
+  it('parseEnv rejects TRUST_PROXY true and negative values', () => {
+    expect(() =>
+      parseEnv({
+        DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
+        TRUST_PROXY: 'true',
+      }),
+    ).toThrow(/TRUST_PROXY/);
+
+    expect(() =>
+      parseEnv({
+        DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
+        TRUST_PROXY: '-1',
+      }),
+    ).toThrow(/TRUST_PROXY/);
+  });
+
+  it('parseEnv applies rate limit defaults', () => {
+    const parsed = parseEnv({
+      DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
+    });
+
+    expect(parsed.TRUST_PROXY).toBe(0);
+    expect(parsed.RATE_LIMIT_WINDOW_MS).toBe(60000);
+    expect(parsed.RATE_LIMIT_PUBLIC_MAX).toBe(30);
+    expect(parsed.RATE_LIMIT_LOGIN_MAX).toBe(10);
+    expect(parsed.RATE_LIMIT_GENERAL_MAX).toBe(300);
+  });
 });

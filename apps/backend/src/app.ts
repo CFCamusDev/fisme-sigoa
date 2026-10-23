@@ -3,6 +3,7 @@ import { healthResponseSchema } from '@sigoa/shared';
 import { createLogger, type Logger } from './shared/logger/logger.js';
 import { createHttpLogger } from './shared/middleware/http-logger.js';
 import { createSecurityMiddleware } from './shared/middleware/security.js';
+import { createRateLimiter } from './shared/middleware/rate-limit.js';
 import { errorHandler, notFoundHandler } from './shared/middleware/error-handler.js';
 import type { Env } from './config/env.js';
 
@@ -17,6 +18,7 @@ export function createApp(options: AppOptions): Express {
   const logger = options.logger ?? createLogger(env);
   const app = express();
 
+  app.set('trust proxy', env.TRUST_PROXY);
   app.use(createHttpLogger(logger));
   app.use(createSecurityMiddleware(env));
   app.use(express.json());
@@ -25,6 +27,8 @@ export function createApp(options: AppOptions): Express {
     const payload = healthResponseSchema.parse({ status: 'ok' });
     res.status(200).json(payload);
   });
+
+  app.use(createRateLimiter('general', env));
 
   if (options.setupRoutes) {
     options.setupRoutes(app);

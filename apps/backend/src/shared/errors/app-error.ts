@@ -41,3 +41,11 @@ export class ConflictError extends AppError {
     super(message, 'CONFLICT', 409);
   }
 }
+
+export class TooManyRequestsError extends AppError {
+  constructor(
+    message = 'Ha excedido el límite de solicitudes permitidas. Intente nuevamente más tarde.',
+  ) {
+    super(message, 'RATE_LIMITED', 429);
+  }
+}

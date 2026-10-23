@@ -24,6 +24,18 @@ export const envSchema = z.object({
     }
     return val;
   }, z.boolean().default(true)),
+  TRUST_PROXY: z
+    .unknown()
+    .default(0)
+    .refine((val) => val !== true && val !== 'true', {
+      message: 'TRUST_PROXY must be an integer >= 0, boolean true is not allowed',
+    })
+    .transform((val) => Number(val))
+    .pipe(z.number().int().min(0)),
+  RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60000),
+  RATE_LIMIT_PUBLIC_MAX: z.coerce.number().int().positive().default(30),
+  RATE_LIMIT_LOGIN_MAX: z.coerce.number().int().positive().default(10),
+  RATE_LIMIT_GENERAL_MAX: z.coerce.number().int().positive().default(300),
 });
 
 export type Env = z.infer<typeof envSchema>;

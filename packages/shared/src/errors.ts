@@ -6,6 +6,7 @@ export const errorCodeSchema = z.enum([
   'FORBIDDEN',
   'CONFLICT',
   'INTERNAL_ERROR',
+  'RATE_LIMITED',
 ]);
 
 export type ErrorCode = z.infer<typeof errorCodeSchema>;
