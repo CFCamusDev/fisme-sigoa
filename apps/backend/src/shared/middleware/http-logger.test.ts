@@ -3,15 +3,10 @@ import request from 'supertest';
 import { Writable } from 'node:stream';
 import { createApp } from '../../app.js';
 import { createLogger } from '../logger/logger.js';
-import type { Env } from '../../config/env.js';
+import { createTestEnv } from '../../test/test-env.js';
 
 describe('http-logger middleware', () => {
-  const baseEnv: Env = {
-    NODE_ENV: 'development',
-    PORT: 3000,
-    LOG_LEVEL: 'info',
-    DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
-  };
+  const baseEnv = createTestEnv({ LOG_LEVEL: 'info' });
 
   function createCaptureStream() {
     const logs: string[] = [];

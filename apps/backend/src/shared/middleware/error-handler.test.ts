@@ -3,15 +3,10 @@ import request from 'supertest';
 import { apiErrorResponseSchema } from '@sigoa/shared';
 import { createApp } from '../../app.js';
 import { NotFoundError, ValidationError } from '../errors/index.js';
-import type { Env } from '../../config/env.js';
+import { createTestEnv } from '../../test/test-env.js';
 
 describe('global error-handler middleware', () => {
-  const baseEnv: Env = {
-    NODE_ENV: 'test',
-    PORT: 3000,
-    LOG_LEVEL: 'silent',
-    DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
-  };
+  const baseEnv = createTestEnv();
 
   it('maps AppError to the uniform error body and matches schema', async () => {
     const app = createApp({

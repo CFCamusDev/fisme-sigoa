@@ -5,6 +5,25 @@ export const envSchema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
+  CORS_ORIGIN: z
+    .string()
+    .default('http://localhost:5173')
+    .transform((val) =>
+      val
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
+    )
+    .refine((origins) => origins.length > 0 && !origins.includes('*'), {
+      message: 'CORS_ORIGIN must contain valid origins and cannot contain "*"',
+    }),
+  HSTS_ENABLED: z.preprocess((val) => {
+    if (typeof val === 'string') {
+      if (val.toLowerCase() === 'false' || val === '0') return false;
+      if (val.toLowerCase() === 'true' || val === '1') return true;
+    }
+    return val;
+  }, z.boolean().default(true)),
 });
 
 export type Env = z.infer<typeof envSchema>;

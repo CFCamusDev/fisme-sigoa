@@ -51,4 +51,43 @@ describe('env configuration', () => {
     expect(errorMessage).toContain('NODE_ENV');
     expect(errorMessage).not.toContain(sensitiveValue);
   });
+
+  it('parseEnv splits CORS_ORIGIN into a list', () => {
+    const parsed = parseEnv({
+      DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
+      CORS_ORIGIN: 'http://localhost:5173, https://sigoa.unterm.edu.pe',
+    });
+
+    expect(parsed.CORS_ORIGIN).toEqual(['http://localhost:5173', 'https://sigoa.unterm.edu.pe']);
+  });
+
+  it('parseEnv defaults HSTS_ENABLED to true', () => {
+    const parsed = parseEnv({
+      DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
+    });
+
+    expect(parsed.HSTS_ENABLED).toBe(true);
+
+    const disabled = parseEnv({
+      DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
+      HSTS_ENABLED: 'false',
+    });
+    expect(disabled.HSTS_ENABLED).toBe(false);
+  });
+
+  it('parseEnv rejects a wildcard CORS_ORIGIN', () => {
+    expect(() =>
+      parseEnv({
+        DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
+        CORS_ORIGIN: '*',
+      }),
+    ).toThrow(/CORS_ORIGIN/);
+
+    expect(() =>
+      parseEnv({
+        DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
+        CORS_ORIGIN: 'http://localhost:5173, *',
+      }),
+    ).toThrow(/CORS_ORIGIN/);
+  });
 });
