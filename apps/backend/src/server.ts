@@ -1,8 +1,9 @@
 import { createApp } from './app.js';
+import { loadEnv } from './config/env.js';
 
-const PORT = Number(process.env['PORT']) || 3000;
+const env = loadEnv();
 const app = createApp();
 
-export const server = app.listen(PORT, () => {
+export const server = app.listen(env.PORT, () => {
   // Punto de entrada del servidor backend
 });
