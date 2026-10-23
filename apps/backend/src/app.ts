@@ -1,5 +1,6 @@
 import express, { type Express } from 'express';
 import { healthResponseSchema } from '@sigoa/shared';
+import { setupZodLocale } from './config/zod-locale.js';
 import { createLogger, type Logger } from './shared/logger/logger.js';
 import { createHttpLogger } from './shared/middleware/http-logger.js';
 import { createSecurityMiddleware } from './shared/middleware/security.js';
@@ -14,6 +15,7 @@ export interface AppOptions {
 }
 
 export function createApp(options: AppOptions): Express {
+  setupZodLocale();
   const { env } = options;
   const logger = options.logger ?? createLogger(env);
   const app = express();
