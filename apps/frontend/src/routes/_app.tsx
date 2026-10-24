@@ -1,13 +1,14 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router';
+import { AppLayout } from '@/components/layout';
 
 export const Route = createFileRoute('/_app')({
-  component: AppLayout,
+  component: AppRouteLayout,
 });
 
-function AppLayout() {
+function AppRouteLayout() {
   return (
-    <div className="min-h-screen bg-white">
+    <AppLayout>
       <Outlet />
-    </div>
+    </AppLayout>
   );
 }

@@ -15,7 +15,7 @@ export function DashboardPage() {
   const lastCheckedText = dataUpdatedAt ? formatDateTime(new Date(dataUpdatedAt)) : '—';
 
   return (
-    <main className="p-8">
+    <div className="space-y-6">
       <header className="mb-6">
         <h1 className="text-3xl font-bold tracking-tight text-neutral-900">FISME-SIGOA</h1>
         <p className="mt-1 text-sm text-neutral-600">
@@ -49,6 +49,6 @@ export function DashboardPage() {
           </Button>
         </div>
       </section>
-    </main>
+    </div>
   );
 }

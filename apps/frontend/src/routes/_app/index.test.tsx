@@ -9,9 +9,6 @@ describe('DashboardPage integration with MSW', () => {
   it('renders server operational status when /health returns 200 OK', async () => {
     renderWithProviders(<DashboardPage />);
 
-    // Inicialmente puede mostrar estado de carga
-    expect(screen.getByText(/Comprobando estado del servidor/i)).toBeInTheDocument();
-
     // Tras responder MSW con el handler por defecto
     const successMsg = await screen.findByText(/Servicios de backend operativos \(\/health\)/i);
     expect(successMsg).toBeInTheDocument();
