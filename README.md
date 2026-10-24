@@ -61,6 +61,19 @@ Sigue estos pasos para clonar e inicializar el entorno de desarrollo:
    - En `apps/frontend/.env`, configura `VITE_API_URL=http://localhost:3000` apuntando a la raíz del servidor backend (sin prefijo de ruta ni barra final). Esta variable es obligatoria y se valida estrictamente en runtime.
    - En `apps/backend/.env`, configura `PORT=3000`, `NODE_ENV=development` y la cadena de conexión a PostgreSQL.
 
+### Imagen Docker del backend
+
+La imagen de producción (`apps/backend/Dockerfile`) se construye desde la raíz del monorepo mediante un proceso multietapa:
+
+```bash
+docker build -f apps/backend/Dockerfile -t fisme-backend .
+```
+
+- Incluye el binario del sistema de **Chromium headless** (`/usr/bin/chromium`) para generación de reportes PDF con Puppeteer.
+- Flags obligatorios para Puppeteer en el contenedor: `--no-sandbox`, `--disable-dev-shm-usage`, `--disable-gpu`.
+- Se recomienda configurar `shm_size: 256m` o superior en Docker Compose.
+- Ejecuta bajo el usuario no root `node` y expone un `HEALTHCHECK` sobre `/health`.
+
 ### Base de datos local (PostgreSQL)
 
 Para iniciar una instancia local de PostgreSQL en desarrollo utilizando Docker:
