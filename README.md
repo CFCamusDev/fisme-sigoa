@@ -151,6 +151,34 @@ Para entornos de staging o producción en VPS (gestionados con Portainer y Nginx
    docker compose -f docker-compose.prod.yml down
    ```
 
+### Respaldo y restauración de base de datos
+
+Tanto el stack de desarrollo como el de producción integran el servicio de respaldo automático `postgres-backup-local` (`prodrigestivill/postgres-backup-local:16`), el cual ejecuta respaldos diarios (`@daily`) con una retención rotativa de 30 días (conforme a **RNF-023**):
+
+1. **Ubicación y retención de respaldos:**
+   Los respaldos se almacenan comprimidos en formato `.sql.gz` dentro del volumen nombrado `pg_backups` (ruta `/backups` dentro del contenedor). Las variables `BACKUP_KEEP_DAYS=30`, `BACKUP_KEEP_WEEKS=0` y `BACKUP_KEEP_MONTHS=0` garantizan la depuración automática de copias con más de 30 días de antigüedad.
+
+2. **Generar un respaldo inmediato manualmente:**
+   Para forzar la creación de un punto de restauración antes de una actualización o mantenimiento:
+
+   ```bash
+   docker compose exec backup /backup.sh
+   docker compose exec backup ls -lh /backups
+   ```
+
+3. **Procedimiento de restauración de respaldo:**
+   Para restaurar un volcado en una base de datos PostgreSQL:
+   ```bash
+   # Opción A: Restaurar en la base de datos activa
+   docker compose exec -T backup sh -c "gunzip -c /backups/<archivo_respaldo>.sql.gz" | docker compose exec -T postgres psql -U postgres -d sigoa_dev
+
+   # Opción B: Restaurar en una base de datos limpia de verificación
+   docker compose exec postgres createdb -U postgres sigoa_restore_test
+   docker compose exec -T backup sh -c "gunzip -c /backups/<archivo_respaldo>.sql.gz" | docker compose exec -T postgres psql -U postgres -d sigoa_restore_test
+   docker compose exec postgres psql -U postgres -d sigoa_restore_test -c "\dt"
+   docker compose exec postgres dropdb -U postgres sigoa_restore_test
+   ```
+
 ### Base de datos local (PostgreSQL)
 
 Para iniciar una instancia local de PostgreSQL en desarrollo utilizando Docker:
