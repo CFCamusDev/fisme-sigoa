@@ -284,3 +284,17 @@ Refs: HU-xxx, T-xxx-yy
 - **Pie obligatorio**: Referencia a la historia de usuario y tarea correspondiente (`Refs: HU-xxx, T-xxx-yy`).
 
 Los hooks pre-commit (`lint-staged`) y commit-msg (`commitlint`) validarán automáticamente los archivos modificados y el formato del mensaje antes de confirmar el commit.
+
+---
+
+## 6. Despliegue y versiones
+
+### Verificación de imágenes en etiquetas de versión (Release tags)
+
+Al crear y publicar una etiqueta con formato semántico `vX.Y.Z` (por ejemplo `v0.1.0`), GitHub Actions dispara automáticamente el flujo `.github/workflows/release.yml`, el cual ejecuta el script `scripts/ci/smoke-image.sh`:
+
+- Compila las imágenes Docker de producción (`backend` multietapa con Chromium headless y `frontend` con Nginx Alpine).
+- Inicia contenedores de prueba efímeros y comprueba que:
+  - El backend se ejecute bajo el usuario no root `node` y responda `200 OK` en `GET /health`.
+  - El frontend responda `200 OK` en `GET /healthz` y devuelva las cabeceras de seguridad requeridas (`X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`).
+- Si alguna imagen falla al construir o al iniciar, el flujo aborta en rojo antes de que la versión sea desplegada en el servidor.

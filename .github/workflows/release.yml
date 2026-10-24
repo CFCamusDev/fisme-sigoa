@@ -1,0 +1,26 @@
+# ==============================================================================
+# Verificación de lanzamiento y salud de imágenes al crear una etiqueta de versión
+# ==============================================================================
+name: Release verification
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  images:
+    name: Construir y verificar imágenes Docker
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ejecutar pruebas de humo sobre imágenes Docker
+        run: bash scripts/ci/smoke-image.sh
