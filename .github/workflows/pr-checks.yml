@@ -27,9 +27,26 @@ jobs:
           HEAD: ${{ github.head_ref }}
           BASE: ${{ github.base_ref }}
           TITLE: ${{ github.event.pull_request.title }}
+          ACTOR: ${{ github.actor }}
         run: |
           set -euo pipefail
           fail() { echo "::error::$1"; exit 1; }
+
+          # Excepción controlada para Pull Requests automáticos de Dependabot
+          if [ "$ACTOR" = "dependabot[bot]" ]; then
+            if [ "$BASE" != "develop" ]; then
+              fail "Los Pull Requests de Dependabot deben dirigirse exclusivamente a 'develop' (recibido base: '$BASE')."
+            fi
+            if [[ ! "$HEAD" =~ ^dependabot/ ]]; then
+              fail "Rama de Dependabot inválida (recibido: '$HEAD'). Debe comenzar con 'dependabot/'."
+            fi
+            if [[ ! "$TITLE" =~ ^(chore|ci|build)\(deps(-dev)?\):\ .+ ]]; then
+              fail "Título de Dependabot inválido ('$TITLE'). Debe cumplir '^(chore|ci|build)(deps(-dev)?): .+'."
+            fi
+            echo "Convenciones de Dependabot correctas."
+            exit 0
+          fi
+
           if [ "$BASE" = "develop" ]; then
             # Ramas de trabajo (o merge de vuelta de release/hotfix)
             if [[ "$HEAD" =~ ^(release|hotfix)/[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
