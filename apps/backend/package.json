@@ -16,7 +16,7 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/server.js",
     "test": "vitest run",
-    "test:coverage": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "depcruise": "depcruise src --config .dependency-cruiser.cjs"
   },
   "dependencies": {
@@ -38,6 +38,7 @@
     "@types/node": "^26.6.5",
     "@types/pg": "^8.23.1",
     "@types/supertest": "^7.2.1",
+    "@vitest/coverage-v8": "^5.0.5",
     "dependency-cruiser": "^18.7.0",
     "pino-pretty": "^13.2.0",
     "prisma": "^7.10.1",
