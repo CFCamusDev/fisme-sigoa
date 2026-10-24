@@ -307,3 +307,49 @@ Al fusionar un Pull Request hacia la rama `develop`, GitHub Actions ejecuta `.gi
 - **Protección contra push directo**: El script `scripts/ci/verify-merged-pr.sh` comprueba que el commit provenga de un Pull Request cerrado y fusionado a `develop`; ante cualquier empujón directo sin PR, el job aborta inmediatamente en rojo impidiendo el despliegue.
 - **Disparo seguro por webhook**: Utiliza el secreto de repositorio `PORTAINER_STAGING_WEBHOOK_URL` ejecutando `scripts/ci/trigger-portainer.sh`, el cual cuenta con reintentos automáticos y enmascara la URL en los registros de salida.
 - **Validación de salud en Staging**: El script `scripts/ci/wait-for-health.sh` consulta periódicamente la variable de repositorio `STAGING_HEALTH_URL` (exigiendo protocolo seguro HTTPS conforme a **RNF-001**) hasta recibir `200 OK` con `{"status":"ok"}`.
+
+### Despliegue a Producción (manual por etiqueta en Portainer)
+
+En producción, la estabilidad y la gobernanza exigen aprobación humana y fijación estricta de versiones. Por ello, el stack de producción en Portainer apunta directamente a una referencia de etiqueta Git (`refs/tags/vX.Y.Z`) y **no utiliza webhook automático**.
+
+El procedimiento de despliegue de una versión oficial es el siguiente:
+
+1. **Fusión del PR de lanzamiento en `main`**: El Pull Request desde `release/X.Y.Z` o `hotfix/X.Y.Z` hacia `main` debe haberse completado mediante un _merge commit_, con todos los flujos de verificación en verde (`convenciones`, `calidad`, `seguridad` y `e2e`).
+2. **Creación y publicación de la etiqueta**:
+   ```bash
+   git checkout main
+   git pull origin main
+   git tag vX.Y.Z
+   git push origin vX.Y.Z
+   ```
+3. **Verificación automatizada en GitHub Actions (`release.yml`)**:
+   - El job `verificar` ejecuta `scripts/ci/verify-release-tag.sh`: valida que la etiqueta cumpla `^v[0-9]+\.[0-9]+\.[0-9]+$`, que pertenezca al historial de `main` y que provenga de un PR fusionado cuya versión coincida exactamente.
+   - El job `images` ejecuta `scripts/ci/smoke-image.sh` garantizando que las imágenes compilen y pasen sus pruebas de humo.
+   - El job `resumen` genera una guía en el resumen de ejecución.
+4. **Respaldo previo en el servidor VPS**:
+   Antes de desplegar una nueva versión (especialmente si incluye cambios de esquema de base de datos), realizar un respaldo manual de la base de datos de producción:
+   ```bash
+   docker exec fisme-postgres-backup /backup.sh
+   ```
+5. **Actualización de referencia en Portainer**:
+   - Acceder al panel de **Portainer** → **Stacks** → stack de producción (`fisme-sigoa-prod`).
+   - Ir a la pestaña **Git repository**.
+   - Cambiar **Repository reference** al nuevo tag: `refs/tags/vX.Y.Z`.
+   - Confirmar que **GitOps updates** permanezca **desactivado**.
+   - Hacer clic en **Pull and redeploy**.
+6. **Ejecución de migraciones y verificación**:
+   - El servicio `migrate` de `docker-compose.prod.yml` ejecuta automáticamente `prisma migrate deploy` antes de levantar el backend.
+   - Verificar la respuesta del backend: `curl -fsSL https://<api-domain>/health` (debe responder `200 OK` con `{"status":"ok"}`).
+   - Comprobar la carga del frontend y las cabeceras de seguridad en el navegador.
+
+### Procedimiento de reversión (Rollback en Producción)
+
+Si surge algún incidente crítico tras un despliegue en producción:
+
+1. En Portainer, acceder al stack de producción (`fisme-sigoa-prod`).
+2. En **Repository reference**, volver a colocar la etiqueta de la versión anterior (por ejemplo `refs/tags/vX.Y.(Z-1)`).
+3. Si la versión problemática ejecutó migraciones incompatibles, restaurar el respaldo de base de datos generado en el paso previo:
+   ```bash
+   gunzip -c /ruta/backups/<archivo-respaldo>.sql.gz | docker exec -i fisme-postgres psql -U $POSTGRES_USER -d $POSTGRES_DB
+   ```
+4. Hacer clic en **Pull and redeploy** en Portainer para compilar y levantar los contenedores en la versión anterior estable.
