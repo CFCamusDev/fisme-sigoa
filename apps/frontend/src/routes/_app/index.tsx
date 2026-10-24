@@ -6,7 +6,7 @@ export const Route = createFileRoute('/_app/')({
   component: DashboardPage,
 });
 
-function DashboardPage() {
+export function DashboardPage() {
   const { data, isLoading, isError, error, refetch, isFetching } = useHealth();
 
   const healthState = isLoading ? 'loading' : isError ? 'error' : 'ok';

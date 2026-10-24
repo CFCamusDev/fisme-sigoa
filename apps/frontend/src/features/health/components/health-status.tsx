@@ -26,7 +26,7 @@ export const HealthStatus: React.FC<HealthStatusProps> = ({
   if (status === 'error') {
     return (
       <div
-        role="status"
+        role="alert"
         aria-live="assertive"
         className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700"
       >
@@ -49,6 +49,7 @@ export const HealthStatus: React.FC<HealthStatusProps> = ({
         <span className="inline-block h-2.5 w-2.5 rounded-full bg-green-600" aria-hidden="true" />
         <span>Servidor operativo (OK)</span>
       </div>
+      {message && <p className="mt-1 text-xs text-green-700">{message}</p>}
       {uptime !== undefined && (
         <p className="mt-1 text-xs text-green-700">Tiempo activo: {Math.floor(uptime)}s</p>
       )}
