@@ -18,6 +18,8 @@ describe('DashboardPage integration with MSW', () => {
 
     const operationalBadge = screen.getByText(/Servidor operativo \(OK\)/i);
     expect(operationalBadge).toBeInTheDocument();
+
+    expect(screen.getByText(/Última comprobación:/i)).toBeInTheDocument();
   });
 
   it('renders error alert when backend responds with 500 Internal Error', async () => {

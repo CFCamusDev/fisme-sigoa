@@ -1,16 +1,18 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
 import { HealthStatus, useHealth } from '@/features/health';
+import { formatDateTime } from '@/lib/date';
 
 export const Route = createFileRoute('/_app/')({
   component: DashboardPage,
 });
 
 export function DashboardPage() {
-  const { data, isLoading, isError, error, refetch, isFetching } = useHealth();
+  const { data, isLoading, isError, error, refetch, isFetching, dataUpdatedAt } = useHealth();
 
   const healthState = isLoading ? 'loading' : isError ? 'error' : 'ok';
   const errorMessage = error instanceof Error ? error.message : undefined;
+  const lastCheckedText = dataUpdatedAt ? formatDateTime(new Date(dataUpdatedAt)) : '—';
 
   return (
     <main className="p-8">
@@ -37,6 +39,10 @@ export function DashboardPage() {
             }
           />
         </div>
+        <p className="text-xs text-neutral-500">
+          Última comprobación:{' '}
+          <span className="font-medium text-neutral-700">{lastCheckedText}</span>
+        </p>
         <div className="pt-2">
           <Button variant="outline" onClick={() => void refetch()} disabled={isFetching}>
             {isFetching ? 'Comprobando...' : 'Comprobar estado del servidor'}
