@@ -87,6 +87,8 @@ jobs:
         run: pnpm depcruise
       - name: Migraciones desde cero
         run: pnpm --filter backend prisma migrate deploy
+      - name: Pruebas de integración
+        run: pnpm --filter backend test:integration
       - name: Pruebas con cobertura (umbral 80 % en vitest.config)
         run: pnpm test:coverage
       - name: Build
