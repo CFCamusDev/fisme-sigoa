@@ -53,8 +53,13 @@ Sigue estos pasos para clonar e inicializar el entorno de desarrollo:
    _Nota:_ Este comando inicializa automáticamente los hooks de calidad local mediante `husky`.
 
 3. **Variables de entorno**:
-   - Cada aplicación (`apps/backend`, `apps/frontend`) utilizará su respectivo archivo `.env`.
-   - Consulta los archivos de plantilla `.env.example` en cada módulo para configurar las variables requeridas antes de arrancar los servicios.
+   - Cada aplicación (`apps/backend`, `apps/frontend`) requiere su respectivo archivo `.env`. Copia las plantillas `.env.example`:
+     ```bash
+     cp apps/backend/.env.example apps/backend/.env
+     cp apps/frontend/.env.example apps/frontend/.env
+     ```
+   - En `apps/frontend/.env`, configura `VITE_API_URL=http://localhost:3000` apuntando a la raíz del servidor backend (sin prefijo de ruta ni barra final). Esta variable es obligatoria y se valida estrictamente en runtime.
+   - En `apps/backend/.env`, configura `PORT=3000`, `NODE_ENV=development` y la cadena de conexión a PostgreSQL.
 
 ### Base de datos local (PostgreSQL)
 

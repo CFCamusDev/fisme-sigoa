@@ -4,11 +4,11 @@ import { parseEnv } from './env';
 describe('parseEnv', () => {
   it('parses valid environment variables with valid URL', () => {
     const validSource = {
-      VITE_API_URL: 'http://localhost:3000/api/v1',
+      VITE_API_URL: 'http://localhost:3000',
     };
 
     const parsed = parseEnv(validSource);
-    expect(parsed.VITE_API_URL).toBe('http://localhost:3000/api/v1');
+    expect(parsed.VITE_API_URL).toBe('http://localhost:3000');
   });
 
   it('throws a descriptive error in Spanish when VITE_API_URL is missing', () => {

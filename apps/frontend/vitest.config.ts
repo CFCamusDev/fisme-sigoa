@@ -11,7 +11,7 @@ export default defineConfig({
     globals: true,
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
     env: {
-      VITE_API_URL: 'http://localhost:3000/api/v1',
+      VITE_API_URL: 'http://localhost:3000',
     },
   },
   resolve: {
