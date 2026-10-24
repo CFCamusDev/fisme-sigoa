@@ -39,5 +39,22 @@ export default tseslint.config(
     files: ['apps/frontend/**/*.{ts,tsx}'],
     ...jsxA11y.flatConfigs.recommended,
   },
+  {
+    files: ['apps/frontend/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@/features/*/*'],
+              message:
+                'Los imports profundos en features están prohibidos (RNF-028). Importa únicamente desde el barril "@/features/<feature>".',
+            },
+          ],
+        },
+      ],
+    },
+  },
   prettier,
 );
