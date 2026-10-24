@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
+import { PageHeader } from '@/components/common';
 import { Button } from '@/components/ui/button';
 import { HealthStatus, useHealth } from '@/features/health';
 import { formatDateTime } from '@/lib/date';
@@ -16,17 +17,22 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <header className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight text-neutral-900">FISME-SIGOA</h1>
-        <p className="mt-1 text-sm text-neutral-600">
-          Sistema Integrado de Gestión de Objetivos Educacionales y Atributos del Graduado
-        </p>
-      </header>
-      <section className="space-y-4 rounded-lg border border-neutral-200 bg-neutral-50 p-6">
+      <PageHeader
+        title="FISME-SIGOA"
+        description="Sistema Integrado de Gestión de Objetivos Educacionales y Atributos del Graduado"
+        actions={
+          <Button variant="outline" size="sm" onClick={() => void refetch()} disabled={isFetching}>
+            {isFetching ? 'Comprobando...' : 'Comprobar estado'}
+          </Button>
+        }
+      />
+
+      <section className="space-y-4 rounded-lg border border-neutral-200 bg-white p-6 shadow-xs">
         <h2 className="text-lg font-medium text-neutral-900">Bienvenido al sistema</h2>
         <p className="text-sm text-neutral-600">
           La aplicación frontend base se encuentra configurada y lista.
         </p>
+
         <div className="max-w-md pt-2">
           <HealthStatus
             status={healthState}
@@ -39,15 +45,11 @@ export function DashboardPage() {
             }
           />
         </div>
+
         <p className="text-xs text-neutral-500">
           Última comprobación:{' '}
           <span className="font-medium text-neutral-700">{lastCheckedText}</span>
         </p>
-        <div className="pt-2">
-          <Button variant="outline" onClick={() => void refetch()} disabled={isFetching}>
-            {isFetching ? 'Comprobando...' : 'Comprobar estado del servidor'}
-          </Button>
-        </div>
       </section>
     </div>
   );
