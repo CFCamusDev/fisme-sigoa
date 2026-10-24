@@ -121,6 +121,36 @@ El repositorio incluye un archivo `docker-compose.yml` multietapa en la raíz pa
    docker compose down -v
    ```
 
+### Stack de producción y staging (`docker-compose.prod.yml`)
+
+Para entornos de staging o producción en VPS (gestionados con Portainer y Nginx Proxy Manager según `docs/despliegue.md`), se utiliza `docker-compose.prod.yml`. Este archivo aísla la base de datos (sin puerto expuesto al exterior), requiere variables obligatorias de entorno y acota los límites de memoria por servicio:
+
+1. **Configurar el archivo de variables:**
+   Copia la plantilla `deploy/stack.env.example` y asigna contraseñas seguras y URLs oficiales:
+
+   ```bash
+   cp deploy/stack.env.example .env.prod
+   ```
+
+2. **Levantar el stack con variables de producción:**
+
+   ```bash
+   docker compose -f docker-compose.prod.yml --env-file .env.prod up --build -d
+   ```
+
+3. **Verificar estado de los servicios:**
+
+   ```bash
+   docker compose -f docker-compose.prod.yml ps
+   curl http://localhost:3000/health
+   curl http://localhost:8001/healthz
+   ```
+
+4. **Detener el stack:**
+   ```bash
+   docker compose -f docker-compose.prod.yml down
+   ```
+
 ### Base de datos local (PostgreSQL)
 
 Para iniciar una instancia local de PostgreSQL en desarrollo utilizando Docker:
