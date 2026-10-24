@@ -1,0 +1,22 @@
+#!/usr/bin/env sh
+# ==============================================================================
+# Hook pre-push: Bloquea empujones directos a las ramas protegidas main y develop
+# Protege el repositorio local contra subidas accidentales sin Pull Request
+# ==============================================================================
+
+while read -r _ _ remote_ref _; do
+  case "$remote_ref" in
+    refs/heads/main|refs/heads/develop)
+      echo "" >&2
+      echo "======================================================================" >&2
+      echo "[ERROR] Empujón directo denegado a '$remote_ref'." >&2
+      echo "Las ramas 'main' y 'develop' solo admiten cambios mediante Pull Request." >&2
+      echo "Por favor, empuja tu rama de trabajo (feature/*, fix/*, etc.) y abre un PR." >&2
+      echo "======================================================================" >&2
+      echo "" >&2
+      exit 1
+      ;;
+  esac
+done
+
+exit 0

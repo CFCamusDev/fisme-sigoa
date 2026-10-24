@@ -269,6 +269,13 @@ pnpm --filter @sigoa/shared <script>
   - `test/HU-xxx-descripcion`
   - `chore/HU-xxx-descripcion`
 
+### Protección de ramas y hooks de Git
+
+Para evitar modificaciones accidentales en las ramas de integración y producción (especialmente en repositorios sin plan GitHub Pro):
+
+- **Hook local `pre-push` (`.husky/pre-push`)**: Husky intercepta el comando `git push` en los clones de desarrollo y bloquea automáticamente cualquier intento de empujar cambios directos hacia `main` o `develop`. Todo cambio hacia dichas ramas debe canalizarse obligatoriamente mediante un Pull Request.
+- **Hooks de commit**: Husky ejecuta `lint-staged` (`pre-commit`) para formateo y verificación estática, y `commitlint` (`commit-msg`) para validar el estándar de Conventional Commits.
+
 ### Formato de commits (Conventional Commits)
 
 Los commits deben seguir la especificación estricta de Conventional Commits con mensaje en **inglés**, modo imperativo, sin punto final, y con longitud máxima de cabecera de 72 caracteres:
