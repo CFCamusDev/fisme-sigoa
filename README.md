@@ -298,3 +298,12 @@ Al crear y publicar una etiqueta con formato semántico `vX.Y.Z` (por ejemplo `v
   - El backend se ejecute bajo el usuario no root `node` y responda `200 OK` en `GET /health`.
   - El frontend responda `200 OK` en `GET /healthz` y devuelva las cabeceras de seguridad requeridas (`X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`).
 - Si alguna imagen falla al construir o al iniciar, el flujo aborta en rojo antes de que la versión sea desplegada en el servidor.
+
+### Despliegue automático a Staging (Portainer Webhook)
+
+Al fusionar un Pull Request hacia la rama `develop`, GitHub Actions ejecuta `.github/workflows/deploy-staging.yml` para actualizar el stack de staging en Portainer:
+
+- **Interruptor de despliegue**: Requiere configurar la variable de repositorio `STAGING_ENABLED="true"` en GitHub. Si la variable no está activada, el flujo se omite para evitar intentos fallidos antes de configurar el entorno.
+- **Protección contra push directo**: El script `scripts/ci/verify-merged-pr.sh` comprueba que el commit provenga de un Pull Request cerrado y fusionado a `develop`; ante cualquier empujón directo sin PR, el job aborta inmediatamente en rojo impidiendo el despliegue.
+- **Disparo seguro por webhook**: Utiliza el secreto de repositorio `PORTAINER_STAGING_WEBHOOK_URL` ejecutando `scripts/ci/trigger-portainer.sh`, el cual cuenta con reintentos automáticos y enmascara la URL en los registros de salida.
+- **Validación de salud en Staging**: El script `scripts/ci/wait-for-health.sh` consulta periódicamente la variable de repositorio `STAGING_HEALTH_URL` (exigiendo protocolo seguro HTTPS conforme a **RNF-001**) hasta recibir `200 OK` con `{"status":"ok"}`.
