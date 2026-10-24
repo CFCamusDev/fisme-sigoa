@@ -28,11 +28,17 @@ describe('user fixtures', () => {
   it('buildUsersByRole returns one user per role dictionary', () => {
     const allRoleUsers = buildUsersByRole();
 
+    expect(Object.keys(allRoleUsers)).toHaveLength(5);
     for (const role of USER_ROLES) {
       const user = allRoleUsers[role];
       expect(user).toBeDefined();
       expect(user.role).toBe(role);
     }
+  });
+
+  it('fixtures do not define a student role adhering to RS-014', () => {
+    expect(USER_ROLES).toHaveLength(5);
+    expect(USER_ROLES).not.toContain('STUDENT');
   });
 
   it('fixtures use only fictional test data without personal data', () => {
