@@ -87,6 +87,40 @@ docker build -f apps/frontend/Dockerfile --build-arg VITE_API_URL=http://localho
 - Cabecera `Cache-Control: no-cache, no-store, must-revalidate` en `index.html` para despliegues instantáneos.
 - Endpoint de verificación de salud en `/healthz`.
 
+### Stack completo de desarrollo con Docker Compose
+
+El repositorio incluye un archivo `docker-compose.yml` multietapa en la raíz para ejecutar el stack completo (PostgreSQL, ejecutor de migraciones Prisma, backend Express con Chromium headless y frontend SPA en Nginx):
+
+1. **Configuración de variables (opcional):**
+   El archivo `.env.example` en la raíz contiene las variables por defecto seguras para desarrollo. Si deseas personalizarlas, crea un archivo `.env` en la raíz:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+2. **Levantar el stack completo:**
+
+   ```bash
+   docker compose up --build -d
+   ```
+   - `postgres`: Base de datos PostgreSQL 16 con healthcheck activo (puerto local `127.0.0.1:5433` para evitar conflictos con instancias nativas).
+   - `migrate`: Contenedor transitorio que ejecuta `prisma migrate deploy` una vez la base de datos está lista.
+   - `backend`: Servidor Express compilado corriendo bajo el usuario `node` en `http://localhost:3000`.
+   - `frontend`: Servidor web Nginx Alpine sirviendo la aplicación SPA en `http://localhost:8001`.
+
+3. **Verificar el estado del stack:**
+
+   ```bash
+   docker compose ps
+   curl http://localhost:3000/health
+   curl http://localhost:8001/healthz
+   ```
+
+4. **Detener y limpiar los contenedores:**
+   ```bash
+   docker compose down -v
+   ```
+
 ### Base de datos local (PostgreSQL)
 
 Para iniciar una instancia local de PostgreSQL en desarrollo utilizando Docker:
