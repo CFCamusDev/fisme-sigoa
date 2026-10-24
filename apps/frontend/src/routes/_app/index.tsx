@@ -1,12 +1,17 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
-import { HealthStatus } from '@/features/health';
+import { HealthStatus, useHealth } from '@/features/health';
 
 export const Route = createFileRoute('/_app/')({
   component: DashboardPage,
 });
 
 function DashboardPage() {
+  const { data, isLoading, isError, error, refetch, isFetching } = useHealth();
+
+  const healthState = isLoading ? 'loading' : isError ? 'error' : 'ok';
+  const errorMessage = error instanceof Error ? error.message : undefined;
+
   return (
     <main className="p-8">
       <header className="mb-6">
@@ -21,10 +26,21 @@ function DashboardPage() {
           La aplicación frontend base se encuentra configurada y lista.
         </p>
         <div className="max-w-md pt-2">
-          <HealthStatus status="ok" message="Servicios inicializados" uptime={120} />
+          <HealthStatus
+            status={healthState}
+            message={
+              isError
+                ? errorMessage
+                : data?.status === 'ok'
+                  ? 'Servicios de backend operativos (/health)'
+                  : undefined
+            }
+          />
         </div>
         <div className="pt-2">
-          <Button variant="outline">Ver estado</Button>
+          <Button variant="outline" onClick={() => void refetch()} disabled={isFetching}>
+            {isFetching ? 'Comprobando...' : 'Comprobar estado del servidor'}
+          </Button>
         </div>
       </section>
     </main>
