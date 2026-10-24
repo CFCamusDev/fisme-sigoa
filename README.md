@@ -82,6 +82,19 @@ pnpm --filter backend db:migrate
 pnpm --filter backend db:seed
 ```
 
+### Pruebas de integración y base de datos de test
+
+Las pruebas de integración del backend (`*.integration.test.ts`) se ejecutan contra una base de datos PostgreSQL real. Por seguridad, el sistema aborta de inmediato (`assertTestDatabase`) si el nombre de la base de datos no termina en `_test`, protegiendo la base de desarrollo o producción de cualquier truncado accidental.
+
+- Asegúrate de tener el contenedor de PostgreSQL iniciado (`fisme-postgres`).
+- El proceso de `globalSetup` de Vitest crea automáticamente la base de datos `sigoa_test` y aplica las migraciones de Prisma.
+- Cada suite de integración ejecuta un reseteo limpio (`TRUNCATE ... RESTART IDENTITY CASCADE`) antes de cada test.
+- Comandos:
+  ```bash
+  pnpm --filter backend test:unit        # Ejecuta solo pruebas unitarias (sin base de datos)
+  pnpm --filter backend test:integration # Ejecuta pruebas de integración contra la BD de prueba
+  ```
+
 ---
 
 ## 4. Scripts disponibles

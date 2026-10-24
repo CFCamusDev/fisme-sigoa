@@ -6,5 +6,10 @@
     "rootDir": "./src"
   },
   "include": ["src/**/*"],
-  "exclude": ["src/**/*.test.ts", "src/modules/reference-module/**/*"]
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/*.integration.test.ts",
+    "src/test/**/*",
+    "src/modules/reference-module/**/*"
+  ]
 }

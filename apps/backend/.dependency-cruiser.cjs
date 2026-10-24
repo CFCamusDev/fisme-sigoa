@@ -91,6 +91,8 @@ module.exports = {
         pathNot: [
           '^src/modules/[^/]+/infrastructure',
           '^src/shared/prisma',
+          '^src/test/',
+          '\\.integration\\.test\\.ts$',
           '^src/server\\.ts$',
           '^src/seed\\.ts$',
         ],
