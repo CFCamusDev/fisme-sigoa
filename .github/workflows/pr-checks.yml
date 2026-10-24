@@ -20,6 +20,7 @@ jobs:
   convenciones:
     name: Rama y título del PR
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Validar nombre de rama y título
         env:
@@ -57,6 +58,7 @@ jobs:
   calidad:
     name: Lint, tipos, pruebas y build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: convenciones
     services:
       postgres:
@@ -76,7 +78,7 @@ jobs:
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Lint y formato
@@ -97,13 +99,14 @@ jobs:
   seguridad:
     name: Auditoría de dependencias
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs: convenciones
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: pnpm audit (falla con vulnerabilidades altas o críticas)
