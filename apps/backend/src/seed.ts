@@ -1,16 +1,11 @@
-import process from 'node:process';
 import { loadEnv } from './config/env.js';
+import { loadEnvFileIfPresent } from './config/load-env-file.js';
 import { createLogger } from './shared/logger/logger.js';
 import { getPrismaClient, disconnectPrisma } from './shared/prisma/prisma-client.js';
 import { runSeed, type SeedStep } from './shared/seed/seed-runner.js';
 import type { PrismaClient } from './shared/prisma/generated/client.js';
 
-// Carga segura de .env si existe (Node.js >= 20.12 nativo)
-try {
-  process.loadEnvFile?.();
-} catch {
-  // Ignora si el archivo .env no existe en el entorno
-}
+loadEnvFileIfPresent();
 
 async function main(): Promise<void> {
   const env = loadEnv();
