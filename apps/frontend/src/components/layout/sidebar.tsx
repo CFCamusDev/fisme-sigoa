@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Link, useRouterState } from '@tanstack/react-router';
 import { MAIN_NAV_ITEMS, type NavItem } from './nav-items';
 
@@ -10,6 +11,19 @@ export interface SidebarProps {
 export function Sidebar({ isOpen, onClose, items = MAIN_NAV_ITEMS }: SidebarProps) {
   const routerState = useRouterState();
   const currentPath = routerState.location.pathname;
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   return (
     <>
@@ -31,7 +45,7 @@ export function Sidebar({ isOpen, onClose, items = MAIN_NAV_ITEMS }: SidebarProp
         }`}
         aria-label="Barra lateral de navegación"
       >
-        <div className="flex h-16 items-center border-b border-neutral-200 px-6">
+        <div className="flex h-16 items-center justify-between border-b border-neutral-200 px-6">
           <Link
             to="/"
             className="flex items-center gap-2 font-bold text-neutral-900"
@@ -42,6 +56,24 @@ export function Sidebar({ isOpen, onClose, items = MAIN_NAV_ITEMS }: SidebarProp
             </span>
             <span className="text-sm font-semibold tracking-tight">FISME-SIGOA</span>
           </Link>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Cerrar barra lateral"
+            className="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 lg:hidden"
+          >
+            <span className="sr-only">Cerrar barra lateral</span>
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth="1.5"
+              stroke="currentColor"
+              aria-hidden="true"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
         <nav className="flex-1 overflow-y-auto p-4" aria-label="Navegación principal">

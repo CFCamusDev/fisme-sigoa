@@ -17,6 +17,7 @@
     "typecheck": "pnpm build:shared && pnpm db:generate && pnpm -r --if-present typecheck",
     "test": "pnpm build:shared && pnpm db:generate && pnpm -r --if-present test",
     "test:coverage": "pnpm build:shared && pnpm db:generate && pnpm -r --if-present test:coverage",
+    "test:e2e": "pnpm build:shared && pnpm db:generate && pnpm --filter frontend test:e2e",
     "build": "pnpm build:shared && pnpm db:generate && pnpm -r --if-present build",
     "depcruise": "pnpm --filter backend --if-present depcruise",
     "prepare": "husky"

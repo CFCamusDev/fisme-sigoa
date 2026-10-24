@@ -93,6 +93,20 @@ Las pruebas de integración del backend (`*.integration.test.ts`) se ejecutan co
   ```bash
   pnpm --filter backend test:unit        # Ejecuta solo pruebas unitarias (sin base de datos)
   pnpm --filter backend test:integration # Ejecuta pruebas de integración contra la BD de prueba
+  `
+  ```
+
+### Pruebas End-to-End (Playwright)
+
+Las pruebas E2E verifican la integración completa de la interfaz de usuario con el backend y la base de datos de pruebas PostgreSQL:
+
+- Requiere el navegador Chromium instalado (pnpm --filter frontend exec playwright install chromium).
+- Inicia automáticamente el servidor backend en puerto 3100 apuntando a sigoa_test y el servidor frontend en puerto 4173.
+- Comando:
+  `ash
+  pnpm test:e2e
+  ```
+
   ```
 
 ---
@@ -109,6 +123,7 @@ Desde la raíz del monorepo se pueden ejecutar los siguientes scripts en todos l
 | `pnpm typecheck`     | Comprueba la tipificación estricta de TypeScript (`tsc --noEmit`).            |
 | `pnpm test`          | Ejecuta la suite de pruebas unitarias y de integración.                       |
 | `pnpm test:coverage` | Ejecuta las pruebas generando reporte de cobertura de código.                 |
+| `pnpm test:e2e`      | Ejecuta las pruebas end-to-end (Playwright) levantando frontend y backend.    |
 | `pnpm build`         | Compila todos los paquetes y aplicaciones para producción.                    |
 | `pnpm depcruise`     | Valida las reglas de arquitectura hexagonal y dependencias permitidas.        |
 
