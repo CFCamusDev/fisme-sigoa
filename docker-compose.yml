@@ -82,8 +82,8 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
       SCHEDULE: ${BACKUP_SCHEDULE:-@daily}
       BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-30}
-      BACKUP_KEEP_WEEKS: 0
-      BACKUP_KEEP_MONTHS: 0
+      BACKUP_KEEP_WEEKS: ${BACKUP_KEEP_WEEKS:-0}
+      BACKUP_KEEP_MONTHS: ${BACKUP_KEEP_MONTHS:-0}
     volumes:
       - pg_backups:/backups
 
