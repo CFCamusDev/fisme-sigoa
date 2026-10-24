@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defineFactory } from './define-factory';
+import { defineFactory } from './define-factory.js';
 
 interface Item {
   id: string;
@@ -9,7 +9,7 @@ interface Item {
 
 describe('defineFactory', () => {
   it('build applies defaults and overrides correctly', () => {
-    const itemFactory = defineFactory<Item>((seq) => ({
+    const itemFactory = defineFactory<Item>((seq: number) => ({
       id: `item-${seq}`,
       name: `Elemento ${seq}`,
       count: 0,
@@ -27,7 +27,7 @@ describe('defineFactory', () => {
   });
 
   it('sequence values are unique and deterministic', () => {
-    const itemFactory = defineFactory<Item>((seq) => ({
+    const itemFactory = defineFactory<Item>((seq: number) => ({
       id: `id-${seq}`,
       name: `Name ${seq}`,
       count: seq,
@@ -49,7 +49,7 @@ describe('defineFactory', () => {
   });
 
   it('buildList returns independent objects with sequential values', () => {
-    const itemFactory = defineFactory<Item>((seq) => ({
+    const itemFactory = defineFactory<Item>((seq: number) => ({
       id: `list-${seq}`,
       name: `List ${seq}`,
       count: 10,

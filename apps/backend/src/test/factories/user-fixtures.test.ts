@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildUser, buildUsersByRole, USER_ROLES, USER_STATUSES } from './user-fixtures';
+import { buildUser, buildUsersByRole, USER_ROLES, USER_STATUSES } from './user-fixtures.js';
 
 describe('user fixtures', () => {
   it('buildUser creates a user for each role in one line', () => {
