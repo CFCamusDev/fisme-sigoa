@@ -1,0 +1,35 @@
+# ==============================================================================
+# Detector de empujones directos a ramas protegidas (main y develop)
+# Alerta inmediatamente si un commit ingresa sin provenir de un PR fusionado
+# ==============================================================================
+name: Guard direct push
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: guard-push-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  detectar:
+    name: Verificar procedencia de Pull Request
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Comprobar que el commit proviene de un PR fusionado
+        env:
+          TARGET_BRANCH: ${{ github.ref_name }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: bash scripts/ci/verify-merged-pr.sh
