@@ -74,6 +74,19 @@ docker build -f apps/backend/Dockerfile -t fisme-backend .
 - Se recomienda configurar `shm_size: 256m` o superior en Docker Compose.
 - Ejecuta bajo el usuario no root `node` y expone un `HEALTHCHECK` sobre `/health`.
 
+### Imagen Docker del frontend (Nginx)
+
+La imagen de producción (`apps/frontend/Dockerfile`) compila la SPA y la sirve a través de un servidor web Nginx Alpine optimizado:
+
+```bash
+docker build -f apps/frontend/Dockerfile --build-arg VITE_API_URL=http://localhost:3000 -t fisme-frontend .
+```
+
+- Servidor web en puerto 80 con soporte de enrutamiento SPA (`try_files $uri $uri/ /index.html`).
+- Compresión gzip activada y caché inmutable para activos en `/assets/`.
+- Cabecera `Cache-Control: no-cache, no-store, must-revalidate` en `index.html` para despliegues instantáneos.
+- Endpoint de verificación de salud en `/healthz`.
+
 ### Base de datos local (PostgreSQL)
 
 Para iniciar una instancia local de PostgreSQL en desarrollo utilizando Docker:
