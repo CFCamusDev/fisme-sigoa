@@ -36,7 +36,8 @@ RUN pnpm --filter frontend build
 # ------------------------------------------------------------------------------
 FROM nginx:1.27-alpine AS runtime
 
-# Configuración personalizada de Nginx para SPA (TanStack Router)
+# Configuración personalizada de Nginx para SPA (TanStack Router) y fragmento de seguridad
+COPY apps/frontend/security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY apps/frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copia de los archivos estáticos compilados
