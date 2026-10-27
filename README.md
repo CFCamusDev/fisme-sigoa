@@ -8,7 +8,7 @@ Sistema Integrado de Gestión de Objetivos Educacionales (OE) y Atributos del Gr
 
 Antes de comenzar, asegúrate de tener instaladas las siguientes herramientas en tu entorno de desarrollo:
 
-- **Node.js**: `>= 20.19.0` (recomendado: `22 LTS`, administrable mediante `.nvmrc`).
+- **Node.js**: `>= 22.22.1` (22 LTS, administrable con `.nvmrc`).
 - **pnpm**: `>= 10.0.0` (gestor de paquetes del monorepo; configurado con `packageManager: pnpm@10.8.0`).
 - **Git**: Versión reciente con soporte para hooks de preparación.
 - **Docker y Docker Compose**: Para levantar servicios locales como la base de datos PostgreSQL.
