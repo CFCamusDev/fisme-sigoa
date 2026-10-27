@@ -1,0 +1,91 @@
+// ==============================================================================
+// FISME-SIGOA — Esquema de Base de Datos Prisma (PostgreSQL)
+// ==============================================================================
+// Convenciones obligatorias del esquema (LS s.4, RS-070, RS-071, RNF-022, RNF-027):
+//
+// 1. Nombres y Mapeos:
+//    - Modelos en PascalCase singular (ej: model ProcessExecution).
+//    - Tablas en PostgreSQL mapeadas explícitamente a snake_case plural con @@map (ej: @@map("process_executions")).
+//    - Atributos y columnas en camelCase directo sin renombrar salvo requerimiento específico.
+//    - Enums en SCREAMING_SNAKE_CASE con valores en inglés alineados al glosario oficial (AGENTS.md §7.1).
+//
+// 2. Claves primarias y Marcas temporales:
+//    - Clave primaria obligatoria: id String @id @default(cuid()).
+//    - Marcas de tiempo de auditoría técnica:
+//        createdAt DateTime @default(now())
+//        updatedAt DateTime @updatedAt
+//
+// 3. Auditoría de Autoría (sin relación de clave foránea forzada):
+//    - createdBy String?  (ID del usuario que creó el registro o 'SYSTEM'/'SEED')
+//    - updatedBy String?  (ID del último usuario que modificó el registro)
+//    - No declarar relación @relation hacia User para evitar acoplamientos circulares y permitir actores del sistema.
+//
+// 4. Inmutabilidad y Anulación Lógica (RS-070, RS-071, RN-007):
+//    - Los registros con valor de evidencia NUNCA se eliminan físicamente (DELETE prohibido).
+//    - Campos estándar de anulación lógica:
+//        voided Boolean @default(false)
+//        voidReason String?
+//        voidedBy String?
+//        voidedAt DateTime?
+//    - Borrado físico solo admisible en borradores transitorios (DRAFT).
+//
+// 5. Relaciones e Índices:
+//    - Claves foráneas nombradas como <entidadRelacionada>Id (ej: courseOfferingId String).
+//    - Cada clave foránea debe contar con su índice explícito: @@index([courseOfferingId]).
+//    - Restricciones de unicidad compuestas con @@unique([...]).
+//    - Consultas frecuentes con filtros combinados deben definir índices con @@index([...]).
+//
+// 6. Auditoría Append-Only (HU-075):
+//    - La tabla AuditLog es exclusivamente de inserción; nunca se ejecutan UPDATE ni DELETE.
+//
+// ------------------------------------------------------------------------------
+// MODELO DE EJEMPLO (COMENTADO DE REFERENCIA):
+// ------------------------------------------------------------------------------
+// enum ExampleStatus {
+//   DRAFT
+//   IN_PROGRESS
+//   APPROVED
+//   CLOSED
+//   VOIDED
+// }
+//
+// model ExampleEntity {
+//   id          String        @id @default(cuid())
+//   code        String
+//   title       String
+//   status      ExampleStatus @default(DRAFT)
+//
+//   // Relación con otra entidad
+//   programId   String
+//   // program     Program       @relation(fields: [programId], references: [id])
+//
+//   // Auditoría técnica de autoría
+//   createdBy   String?
+//   updatedBy   String?
+//
+//   // Marcas temporales
+//   createdAt   DateTime      @default(now())
+//   updatedAt   DateTime      @updatedAt
+//
+//   // Anulación lógica (RS-070)
+//   voided      Boolean       @default(false)
+//   voidReason  String?
+//   voidedBy    String?
+//   voidedAt    DateTime?
+//
+//   // Índices y restricciones
+//   @@unique([programId, code])
+//   @@index([programId])
+//   @@index([status])
+//   @@map("example_entities")
+// }
+// ==============================================================================
+
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/shared/prisma/generated"
+}

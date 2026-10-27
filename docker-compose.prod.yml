@@ -1,0 +1,96 @@
+services:
+  postgres:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME:?Falta DB_NAME en las variables del entorno}
+      POSTGRES_USER: ${DB_USER:?Falta DB_USER en las variables del entorno}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Falta DB_PASSWORD en las variables del entorno}
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    deploy:
+      resources:
+        limits:
+          memory: ${DB_MEMORY_LIMIT:-512M}
+
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+      target: migrator
+    restart: 'no'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:?Falta DB_USER en las variables del entorno}:${DB_PASSWORD:?Falta DB_PASSWORD en las variables del entorno}@postgres:5432/${DB_NAME:?Falta DB_NAME en las variables del entorno}?schema=public
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+      target: runtime
+    restart: unless-stopped
+    ports:
+      - '${SERVER_PORT:-3000}:${SERVER_PORT:-3000}'
+    shm_size: 256m
+    deploy:
+      resources:
+        limits:
+          memory: ${BACKEND_MEMORY_LIMIT:-1G}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      PORT: ${SERVER_PORT:-3000}
+      DATABASE_URL: postgresql://${DB_USER:?Falta DB_USER en las variables del entorno}:${DB_PASSWORD:?Falta DB_PASSWORD en las variables del entorno}@postgres:5432/${DB_NAME:?Falta DB_NAME en las variables del entorno}?schema=public
+      CORS_ORIGIN: ${CORS_ORIGIN:?Falta CORS_ORIGIN en las variables del entorno}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      HSTS_ENABLED: ${HSTS_ENABLED:-true}
+      TRUST_PROXY: ${TRUST_PROXY:-2}
+      PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
+
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:?Falta VITE_API_URL en las variables del entorno}
+    restart: unless-stopped
+    ports:
+      - '${FRONTEND_PORT:-8001}:80'
+    deploy:
+      resources:
+        limits:
+          memory: ${FRONTEND_MEMORY_LIMIT:-128M}
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  backup:
+    image: prodrigestivill/postgres-backup-local:16
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: ${DB_NAME:?Falta DB_NAME en las variables del entorno}
+      POSTGRES_USER: ${DB_USER:?Falta DB_USER en las variables del entorno}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Falta DB_PASSWORD en las variables del entorno}
+      SCHEDULE: ${BACKUP_SCHEDULE:-@daily}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-30}
+      BACKUP_KEEP_WEEKS: ${BACKUP_KEEP_WEEKS:-0}
+      BACKUP_KEEP_MONTHS: ${BACKUP_KEEP_MONTHS:-0}
+    volumes:
+      - pg_backups:/backups
+
+volumes:
+  pg_data:
+  pg_backups:
