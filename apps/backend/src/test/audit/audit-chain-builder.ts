@@ -1,3 +1,7 @@
+import type {
+  AuditChainAnchor,
+  AuditChainHeadState,
+} from '../../shared/audit/audit-chain-anchor.js';
 import type { AuditChainReader, AuditChainRecord } from '../../shared/audit/audit-chain-reader.js';
 import { computeAuditHash } from '../../shared/audit/audit-hash.js';
 
@@ -83,4 +87,23 @@ export function createValidAuditChain(
   }
 
   return records;
+}
+
+/**
+ * Ancla de cabeza en memoria para pruebas unitarias sin dependencias de base de datos.
+ */
+export class InMemoryAuditChainAnchor implements AuditChainAnchor {
+  private head: AuditChainHeadState | null = null;
+
+  constructor(initialHead: AuditChainHeadState | null = null) {
+    this.head = initialHead ? { ...initialHead } : null;
+  }
+
+  async read(): Promise<AuditChainHeadState | null> {
+    return this.head ? { ...this.head } : null;
+  }
+
+  async advance(head: AuditChainHeadState): Promise<void> {
+    this.head = { ...head };
+  }
 }

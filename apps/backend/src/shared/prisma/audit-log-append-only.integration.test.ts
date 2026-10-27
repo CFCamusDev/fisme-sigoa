@@ -125,4 +125,32 @@ describe('AuditLog Append-Only Security (PostgreSQL real, RS-040, RNF-014)', () 
     expect(recorded).not.toBeNull();
     expect(recorded?.actor).toBe('app-user-restricted');
   });
+
+  it('allows application role to UPDATE audit_chain_heads but rejects DELETE and TRUNCATE (RS-040, RNF-014)', async () => {
+    // Aseguramos una fila como admin para probar
+    await adminPrisma.auditChainHead.upsert({
+      where: { id: 'MAIN' },
+      create: { id: 'MAIN', sequence: 100n, hash: 'head_perm_test' },
+      update: { sequence: 100n, hash: 'head_perm_test' },
+    });
+
+    // UPDATE permitido para el rol de aplicación
+    const updated = await appPrismaClient.prisma.auditChainHead.update({
+      where: { id: 'MAIN' },
+      data: { sequence: 101n, hash: 'head_perm_test_updated' },
+    });
+    expect(updated.sequence).toBe(101n);
+
+    // DELETE rechazado por PostgreSQL
+    await expect(
+      appPrismaClient.prisma.auditChainHead.delete({
+        where: { id: 'MAIN' },
+      }),
+    ).rejects.toThrow(/permission denied for table audit_chain_heads/i);
+
+    // TRUNCATE rechazado por PostgreSQL
+    await expect(
+      appPrismaClient.prisma.$executeRawUnsafe('TRUNCATE TABLE audit_chain_heads;'),
+    ).rejects.toThrow(/permission denied for table audit_chain_heads/i);
+  });
 });

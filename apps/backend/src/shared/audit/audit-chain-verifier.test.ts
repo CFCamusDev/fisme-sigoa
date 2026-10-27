@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   createValidAuditChain,
+  InMemoryAuditChainAnchor,
   InMemoryAuditChainReader,
 } from '../../test/audit/audit-chain-builder.js';
 import { computeAuditHash } from './audit-hash.js';
@@ -181,6 +182,116 @@ describe('AuditChainVerifier (Unit, RS-042, RNF-015)', () => {
         sequence: 2n,
         reason: 'HASH_MISMATCH',
       },
+    });
+  });
+
+  describe('AuditChainVerifier with Head Anchor (HU-075 Tramo 2, RS-042)', () => {
+    it('verifies valid when head matches the last record in the chain', async () => {
+      const chain = createValidAuditChain(4);
+      const last = chain[3]!;
+      const anchor = new InMemoryAuditChainAnchor({
+        sequence: last.sequence,
+        hash: last.hash,
+      });
+
+      const reader = new InMemoryAuditChainReader(chain);
+      const verifier = new AuditChainVerifier(reader, anchor);
+
+      const result = await verifier.verify(2);
+
+      expect(result).toEqual({
+        valid: true,
+        checked: 4,
+      });
+    });
+
+    it('reports HEAD_MISMATCH when head exists but chain is empty', async () => {
+      const anchor = new InMemoryAuditChainAnchor({
+        sequence: 1n,
+        hash: 'mock_initial_hash',
+      });
+
+      const reader = new InMemoryAuditChainReader([]);
+      const verifier = new AuditChainVerifier(reader, anchor);
+
+      const result = await verifier.verify(10);
+
+      expect(result).toEqual({
+        valid: false,
+        checked: 0,
+        firstInvalid: {
+          sequence: 1n,
+          reason: 'HEAD_MISMATCH',
+        },
+      });
+    });
+
+    it('reports HEAD_MISMATCH when records exist but head anchor is missing (null)', async () => {
+      const chain = createValidAuditChain(3);
+      const anchor = new InMemoryAuditChainAnchor(null);
+
+      const reader = new InMemoryAuditChainReader(chain);
+      const verifier = new AuditChainVerifier(reader, anchor);
+
+      const result = await verifier.verify(10);
+
+      expect(result).toEqual({
+        valid: false,
+        checked: 3,
+        firstInvalid: {
+          sequence: 3n,
+          reason: 'HEAD_MISMATCH',
+        },
+      });
+    });
+
+    it('reports HEAD_MISMATCH when the tail of the chain has been truncated (sequence mismatch)', async () => {
+      const chain = createValidAuditChain(4);
+      // El ancla registra la secuencia 4
+      const anchor = new InMemoryAuditChainAnchor({
+        sequence: 4n,
+        hash: chain[3]!.hash,
+      });
+
+      // El atacante elimina el registro 4, dejando registros 1..3
+      chain.pop();
+
+      const reader = new InMemoryAuditChainReader(chain);
+      const verifier = new AuditChainVerifier(reader, anchor);
+
+      const result = await verifier.verify(2);
+
+      // Los registros 1..3 son internamente válidos entre sí, pero no alcanzan la cabeza
+      expect(result).toEqual({
+        valid: false,
+        checked: 3,
+        firstInvalid: {
+          sequence: 4n,
+          reason: 'HEAD_MISMATCH',
+        },
+      });
+    });
+
+    it('reports HEAD_MISMATCH when head hash does not match the last record hash', async () => {
+      const chain = createValidAuditChain(3);
+      const anchor = new InMemoryAuditChainAnchor({
+        sequence: 3n,
+        hash: 'discrepant_hash_for_head',
+      });
+
+      const reader = new InMemoryAuditChainReader(chain);
+      const verifier = new AuditChainVerifier(reader, anchor);
+
+      const result = await verifier.verify(10);
+
+      expect(result).toEqual({
+        valid: false,
+        checked: 3,
+        firstInvalid: {
+          sequence: 3n,
+          reason: 'HEAD_MISMATCH',
+        },
+      });
     });
   });
 });
