@@ -8,6 +8,12 @@
     "node": ">=22.22.1",
     "pnpm": ">=10.0.0"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "prisma",
+      "@prisma/engines"
+    ]
+  },
   "scripts": {
     "build:shared": "pnpm --filter @sigoa/shared build",
     "db:generate": "pnpm --filter backend db:generate",
