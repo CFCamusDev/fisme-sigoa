@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import pg from 'pg';
+import { provisionAppRole } from '../../shared/prisma/provision-app-role.js';
 import { assertTestDatabase, getTestDatabaseUrl } from './assert-test-database.js';
 
 /**
@@ -13,6 +14,7 @@ export interface AppRoleLoginSession {
 
 /**
  * Aprovisiona un login temporal no superusuario miembro de sigoa_app en la base de datos de pruebas (RS-040, RNF-014).
+ * Reutiliza el aprovisionador oficial `provisionAppRole` de producción.
  * Valida estrictamente que el destino termine en `_test`.
  */
 export async function createAppRoleLogin(customAdminUrl?: string): Promise<AppRoleLoginSession> {
@@ -25,9 +27,10 @@ export async function createAppRoleLogin(customAdminUrl?: string): Promise<AppRo
 
   try {
     await adminClient.query(`DROP ROLE IF EXISTS "${username}";`);
-    await adminClient.query(
-      `CREATE ROLE "${username}" WITH LOGIN PASSWORD '${password}' IN ROLE sigoa_app;`,
-    );
+    await provisionAppRole(adminClient, {
+      user: username,
+      password,
+    });
   } catch (error) {
     await adminClient.end();
     throw new Error(
