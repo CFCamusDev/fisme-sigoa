@@ -2,6 +2,7 @@ import express, { type Express } from 'express';
 import { healthResponseSchema } from '@sigoa/shared';
 import { setupZodLocale } from './config/zod-locale.js';
 import { createLogger, type Logger } from './shared/logger/logger.js';
+import { requestContextMiddleware } from './shared/middleware/request-context.js';
 import { createHttpLogger } from './shared/middleware/http-logger.js';
 import { createSecurityMiddleware } from './shared/middleware/security.js';
 import { createRateLimiter } from './shared/middleware/rate-limit.js';
@@ -21,6 +22,7 @@ export function createApp(options: AppOptions): Express {
   const app = express();
 
   app.set('trust proxy', env.TRUST_PROXY);
+  app.use(requestContextMiddleware);
   app.use(createHttpLogger(logger));
   app.use(createSecurityMiddleware(env));
   app.use(express.json());

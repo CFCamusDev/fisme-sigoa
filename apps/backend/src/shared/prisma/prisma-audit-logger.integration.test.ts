@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { useTestDatabase } from '../../test/db/use-test-database.js';
 import { computeAuditHash } from '../audit/audit-hash.js';
+import { runWithRequestContext } from '../audit/index.js';
 import { PrismaAuditLogger } from './prisma-audit-logger.js';
 import { PrismaUnitOfWork } from './prisma-unit-of-work.js';
 
@@ -162,5 +163,33 @@ describe('PrismaAuditLogger Integration (PostgreSQL real)', () => {
 
       expect(current.hash).toBe(expectedHash);
     }
+  });
+
+  it('automatically resolves actor, ip and requestId from request context when omitted from event', async () => {
+    const context = {
+      actor: 'contextual-user-789',
+      ip: '190.119.200.15',
+      requestId: 'f6b21544-b29b-449d-a411-cf08d1f7c32e',
+    };
+
+    await runWithRequestContext(context, async () => {
+      await uow.run(async () => {
+        await logger.log({
+          action: 'LOGIN_SUCCESS',
+          entity: 'User',
+          entityId: 'contextual-user-789',
+          after: { loginAt: '2026-10-26T22:00:00Z' },
+        });
+      });
+    });
+
+    const savedLog = await prisma.auditLog.findFirst({
+      where: { entityId: 'contextual-user-789' },
+    });
+
+    expect(savedLog).not.toBeNull();
+    expect(savedLog?.actor).toBe(context.actor);
+    expect(savedLog?.ip).toBe(context.ip);
+    expect(savedLog?.requestId).toBe(context.requestId);
   });
 });

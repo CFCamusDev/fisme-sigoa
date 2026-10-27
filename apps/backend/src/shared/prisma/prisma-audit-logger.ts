@@ -1,24 +1,11 @@
 import { computeAuditHash } from '../audit/audit-hash.js';
 import type { AuditEvent, AuditLogger } from '../audit/audit-logger.js';
+import { requestContextProvider, type RequestContextProvider } from '../audit/request-context.js';
 import { ValidationError } from '../errors/app-error.js';
 import type { Prisma } from './generated/client.js';
 import type { DbProvider } from './prisma-unit-of-work.js';
 
-/**
- * Contexto de auditoría obtenido de la solicitud HTTP o tarea activa (RS-041).
- */
-export interface RequestAuditContext {
-  actor?: string;
-  ip?: string;
-  requestId?: string;
-}
-
-/**
- * Proveedor de contexto para inyectar actor, IP y requestId sin acoplar casos de uso (RS-041).
- */
-export interface RequestContextProvider {
-  get(): RequestAuditContext | undefined;
-}
+export { type RequestAuditContext, type RequestContextProvider } from '../audit/request-context.js';
 
 /**
  * Identificador constante para el bloqueo asesor de transacción de PostgreSQL (HU-075).
@@ -33,12 +20,12 @@ export const AUDIT_ADVISORY_LOCK_ID = 750750750;
 export class PrismaAuditLogger implements AuditLogger {
   constructor(
     private readonly dbProvider: DbProvider,
-    private readonly contextProvider?: RequestContextProvider,
+    private readonly contextProvider: RequestContextProvider = requestContextProvider,
   ) {}
 
   async log(event: AuditEvent): Promise<void> {
     const client = this.dbProvider.get();
-    const context = this.contextProvider?.get();
+    const context = this.contextProvider.get();
 
     const actor = event.actor ?? context?.actor;
     if (!actor || actor.trim() === '') {
