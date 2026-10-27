@@ -1,5 +1,8 @@
 import { computeAuditHash } from './audit-hash.js';
+import type { AuditChainAnchor } from './audit-chain-anchor.js';
 import type { AuditChainReader } from './audit-chain-reader.js';
+
+export { type AuditChainAnchor } from './audit-chain-anchor.js';
 
 /**
  * Razones posibles por las cuales una cadena de auditoría falla su verificación de integridad (RS-042, RNF-015).
@@ -17,14 +20,6 @@ export type AuditChainVerification =
       checked: number;
       firstInvalid: { sequence: bigint; reason: AuditChainFailureReason };
     };
-
-/**
- * Interfaz para el ancla de la cabeza de la cadena de auditoría (HU-075 Tramo 2, RS-042).
- */
-export interface AuditChainAnchor {
-  read(): Promise<{ sequence: bigint; hash: string } | null>;
-  advance(head: { sequence: bigint; hash: string }): Promise<void>;
-}
 
 /**
  * Servicio de verificación de integridad de la cadena de auditoría (RS-042, RNF-015).

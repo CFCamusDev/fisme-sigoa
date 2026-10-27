@@ -1,8 +1,8 @@
 export { AUDIT_ACTIONS, type AuditAction } from './audit-action.js';
+export { type AuditChainAnchor, type AuditChainHeadState } from './audit-chain-anchor.js';
 export { type AuditChainReader, type AuditChainRecord } from './audit-chain-reader.js';
 export {
   AuditChainVerifier,
-  type AuditChainAnchor,
   type AuditChainFailureReason,
   type AuditChainVerification,
 } from './audit-chain-verifier.js';
