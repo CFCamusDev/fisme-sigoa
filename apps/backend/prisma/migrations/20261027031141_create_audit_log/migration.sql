@@ -34,8 +34,3 @@ CREATE INDEX "audit_logs_actor_idx" ON "audit_logs"("actor");
 
 -- CreateIndex
 CREATE INDEX "audit_logs_occurredAt_idx" ON "audit_logs"("occurredAt");
-
--- Reversible / Down migration:
--- DROP TABLE IF EXISTS "audit_logs";
--- DROP TYPE IF EXISTS "AuditAction";
-
