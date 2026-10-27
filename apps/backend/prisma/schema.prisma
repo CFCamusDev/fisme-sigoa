@@ -130,3 +130,13 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+model AuditChainHead {
+  id        String   @id // 'MAIN' (excepción documentada a cuid(): puntero técnico único de cabeza)
+  sequence  BigInt
+  hash      String
+  updatedAt DateTime @updatedAt
+
+  @@map("audit_chain_heads")
+}
+
+
