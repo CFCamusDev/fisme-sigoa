@@ -1,4 +1,5 @@
 import { computeAuditHash } from '../audit/audit-hash.js';
+import type { AuditChainAnchor } from '../audit/audit-chain-anchor.js';
 import type { AuditEvent, AuditLogger } from '../audit/audit-logger.js';
 import { requestContextProvider, type RequestContextProvider } from '../audit/request-context.js';
 import { ValidationError } from '../errors/app-error.js';
@@ -15,12 +16,14 @@ export const AUDIT_ADVISORY_LOCK_ID = 750750750;
 
 /**
  * Adaptador de infraestructura Prisma para el puerto AuditLogger (RS-040, RS-041, RS-042, RNF-015, RNF-022).
- * Escribe registros de auditoría encadenados con SHA-256 en la transacción del caso de uso.
+ * Escribe registros de auditoría encadenados con SHA-256 en la transacción del caso de uso
+ * y avanza opcionalmente el ancla de cabeza (RS-042).
  */
 export class PrismaAuditLogger implements AuditLogger {
   constructor(
     private readonly dbProvider: DbProvider,
     private readonly contextProvider: RequestContextProvider = requestContextProvider,
+    private readonly anchor?: AuditChainAnchor,
   ) {}
 
   async log(event: AuditEvent): Promise<void> {
@@ -82,5 +85,9 @@ export class PrismaAuditLogger implements AuditLogger {
         sequence,
       },
     });
+
+    if (this.anchor) {
+      await this.anchor.advance({ sequence, hash });
+    }
   }
 }

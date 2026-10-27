@@ -3,6 +3,7 @@ import { useTestDatabase } from '../../test/db/use-test-database.js';
 import { computeAuditHash } from '../audit/audit-hash.js';
 import { runWithRequestContext } from '../audit/index.js';
 import { ValidationError } from '../errors/app-error.js';
+import { createPrismaAuditServices } from './create-prisma-audit-services.js';
 import { PrismaAuditLogger } from './prisma-audit-logger.js';
 import { PrismaUnitOfWork } from './prisma-unit-of-work.js';
 
@@ -324,6 +325,71 @@ describe('PrismaAuditLogger Integration (PostgreSQL real)', () => {
         where: { entityId: 'probe-fail-3' },
       });
       expect(auditRow).toBeNull();
+    });
+
+    it('moves the head anchor forward with every record when created with createPrismaAuditServices', async () => {
+      const services = createPrismaAuditServices(uow);
+
+      await uow.run(async () => {
+        await services.auditLogger.log({
+          action: 'CREATE',
+          actor: 'user-head-1',
+          entity: 'EducationalObjective',
+          entityId: 'oe-head-1',
+        });
+      });
+
+      const head1 = await services.chainAnchor.read();
+      expect(head1).not.toBeNull();
+      expect(head1?.sequence).toBe(1n);
+
+      await uow.run(async () => {
+        await services.auditLogger.log({
+          action: 'UPDATE',
+          actor: 'user-head-2',
+          entity: 'EducationalObjective',
+          entityId: 'oe-head-1',
+        });
+      });
+
+      const head2 = await services.chainAnchor.read();
+      expect(head2).not.toBeNull();
+      expect(head2?.sequence).toBe(2n);
+      expect(head2?.hash).not.toBe(head1?.hash);
+    });
+
+    it('rolls back the head anchor together with business write when transaction fails', async () => {
+      const services = createPrismaAuditServices(uow);
+
+      // Sembramos un primer registro exitoso
+      await uow.run(async () => {
+        await services.auditLogger.log({
+          action: 'CREATE',
+          actor: 'user-head-initial',
+          entity: 'EducationalObjective',
+          entityId: 'oe-initial',
+        });
+      });
+
+      const headBefore = await services.chainAnchor.read();
+      expect(headBefore?.sequence).toBe(1n);
+
+      // Intentamos una transacción fallida
+      const failingAction = uow.run(async () => {
+        await services.auditLogger.log({
+          action: 'UPDATE',
+          actor: 'user-head-rollback',
+          entity: 'EducationalObjective',
+          entityId: 'oe-initial',
+        });
+        throw new Error('Forced failure to trigger head rollback');
+      });
+
+      await expect(failingAction).rejects.toThrow('Forced failure to trigger head rollback');
+
+      const headAfter = await services.chainAnchor.read();
+      expect(headAfter?.sequence).toBe(1n);
+      expect(headAfter?.hash).toBe(headBefore?.hash);
     });
   });
 });

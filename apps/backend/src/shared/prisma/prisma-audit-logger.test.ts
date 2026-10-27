@@ -133,4 +133,27 @@ describe('PrismaAuditLogger (Unit)', () => {
     expect(createPayload.ip).toBe('200.10.20.30');
     expect(createPayload.requestId).toBe('uuid-req-123');
   });
+
+  it('advances chain anchor with calculated sequence and hash when anchor is provided', async () => {
+    mockAuditLogClient.findFirst.mockResolvedValue(null);
+
+    const mockAnchor = {
+      advance: vi.fn().mockResolvedValue(undefined),
+      read: vi.fn(),
+    };
+
+    const logger = new PrismaAuditLogger(mockDbProvider, { get: () => undefined }, mockAnchor);
+
+    await logger.log({
+      action: 'CREATE',
+      actor: 'user-with-anchor',
+      entity: 'EducationalObjective',
+      entityId: 'oe-anchor-1',
+    });
+
+    expect(mockAnchor.advance).toHaveBeenCalledTimes(1);
+    const advanceArgs = mockAnchor.advance.mock.calls[0]![0];
+    expect(advanceArgs.sequence).toBe(1n);
+    expect(advanceArgs.hash).toMatch(/^[0-9a-f]{64}$/);
+  });
 });
