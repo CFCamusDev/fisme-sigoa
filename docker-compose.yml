@@ -33,6 +33,8 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-sigoa_dev}?schema=public
+      APP_DB_USER: ${APP_DB_USER:-sigoa_backend}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:-sigoa_backend_dev_pass}
 
   backend:
     build:
@@ -49,7 +51,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: ${SERVER_PORT:-3000}
-      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-sigoa_dev}?schema=public
+      DATABASE_URL: postgresql://${APP_DB_USER:-sigoa_backend}:${APP_DB_PASSWORD:-sigoa_backend_dev_pass}@postgres:5432/${DB_NAME:-sigoa_dev}?schema=public
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8001}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       HSTS_ENABLED: ${HSTS_ENABLED:-false}
