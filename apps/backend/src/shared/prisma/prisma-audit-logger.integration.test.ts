@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { useTestDatabase } from '../../test/db/use-test-database.js';
 import { computeAuditHash } from '../audit/audit-hash.js';
 import { runWithRequestContext } from '../audit/index.js';
+import { ValidationError } from '../errors/app-error.js';
 import { PrismaAuditLogger } from './prisma-audit-logger.js';
 import { PrismaUnitOfWork } from './prisma-unit-of-work.js';
 
@@ -191,5 +192,138 @@ describe('PrismaAuditLogger Integration (PostgreSQL real)', () => {
     expect(savedLog?.actor).toBe(context.actor);
     expect(savedLog?.ip).toBe(context.ip);
     expect(savedLog?.requestId).toBe(context.requestId);
+  });
+
+  describe('rolls back the business write and the audit record together (CA1, RNF-022)', () => {
+    beforeAll(async () => {
+      await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS audit_atomicity_probe (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL
+        );
+      `);
+    });
+
+    afterAll(async () => {
+      await prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS audit_atomicity_probe;`);
+    });
+
+    it('persists both business write and audit record when transaction succeeds', async () => {
+      await uow.run(async () => {
+        const client = uow.get();
+        await client.$executeRawUnsafe(
+          `INSERT INTO audit_atomicity_probe (id, name) VALUES ('probe-ok-1', 'Objective Name');`,
+        );
+
+        await logger.log({
+          action: 'CREATE',
+          actor: 'user-atomicity-1',
+          entity: 'EducationalObjective',
+          entityId: 'probe-ok-1',
+          after: { name: 'Objective Name' },
+        });
+      });
+
+      const probeRows = await prisma.$queryRawUnsafe<Array<{ id: string; name: string }>>(
+        `SELECT id, name FROM audit_atomicity_probe WHERE id = 'probe-ok-1';`,
+      );
+      expect(probeRows.length).toBe(1);
+
+      const auditRow = await prisma.auditLog.findFirst({
+        where: { entityId: 'probe-ok-1' },
+      });
+      expect(auditRow).not.toBeNull();
+      expect(auditRow?.actor).toBe('user-atomicity-1');
+    });
+
+    it('rolls back business write and audit record when business use case throws an error', async () => {
+      const failingAction = uow.run(async () => {
+        const client = uow.get();
+        await client.$executeRawUnsafe(
+          `INSERT INTO audit_atomicity_probe (id, name) VALUES ('probe-fail-1', 'Should Rollback');`,
+        );
+
+        await logger.log({
+          action: 'CREATE',
+          actor: 'user-atomicity-2',
+          entity: 'EducationalObjective',
+          entityId: 'probe-fail-1',
+          after: { name: 'Should Rollback' },
+        });
+
+        throw new Error('Business error occurred after auditing');
+      });
+
+      await expect(failingAction).rejects.toThrow('Business error occurred after auditing');
+
+      const probeRows = await prisma.$queryRawUnsafe<Array<{ id: string; name: string }>>(
+        `SELECT id, name FROM audit_atomicity_probe WHERE id = 'probe-fail-1';`,
+      );
+      expect(probeRows.length).toBe(0);
+
+      const auditRow = await prisma.auditLog.findFirst({
+        where: { entityId: 'probe-fail-1' },
+      });
+      expect(auditRow).toBeNull();
+    });
+
+    it('rolls back business write when audit logger fails (missing actor)', async () => {
+      const failingAuditAction = uow.run(async () => {
+        const client = uow.get();
+        await client.$executeRawUnsafe(
+          `INSERT INTO audit_atomicity_probe (id, name) VALUES ('probe-fail-2', 'Should Rollback on Audit Failure');`,
+        );
+
+        // Falla porque no se especifica actor en el evento ni en el contexto
+        await logger.log({
+          action: 'CREATE',
+          entity: 'EducationalObjective',
+          entityId: 'probe-fail-2',
+          after: { name: 'Should Rollback on Audit Failure' },
+        });
+      });
+
+      await expect(failingAuditAction).rejects.toThrow(ValidationError);
+
+      const probeRows = await prisma.$queryRawUnsafe<Array<{ id: string; name: string }>>(
+        `SELECT id, name FROM audit_atomicity_probe WHERE id = 'probe-fail-2';`,
+      );
+      expect(probeRows.length).toBe(0);
+
+      const auditRow = await prisma.auditLog.findFirst({
+        where: { entityId: 'probe-fail-2' },
+      });
+      expect(auditRow).toBeNull();
+    });
+
+    it('rolls back business write when audit payload contains non-serializable BigInt', async () => {
+      const failingPayloadAction = uow.run(async () => {
+        const client = uow.get();
+        await client.$executeRawUnsafe(
+          `INSERT INTO audit_atomicity_probe (id, name) VALUES ('probe-fail-3', 'BigInt Payload');`,
+        );
+
+        // Objeto no serializable por JSON.stringify / canonicalizeJson
+        await logger.log({
+          action: 'CREATE',
+          actor: 'user-atomicity-3',
+          entity: 'EducationalObjective',
+          entityId: 'probe-fail-3',
+          after: { invalidField: 1234567890123456789n } as unknown as Record<string, unknown>,
+        });
+      });
+
+      await expect(failingPayloadAction).rejects.toThrow(TypeError);
+
+      const probeRows = await prisma.$queryRawUnsafe<Array<{ id: string; name: string }>>(
+        `SELECT id, name FROM audit_atomicity_probe WHERE id = 'probe-fail-3';`,
+      );
+      expect(probeRows.length).toBe(0);
+
+      const auditRow = await prisma.auditLog.findFirst({
+        where: { entityId: 'probe-fail-3' },
+      });
+      expect(auditRow).toBeNull();
+    });
   });
 });
