@@ -8,6 +8,7 @@ export {
 } from './audit-chain-verifier.js';
 export { canonicalizeJson, computeAuditHash, type AuditHashPayload } from './audit-hash.js';
 export { type AuditEvent, type AuditLogger, type AuditPayload } from './audit-logger.js';
+export { InMemoryAuditLogger } from './in-memory-audit-logger.js';
 export {
   getRequestContext,
   requestContextProvider,
