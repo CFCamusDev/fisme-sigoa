@@ -1,4 +1,5 @@
 import type { Router } from 'express';
+import type { AuditLogger } from '../../shared/audit/audit-logger.js';
 import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
 import type { ReferenceItemRepository } from './domain/ports/reference-item-repository.js';
 import { InMemoryReferenceItemRepository } from './infrastructure/memory/in-memory-reference-item-repository.js';
@@ -8,12 +9,17 @@ import { createReferenceItemRouter } from './infrastructure/http/reference-item.
 
 export interface ReferenceModuleDependencies {
   unitOfWork: UnitOfWork;
+  auditLogger: AuditLogger;
   repository?: ReferenceItemRepository;
 }
 
 export function createReferenceModule(deps: ReferenceModuleDependencies): Router {
   const repository = deps.repository ?? new InMemoryReferenceItemRepository();
-  const createUseCase = new CreateReferenceItemUseCase(repository, deps.unitOfWork);
+  const createUseCase = new CreateReferenceItemUseCase(
+    repository,
+    deps.unitOfWork,
+    deps.auditLogger,
+  );
   const controller = new ReferenceItemController(createUseCase);
 
   return createReferenceItemRouter(controller);
