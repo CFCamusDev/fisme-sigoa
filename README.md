@@ -200,6 +200,41 @@ pnpm --filter backend db:migrate
 pnpm --filter backend db:seed
 ```
 
+### Roles de Base de Datos y Política Append-Only (RS-040, RNF-014)
+
+El sistema implementa una separación estricta de roles a nivel de PostgreSQL para garantizar la inmutabilidad de la auditoría:
+
+1. **Separación de roles:**
+   - **Rol dueño / migraciones (`DB_USER`):** Dueño de las tablas y del esquema. Es utilizado exclusivamente por el servicio `migrate` para ejecutar migraciones de Prisma y por el servicio `backup` para generar volcados completos.
+   - **Rol de grupo `sigoa_app` (`NOLOGIN`):** Rol del clúster con acceso `USAGE` al esquema `public`, `SELECT` e `INSERT` sobre `audit_logs`, y explícitamente **sin permisos de `UPDATE`, `DELETE` ni `TRUNCATE`** (mediante `REVOKE`). En `audit_chain_heads` posee `SELECT, INSERT, UPDATE` pero `REVOKE DELETE, TRUNCATE`.
+   - **Login de la aplicación (`APP_DB_USER` / `APP_DB_PASSWORD`):** Usuario no superusuario miembro de `sigoa_app`. El backend Express se conecta obligatoriamente con este usuario, asegurando que cualquier intento de alterar o borrar registros de auditoría sea rechazado a nivel de motor por PostgreSQL.
+
+2. **Aprovisionamiento automático e idempotente:**
+   - En despliegues con Docker Compose, el contenedor `migrate` ejecuta:
+     ```bash
+     pnpm exec prisma migrate deploy && pnpm run db:provision-app-role
+     ```
+   - Si el rol no existe, se crea; si ya existe, se actualizan sus credenciales y restricciones. Si la verificación de seguridad falla (por ejemplo, si tiene privilegios de más), el servicio aborta con código de salida ≠ 0 y el backend no arranca.
+   - En desarrollo local sin Docker:
+     ```bash
+     pnpm --filter backend db:provision-app-role
+     ```
+
+3. **Rotación de contraseñas:**
+   - Para rotar la contraseña del rol de aplicación, actualiza la variable `APP_DB_PASSWORD` en el archivo `.env` o en la configuración de la pila en Portainer y redespliega el servicio `migrate`. El aprovisionador ejecuta `ALTER ROLE` y valida la conectividad sin afectar las tablas ni requerir reinicializar volúmenes.
+
+4. **Restauración de respaldos en un clúster nuevo:**
+   - Los volcados de `pg_dump` no respaldan roles globales del clúster. Al restaurar un respaldo en un servidor PostgreSQL en blanco:
+     1. Crear manualmente el rol de grupo base:
+        ```sql
+        CREATE ROLE sigoa_app NOLOGIN;
+        ```
+     2. Restaurar el archivo `.sql` o `.sql.gz`.
+     3. Ejecutar el servicio `migrate` (`docker compose run --rm migrate` o `pnpm --filter backend db:provision-app-role`) para crear automáticamente el usuario `APP_DB_USER` y otorgarle su membresía en `sigoa_app`.
+
+5. **Pasos manuales para el administrador en servidores (Staging / Producción):**
+   - Antes de redesplegar el stack en Portainer, agregar `APP_DB_USER` y `APP_DB_PASSWORD` (mínimo 16 caracteres de `[A-Za-z0-9_-]`) en las variables del entorno del stack.
+
 ### Pruebas de integración y base de datos de test
 
 Las pruebas de integración del backend (`*.integration.test.ts`) se ejecutan contra una base de datos PostgreSQL real. Por seguridad, el sistema aborta de inmediato (`assertTestDatabase`) si el nombre de la base de datos no termina en `_test`, protegiendo la base de desarrollo o producción de cualquier truncado accidental.
