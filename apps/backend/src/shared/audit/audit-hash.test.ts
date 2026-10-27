@@ -80,4 +80,34 @@ describe('Audit Hash Calculation (RS-041, RS-042, RNF-015)', () => {
     });
     expect(hashA).not.toBe(hashB);
   });
+
+  it('propagates changes in record 1 to record 2 hash via previousHash (RS-042, RNF-015)', () => {
+    const record1Initial = computeAuditHash(basePayload);
+    const record2Payload: AuditHashPayload = {
+      action: 'UPDATE',
+      actor: 'user-2',
+      after: { active: false },
+      before: { active: true },
+      entity: 'EducationalObjective',
+      entityId: 'oe-cuid-1',
+      occurredAt: new Date('2026-10-26T12:05:00.000Z'),
+      previousHash: record1Initial,
+      sequence: 2n,
+    };
+    const record2HashInitial = computeAuditHash(record2Payload);
+
+    // Si alteramos el contenido del registro 1, su hash cambia
+    const record1Tampered = computeAuditHash({
+      ...basePayload,
+      actor: 'attacker',
+    });
+    expect(record1Tampered).not.toBe(record1Initial);
+
+    // Al encadenar en el registro 2 el hash alterado, su hash resultante cambia
+    const record2HashWithTamperedPrevious = computeAuditHash({
+      ...record2Payload,
+      previousHash: record1Tampered,
+    });
+    expect(record2HashWithTamperedPrevious).not.toBe(record2HashInitial);
+  });
 });
