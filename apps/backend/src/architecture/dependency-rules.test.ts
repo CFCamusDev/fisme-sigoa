@@ -119,4 +119,19 @@ describe('dependency-cruiser hexagonal rules (RNF-026)', () => {
     expect(output.summary.error).toBe(0);
     expect(output.summary.violations).toHaveLength(0);
   });
+
+  it('fails when a unit test uses the database (RNF-030)', async () => {
+    const output = await runCruiseOnFixture('unit-test-uses-database');
+    expect(output.summary.error).toBeGreaterThan(0);
+    const hasRuleViolation = output.summary.violations.some(
+      (v) => v.rule.name === 'unit-tests-no-database',
+    );
+    expect(hasRuleViolation).toBe(true);
+  });
+
+  it('allows an integration test to use the database (RNF-030)', async () => {
+    const output = await runCruiseOnFixture('integration-test-uses-database');
+    expect(output.summary.error).toBe(0);
+    expect(output.summary.violations).toHaveLength(0);
+  });
 });
