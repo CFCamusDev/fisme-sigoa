@@ -48,6 +48,19 @@ export const envSchema = z
       (val) => (typeof val === 'string' && val.trim() === '' ? undefined : val),
       z.string().email('EMAIL_FROM must be a valid email address').optional(),
     ),
+    FILE_STORAGE_PROVIDER: z.enum(['cloudinary', 'memory']).default('memory'),
+    CLOUDINARY_CLOUD_NAME: z.preprocess(
+      (val) => (typeof val === 'string' && val.trim() === '' ? undefined : val),
+      z.string().min(1).optional(),
+    ),
+    CLOUDINARY_API_KEY: z.preprocess(
+      (val) => (typeof val === 'string' && val.trim() === '' ? undefined : val),
+      z.string().min(1).optional(),
+    ),
+    CLOUDINARY_API_SECRET: z.preprocess(
+      (val) => (typeof val === 'string' && val.trim() === '' ? undefined : val),
+      z.string().min(1).optional(),
+    ),
   })
   .superRefine((data, ctx) => {
     if (data.EMAIL_PROVIDER === 'resend') {
@@ -72,6 +85,76 @@ export const envSchema = z
         code: z.ZodIssueCode.custom,
         path: ['EMAIL_PROVIDER'],
         message: 'EMAIL_PROVIDER "memory" is not allowed in production environment',
+      });
+    }
+
+    const hasAnyCloudinary =
+      Boolean(data.CLOUDINARY_CLOUD_NAME) ||
+      Boolean(data.CLOUDINARY_API_KEY) ||
+      Boolean(data.CLOUDINARY_API_SECRET);
+    const hasAllCloudinary =
+      Boolean(data.CLOUDINARY_CLOUD_NAME) &&
+      Boolean(data.CLOUDINARY_API_KEY) &&
+      Boolean(data.CLOUDINARY_API_SECRET);
+
+    if (hasAnyCloudinary && !hasAllCloudinary) {
+      if (!data.CLOUDINARY_CLOUD_NAME) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['CLOUDINARY_CLOUD_NAME'],
+          message:
+            'CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET must all be provided together',
+        });
+      }
+      if (!data.CLOUDINARY_API_KEY) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['CLOUDINARY_API_KEY'],
+          message:
+            'CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET must all be provided together',
+        });
+      }
+      if (!data.CLOUDINARY_API_SECRET) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['CLOUDINARY_API_SECRET'],
+          message:
+            'CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET must all be provided together',
+        });
+      }
+    }
+
+    if (data.FILE_STORAGE_PROVIDER === 'cloudinary') {
+      if (!hasAllCloudinary) {
+        if (!data.CLOUDINARY_CLOUD_NAME) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['CLOUDINARY_CLOUD_NAME'],
+            message: 'CLOUDINARY_CLOUD_NAME is required when FILE_STORAGE_PROVIDER is "cloudinary"',
+          });
+        }
+        if (!data.CLOUDINARY_API_KEY) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['CLOUDINARY_API_KEY'],
+            message: 'CLOUDINARY_API_KEY is required when FILE_STORAGE_PROVIDER is "cloudinary"',
+          });
+        }
+        if (!data.CLOUDINARY_API_SECRET) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['CLOUDINARY_API_SECRET'],
+            message: 'CLOUDINARY_API_SECRET is required when FILE_STORAGE_PROVIDER is "cloudinary"',
+          });
+        }
+      }
+    }
+
+    if (data.FILE_STORAGE_PROVIDER === 'memory' && data.NODE_ENV === 'production') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['FILE_STORAGE_PROVIDER'],
+        message: 'FILE_STORAGE_PROVIDER "memory" is not allowed in production environment',
       });
     }
   });

@@ -168,4 +168,61 @@ describe('env configuration', () => {
       }),
     ).toThrow(/EMAIL_PROVIDER/);
   });
+
+  it('parseEnv defaults FILE_STORAGE_PROVIDER to memory and treats empty strings as undefined', () => {
+    const parsed = parseEnv({
+      DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
+      CLOUDINARY_CLOUD_NAME: '   ',
+      CLOUDINARY_API_KEY: '',
+      CLOUDINARY_API_SECRET: '',
+    });
+
+    expect(parsed.FILE_STORAGE_PROVIDER).toBe('memory');
+    expect(parsed.CLOUDINARY_CLOUD_NAME).toBeUndefined();
+    expect(parsed.CLOUDINARY_API_KEY).toBeUndefined();
+    expect(parsed.CLOUDINARY_API_SECRET).toBeUndefined();
+  });
+
+  it('parseEnv requires all three Cloudinary variables when FILE_STORAGE_PROVIDER is cloudinary', () => {
+    expect(() =>
+      parseEnv({
+        DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
+        FILE_STORAGE_PROVIDER: 'cloudinary',
+      }),
+    ).toThrow(/CLOUDINARY_CLOUD_NAME/);
+
+    expect(() =>
+      parseEnv({
+        DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
+        FILE_STORAGE_PROVIDER: 'cloudinary',
+        CLOUDINARY_CLOUD_NAME: 'cloud',
+      }),
+    ).toThrow(/CLOUDINARY_API_KEY/);
+
+    const valid = parseEnv({
+      DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
+      FILE_STORAGE_PROVIDER: 'cloudinary',
+      CLOUDINARY_CLOUD_NAME: 'cloud',
+      CLOUDINARY_API_KEY: 'key',
+      CLOUDINARY_API_SECRET: 'secret',
+    });
+
+    expect(valid.FILE_STORAGE_PROVIDER).toBe('cloudinary');
+    expect(valid.CLOUDINARY_CLOUD_NAME).toBe('cloud');
+    expect(valid.CLOUDINARY_API_KEY).toBe('key');
+    expect(valid.CLOUDINARY_API_SECRET).toBe('secret');
+  });
+
+  it('parseEnv rejects memory FILE_STORAGE_PROVIDER in production', () => {
+    expect(() =>
+      parseEnv({
+        DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
+        NODE_ENV: 'production',
+        EMAIL_PROVIDER: 'resend',
+        RESEND_API_KEY: 're_123',
+        EMAIL_FROM: 'sigoa@untrim.edu.pe',
+        FILE_STORAGE_PROVIDER: 'memory',
+      }),
+    ).toThrow(/FILE_STORAGE_PROVIDER/);
+  });
 });
