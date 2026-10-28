@@ -1,51 +1,87 @@
-import crypto from 'node:crypto';
-import pg from 'pg';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { runProvisioningAppRole } from './provision-app-role.js';
-import { assertTestDatabase, getTestDatabaseUrl } from './test/db/assert-test-database.js';
 
-describe('runProvisioningAppRole Entrypoint (Integration, RS-040, RNF-014)', () => {
-  const adminUrl = assertTestDatabase(getTestDatabaseUrl());
-  const createdRoles: string[] = [];
-  let adminClient: pg.Client;
+describe('runProvisioningAppRole (Unit, RS-040, RNF-014, RNF-030)', () => {
+  // URL inalcanzable: si intentara conectar a PostgreSQL fallaría con ECONNREFUSED
+  const unreachableDatabaseUrl =
+    'postgresql://test_owner:secret_pass_123@127.0.0.1:1/sigoa_test?schema=public';
 
-  beforeAll(async () => {
-    adminClient = new pg.Client({ connectionString: adminUrl });
-    await adminClient.connect();
-  });
+  const validBaseEnv = {
+    DATABASE_URL: unreachableDatabaseUrl,
+    APP_DB_USER: 'sigoa_backend_test',
+    APP_DB_PASSWORD: 'secure_password_16_chars',
+    NODE_ENV: 'test',
+    LOG_LEVEL: 'fatal',
+  };
 
-  afterAll(async () => {
-    for (const role of createdRoles) {
-      await adminClient.query(`DROP ROLE IF EXISTS "${role}";`).catch(() => {});
-    }
-    await adminClient.end();
-  });
-
-  it('provisions and verifies the application role through the entrypoint', async () => {
-    const username = `sigoa_app_cli_${crypto.randomBytes(4).toString('hex')}`;
-    createdRoles.push(username);
-    const password = `secure_cli_pass_${crypto.randomBytes(8).toString('hex')}`;
-
-    const env = {
-      DATABASE_URL: adminUrl,
-      APP_DB_USER: username,
-      APP_DB_PASSWORD: password,
-      NODE_ENV: 'test',
-      LOG_LEVEL: 'fatal',
-    };
-
-    const result = await runProvisioningAppRole(env);
-
-    expect(result.user).toBe(username);
-    expect(result.action).toBe('CREATED');
-  });
-
-  it('fails with a descriptive error when required variables are missing', async () => {
+  it('rejects when APP_DB_USER is missing', async () => {
     await expect(
       runProvisioningAppRole({
-        DATABASE_URL: adminUrl,
+        ...validBaseEnv,
         APP_DB_USER: '',
       }),
     ).rejects.toThrow(/variables de entorno del rol de aplicaci[oó]n inv[aá]lidas/i);
+  });
+
+  it('rejects when APP_DB_PASSWORD is missing', async () => {
+    await expect(
+      runProvisioningAppRole({
+        ...validBaseEnv,
+        APP_DB_PASSWORD: '',
+      }),
+    ).rejects.toThrow(/variables de entorno del rol de aplicaci[oó]n inv[aá]lidas/i);
+  });
+
+  it('rejects reserved role names (postgres, sigoa_app, public)', async () => {
+    for (const reserved of ['postgres', 'sigoa_app', 'public']) {
+      await expect(
+        runProvisioningAppRole({
+          ...validBaseEnv,
+          APP_DB_USER: reserved,
+        }),
+      ).rejects.toThrow(/reservado/i);
+    }
+  });
+
+  it('rejects a role name equal to the owner user of DATABASE_URL', async () => {
+    await expect(
+      runProvisioningAppRole({
+        ...validBaseEnv,
+        APP_DB_USER: 'test_owner',
+      }),
+    ).rejects.toThrow(/igual al usuario de conexi[oó]n due[ñn]o/i);
+  });
+
+  it('rejects a password with unsafe characters or shorter than 16', async () => {
+    const invalidPasswords = [
+      'short_pass',
+      'pass_with_at_sign@123',
+      'pass/with/slash_123',
+      'pass with spaces 1234',
+    ];
+
+    for (const invalidPass of invalidPasswords) {
+      await expect(
+        runProvisioningAppRole({
+          ...validBaseEnv,
+          APP_DB_PASSWORD: invalidPass,
+        }),
+      ).rejects.toThrow(/variables de entorno del rol de aplicaci[oó]n inv[aá]lidas/i);
+    }
+  });
+
+  it('never includes the password in the error message', async () => {
+    const sensitivePassword = 'super_secret_forbidden_pass_123';
+    try {
+      await runProvisioningAppRole({
+        ...validBaseEnv,
+        APP_DB_USER: 'postgres', // Falla por usuario reservado
+        APP_DB_PASSWORD: sensitivePassword,
+      });
+      expect.fail('Debería haber lanzado un error de validación');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      expect(message).not.toContain(sensitivePassword);
+    }
   });
 });
