@@ -36,7 +36,10 @@ module.exports = {
       comment:
         'RNF-026: La capa domain solo puede importar su propio domain, shared/errors, @sigoa/shared o módulos nativos.',
       severity: 'error',
-      from: { path: '^src/modules/([^/]+)/domain' },
+      from: {
+        path: '^src/modules/([^/]+)/domain',
+        pathNot: '\\.(test|spec)\\.ts$',
+      },
       to: {
         dependencyTypesNot: ['core'],
         pathNot: [
@@ -129,13 +132,27 @@ module.exports = {
         path: '(^src/test/db/(use-test-database|reset-database|prepare-test-database|app-role-login)|(^|/)node_modules/pg/|(^|/)pg(/|$))',
       },
     },
+    {
+      name: 'provider-sdks-only-in-adapters',
+      comment:
+        'RNF-033: Resend, Cloudinary y Puppeteer solo pueden importarse en los adaptadores de shared/email, shared/storage y shared/pdf; domain, application y el resto del código usan los puertos.',
+      severity: 'error',
+      from: { pathNot: ['^src/shared/(email|storage|pdf)/'] },
+      to: {
+        path: [
+          '(^|/)resend(/|$)',
+          '(^|/)cloudinary(/|$)',
+          '(^|/)puppeteer(-core)?(/|$)',
+        ],
+      },
+    },
   ],
   options: {
     doNotFollow: {
       path: ['node_modules', 'src/shared/prisma/generated'],
     },
     exclude: {
-      path: ['src/shared/prisma/generated', 'dist', 'coverage'],
+      path: ['src/shared/prisma/generated', '^dist(/|$)', '^coverage(/|$)'],
     },
     tsPreCompilationDeps: true,
     tsConfig: {
@@ -144,7 +161,7 @@ module.exports = {
     enhancedResolveOptions: {
       exportsFields: ['exports'],
       conditionNames: ['import', 'require', 'node', 'default'],
-      extensions: ['.ts', '.tsx', '.js', '.jsx'],
+      extensions: ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'],
     },
   },
 };

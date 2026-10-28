@@ -134,4 +134,19 @@ describe('dependency-cruiser hexagonal rules (RNF-026)', () => {
     expect(output.summary.error).toBe(0);
     expect(output.summary.violations).toHaveLength(0);
   });
+
+  it('fails when application code imports a provider SDK (RNF-033)', async () => {
+    const output = await runCruiseOnFixture('app-imports-provider-sdk');
+    expect(output.summary.error).toBeGreaterThan(0);
+    const hasRuleViolation = output.summary.violations.some(
+      (v) => v.rule.name === 'provider-sdks-only-in-adapters',
+    );
+    expect(hasRuleViolation).toBe(true);
+  });
+
+  it('allows a provider SDK inside a shared adapter (RNF-033)', async () => {
+    const output = await runCruiseOnFixture('adapter-imports-provider-sdk');
+    expect(output.summary.error).toBe(0);
+    expect(output.summary.violations).toHaveLength(0);
+  });
 });

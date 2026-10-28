@@ -13,6 +13,8 @@ export function createTestEnv(overrides: Partial<Env> = {}): Env {
     RATE_LIMIT_PUBLIC_MAX: 30,
     RATE_LIMIT_LOGIN_MAX: 10,
     RATE_LIMIT_GENERAL_MAX: 300,
+    EMAIL_PROVIDER: 'memory',
+    FILE_STORAGE_PROVIDER: 'memory',
     ...overrides,
   };
 }
