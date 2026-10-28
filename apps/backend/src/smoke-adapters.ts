@@ -5,12 +5,14 @@ import { createLogger } from './shared/logger/logger.js';
 import { createEmailSender } from './shared/email/create-email-sender.js';
 import { createFileStorage } from './shared/storage/create-file-storage.js';
 import { computeSha256 } from './shared/storage/file-hash.js';
+import { PuppeteerPdfGenerator } from './shared/pdf/puppeteer-pdf-generator.js';
 
 loadEnvFileIfPresent();
 
 export interface SmokeAdaptersOptions {
   email?: string;
   storage?: boolean;
+  pdf?: boolean;
 }
 
 export function parseArgs(argv: string[]): SmokeAdaptersOptions {
@@ -23,6 +25,8 @@ export function parseArgs(argv: string[]): SmokeAdaptersOptions {
       i++;
     } else if (arg === '--storage') {
       options.storage = true;
+    } else if (arg === '--pdf') {
+      options.pdf = true;
     }
   }
 
@@ -33,8 +37,8 @@ export async function runSmokeAdapters(options: SmokeAdaptersOptions): Promise<v
   const env = parseEnv(process.env);
   const logger = createLogger(env);
 
-  if (!options.email && !options.storage) {
-    console.log('Uso: pnpm smoke:adapters [--email <destinatario>] [--storage]');
+  if (!options.email && !options.storage && !options.pdf) {
+    console.log('Uso: pnpm smoke:adapters [--email <destinatario>] [--storage] [--pdf]');
     return;
   }
 
@@ -84,6 +88,27 @@ export async function runSmokeAdapters(options: SmokeAdaptersOptions): Promise<v
       { publicId: uploaded.publicId, sha256: uploaded.sha256 },
       'Archivo de prueba subido, verificado y eliminado satisfactoriamente.',
     );
+  }
+
+  if (options.pdf) {
+    logger.info('Ejecutando prueba de humo de generación de PDF con Chromium...');
+    const pdfGenerator = new PuppeteerPdfGenerator();
+    const start = Date.now();
+    try {
+      const buffer = await pdfGenerator.render({
+        html: '<html><body><h1>Prueba de humo PDF - FISME-SIGOA</h1></body></html>',
+      });
+      const elapsed = Date.now() - start;
+      if (!buffer || buffer.length === 0 || !buffer.toString('utf-8', 0, 5).includes('%PDF')) {
+        throw new Error('El archivo generado no es un PDF válido.');
+      }
+      logger.info(
+        { elapsedMs: elapsed, bytes: buffer.length },
+        'PDF de prueba generado satisfactoriamente.',
+      );
+    } finally {
+      await pdfGenerator.close();
+    }
   }
 }
 

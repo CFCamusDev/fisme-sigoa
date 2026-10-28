@@ -64,6 +64,7 @@ services:
       CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
       CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
       PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
+      PDF_CHROMIUM_NO_SANDBOX: ${PDF_CHROMIUM_NO_SANDBOX:-true}
 
   frontend:
     build:

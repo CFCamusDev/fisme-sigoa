@@ -3,9 +3,10 @@ import { parseArgs, runSmokeAdapters } from './smoke-adapters.js';
 
 describe('smoke-adapters script (T-076-05, T-076-02)', () => {
   it('correctly parses CLI arguments', () => {
-    const opts = parseArgs(['--email', 'test@unexample.edu.pe', '--storage']);
+    const opts = parseArgs(['--email', 'test@unexample.edu.pe', '--storage', '--pdf']);
     expect(opts.email).toBe('test@unexample.edu.pe');
     expect(opts.storage).toBe(true);
+    expect(opts.pdf).toBe(true);
   });
 
   it('runs without action when no arguments provided', async () => {
