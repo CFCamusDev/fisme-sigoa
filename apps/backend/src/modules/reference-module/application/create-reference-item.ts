@@ -1,6 +1,7 @@
 import { ReferenceItem } from '../domain/entities/reference-item.js';
 import type { ReferenceItemRepository } from '../domain/ports/reference-item-repository.js';
 import { ReferenceItemAlreadyExistsError } from '../domain/errors/reference-item-already-exists-error.js';
+import type { AuditLogger } from '../../../shared/audit/audit-logger.js';
 import type { UnitOfWork } from '../../../shared/unit-of-work/unit-of-work.js';
 
 export interface CreateReferenceItemCommand {
@@ -29,6 +30,7 @@ export class CreateReferenceItemUseCase {
   constructor(
     private readonly repository: ReferenceItemRepository,
     private readonly unitOfWork: UnitOfWork,
+    private readonly auditLogger: AuditLogger,
   ) {}
 
   async execute(command: CreateReferenceItemCommand): Promise<ReferenceItemDto> {
@@ -53,10 +55,18 @@ export class CreateReferenceItemUseCase {
       // Persistencia
       await this.repository.save(item);
 
-      // [Molde §4.2] Registro en la misma transacción: await this.auditLogger.log(...) (HU-075)
+      const dto = item.toDto();
+
+      // [Molde §4.2] Registro en la misma transacción con AuditLogger (HU-075, RS-041, RS-043)
+      await this.auditLogger.log({
+        action: 'CREATE',
+        entity: 'ReferenceItem',
+        entityId: item.id,
+        after: { ...dto },
+      });
 
       // 6. Retorno del DTO
-      return item.toDto();
+      return dto;
     });
   }
 }

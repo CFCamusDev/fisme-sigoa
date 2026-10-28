@@ -22,4 +22,14 @@ describe('app', () => {
     const parsed = healthResponseSchema.safeParse(response.body);
     expect(parsed.success).toBe(true);
   });
+
+  it('includes X-Request-Id header in HTTP responses (RS-041)', async () => {
+    const app = createApp({ env });
+    const response = await request(app).get('/health');
+
+    expect(response.headers['x-request-id']).toBeDefined();
+    expect(response.headers['x-request-id']).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    );
+  });
 });

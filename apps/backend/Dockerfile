@@ -40,7 +40,7 @@ RUN pnpm --filter backend deploy --legacy --prod /prod/backend
 FROM build AS migrator
 
 WORKDIR /app/apps/backend
-CMD ["pnpm", "exec", "prisma", "migrate", "deploy"]
+CMD ["sh", "-c", "pnpm exec prisma migrate deploy && pnpm run db:provision-app-role"]
 
 # ------------------------------------------------------------------------------
 # Etapa 3: Runtime de producción con Chromium headless (Puppeteer)

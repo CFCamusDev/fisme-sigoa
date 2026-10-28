@@ -29,6 +29,8 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://${DB_USER:?Falta DB_USER en las variables del entorno}:${DB_PASSWORD:?Falta DB_PASSWORD en las variables del entorno}@postgres:5432/${DB_NAME:?Falta DB_NAME en las variables del entorno}?schema=public
+      APP_DB_USER: ${APP_DB_USER:?Falta APP_DB_USER en las variables del entorno}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Falta APP_DB_PASSWORD en las variables del entorno}
 
   backend:
     build:
@@ -49,7 +51,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: ${SERVER_PORT:-3000}
-      DATABASE_URL: postgresql://${DB_USER:?Falta DB_USER en las variables del entorno}:${DB_PASSWORD:?Falta DB_PASSWORD en las variables del entorno}@postgres:5432/${DB_NAME:?Falta DB_NAME en las variables del entorno}?schema=public
+      DATABASE_URL: postgresql://${APP_DB_USER:?Falta APP_DB_USER en las variables del entorno}:${APP_DB_PASSWORD:?Falta APP_DB_PASSWORD en las variables del entorno}@postgres:5432/${DB_NAME:?Falta DB_NAME en las variables del entorno}?schema=public
       CORS_ORIGIN: ${CORS_ORIGIN:?Falta CORS_ORIGIN en las variables del entorno}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       HSTS_ENABLED: ${HSTS_ENABLED:-true}

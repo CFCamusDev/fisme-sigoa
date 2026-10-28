@@ -1,0 +1,395 @@
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { useTestDatabase } from '../../test/db/use-test-database.js';
+import { computeAuditHash } from '../audit/audit-hash.js';
+import { runWithRequestContext } from '../audit/index.js';
+import { ValidationError } from '../errors/app-error.js';
+import { createPrismaAuditServices } from './create-prisma-audit-services.js';
+import { PrismaAuditLogger } from './prisma-audit-logger.js';
+import { PrismaUnitOfWork } from './prisma-unit-of-work.js';
+
+describe('PrismaAuditLogger Integration (PostgreSQL real)', () => {
+  const { getPrisma } = useTestDatabase();
+  const prisma = getPrisma();
+  const uow = new PrismaUnitOfWork(prisma);
+  const logger = new PrismaAuditLogger(uow);
+
+  it('appends chained records inside the unit of work', async () => {
+    await uow.run(async () => {
+      await logger.log({
+        action: 'CREATE',
+        entity: 'EducationalObjective',
+        entityId: 'oe-cuid-1',
+        actor: 'user-audit-1',
+        ip: '192.168.1.10',
+        after: { code: 'OE01', title: 'Objetivo Uno' },
+      });
+
+      await logger.log({
+        action: 'UPDATE',
+        entity: 'EducationalObjective',
+        entityId: 'oe-cuid-1',
+        actor: 'user-audit-1',
+        ip: '192.168.1.10',
+        before: { code: 'OE01', title: 'Objetivo Uno' },
+        after: { code: 'OE01', title: 'Objetivo Uno Actualizado' },
+      });
+
+      await logger.log({
+        action: 'STATE_CHANGE',
+        entity: 'EducationalObjective',
+        entityId: 'oe-cuid-1',
+        actor: 'user-audit-2',
+        ip: '192.168.1.20',
+        before: { status: 'DRAFT' },
+        after: { status: 'APPROVED' },
+      });
+    });
+
+    const logs = await prisma.auditLog.findMany({
+      orderBy: { sequence: 'asc' },
+    });
+
+    expect(logs.length).toBe(3);
+
+    // Registro 1
+    const log1 = logs[0]!;
+    expect(log1.sequence).toBe(1n);
+    expect(log1.previousHash).toBeNull();
+    expect(log1.action).toBe('CREATE');
+    expect(log1.actor).toBe('user-audit-1');
+    expect(log1.hash).toBe(
+      computeAuditHash({
+        action: log1.action,
+        actor: log1.actor,
+        after: log1.after as Record<string, unknown>,
+        before: log1.before as Record<string, unknown>,
+        entity: log1.entity,
+        entityId: log1.entityId,
+        ip: log1.ip,
+        occurredAt: log1.occurredAt,
+        previousHash: log1.previousHash,
+        requestId: log1.requestId,
+        sequence: log1.sequence,
+      }),
+    );
+
+    // Registro 2
+    const log2 = logs[1]!;
+    expect(log2.sequence).toBe(2n);
+    expect(log2.previousHash).toBe(log1.hash);
+    expect(log2.action).toBe('UPDATE');
+    expect(log2.hash).toBe(
+      computeAuditHash({
+        action: log2.action,
+        actor: log2.actor,
+        after: log2.after as Record<string, unknown>,
+        before: log2.before as Record<string, unknown>,
+        entity: log2.entity,
+        entityId: log2.entityId,
+        ip: log2.ip,
+        occurredAt: log2.occurredAt,
+        previousHash: log2.previousHash,
+        requestId: log2.requestId,
+        sequence: log2.sequence,
+      }),
+    );
+
+    // Registro 3
+    const log3 = logs[2]!;
+    expect(log3.sequence).toBe(3n);
+    expect(log3.previousHash).toBe(log2.hash);
+    expect(log3.action).toBe('STATE_CHANGE');
+    expect(log3.hash).toBe(
+      computeAuditHash({
+        action: log3.action,
+        actor: log3.actor,
+        after: log3.after as Record<string, unknown>,
+        before: log3.before as Record<string, unknown>,
+        entity: log3.entity,
+        entityId: log3.entityId,
+        ip: log3.ip,
+        occurredAt: log3.occurredAt,
+        previousHash: log3.previousHash,
+        requestId: log3.requestId,
+        sequence: log3.sequence,
+      }),
+    );
+  });
+
+  it('serializes concurrent transactions without repeating sequences or breaking the hash chain', async () => {
+    // Ejecuta 4 transacciones independientes de forma concurrente
+    const tasks = Array.from({ length: 4 }).map((_, index) =>
+      uow.run(async () => {
+        await logger.log({
+          action: 'CREATE',
+          entity: 'GraduateAttribute',
+          entityId: `ag-cuid-${index}`,
+          actor: `concurrent-actor-${index}`,
+          after: { index },
+        });
+      }),
+    );
+
+    await Promise.all(tasks);
+
+    const logs = await prisma.auditLog.findMany({
+      orderBy: { sequence: 'asc' },
+    });
+
+    // Verificamos que las secuencias sean estrictamente correlativas
+    for (let i = 0; i < logs.length; i++) {
+      const current = logs[i]!;
+      expect(current.sequence).toBe(BigInt(i + 1));
+
+      if (i === 0) {
+        expect(current.previousHash).toBeNull();
+      } else {
+        const previous = logs[i - 1]!;
+        expect(current.previousHash).toBe(previous.hash);
+      }
+
+      // Verificamos integridad del hash
+      const expectedHash = computeAuditHash({
+        action: current.action,
+        actor: current.actor,
+        after: current.after as Record<string, unknown>,
+        before: current.before as Record<string, unknown>,
+        entity: current.entity,
+        entityId: current.entityId,
+        ip: current.ip,
+        occurredAt: current.occurredAt,
+        previousHash: current.previousHash,
+        requestId: current.requestId,
+        sequence: current.sequence,
+      });
+
+      expect(current.hash).toBe(expectedHash);
+    }
+  });
+
+  it('automatically resolves actor, ip and requestId from request context when omitted from event', async () => {
+    const context = {
+      actor: 'contextual-user-789',
+      ip: '190.119.200.15',
+      requestId: 'f6b21544-b29b-449d-a411-cf08d1f7c32e',
+    };
+
+    await runWithRequestContext(context, async () => {
+      await uow.run(async () => {
+        await logger.log({
+          action: 'LOGIN_SUCCESS',
+          entity: 'User',
+          entityId: 'contextual-user-789',
+          after: { loginAt: '2026-10-26T22:00:00Z' },
+        });
+      });
+    });
+
+    const savedLog = await prisma.auditLog.findFirst({
+      where: { entityId: 'contextual-user-789' },
+    });
+
+    expect(savedLog).not.toBeNull();
+    expect(savedLog?.actor).toBe(context.actor);
+    expect(savedLog?.ip).toBe(context.ip);
+    expect(savedLog?.requestId).toBe(context.requestId);
+  });
+
+  describe('rolls back the business write and the audit record together (CA1, RNF-022)', () => {
+    beforeAll(async () => {
+      await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS audit_atomicity_probe (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL
+        );
+      `);
+    });
+
+    afterAll(async () => {
+      await prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS audit_atomicity_probe;`);
+    });
+
+    it('persists both business write and audit record when transaction succeeds', async () => {
+      await uow.run(async () => {
+        const client = uow.get();
+        await client.$executeRawUnsafe(
+          `INSERT INTO audit_atomicity_probe (id, name) VALUES ('probe-ok-1', 'Objective Name');`,
+        );
+
+        await logger.log({
+          action: 'CREATE',
+          actor: 'user-atomicity-1',
+          entity: 'EducationalObjective',
+          entityId: 'probe-ok-1',
+          after: { name: 'Objective Name' },
+        });
+      });
+
+      const probeRows = await prisma.$queryRawUnsafe<Array<{ id: string; name: string }>>(
+        `SELECT id, name FROM audit_atomicity_probe WHERE id = 'probe-ok-1';`,
+      );
+      expect(probeRows.length).toBe(1);
+
+      const auditRow = await prisma.auditLog.findFirst({
+        where: { entityId: 'probe-ok-1' },
+      });
+      expect(auditRow).not.toBeNull();
+      expect(auditRow?.actor).toBe('user-atomicity-1');
+    });
+
+    it('rolls back business write and audit record when business use case throws an error', async () => {
+      const failingAction = uow.run(async () => {
+        const client = uow.get();
+        await client.$executeRawUnsafe(
+          `INSERT INTO audit_atomicity_probe (id, name) VALUES ('probe-fail-1', 'Should Rollback');`,
+        );
+
+        await logger.log({
+          action: 'CREATE',
+          actor: 'user-atomicity-2',
+          entity: 'EducationalObjective',
+          entityId: 'probe-fail-1',
+          after: { name: 'Should Rollback' },
+        });
+
+        throw new Error('Business error occurred after auditing');
+      });
+
+      await expect(failingAction).rejects.toThrow('Business error occurred after auditing');
+
+      const probeRows = await prisma.$queryRawUnsafe<Array<{ id: string; name: string }>>(
+        `SELECT id, name FROM audit_atomicity_probe WHERE id = 'probe-fail-1';`,
+      );
+      expect(probeRows.length).toBe(0);
+
+      const auditRow = await prisma.auditLog.findFirst({
+        where: { entityId: 'probe-fail-1' },
+      });
+      expect(auditRow).toBeNull();
+    });
+
+    it('rolls back business write when audit logger fails (missing actor)', async () => {
+      const failingAuditAction = uow.run(async () => {
+        const client = uow.get();
+        await client.$executeRawUnsafe(
+          `INSERT INTO audit_atomicity_probe (id, name) VALUES ('probe-fail-2', 'Should Rollback on Audit Failure');`,
+        );
+
+        // Falla porque no se especifica actor en el evento ni en el contexto
+        await logger.log({
+          action: 'CREATE',
+          entity: 'EducationalObjective',
+          entityId: 'probe-fail-2',
+          after: { name: 'Should Rollback on Audit Failure' },
+        });
+      });
+
+      await expect(failingAuditAction).rejects.toThrow(ValidationError);
+
+      const probeRows = await prisma.$queryRawUnsafe<Array<{ id: string; name: string }>>(
+        `SELECT id, name FROM audit_atomicity_probe WHERE id = 'probe-fail-2';`,
+      );
+      expect(probeRows.length).toBe(0);
+
+      const auditRow = await prisma.auditLog.findFirst({
+        where: { entityId: 'probe-fail-2' },
+      });
+      expect(auditRow).toBeNull();
+    });
+
+    it('rolls back business write when audit payload contains non-serializable BigInt', async () => {
+      const failingPayloadAction = uow.run(async () => {
+        const client = uow.get();
+        await client.$executeRawUnsafe(
+          `INSERT INTO audit_atomicity_probe (id, name) VALUES ('probe-fail-3', 'BigInt Payload');`,
+        );
+
+        // Objeto no serializable por JSON.stringify / canonicalizeJson
+        await logger.log({
+          action: 'CREATE',
+          actor: 'user-atomicity-3',
+          entity: 'EducationalObjective',
+          entityId: 'probe-fail-3',
+          after: { invalidField: 1234567890123456789n } as unknown as Record<string, unknown>,
+        });
+      });
+
+      await expect(failingPayloadAction).rejects.toThrow(TypeError);
+
+      const probeRows = await prisma.$queryRawUnsafe<Array<{ id: string; name: string }>>(
+        `SELECT id, name FROM audit_atomicity_probe WHERE id = 'probe-fail-3';`,
+      );
+      expect(probeRows.length).toBe(0);
+
+      const auditRow = await prisma.auditLog.findFirst({
+        where: { entityId: 'probe-fail-3' },
+      });
+      expect(auditRow).toBeNull();
+    });
+
+    it('moves the head anchor forward with every record when created with createPrismaAuditServices', async () => {
+      const services = createPrismaAuditServices(uow);
+
+      await uow.run(async () => {
+        await services.auditLogger.log({
+          action: 'CREATE',
+          actor: 'user-head-1',
+          entity: 'EducationalObjective',
+          entityId: 'oe-head-1',
+        });
+      });
+
+      const head1 = await services.chainAnchor.read();
+      expect(head1).not.toBeNull();
+      expect(head1?.sequence).toBe(1n);
+
+      await uow.run(async () => {
+        await services.auditLogger.log({
+          action: 'UPDATE',
+          actor: 'user-head-2',
+          entity: 'EducationalObjective',
+          entityId: 'oe-head-1',
+        });
+      });
+
+      const head2 = await services.chainAnchor.read();
+      expect(head2).not.toBeNull();
+      expect(head2?.sequence).toBe(2n);
+      expect(head2?.hash).not.toBe(head1?.hash);
+    });
+
+    it('rolls back the head anchor together with business write when transaction fails', async () => {
+      const services = createPrismaAuditServices(uow);
+
+      // Sembramos un primer registro exitoso
+      await uow.run(async () => {
+        await services.auditLogger.log({
+          action: 'CREATE',
+          actor: 'user-head-initial',
+          entity: 'EducationalObjective',
+          entityId: 'oe-initial',
+        });
+      });
+
+      const headBefore = await services.chainAnchor.read();
+      expect(headBefore?.sequence).toBe(1n);
+
+      // Intentamos una transacción fallida
+      const failingAction = uow.run(async () => {
+        await services.auditLogger.log({
+          action: 'UPDATE',
+          actor: 'user-head-rollback',
+          entity: 'EducationalObjective',
+          entityId: 'oe-initial',
+        });
+        throw new Error('Forced failure to trigger head rollback');
+      });
+
+      await expect(failingAction).rejects.toThrow('Forced failure to trigger head rollback');
+
+      const headAfter = await services.chainAnchor.read();
+      expect(headAfter?.sequence).toBe(1n);
+      expect(headAfter?.hash).toBe(headBefore?.hash);
+    });
+  });
+});

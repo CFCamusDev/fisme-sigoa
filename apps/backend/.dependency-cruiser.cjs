@@ -119,6 +119,16 @@ module.exports = {
       from: { pathNot: '(\\.(test|spec)\\.ts$|^src/test/)' },
       to: { path: '(\\.(test|spec)\\.ts$|^src/test/)' },
     },
+    {
+      name: 'unit-tests-no-database',
+      comment:
+        'Las pruebas unitarias (*.test.ts) no pueden usar PostgreSQL; las que lo necesitan se llaman *.integration.test.ts y corren en el proyecto integration.',
+      severity: 'error',
+      from: { path: '\\.test\\.ts$', pathNot: '(\\.integration\\.test\\.ts$|^src/test/db/)' },
+      to: {
+        path: '(^src/test/db/(use-test-database|reset-database|prepare-test-database|app-role-login)|(^|/)node_modules/pg/|(^|/)pg(/|$))',
+      },
+    },
   ],
   options: {
     doNotFollow: {

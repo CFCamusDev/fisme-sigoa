@@ -37,6 +37,7 @@
 //
 // 6. Auditoría Append-Only (HU-075):
 //    - La tabla AuditLog es exclusivamente de inserción; nunca se ejecutan UPDATE ni DELETE.
+//    - Excepción justificada a las convenciones generales: sin updatedAt, updatedBy ni campos de anulación lógica (inmutable y append-only).
 //
 // ------------------------------------------------------------------------------
 // MODELO DE EJEMPLO (COMENTADO DE REFERENCIA):
@@ -89,3 +90,53 @@ generator client {
   provider = "prisma-client"
   output   = "../src/shared/prisma/generated"
 }
+
+// ------------------------------------------------------------------------------
+// Auditoría Append-Only (HU-075, RS-040, RS-041, RS-042, RS-043)
+// ------------------------------------------------------------------------------
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  STATE_CHANGE
+  VOID
+  LOGIN_SUCCESS
+  LOGIN_FAILURE
+  ROLE_CHANGE
+  PERMISSION_CHANGE
+  PARAMETER_CHANGE
+  DOWNLOAD
+  PUBLIC_RESPONSE
+}
+
+model AuditLog {
+  id           String      @id @default(cuid())
+  sequence     BigInt      @unique
+  occurredAt   DateTime
+  actor        String
+  ip           String?
+  requestId    String?
+  action       AuditAction
+  entity       String
+  entityId     String
+  before       Json?
+  after        Json?
+  previousHash String?
+  hash         String      @unique
+
+  @@index([entity, entityId])
+  @@index([actor])
+  @@index([occurredAt])
+  @@map("audit_logs")
+}
+
+model AuditChainHead {
+  id        String   @id // 'MAIN' (excepción documentada a cuid(): puntero técnico único de cabeza)
+  sequence  BigInt
+  hash      String
+  updatedAt DateTime @updatedAt
+
+  @@map("audit_chain_heads")
+}
+
+
