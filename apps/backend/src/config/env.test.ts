@@ -118,4 +118,54 @@ describe('env configuration', () => {
     expect(parsed.RATE_LIMIT_LOGIN_MAX).toBe(10);
     expect(parsed.RATE_LIMIT_GENERAL_MAX).toBe(300);
   });
+
+  it('parseEnv defaults EMAIL_PROVIDER to memory and treats empty strings as undefined', () => {
+    const parsed = parseEnv({
+      DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
+      RESEND_API_KEY: '',
+      EMAIL_FROM: '   ',
+    });
+
+    expect(parsed.EMAIL_PROVIDER).toBe('memory');
+    expect(parsed.RESEND_API_KEY).toBeUndefined();
+    expect(parsed.EMAIL_FROM).toBeUndefined();
+  });
+
+  it('parseEnv requires RESEND_API_KEY and valid EMAIL_FROM when EMAIL_PROVIDER is resend', () => {
+    expect(() =>
+      parseEnv({
+        DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
+        EMAIL_PROVIDER: 'resend',
+      }),
+    ).toThrow(/RESEND_API_KEY/);
+
+    expect(() =>
+      parseEnv({
+        DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
+        EMAIL_PROVIDER: 'resend',
+        RESEND_API_KEY: 're_123456789',
+        EMAIL_FROM: 'not-an-email',
+      }),
+    ).toThrow(/EMAIL_FROM/);
+
+    const valid = parseEnv({
+      DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
+      EMAIL_PROVIDER: 'resend',
+      RESEND_API_KEY: 're_123456789',
+      EMAIL_FROM: 'sigoa@untrim.edu.pe',
+    });
+    expect(valid.EMAIL_PROVIDER).toBe('resend');
+    expect(valid.RESEND_API_KEY).toBe('re_123456789');
+    expect(valid.EMAIL_FROM).toBe('sigoa@untrim.edu.pe');
+  });
+
+  it('parseEnv rejects memory EMAIL_PROVIDER in production', () => {
+    expect(() =>
+      parseEnv({
+        DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
+        NODE_ENV: 'production',
+        EMAIL_PROVIDER: 'memory',
+      }),
+    ).toThrow(/EMAIL_PROVIDER/);
+  });
 });

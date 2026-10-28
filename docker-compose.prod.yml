@@ -56,6 +56,9 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       HSTS_ENABLED: ${HSTS_ENABLED:-true}
       TRUST_PROXY: ${TRUST_PROXY:-2}
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-resend}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
       PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
 
   frontend:

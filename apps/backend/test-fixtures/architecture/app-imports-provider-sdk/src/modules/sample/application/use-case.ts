@@ -1,5 +1,5 @@
-import { Resend } from 'resend';
+import resend from 'resend';
 
 export class SendEmailUseCase {
-  private readonly resend = new Resend('key');
+  private readonly r = resend;
 }

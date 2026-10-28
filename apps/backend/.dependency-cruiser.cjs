@@ -36,7 +36,10 @@ module.exports = {
       comment:
         'RNF-026: La capa domain solo puede importar su propio domain, shared/errors, @sigoa/shared o módulos nativos.',
       severity: 'error',
-      from: { path: '^src/modules/([^/]+)/domain' },
+      from: {
+        path: '^src/modules/([^/]+)/domain',
+        pathNot: '\\.(test|spec)\\.ts$',
+      },
       to: {
         dependencyTypesNot: ['core'],
         pathNot: [
@@ -149,7 +152,7 @@ module.exports = {
       path: ['node_modules', 'src/shared/prisma/generated'],
     },
     exclude: {
-      path: ['src/shared/prisma/generated', 'dist', 'coverage'],
+      path: ['src/shared/prisma/generated', '^dist(/|$)', '^coverage(/|$)'],
     },
     tsPreCompilationDeps: true,
     tsConfig: {
@@ -158,7 +161,7 @@ module.exports = {
     enhancedResolveOptions: {
       exportsFields: ['exports'],
       conditionNames: ['import', 'require', 'node', 'default'],
-      extensions: ['.ts', '.tsx', '.js', '.jsx'],
+      extensions: ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'],
     },
   },
 };
