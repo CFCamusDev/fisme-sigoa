@@ -129,6 +129,20 @@ module.exports = {
         path: '(^src/test/db/(use-test-database|reset-database|prepare-test-database|app-role-login)|(^|/)node_modules/pg/|(^|/)pg(/|$))',
       },
     },
+    {
+      name: 'provider-sdks-only-in-adapters',
+      comment:
+        'RNF-033: Resend, Cloudinary y Puppeteer solo pueden importarse en los adaptadores de shared/email, shared/storage y shared/pdf; domain, application y el resto del código usan los puertos.',
+      severity: 'error',
+      from: { pathNot: ['^src/shared/(email|storage|pdf)/'] },
+      to: {
+        path: [
+          '(^|/)resend(/|$)',
+          '(^|/)cloudinary(/|$)',
+          '(^|/)puppeteer(-core)?(/|$)',
+        ],
+      },
+    },
   ],
   options: {
     doNotFollow: {
