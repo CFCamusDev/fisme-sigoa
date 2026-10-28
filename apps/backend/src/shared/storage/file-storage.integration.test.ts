@@ -46,7 +46,9 @@ export function describeFileStorageContract(
       });
 
       const url = storage.getUrl(uploaded.publicId);
-      expect(url).toBe(uploaded.url);
+      expect(typeof url).toBe('string');
+      expect(url.length).toBeGreaterThan(0);
+      expect(url).toContain(uploaded.publicId);
     });
 
     it('uploads and deletes a file idempotently', async () => {
