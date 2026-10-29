@@ -70,7 +70,7 @@ Tipos de rama y su prefijo de commit: `feature→feat`, `fix/bug→fix`, `docs�
 | Parámetros | Usa una regla configurable | Lee el parámetro vigente; guarda snapshot | RN-005, RS-054 |
 | Documentos / PDF | Genera anexos o actas | Versión de plantilla guardada; formato institucional; < 10 s; descarga auditada | RN-004, RNF-021, RNF-040 |
 | Archivos y correo | Sube archivos o envía correos | Puertos `FileStorage` / `EmailSender`; tipo, tamaño y hash | RNF-013, RNF-033 |
-| Interfaz | Cambia el frontend | Feature-based; estados de carga/vacío/error; español y dd/mm/aaaa; teclado; prueba RTL en formularios críticos | RNF-028, RNF-035, RNF-036 |
+| Interfaz | Cambia el frontend | Feature-based; estados de carga/vacío/error; español y dd/mm/aaaa; teclado; solo tokens del sistema de diseño (sin colores sueltos); estados con ícono y texto; prueba RTL en formularios críticos | RNF-028, RNF-035, RNF-036 |
 
 Para `docs/`, `test/` y `chore/` las secciones que no aplican se marcan **N/A**.
 
