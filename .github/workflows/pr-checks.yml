@@ -152,6 +152,15 @@ jobs:
         run: docker compose --env-file deploy/stack.env.example -f docker-compose.prod.yml config --format json | node scripts/ci/verify-compose-hardening.mjs
       - name: Pruebas de humo de imágenes Docker y PDF Open Sans
         run: bash scripts/ci/smoke-image.sh
+      - name: Diagnóstico del entorno host y Docker ante fallos
+        if: failure()
+        run: |
+          echo "=== DIAGNÓSTICO DEL ENTORNO ==="
+          echo "Kernel: $(uname -r)"
+          docker version
+          echo "Docker Security Options: $(docker info --format '{{.SecurityOptions}}')"
+          echo "Sysctl unprivileged user namespaces:"
+          sysctl kernel.unprivileged_userns_clone kernel.apparmor_restrict_unprivileged_userns 2>/dev/null || true
 
   e2e:
     name: Pruebas end-to-end (Playwright)

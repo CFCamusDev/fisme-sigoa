@@ -78,7 +78,7 @@ echo "✓ Backend respondió exitosamente en /health bajo sistema de archivos de
 docker rm -f "$BACKEND_CONTAINER" >/dev/null 2>&1
 
 echo "==> 6. Verificando generación de PDF con Open Sans y Chromium con sandbox en contenedor endurecido..."
-docker run --rm -i \
+if ! docker run --rm -i \
   --cap-drop ALL \
   --security-opt no-new-privileges:true \
   "${SECCOMP_ARGS[@]}" \
@@ -88,7 +88,10 @@ docker run --rm -i \
   -e NODE_ENV=production \
   --entrypoint node \
   "$BACKEND_IMG" \
-  --input-type=module < scripts/ci/verify-pdf-font.mjs
+  --input-type=module < scripts/ci/verify-pdf-font.mjs; then
+  echo "ERROR: Falló la verificación de PDF con Open Sans o el arranque de Chromium con sandbox en el contenedor endurecido." >&2
+  exit 1
+fi
 echo "✓ Open Sans y sandbox de Chromium verificados exitosamente."
 
 echo "==> 7. Ejecutando contenedor de prueba para frontend..."
