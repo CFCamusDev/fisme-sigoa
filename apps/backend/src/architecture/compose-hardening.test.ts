@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+// @ts-expect-error script sin archivo de declaraciones .d.ts
 import { verifyHardening } from '../../../../scripts/ci/verify-compose-hardening.mjs';
 
 describe('verify-compose-hardening logic', () => {
@@ -17,7 +18,7 @@ describe('verify-compose-hardening logic', () => {
   };
 
   it('passes on valid hardened configuration', () => {
-    const errors = verifyHardening(validBackendConfig);
+    const errors: string[] = verifyHardening(validBackendConfig);
     expect(errors).toEqual([]);
   });
 
@@ -30,8 +31,8 @@ describe('verify-compose-hardening logic', () => {
         },
       },
     };
-    const errors = verifyHardening(config);
-    expect(errors.some((e) => e.includes('cap_drop'))).toBe(true);
+    const errors: string[] = verifyHardening(config);
+    expect(errors.some((e: string) => e.includes('cap_drop'))).toBe(true);
   });
 
   it('fails if PDF_CHROMIUM_NO_SANDBOX is true', () => {
@@ -43,8 +44,8 @@ describe('verify-compose-hardening logic', () => {
         },
       },
     };
-    const errors = verifyHardening(config);
-    expect(errors.some((e) => e.includes('PDF_CHROMIUM_NO_SANDBOX'))).toBe(true);
+    const errors: string[] = verifyHardening(config);
+    expect(errors.some((e: string) => e.includes('PDF_CHROMIUM_NO_SANDBOX'))).toBe(true);
   });
 
   it('fails if read_only is false', () => {
@@ -56,7 +57,7 @@ describe('verify-compose-hardening logic', () => {
         },
       },
     };
-    const errors = verifyHardening(config);
-    expect(errors.some((e) => e.includes('read_only'))).toBe(true);
+    const errors: string[] = verifyHardening(config);
+    expect(errors.some((e: string) => e.includes('read_only'))).toBe(true);
   });
 });
