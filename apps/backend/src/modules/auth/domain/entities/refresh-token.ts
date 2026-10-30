@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { InvalidRefreshTokenError } from '../errors/invalid-refresh-token-error.js';
 
 export interface RefreshTokenProps {
   id: string;
@@ -13,6 +14,12 @@ export interface RefreshTokenProps {
 export interface CreateRefreshTokenProps {
   id?: string;
   userId: string;
+  tokenHash: string;
+  expiresAt: Date;
+  createdByIp?: string | null;
+}
+
+export interface RotateRefreshTokenProps {
   tokenHash: string;
   expiresAt: Date;
   createdByIp?: string | null;
@@ -71,5 +78,40 @@ export class RefreshToken {
 
   get createdByIp(): string | null {
     return this.props.createdByIp ?? null;
+  }
+
+  public isRevoked(): boolean {
+    return this.props.revokedAt !== null && this.props.revokedAt !== undefined;
+  }
+
+  public isExpired(now: Date): boolean {
+    return this.props.expiresAt.getTime() <= now.getTime();
+  }
+
+  public isUsable(now: Date): boolean {
+    return !this.isRevoked() && !this.isExpired(now);
+  }
+
+  public revoke(now: Date): void {
+    if (!this.isRevoked()) {
+      this.props.revokedAt = new Date(now.getTime());
+    }
+  }
+
+  public assertUsable(now: Date): void {
+    if (!this.isUsable(now)) {
+      throw new InvalidRefreshTokenError();
+    }
+  }
+
+  public rotate(now: Date, next: RotateRefreshTokenProps): RefreshToken {
+    this.assertUsable(now);
+    this.revoke(now);
+    return RefreshToken.create({
+      userId: this.props.userId,
+      tokenHash: next.tokenHash,
+      expiresAt: next.expiresAt,
+      createdByIp: next.createdByIp,
+    });
   }
 }

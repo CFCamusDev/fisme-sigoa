@@ -19,6 +19,7 @@ describe('JoseAccessTokenSigner (RNF-004, RS-016)', () => {
     const { payload } = await jose.jwtVerify(token, secretBytes, {
       issuer: 'fisme-sigoa',
       algorithms: ['HS256'],
+      currentDate: now,
     });
 
     expect(payload.sub).toBe('usr_abc_123');
@@ -32,7 +33,9 @@ describe('JoseAccessTokenSigner (RNF-004, RS-016)', () => {
     const { token } = await signer.sign({ userId: 'usr_minimal_claims' }, now);
 
     const secretBytes = new TextEncoder().encode(secret);
-    const { payload } = await jose.jwtVerify(token, secretBytes);
+    const { payload } = await jose.jwtVerify(token, secretBytes, {
+      currentDate: now,
+    });
 
     const keys = Object.keys(payload);
     expect(keys).toEqual(expect.arrayContaining(['sub', 'iss', 'iat', 'exp']));
@@ -54,6 +57,7 @@ describe('JoseAccessTokenSigner (RNF-004, RS-016)', () => {
       jose.jwtVerify(token, wrongSecretBytes, {
         issuer: 'fisme-sigoa',
         algorithms: ['HS256'],
+        currentDate: now,
       }),
     ).rejects.toThrow();
   });
