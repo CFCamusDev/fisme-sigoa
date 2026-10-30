@@ -23,6 +23,8 @@ const app = createApp({
     setupAppRoutes(instance, {
       unitOfWork,
       auditLogger: auditServices.auditLogger,
+      dbProvider: unitOfWork,
+      env,
     });
   },
 });
