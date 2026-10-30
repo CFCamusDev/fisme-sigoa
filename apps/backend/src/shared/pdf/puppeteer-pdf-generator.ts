@@ -103,6 +103,21 @@ export class PuppeteerPdfGenerator implements PdfGenerator {
     this.logger = options.logger;
   }
 
+  /**
+   * Pre-calienta Chromium lanzando la instancia del navegador y abriendo/cerrando una página en blanco.
+   * Es idempotente y seguro ante llamadas concurrentes (comparten la misma promesa de arranque).
+   * Desacopla el costo de inicialización del proceso y la carga de librerías del presupuesto de render (RNF-021).
+   */
+  async warmUp(): Promise<void> {
+    const browser = await this.ensureBrowser();
+    const page = await browser.newPage();
+    try {
+      await page.setContent('<!DOCTYPE html><html><body></body></html>', { waitUntil: 'load' });
+    } finally {
+      await page.close();
+    }
+  }
+
   async render(input: PdfRenderInput): Promise<Buffer> {
     await this.acquireSlot();
 

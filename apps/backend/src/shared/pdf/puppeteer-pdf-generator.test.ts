@@ -401,4 +401,57 @@ describe('PuppeteerPdfGenerator (RS-063, RNF-021)', () => {
 
     await generator.close();
   });
+
+  describe('warmUp and launch lifecycle (4c, RNF-021)', () => {
+    it('launches the browser only once when warmUp is called twice', async () => {
+      const { launcher, browsersLaunched, pagesCreated } = createMockLauncher();
+      const generator = new PuppeteerPdfGenerator({ launcher });
+
+      await generator.warmUp();
+      await generator.warmUp();
+
+      expect(browsersLaunched).toHaveLength(1);
+      expect(pagesCreated).toHaveLength(2); // una página en blanco por warmUp
+
+      await generator.close();
+    });
+
+    it('shares one launch between concurrent calls', async () => {
+      const { launcher, browsersLaunched } = createMockLauncher();
+      const generator = new PuppeteerPdfGenerator({ launcher });
+
+      await Promise.all([
+        generator.warmUp(),
+        generator.warmUp(),
+        generator.render({ html: '<p>concurrent</p>' }),
+      ]);
+
+      expect(browsersLaunched).toHaveLength(1);
+
+      await generator.close();
+    });
+
+    it('does not fall back to no sandbox when the launch fails', async () => {
+      const launchMock = vi
+        .fn()
+        .mockRejectedValue(new Error('Failed to launch Chromium with sandbox'));
+      const launcher: BrowserLauncher = {
+        launch: launchMock,
+      };
+
+      const generator = new PuppeteerPdfGenerator({
+        launcher,
+        noSandbox: false,
+      });
+
+      await expect(generator.render({ html: '<p>Test</p>' })).rejects.toThrow(AppError);
+
+      expect(launchMock).toHaveBeenCalledTimes(1);
+      const calledArgs: string[] = launchMock.mock.calls[0]![0].args;
+      expect(calledArgs).not.toContain('--no-sandbox');
+      expect(calledArgs).not.toContain('--disable-setuid-sandbox');
+
+      await generator.close();
+    });
+  });
 });
