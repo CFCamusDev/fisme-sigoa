@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { apiErrorResponseSchema } from '@sigoa/shared';
 import { createApp } from '../../app.js';
-import { NotFoundError, ValidationError } from '../errors/index.js';
+import { AppError, NotFoundError, ValidationError } from '../errors/index.js';
 import { createTestEnv } from '../../test/test-env.js';
 
 describe('global error-handler middleware', () => {
@@ -112,6 +112,39 @@ describe('global error-handler middleware', () => {
     expect(response.status).toBe(400);
     expect(response.body.error.code).toBe('VALIDATION_ERROR');
     expect(response.body.error.message).toContain('JSON');
+
+    const parsed = apiErrorResponseSchema.safeParse(response.body);
+    expect(parsed.success).toBe(true);
+  });
+
+  it('includes retryAfterSeconds and sets the Retry-After header when present', async () => {
+    class CustomLockedError extends AppError {
+      constructor(retryAfterSeconds: number) {
+        super(
+          'Acción bloqueada temporalmente',
+          'ACCOUNT_LOCKED',
+          429,
+          undefined,
+          retryAfterSeconds,
+        );
+      }
+    }
+
+    const app = createApp({
+      env: baseEnv,
+      setupRoutes: (router) => {
+        router.post('/test-retry-after', () => {
+          throw new CustomLockedError(600);
+        });
+      },
+    });
+
+    const response = await request(app).post('/test-retry-after');
+
+    expect(response.status).toBe(429);
+    expect(response.headers['retry-after']).toBe('600');
+    expect(response.body.error.code).toBe('ACCOUNT_LOCKED');
+    expect(response.body.error.retryAfterSeconds).toBe(600);
 
     const parsed = apiErrorResponseSchema.safeParse(response.body);
     expect(parsed.success).toBe(true);

@@ -7,6 +7,10 @@ export const errorCodeSchema = z.enum([
   'CONFLICT',
   'INTERNAL_ERROR',
   'RATE_LIMITED',
+  'UNAUTHORIZED',
+  'ACCOUNT_LOCKED',
+  'ACCOUNT_INACTIVE',
+  'ACCOUNT_PENDING_ACTIVATION',
 ]);
 
 export type ErrorCode = z.infer<typeof errorCodeSchema>;
@@ -24,6 +28,7 @@ export const apiErrorResponseSchema = z.object({
     message: z.string(),
     details: z.array(validationDetailSchema).optional(),
     requestId: z.string().optional(),
+    retryAfterSeconds: z.number().int().nonnegative().optional(),
   }),
 });
 
