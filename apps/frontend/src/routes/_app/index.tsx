@@ -27,9 +27,9 @@ export function DashboardPage() {
         }
       />
 
-      <section className="space-y-4 rounded-lg border border-neutral-200 bg-white p-6 shadow-xs">
-        <h2 className="text-lg font-medium text-neutral-900">Bienvenido al sistema</h2>
-        <p className="text-sm text-neutral-600">
+      <section className="surface space-y-4 p-6">
+        <h2 className="text-h3 font-medium text-foreground">Bienvenido al sistema</h2>
+        <p className="text-body text-muted-foreground">
           La aplicación frontend base se encuentra configurada y lista.
         </p>
 
@@ -46,9 +46,9 @@ export function DashboardPage() {
           />
         </div>
 
-        <p className="text-xs text-neutral-500">
+        <p className="text-meta text-muted-foreground">
           Última comprobación:{' '}
-          <span className="font-medium text-neutral-700">{lastCheckedText}</span>
+          <span className="font-medium text-foreground">{lastCheckedText}</span>
         </p>
       </section>
     </div>

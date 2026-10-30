@@ -11,19 +11,19 @@ function SurveyPublicPage() {
     <main
       role="region"
       aria-label="Encuesta pública"
-      className="flex min-h-screen flex-col items-center justify-center bg-neutral-50 p-6"
+      className="flex min-h-screen flex-col items-center justify-center bg-background p-6"
     >
-      <div className="w-full max-w-lg rounded-lg border border-neutral-200 bg-white p-8 shadow-xs">
+      <div className="surface w-full max-w-lg p-8">
         <header className="mb-4">
-          <h1 className="text-2xl font-bold tracking-tight text-neutral-900">
+          <h1 className="text-h2 font-bold tracking-tight text-foreground">
             Encuesta institucional
           </h1>
-          <p className="mt-1 text-sm text-neutral-600">
+          <p className="mt-1 text-body text-muted-foreground">
             Acceso público seguro a encuesta con token de un solo uso.
           </p>
         </header>
-        <section className="rounded-md bg-neutral-100 p-4 text-xs font-mono break-all text-neutral-700">
-          <span className="font-semibold text-neutral-900">Token recibido: </span>
+        <section className="rounded-md bg-muted p-4 font-mono text-meta break-all text-muted-foreground">
+          <span className="font-semibold text-foreground">Token recibido: </span>
           {token}
         </section>
       </div>
