@@ -9,9 +9,11 @@ import { PrismaUserRepository } from './infrastructure/prisma/prisma-user-reposi
 import { PrismaRefreshTokenRepository } from './infrastructure/prisma/prisma-refresh-token-repository.js';
 import { Argon2PasswordHasher } from './infrastructure/security/argon2-password-hasher.js';
 import { JoseAccessTokenSigner } from './infrastructure/security/jose-access-token-signer.js';
+import { JoseAccessTokenVerifier } from './infrastructure/security/jose-access-token-verifier.js';
 import { RandomRefreshTokenGenerator } from './infrastructure/security/random-refresh-token-generator.js';
 import { LoginPolicy } from './domain/value-objects/login-policy.js';
 import { LoginUseCase } from './application/login.js';
+import { createAuthenticate } from './infrastructure/http/authenticate.js';
 
 export interface AuthModuleDependencies {
   unitOfWork: UnitOfWork;
@@ -33,6 +35,12 @@ export function createAuthModule(deps: AuthModuleDependencies): Router {
     deps.env.AUTH_JWT_SECRET,
     deps.env.AUTH_ACCESS_TTL_SECONDS,
   );
+  const accessTokenVerifier = new JoseAccessTokenVerifier(deps.env.AUTH_JWT_SECRET);
+  const _authenticate = createAuthenticate({
+    verifier: accessTokenVerifier,
+    userRepository,
+    clock: deps.clock,
+  });
   const refreshTokenGenerator = new RandomRefreshTokenGenerator(deps.env.AUTH_REFRESH_TTL_DAYS);
   const loginPolicy = new LoginPolicy({
     maxFailedAttempts: deps.env.AUTH_MAX_FAILED_ATTEMPTS,
@@ -68,8 +76,10 @@ export * from './application/login.types.js';
 export * from './application/login.js';
 export * from './infrastructure/security/argon2-password-hasher.js';
 export * from './infrastructure/security/jose-access-token-signer.js';
+export * from './infrastructure/security/jose-access-token-verifier.js';
 export * from './infrastructure/security/random-refresh-token-generator.js';
 export * from './infrastructure/http/auth.controller.js';
 export * from './infrastructure/http/auth.routes.js';
+export * from './infrastructure/http/authenticate.js';
 export * from './infrastructure/prisma/prisma-user-repository.js';
 export * from './infrastructure/prisma/prisma-refresh-token-repository.js';

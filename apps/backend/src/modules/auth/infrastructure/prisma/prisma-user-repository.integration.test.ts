@@ -35,6 +35,28 @@ describe('PrismaUserRepository Integration (PostgreSQL real)', () => {
     expect(found).toBeNull();
   });
 
+  it('finds a user by id', async () => {
+    const created = await prisma.user.create({
+      data: {
+        names: 'FindById',
+        firstSurname: 'User',
+        email: 'findbyid-test@untrm.edu.pe',
+        status: 'ACTIVE',
+      },
+    });
+
+    const found = await userRepo.findById(created.id);
+    expect(found).not.toBeNull();
+    expect(found?.id).toBe(created.id);
+    expect(found?.email).toBe('findbyid-test@untrm.edu.pe');
+    expect(found?.status).toBe('ACTIVE');
+  });
+
+  it('returns null for an unknown id', async () => {
+    const found = await userRepo.findById('non-existent-id-000');
+    expect(found).toBeNull();
+  });
+
   it('persists failed attempts, lock and last login on save', async () => {
     const email = 'repo-save@untrm.edu.pe';
     const created = await prisma.user.create({
