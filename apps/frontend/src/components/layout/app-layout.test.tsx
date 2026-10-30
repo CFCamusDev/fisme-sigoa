@@ -69,4 +69,51 @@ describe('AppLayout Component', () => {
     await user.click(menuToggle);
     expect(menuToggle).toHaveAttribute('aria-expanded', 'false');
   });
+
+  it('renders institutional logo in topbar and supports optional userMenu', async () => {
+    renderWithProviders(
+      <AppLayout userMenu={<button type="button">Menú Usuario</button>}>
+        <p>Contenido</p>
+      </AppLayout>,
+    );
+
+    const banner = await screen.findByRole('banner');
+    expect(banner).toBeInTheDocument();
+
+    const logoImg = screen.getByAltText(
+      /Universidad Nacional Toribio Rodríguez de Mendoza de Amazonas/i,
+    );
+    expect(logoImg).toBeInTheDocument();
+    expect(screen.getByText('Menú Usuario')).toBeInTheDocument();
+  });
+
+  it('marks the active navigation item with aria-current="page"', async () => {
+    renderWithProviders(
+      <AppLayout>
+        <p>Contenido</p>
+      </AppLayout>,
+    );
+
+    const activeLink = await screen.findByRole('link', { name: /Panel/i });
+    expect(activeLink).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('closes mobile sidebar when Escape key is pressed', async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <AppLayout>
+        <p>Contenido</p>
+      </AppLayout>,
+    );
+
+    const menuToggle = await screen.findByRole('button', {
+      name: /Abrir menú de navegación/i,
+    });
+    await user.click(menuToggle);
+    expect(menuToggle).toHaveAttribute('aria-expanded', 'true');
+
+    await user.keyboard('{Escape}');
+    expect(menuToggle).toHaveAttribute('aria-expanded', 'false');
+  });
 });
