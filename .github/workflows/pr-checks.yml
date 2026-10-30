@@ -108,6 +108,12 @@ jobs:
         run: pnpm --filter backend prisma migrate deploy
       - name: Pruebas de integración
         run: pnpm --filter backend test:integration
+      - name: Estabilidad del PDF con Chromium (3 pasadas)
+        run: |
+          for i in 1 2 3; do
+            echo "==> Pasada $i de 3: prueba de integración del PDF con Chromium real..."
+            pnpm --filter backend exec vitest run --project integration src/shared/pdf
+          done
       - name: Pruebas con cobertura (umbral 80 % en vitest.config)
         run: pnpm test:coverage
       - name: Build
