@@ -66,6 +66,7 @@ export default defineConfig({
         DATABASE_URL: TEST_DB_URL,
         HSTS_ENABLED: 'false',
         LOG_LEVEL: 'silent',
+        RATE_LIMIT_LOGIN_MAX: '1000',
       },
     },
     {

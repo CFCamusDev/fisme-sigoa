@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from '@tanstack/react-router';
@@ -31,15 +32,18 @@ export function LoginForm() {
     },
   });
 
+  useEffect(() => {
+    if (loginMutation.isError) {
+      setValue('password', '');
+      setFocus('password');
+    }
+  }, [loginMutation.isError, setValue, setFocus]);
+
   const onSubmit = (values: LoginRequest) => {
     loginMutation.mutate(values, {
       onSuccess: (data) => {
         setAuthSession(data);
         void navigate({ to: '/', replace: true });
-      },
-      onError: () => {
-        setValue('password', '');
-        setFocus('password');
       },
     });
   };
