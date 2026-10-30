@@ -157,7 +157,7 @@ jobs:
     name: Pruebas end-to-end (Playwright)
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    if: github.base_ref == 'main' && startsWith(github.head_ref, 'release/')
+    if: github.base_ref == 'develop' || (github.base_ref == 'main' && startsWith(github.head_ref, 'release/'))
     needs: calidad
     services:
       postgres:
