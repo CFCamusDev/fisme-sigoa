@@ -22,5 +22,7 @@ export * from './application/login.js';
 export * from './infrastructure/security/argon2-password-hasher.js';
 export * from './infrastructure/security/jose-access-token-signer.js';
 export * from './infrastructure/security/random-refresh-token-generator.js';
+export * from './infrastructure/http/auth.controller.js';
+export * from './infrastructure/http/auth.routes.js';
 export * from './infrastructure/prisma/prisma-user-repository.js';
 export * from './infrastructure/prisma/prisma-refresh-token-repository.js';
