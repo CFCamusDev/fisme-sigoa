@@ -128,6 +128,42 @@ describe('apiClient interceptors', () => {
       }
     });
 
+    it('propagates retryAfterSeconds from structured backend error response', async () => {
+      const backendLockoutError: AxiosError = {
+        name: 'AxiosError',
+        message: 'Request failed with status code 429',
+        response: {
+          status: 429,
+          statusText: 'Too Many Requests',
+          headers: {},
+          config: {} as InternalAxiosRequestConfig,
+          data: {
+            error: {
+              code: 'ACCOUNT_LOCKED',
+              message: 'Cuenta bloqueada temporalmente.',
+              retryAfterSeconds: 900,
+              requestId: 'req-lock-456',
+            },
+          },
+        } as AxiosResponse,
+        isAxiosError: true,
+        toJSON: () => ({}),
+      };
+
+      const errorHandler = getResponseErrorHandler();
+      try {
+        await errorHandler(backendLockoutError);
+        expect.unreachable('Should have thrown');
+      } catch (err) {
+        expect(err).toBeInstanceOf(ApiError);
+        const apiErr = err as ApiError;
+        expect(apiErr.code).toBe('ACCOUNT_LOCKED');
+        expect(apiErr.status).toBe(429);
+        expect(apiErr.retryAfterSeconds).toBe(900);
+        expect(apiErr.requestId).toBe('req-lock-456');
+      }
+    });
+
     it('transforms unstructured HTTP error into ApiError with Spanish message', async () => {
       const httpError: AxiosError = {
         name: 'AxiosError',
