@@ -17,6 +17,8 @@ export * from './domain/entities/refresh-token.js';
 export * from './domain/value-objects/login-policy.js';
 export * from './domain/errors/index.js';
 export * from './domain/ports/index.js';
+export * from './application/login.types.js';
+export * from './application/login.js';
 export * from './infrastructure/security/argon2-password-hasher.js';
 export * from './infrastructure/security/jose-access-token-signer.js';
 export * from './infrastructure/security/random-refresh-token-generator.js';
