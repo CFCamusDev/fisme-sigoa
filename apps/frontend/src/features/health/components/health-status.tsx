@@ -12,10 +12,10 @@ export const HealthStatus: React.FC<HealthStatusProps> = ({
       <div
         role="status"
         aria-live="polite"
-        className="flex items-center space-x-2 text-sm text-neutral-600"
+        className="flex items-center space-x-2 text-label text-muted-foreground"
       >
         <span
-          className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-neutral-400 border-t-neutral-800"
+          className="inline-block size-3 animate-spin rounded-full border-2 border-brand-200 border-t-brand-700"
           aria-hidden="true"
         />
         <span>Comprobando estado del servidor...</span>
@@ -28,13 +28,13 @@ export const HealthStatus: React.FC<HealthStatusProps> = ({
       <div
         role="alert"
         aria-live="assertive"
-        className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+        className="rounded-md border border-danger-border bg-danger-soft p-4 text-label text-danger"
       >
         <div className="flex items-center space-x-2 font-medium">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-600" aria-hidden="true" />
+          <span className="inline-block size-2.5 rounded-full bg-danger" aria-hidden="true" />
           <span>Servidor no disponible o con errores</span>
         </div>
-        {message && <p className="mt-1 text-xs text-red-600">{message}</p>}
+        {message && <p className="mt-1 text-meta text-danger/90">{message}</p>}
       </div>
     );
   }
@@ -43,17 +43,17 @@ export const HealthStatus: React.FC<HealthStatusProps> = ({
     <div
       role="status"
       aria-live="polite"
-      className="rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-800"
+      className="rounded-md border border-success-border bg-success-soft p-4 text-label text-success"
     >
       <div className="flex items-center space-x-2 font-medium">
-        <span className="inline-block h-2.5 w-2.5 rounded-full bg-green-600" aria-hidden="true" />
+        <span className="inline-block size-2.5 rounded-full bg-success" aria-hidden="true" />
         <span>Servidor operativo (OK)</span>
       </div>
-      {message && <p className="mt-1 text-xs text-green-700">{message}</p>}
+      {message && <p className="mt-1 text-meta text-success/90">{message}</p>}
       {uptime !== undefined && (
-        <p className="mt-1 text-xs text-green-700">Tiempo activo: {Math.floor(uptime)}s</p>
+        <p className="mt-1 text-meta text-success/90">Tiempo activo: {Math.floor(uptime)}s</p>
       )}
-      {timestamp && <p className="text-xs text-green-700">Última comprobación: {timestamp}</p>}
+      {timestamp && <p className="text-meta text-success/90">Última comprobación: {timestamp}</p>}
     </div>
   );
 };

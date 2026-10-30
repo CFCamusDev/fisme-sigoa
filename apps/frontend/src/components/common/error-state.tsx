@@ -1,9 +1,12 @@
+import { Illustration } from './illustration';
 import { Button } from '@/components/ui/button';
+import { type IllustrationName } from '@/lib/illustrations';
 import { cn } from '@/lib/utils';
 
 export interface ErrorStateProps {
   title?: string;
   message: string;
+  illustration?: IllustrationName;
   onRetry?: () => void;
   className?: string;
 }
@@ -11,6 +14,7 @@ export interface ErrorStateProps {
 export function ErrorState({
   title = 'Ocurrió un error',
   message,
+  illustration = 'error',
   onRetry,
   className,
 }: ErrorStateProps) {
@@ -18,34 +22,19 @@ export function ErrorState({
     <div
       role="alert"
       className={cn(
-        'flex flex-col items-center justify-center rounded-lg border border-red-200 bg-red-50/60 p-6 text-center',
+        'flex flex-col items-center justify-center rounded-lg border border-danger-border bg-danger-soft p-6 text-center text-danger',
         className,
       )}
     >
-      <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-red-100 text-red-600">
-        <svg
-          className="h-5 w-5"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          aria-hidden="true"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
-          />
-        </svg>
-      </div>
-      <h3 className="text-sm font-semibold text-red-900">{title}</h3>
-      <p className="mt-1 text-sm text-red-700">{message}</p>
+      <Illustration name={illustration} size={160} />
+      <h3 className="mt-4 text-h3 font-semibold text-danger">{title}</h3>
+      <p className="mt-1 text-body text-danger/90">{message}</p>
       {onRetry && (
         <Button
           variant="outline"
           size="sm"
           onClick={onRetry}
-          className="mt-4 border-red-300 text-red-800 hover:bg-red-100"
+          className="mt-4 border-danger-border text-danger hover:bg-danger/10"
         >
           Reintentar
         </Button>

@@ -225,4 +225,85 @@ describe('env configuration', () => {
       }),
     ).toThrow(/FILE_STORAGE_PROVIDER/);
   });
+
+  describe('APP_PUBLIC_URL configuration (T-077-05)', () => {
+    it('defaults to http://localhost:5173 when missing or empty in development', () => {
+      const parsed = parseEnv({
+        DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
+      });
+      expect(parsed.APP_PUBLIC_URL).toBe('http://localhost:5173');
+
+      const parsedEmpty = parseEnv({
+        DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
+        APP_PUBLIC_URL: '   ',
+      });
+      expect(parsedEmpty.APP_PUBLIC_URL).toBe('http://localhost:5173');
+    });
+
+    it('removes trailing slashes from APP_PUBLIC_URL', () => {
+      const parsed = parseEnv({
+        DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
+        APP_PUBLIC_URL: 'http://localhost:8001///',
+      });
+      expect(parsed.APP_PUBLIC_URL).toBe('http://localhost:8001');
+    });
+
+    it('rejects invalid URLs for APP_PUBLIC_URL', () => {
+      expect(() =>
+        parseEnv({
+          DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
+          APP_PUBLIC_URL: 'invalid-url',
+        }),
+      ).toThrow(/APP_PUBLIC_URL/);
+    });
+
+    it('requires APP_PUBLIC_URL in production environment', () => {
+      expect(() =>
+        parseEnv({
+          DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
+          NODE_ENV: 'production',
+          EMAIL_PROVIDER: 'resend',
+          RESEND_API_KEY: 're_123',
+          EMAIL_FROM: 'sigoa@untrim.edu.pe',
+          FILE_STORAGE_PROVIDER: 'cloudinary',
+          CLOUDINARY_CLOUD_NAME: 'cloud',
+          CLOUDINARY_API_KEY: 'key',
+          CLOUDINARY_API_SECRET: 'secret',
+        }),
+      ).toThrow(/APP_PUBLIC_URL/);
+    });
+
+    it('rejects http:// URLs for APP_PUBLIC_URL in production', () => {
+      expect(() =>
+        parseEnv({
+          DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
+          NODE_ENV: 'production',
+          EMAIL_PROVIDER: 'resend',
+          RESEND_API_KEY: 're_123',
+          EMAIL_FROM: 'sigoa@untrim.edu.pe',
+          FILE_STORAGE_PROVIDER: 'cloudinary',
+          CLOUDINARY_CLOUD_NAME: 'cloud',
+          CLOUDINARY_API_KEY: 'key',
+          CLOUDINARY_API_SECRET: 'secret',
+          APP_PUBLIC_URL: 'http://sigoa.unterm.edu.pe',
+        }),
+      ).toThrow(/APP_PUBLIC_URL/);
+    });
+
+    it('accepts valid https:// APP_PUBLIC_URL in production', () => {
+      const valid = parseEnv({
+        DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
+        NODE_ENV: 'production',
+        EMAIL_PROVIDER: 'resend',
+        RESEND_API_KEY: 're_123',
+        EMAIL_FROM: 'sigoa@untrim.edu.pe',
+        FILE_STORAGE_PROVIDER: 'cloudinary',
+        CLOUDINARY_CLOUD_NAME: 'cloud',
+        CLOUDINARY_API_KEY: 'key',
+        CLOUDINARY_API_SECRET: 'secret',
+        APP_PUBLIC_URL: 'https://sigoa.unterm.edu.pe/',
+      });
+      expect(valid.APP_PUBLIC_URL).toBe('https://sigoa.unterm.edu.pe');
+    });
+  });
 });

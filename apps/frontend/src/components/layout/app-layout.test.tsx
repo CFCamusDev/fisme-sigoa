@@ -69,4 +69,95 @@ describe('AppLayout Component', () => {
     await user.click(menuToggle);
     expect(menuToggle).toHaveAttribute('aria-expanded', 'false');
   });
+
+  it('renders institutional logo in topbar and supports optional userMenu', async () => {
+    renderWithProviders(
+      <AppLayout userMenu={<button type="button">Menú Usuario</button>}>
+        <p>Contenido</p>
+      </AppLayout>,
+    );
+
+    const banner = await screen.findByRole('banner');
+    expect(banner).toBeInTheDocument();
+
+    const logoImg = screen.getByAltText(
+      /Universidad Nacional Toribio Rodríguez de Mendoza de Amazonas/i,
+    );
+    expect(logoImg).toBeInTheDocument();
+    expect(screen.getByText('Menú Usuario')).toBeInTheDocument();
+  });
+
+  it('marks the active navigation item with aria-current="page"', async () => {
+    renderWithProviders(
+      <AppLayout>
+        <p>Contenido</p>
+      </AppLayout>,
+    );
+
+    const activeLink = await screen.findByRole('link', { name: /Panel/i });
+    expect(activeLink).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('closes mobile sidebar when Escape key is pressed', async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <AppLayout>
+        <p>Contenido</p>
+      </AppLayout>,
+    );
+
+    const menuToggle = await screen.findByRole('button', {
+      name: /Abrir menú de navegación/i,
+    });
+    await user.click(menuToggle);
+    expect(menuToggle).toHaveAttribute('aria-expanded', 'true');
+
+    await user.keyboard('{Escape}');
+    expect(menuToggle).toHaveAttribute('aria-expanded', 'false');
+    expect(menuToggle).toHaveFocus();
+  });
+
+  it('follows accessible tab order: skip link first, then menu toggle, then nav items', async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <AppLayout>
+        <button type="button">Contenido acción</button>
+      </AppLayout>,
+    );
+
+    // 1. Skip link
+    await user.tab();
+    const skipLink = screen.getByRole('link', { name: /Saltar al contenido principal/i });
+    expect(skipLink).toHaveFocus();
+
+    // 2. Menu toggle button
+    await user.tab();
+    const menuToggle = screen.getByRole('button', { name: /Abrir menú de navegación/i });
+    expect(menuToggle).toHaveFocus();
+
+    // 3. Primer enlace de navegación
+    await user.tab();
+    const firstNavLink = screen.getByRole('link', { name: /Panel/i });
+    expect(firstNavLink).toHaveFocus();
+  });
+
+  it('moves focus to main#main-content when activating skip link with Enter key', async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <AppLayout>
+        <h1>Contenido Principal</h1>
+      </AppLayout>,
+    );
+
+    await user.tab();
+    const skipLink = screen.getByRole('link', { name: /Saltar al contenido principal/i });
+    expect(skipLink).toHaveFocus();
+
+    await user.keyboard('{Enter}');
+    const main = screen.getByRole('main');
+    expect(main).toHaveFocus();
+  });
 });

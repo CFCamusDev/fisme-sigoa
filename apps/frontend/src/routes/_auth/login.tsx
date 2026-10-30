@@ -9,8 +9,8 @@ function LoginPage() {
   return (
     <div className="space-y-4">
       <header className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight text-neutral-900">Iniciar sesión</h1>
-        <p className="text-sm text-neutral-500">
+        <h1 className="text-h2 font-bold tracking-tight text-foreground">Iniciar sesión</h1>
+        <p className="text-body text-muted-foreground">
           Ingresa tus credenciales institucionales para acceder al sistema.
         </p>
       </header>

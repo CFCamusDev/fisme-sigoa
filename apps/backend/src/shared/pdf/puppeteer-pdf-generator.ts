@@ -63,12 +63,19 @@ export const defaultBrowserLauncher: BrowserLauncher = {
   },
 };
 
+export interface PdfGeneratorLogger {
+  warn(msg: string | Record<string, unknown>, ...args: unknown[]): void;
+  info?(msg: string | Record<string, unknown>, ...args: unknown[]): void;
+  error?(msg: string | Record<string, unknown>, ...args: unknown[]): void;
+}
+
 export interface PuppeteerPdfGeneratorOptions {
   launcher?: BrowserLauncher;
   executablePath?: string;
   concurrency?: number;
   renderTimeoutMs?: number;
   noSandbox?: boolean;
+  logger?: PdfGeneratorLogger;
 }
 
 /**
@@ -80,6 +87,7 @@ export class PuppeteerPdfGenerator implements PdfGenerator {
   private readonly concurrency: number;
   private readonly renderTimeoutMs: number;
   private readonly noSandbox: boolean;
+  private readonly logger?: PdfGeneratorLogger;
 
   private browser?: BrowserInstance;
   private browserLaunchPromise?: Promise<BrowserInstance>;
@@ -92,6 +100,22 @@ export class PuppeteerPdfGenerator implements PdfGenerator {
     this.concurrency = options.concurrency ?? 3;
     this.renderTimeoutMs = options.renderTimeoutMs ?? 30000;
     this.noSandbox = options.noSandbox ?? (process.env.PDF_CHROMIUM_NO_SANDBOX === 'true' || false);
+    this.logger = options.logger;
+  }
+
+  /**
+   * Pre-calienta Chromium lanzando la instancia del navegador y abriendo/cerrando una página en blanco.
+   * Es idempotente y seguro ante llamadas concurrentes (comparten la misma promesa de arranque).
+   * Desacopla el costo de inicialización del proceso y la carga de librerías del presupuesto de render (RNF-021).
+   */
+  async warmUp(): Promise<void> {
+    const browser = await this.ensureBrowser();
+    const page = await browser.newPage();
+    try {
+      await page.setContent('<!DOCTYPE html><html><body></body></html>', { waitUntil: 'load' });
+    } finally {
+      await page.close();
+    }
   }
 
   async render(input: PdfRenderInput): Promise<Buffer> {
@@ -153,9 +177,19 @@ export class PuppeteerPdfGenerator implements PdfGenerator {
       return this.browserLaunchPromise;
     }
 
-    const args: string[] = ['--disable-dev-shm-usage', '--disable-gpu'];
+    const args: string[] = [
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--disable-extensions',
+      '--disable-background-networking',
+      '--host-resolver-rules=MAP * ~NOTFOUND',
+    ];
+
     if (this.noSandbox) {
       args.unshift('--no-sandbox', '--disable-setuid-sandbox');
+      this.logger?.warn(
+        'Chromium is executing without sandbox (PDF_CHROMIUM_NO_SANDBOX=true). Ensure container or environment boundaries are strictly enforced.',
+      );
     }
 
     this.browserLaunchPromise = this.launcher

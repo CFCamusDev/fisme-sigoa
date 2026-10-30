@@ -15,8 +15,8 @@ export function LoadingState({
       aria-live="polite"
       className={cn('flex flex-col items-center justify-center p-8 text-center', className)}
     >
-      <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 border-t-sky-900" />
-      <span className="mt-3 text-sm text-neutral-600">{message}</span>
+      <div className="size-8 animate-spin rounded-full border-4 border-brand-200 border-t-brand-700" />
+      <span className="mt-3 text-label text-muted-foreground">{message}</span>
       <span className="sr-only">{message}</span>
     </div>
   );

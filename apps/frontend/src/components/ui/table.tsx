@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils.js';
 
 export interface TableProps extends React.HTMLAttributes<HTMLTableElement> {
   ref?: React.Ref<HTMLTableElement>;
@@ -10,7 +10,7 @@ export function Table({ className, ref, ...props }: TableProps) {
     <div className="relative w-full overflow-x-auto">
       <table
         ref={ref}
-        className={cn('w-full caption-bottom text-sm text-neutral-900', className)}
+        className={cn('w-full caption-bottom text-label text-foreground', className)}
         {...props}
       />
     </div>
@@ -22,9 +22,7 @@ export interface TableHeaderProps extends React.HTMLAttributes<HTMLTableSectionE
 }
 
 export function TableHeader({ className, ref, ...props }: TableHeaderProps) {
-  return (
-    <thead ref={ref} className={cn('[&_tr]:border-b border-neutral-200', className)} {...props} />
-  );
+  return <thead ref={ref} className={cn('[&_tr]:border-b border-border', className)} {...props} />;
 }
 
 export interface TableBodyProps extends React.HTMLAttributes<HTMLTableSectionElement> {
@@ -44,7 +42,7 @@ export function TableFooter({ className, ref, ...props }: TableFooterProps) {
     <tfoot
       ref={ref}
       className={cn(
-        'border-t border-neutral-200 bg-neutral-50/50 font-medium [&>tr]:last:border-b-0',
+        'border-t border-border bg-muted font-medium [&>tr]:last:border-b-0',
         className,
       )}
       {...props}
@@ -61,7 +59,7 @@ export function TableRow({ className, ref, ...props }: TableRowProps) {
     <tr
       ref={ref}
       className={cn(
-        'border-b border-neutral-200 transition-colors hover:bg-neutral-50/50 data-[state=selected]:bg-neutral-100',
+        'border-b border-border transition-colors hover:bg-brand-50 data-[state=selected]:bg-brand-100',
         className,
       )}
       {...props}
@@ -78,7 +76,7 @@ export function TableHead({ className, ref, ...props }: TableHeadProps) {
     <th
       ref={ref}
       className={cn(
-        'h-10 px-4 text-left align-middle font-medium text-neutral-500 [&:has([role=checkbox])]:pr-0',
+        'h-10 px-3.5 text-left align-middle font-bold text-label bg-brand-100 text-brand-700 [&:has([role=checkbox])]:pr-0',
         className,
       )}
       {...props}
@@ -94,7 +92,10 @@ export function TableCell({ className, ref, ...props }: TableCellProps) {
   return (
     <td
       ref={ref}
-      className={cn('p-4 align-middle [&:has([role=checkbox])]:pr-0', className)}
+      className={cn(
+        'px-3.5 py-2.5 text-label align-middle [&:has([role=checkbox])]:pr-0',
+        className,
+      )}
       {...props}
     />
   );
@@ -106,6 +107,10 @@ export interface TableCaptionProps extends React.HTMLAttributes<HTMLTableCaption
 
 export function TableCaption({ className, ref, ...props }: TableCaptionProps) {
   return (
-    <caption ref={ref} className={cn('mt-4 text-sm text-neutral-500', className)} {...props} />
+    <caption
+      ref={ref}
+      className={cn('mt-4 text-meta text-muted-foreground', className)}
+      {...props}
+    />
   );
 }

@@ -15,6 +15,7 @@ export function createTestEnv(overrides: Partial<Env> = {}): Env {
     RATE_LIMIT_GENERAL_MAX: 300,
     EMAIL_PROVIDER: 'memory',
     FILE_STORAGE_PROVIDER: 'memory',
+    APP_PUBLIC_URL: 'http://localhost:5173',
     ...overrides,
   };
 }

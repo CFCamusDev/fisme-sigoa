@@ -18,7 +18,10 @@ export async function prepareTestDatabase(): Promise<string> {
   const adminUrl = new URL(testUrl);
   adminUrl.pathname = '/postgres';
 
-  const client = new pg.Client({ connectionString: adminUrl.toString() });
+  const client = new pg.Client({
+    connectionString: adminUrl.toString(),
+    connectionTimeoutMillis: 10_000,
+  });
   try {
     await client.connect();
     const res = await client.query('SELECT 1 FROM pg_database WHERE datname = $1', [dbName]);
@@ -41,6 +44,7 @@ export async function prepareTestDatabase(): Promise<string> {
     execSync('pnpm exec prisma migrate deploy', {
       env: { ...process.env, DATABASE_URL: testUrl },
       stdio: 'pipe',
+      timeout: 120_000,
     });
   } catch (error) {
     throw new Error(

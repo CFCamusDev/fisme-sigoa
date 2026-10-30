@@ -108,6 +108,12 @@ jobs:
         run: pnpm --filter backend prisma migrate deploy
       - name: Pruebas de integración
         run: pnpm --filter backend test:integration
+      - name: Estabilidad del PDF con Chromium (3 pasadas)
+        run: |
+          for i in 1 2 3; do
+            echo "==> Pasada $i de 3: prueba de integración del PDF con Chromium real..."
+            pnpm --filter backend exec vitest run --project integration src/shared/pdf
+          done
       - name: Pruebas con cobertura (umbral 80 % en vitest.config)
         run: pnpm test:coverage
       - name: Build
@@ -129,11 +135,38 @@ jobs:
       - name: pnpm audit (falla con vulnerabilidades altas o críticas)
         run: pnpm audit --audit-level high
 
+  imagenes:
+    name: Construcción, endurecimiento e imágenes Docker
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: convenciones
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Validar endurecimiento de Docker Compose
+        run: docker compose --env-file deploy/stack.env.example -f docker-compose.prod.yml config --format json | node scripts/ci/verify-compose-hardening.mjs
+      - name: Pruebas de humo de imágenes Docker y PDF Open Sans
+        run: bash scripts/ci/smoke-image.sh
+      - name: Diagnóstico del entorno host y Docker ante fallos
+        if: failure()
+        run: |
+          echo "=== DIAGNÓSTICO DEL ENTORNO ==="
+          echo "Kernel: $(uname -r)"
+          docker version
+          echo "Docker Security Options: $(docker info --format '{{.SecurityOptions}}')"
+          echo "Sysctl unprivileged user namespaces:"
+          sysctl kernel.unprivileged_userns_clone kernel.apparmor_restrict_unprivileged_userns 2>/dev/null || true
+
   e2e:
     name: Pruebas end-to-end (Playwright)
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    if: github.base_ref == 'main' && startsWith(github.head_ref, 'release/')
+    if: github.base_ref == 'develop' || (github.base_ref == 'main' && startsWith(github.head_ref, 'release/'))
     needs: calidad
     services:
       postgres:

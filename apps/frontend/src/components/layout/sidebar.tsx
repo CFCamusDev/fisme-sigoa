@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Link, useRouterState } from '@tanstack/react-router';
+import { X } from 'lucide-react';
 import { MAIN_NAV_ITEMS, type NavItem } from './nav-items';
 
 export interface SidebarProps {
@@ -13,86 +14,78 @@ export function Sidebar({ isOpen, onClose, items = MAIN_NAV_ITEMS }: SidebarProp
   const currentPath = routerState.location.pathname;
 
   useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
+    if (!isOpen) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClose();
+        const toggleButton = document.querySelector<HTMLButtonElement>(
+          'button[aria-controls="app-sidebar"]',
+        );
+        toggleButton?.focus();
       }
     };
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
   return (
     <>
-      {/* Backdrop para pantallas pequeñas */}
+      {/* Backdrop para pantallas menores a 1024px */}
       {isOpen && (
         <div
           role="presentation"
           aria-hidden="true"
           onClick={onClose}
-          className="fixed inset-0 z-40 bg-neutral-900/50 backdrop-blur-xs transition-opacity lg:hidden"
+          className="fixed inset-0 top-16 z-40 bg-brand-950/60 transition-opacity lg:hidden"
         />
       )}
 
       {/* Barra lateral */}
       <aside
         id="app-sidebar"
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-neutral-200 bg-white transition-transform duration-200 ease-in-out lg:static lg:translate-x-0 ${
+        className={`fixed top-16 bottom-0 left-0 z-50 flex w-64 flex-col border-r border-border bg-sidebar transition-transform duration-200 ease-standard lg:static lg:translate-x-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
         aria-label="Barra lateral de navegación"
       >
-        <div className="flex h-16 items-center justify-between border-b border-neutral-200 px-6">
-          <Link
-            to="/"
-            className="flex items-center gap-2 font-bold text-neutral-900"
-            onClick={onClose}
-          >
-            <span className="rounded bg-sky-900 px-2 py-1 text-xs font-semibold text-white">
-              EPIS
+        {isOpen && (
+          <div className="flex items-center justify-between p-4 lg:hidden border-b border-border">
+            <span className="text-meta font-bold uppercase tracking-wider text-muted-foreground">
+              Navegación
             </span>
-            <span className="text-sm font-semibold tracking-tight">FISME-SIGOA</span>
-          </Link>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Cerrar barra lateral"
-            className="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 lg:hidden"
-          >
-            <span className="sr-only">Cerrar barra lateral</span>
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth="1.5"
-              stroke="currentColor"
-              aria-hidden="true"
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Cerrar barra lateral"
+              className="rounded-md p-1.5 text-muted-foreground hover:bg-brand-50"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
+              <span className="sr-only">Cerrar barra lateral</span>
+              <X className="h-5 w-5" aria-hidden="true" />
+            </button>
+          </div>
+        )}
 
         <nav className="flex-1 overflow-y-auto p-4" aria-label="Navegación principal">
           <ul className="space-y-1">
             {items.map((item) => {
               const isActive = currentPath === item.href;
+              const Icon = item.icon;
               return (
                 <li key={item.href}>
                   <Link
                     to={item.href}
                     onClick={onClose}
                     aria-current={isActive ? 'page' : undefined}
-                    className={`flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                    className={`relative flex items-center gap-3 rounded-md px-3 py-2 text-label font-medium transition-colors ${
                       isActive
-                        ? 'bg-neutral-100 font-semibold text-sky-950'
-                        : 'text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900'
+                        ? 'bg-sidebar-active text-sidebar-active-foreground font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-r before:bg-brand-700'
+                        : 'text-sidebar-foreground hover:bg-brand-50'
                     }`}
                   >
-                    {item.title}
+                    {Icon && <Icon className="size-5 shrink-0" aria-hidden="true" />}
+                    <span>{item.title}</span>
                   </Link>
                 </li>
               );
@@ -100,9 +93,9 @@ export function Sidebar({ isOpen, onClose, items = MAIN_NAV_ITEMS }: SidebarProp
           </ul>
         </nav>
 
-        <div className="border-t border-neutral-200 p-4 text-xs text-neutral-500">
-          <p className="font-medium text-neutral-700">UNTRM · EPIS</p>
-          <p className="mt-0.5 text-[11px] text-neutral-400">Versión 0.1.0</p>
+        <div className="border-t border-border p-4 text-meta text-muted-foreground">
+          <p className="font-semibold text-foreground">UNTRM · EPIS</p>
+          <p className="mt-0.5 text-meta text-muted-foreground">Versión 0.1.0</p>
         </div>
       </aside>
     </>

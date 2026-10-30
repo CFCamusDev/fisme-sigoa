@@ -50,7 +50,7 @@ export function DataTable<T>({
 }: DataTableProps<T>) {
   if (isLoading) {
     return (
-      <div className={cn('rounded-md border border-neutral-200 bg-white p-6', className)}>
+      <div className={cn('surface p-6', className)}>
         <LoadingState message="Cargando datos de la tabla..." />
       </div>
     );
@@ -74,36 +74,38 @@ export function DataTable<T>({
   }
 
   return (
-    <div className={cn('rounded-md border border-neutral-200 bg-white', className)}>
-      <Table>
-        {caption && <TableCaption>{caption}</TableCaption>}
-        <TableHeader>
-          <TableRow>
-            {columns.map((column) => (
-              <TableHead key={column.key} className={column.headerClassName}>
-                {column.header}
-              </TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.map((item, index) => (
-            <TableRow key={keyExtractor(item, index)}>
-              {columns.map((column) => {
-                const cellContent = column.render
-                  ? column.render(item, index)
-                  : ((item as Record<string, unknown>)[column.key] as ReactNode);
-
-                return (
-                  <TableCell key={column.key} className={column.className}>
-                    {cellContent}
-                  </TableCell>
-                );
-              })}
+    <div className={cn('surface overflow-hidden rounded-lg', className)}>
+      <div className="overflow-x-auto">
+        <Table>
+          {caption && <TableCaption>{caption}</TableCaption>}
+          <TableHeader>
+            <TableRow>
+              {columns.map((column) => (
+                <TableHead key={column.key} className={column.headerClassName}>
+                  {column.header}
+                </TableHead>
+              ))}
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {data.map((item, index) => (
+              <TableRow key={keyExtractor(item, index)}>
+                {columns.map((column) => {
+                  const cellContent = column.render
+                    ? column.render(item, index)
+                    : ((item as Record<string, unknown>)[column.key] as ReactNode);
+
+                  return (
+                    <TableCell key={column.key} className={column.className}>
+                      {cellContent}
+                    </TableCell>
+                  );
+                })}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 }
