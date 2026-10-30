@@ -16,6 +16,11 @@ export function createTestEnv(overrides: Partial<Env> = {}): Env {
     EMAIL_PROVIDER: 'memory',
     FILE_STORAGE_PROVIDER: 'memory',
     APP_PUBLIC_URL: 'http://localhost:5173',
+    AUTH_JWT_SECRET: 'test-secret-at-least-32-chars-long-abc-123456',
+    AUTH_ACCESS_TTL_SECONDS: 900,
+    AUTH_REFRESH_TTL_DAYS: 7,
+    AUTH_MAX_FAILED_ATTEMPTS: 5,
+    AUTH_LOCKOUT_MINUTES: 15,
     ...overrides,
   };
 }
