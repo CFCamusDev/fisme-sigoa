@@ -5,3 +5,4 @@ export * from './error-state';
 export * from './data-table';
 export * from './logo';
 export * from './illustration';
+export * from './status-badge';
