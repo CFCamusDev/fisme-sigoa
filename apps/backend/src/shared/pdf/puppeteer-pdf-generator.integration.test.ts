@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import { describe, it, expect, afterAll } from 'vitest';
 import { PuppeteerPdfGenerator } from './puppeteer-pdf-generator.js';
+import { extractPdfFontNames } from './pdf-fonts.js';
 
 function findChromiumExecutable(): string {
   if (
@@ -99,4 +100,36 @@ describe('PuppeteerPdfGenerator Integration (RNF-021, RS-063)', () => {
     // RNF-021: El tiempo de renderizado de prueba debe ser < 10 segundos
     expect(elapsedMs).toBeLessThan(10000);
   });
+
+  it('reads the embedded font names from a real chromium pdf', async () => {
+    const executablePath = findChromiumExecutable();
+
+    generator = new PuppeteerPdfGenerator({
+      executablePath,
+      noSandbox: true,
+      renderTimeoutMs: 10000,
+    });
+
+    const testHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <style>
+            body { font-family: 'Liberation Sans', sans-serif; }
+          </style>
+        </head>
+        <body>
+          <p>Prueba tipográfica de PDF con Chromium real.</p>
+        </body>
+      </html>
+    `;
+
+    const pdfBuffer = await generator.render({
+      html: testHtml,
+    });
+
+    const fonts = extractPdfFontNames(pdfBuffer);
+    expect(fonts.length).toBeGreaterThan(0);
+  }, 30_000);
 });
