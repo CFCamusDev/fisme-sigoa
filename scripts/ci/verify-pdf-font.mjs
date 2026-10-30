@@ -23,6 +23,10 @@ async function main() {
   });
 
   try {
+    console.log('==> Calentando Chromium (warmUp)...');
+    await generator.warmUp();
+    console.log('==> Chromium iniciado exitosamente.');
+
     const html = `<!DOCTYPE html>
 <html lang="es">
 <head>

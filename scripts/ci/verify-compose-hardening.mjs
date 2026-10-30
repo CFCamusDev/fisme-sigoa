@@ -11,10 +11,14 @@ export function verifyHardening(config) {
     return ['No se encontró el servicio "backend" en la configuración de Docker Compose.'];
   }
 
-  // 1. cap_drop: ALL
+  // 1. cap_drop: ALL y cap_add: SYS_CHROOT
   const capDrop = backend.cap_drop ?? [];
   if (!capDrop.includes('ALL')) {
     errors.push('El servicio "backend" debe incluir "cap_drop: [ALL]".');
+  }
+  const capAdd = backend.cap_add ?? [];
+  if (!capAdd.includes('SYS_CHROOT')) {
+    errors.push('El servicio "backend" debe incluir "cap_add: [SYS_CHROOT]" para el sandbox Zygote de Chromium.');
   }
 
   // 2. security_opt: no-new-privileges y seccomp

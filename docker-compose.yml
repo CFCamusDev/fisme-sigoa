@@ -66,8 +66,13 @@ services:
       CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
       PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
       PDF_CHROMIUM_NO_SANDBOX: ${PDF_CHROMIUM_NO_SANDBOX:-false}
+      HOME: /tmp
+      XDG_CONFIG_HOME: /tmp
+      XDG_CACHE_HOME: /tmp
     cap_drop:
       - ALL
+    cap_add:
+      - SYS_CHROOT
     security_opt:
       - no-new-privileges:true
       - seccomp=./deploy/seccomp/chromium.json

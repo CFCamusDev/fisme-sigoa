@@ -7,6 +7,7 @@ describe('verify-compose-hardening logic', () => {
     services: {
       backend: {
         cap_drop: ['ALL'],
+        cap_add: ['SYS_CHROOT'],
         security_opt: ['no-new-privileges:true', 'seccomp=./deploy/seccomp/chromium.json'],
         read_only: true,
         tmpfs: ['/tmp:size=256M'],

@@ -38,6 +38,7 @@ docker build -f apps/frontend/Dockerfile --build-arg VITE_API_URL="http://localh
 echo "==> 3. Ejecutando contenedor de prueba para backend con restricciones de producción..."
 docker run -d --name "$BACKEND_CONTAINER" \
   --cap-drop ALL \
+  --cap-add SYS_CHROOT \
   --security-opt no-new-privileges:true \
   "${SECCOMP_ARGS[@]}" \
   --read-only \
@@ -47,6 +48,17 @@ docker run -d --name "$BACKEND_CONTAINER" \
   -e PORT=3000 \
   -e DATABASE_URL="postgresql://user:pass@localhost:5432/sigoa_smoke?schema=public" \
   -e CORS_ORIGIN="http://localhost:8001" \
+  -e APP_PUBLIC_URL="https://sigoa.untrm.edu.pe" \
+  -e EMAIL_PROVIDER="resend" \
+  -e RESEND_API_KEY="re_smoke_test_123456789" \
+  -e EMAIL_FROM="notificaciones@sigoa.untrm.edu.pe" \
+  -e FILE_STORAGE_PROVIDER="cloudinary" \
+  -e CLOUDINARY_CLOUD_NAME="smoke-cloud" \
+  -e CLOUDINARY_API_KEY="123456789012345" \
+  -e CLOUDINARY_API_SECRET="smoke-secret-key-123" \
+  -e HOME=/tmp \
+  -e XDG_CONFIG_HOME=/tmp \
+  -e XDG_CACHE_HOME=/tmp \
   -p 3000:3000 "$BACKEND_IMG"
 
 echo "==> 4. Verificando que el backend no corre como root..."
@@ -80,12 +92,16 @@ docker rm -f "$BACKEND_CONTAINER" >/dev/null 2>&1
 echo "==> 6. Verificando generación de PDF con Open Sans y Chromium con sandbox en contenedor endurecido..."
 if ! docker run --rm -i \
   --cap-drop ALL \
+  --cap-add SYS_CHROOT \
   --security-opt no-new-privileges:true \
   "${SECCOMP_ARGS[@]}" \
   --read-only \
   --tmpfs /tmp:size=256M \
   --pids-limit 512 \
   -e NODE_ENV=production \
+  -e HOME=/tmp \
+  -e XDG_CONFIG_HOME=/tmp \
+  -e XDG_CACHE_HOME=/tmp \
   --entrypoint node \
   "$BACKEND_IMG" \
   --input-type=module < scripts/ci/verify-pdf-font.mjs; then
