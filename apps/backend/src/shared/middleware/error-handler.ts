@@ -11,12 +11,19 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
     typeof req.id === 'string' ? req.id : (req.headers['x-request-id'] as string | undefined);
 
   if (err instanceof AppError) {
+    if (err.retryAfterSeconds !== undefined && err.retryAfterSeconds >= 0) {
+      res.setHeader('Retry-After', String(Math.ceil(err.retryAfterSeconds)));
+    }
+
     const body: ApiErrorResponse = {
       error: {
         code: err.code,
         message: err.message,
         ...(err.details && err.details.length > 0 ? { details: err.details } : {}),
         ...(requestId ? { requestId } : {}),
+        ...(err.retryAfterSeconds !== undefined && err.retryAfterSeconds >= 0
+          ? { retryAfterSeconds: Math.ceil(err.retryAfterSeconds) }
+          : {}),
       },
     };
     res.status(err.httpStatus).json(body);

@@ -56,6 +56,11 @@ docker run -d --name "$BACKEND_CONTAINER" \
   -e CLOUDINARY_CLOUD_NAME="smoke-cloud" \
   -e CLOUDINARY_API_KEY="123456789012345" \
   -e CLOUDINARY_API_SECRET="smoke-secret-key-123" \
+  -e AUTH_JWT_SECRET="smoke_test_jwt_secret_minimo_32_caracteres_seguro" \
+  -e AUTH_ACCESS_TTL_SECONDS=900 \
+  -e AUTH_REFRESH_TTL_DAYS=7 \
+  -e AUTH_MAX_FAILED_ATTEMPTS=5 \
+  -e AUTH_LOCKOUT_MINUTES=15 \
   -e HOME=/tmp \
   -e XDG_CONFIG_HOME=/tmp \
   -e XDG_CACHE_HOME=/tmp \

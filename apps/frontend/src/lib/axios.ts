@@ -50,7 +50,8 @@ apiClient.interceptors.response.use(
       const parsedBackendError = apiErrorResponseSchema.safeParse(error.response.data);
 
       if (parsedBackendError.success) {
-        const { code, message, details, requestId } = parsedBackendError.data.error;
+        const { code, message, details, requestId, retryAfterSeconds } =
+          parsedBackendError.data.error;
         return Promise.reject(
           new ApiError({
             code,
@@ -58,6 +59,7 @@ apiClient.interceptors.response.use(
             status,
             details,
             requestId,
+            retryAfterSeconds,
           }),
         );
       }

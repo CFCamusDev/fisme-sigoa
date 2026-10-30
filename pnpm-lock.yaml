@@ -56,6 +56,9 @@ importers:
       '@sigoa/shared':
         specifier: workspace:^
         version: link:../../packages/shared
+      argon2:
+        specifier: 0.45.1
+        version: 0.45.1
       cloudinary:
         specifier: ^2.11.0
         version: 2.11.0
@@ -71,6 +74,9 @@ importers:
       helmet:
         specifier: ^8.3.0
         version: 8.3.0
+      jose:
+        specifier: 6.2.14
+        version: 6.2.14
       pg:
         specifier: ^8.23.1
         version: 8.23.1
@@ -135,6 +141,9 @@ importers:
       '@fontsource-variable/open-sans':
         specifier: ^5.3.0
         version: 5.3.0
+      '@hookform/resolvers':
+        specifier: ^6.0.2
+        version: 6.0.2(@standard-schema/spec@1.1.0)(ajv@8.20.0)(react-hook-form@7.91.0(@types/react@19.3.0)(react@19.3.1))(valibot@1.4.2(typescript@6.0.3))(zod@4.6.7)
       '@radix-ui/react-slot':
         specifier: ^1.5.0
         version: 1.5.0(@types/react@19.3.0)(react@19.3.1)
@@ -168,6 +177,9 @@ importers:
       react-dom:
         specifier: 19.3.1
         version: 19.3.1(react@19.3.1)
+      react-hook-form:
+        specifier: ^7.91.0
+        version: 7.91.0(@types/react@19.3.0)(react@19.3.1)
       tailwind-merge:
         specifier: ^3.7.0
         version: 3.7.0
@@ -180,6 +192,9 @@ importers:
       zod:
         specifier: ^4.6.7
         version: 4.6.7
+      zustand:
+        specifier: ^5.0.16
+        version: 5.0.16(@types/react@19.3.0)(react@19.3.1)(use-sync-external-store@1.7.0(react@19.3.1))
     devDependencies:
       '@playwright/test':
         specifier: ^1.64.1
@@ -467,6 +482,9 @@ packages:
   '@electric-sql/pglite@0.4.3':
     resolution: {integrity: sha512-ichuWTgtd4mOM1G4SpyGJa5trT03lWbMypDV0fUXUCXg5hiHqVAz/bZyV68NqmkLB7WcYmj1RMJVSp8HV/v/ZQ==}
 
+  '@epic-web/invariant@1.0.0':
+    resolution: {integrity: sha512-lrTPqgvfFQtR/eY/qkIzp98OGdNJu0m5ji3q/nJI8v3SXkRKEnWiOxMmbvcSoAIzv/cGiuvRy57k4suKQSAdwA==}
+
   '@esbuild/aix-ppc64@0.28.2':
     resolution: {integrity: sha512-XExcO+dvLKvVtNTibSTBej1NCAbaGhWn9Ww1ZPx80qsahhPFe/8jgWP0IchNe0F3HwkU7n8ejhH8bjonqht8mQ==}
     engines: {node: '>=18'}
@@ -674,6 +692,81 @@ packages:
   '@fontsource-variable/open-sans@5.3.0':
     resolution: {integrity: sha512-VOfhZfLIOBVa6K/dTEu7scqQXYdGa4jBX8quFpQ0S6574B+W2EOBJf9PkqyVtMEI7WWIWNEbpvPc3vY1mN2mmQ==}
 
+  '@hookform/resolvers@6.0.2':
+    resolution: {integrity: sha512-e2dqUOlaGuirKVOd/iZWk/Yg5zeaGw7t0hSc3LzxL3o7eZGwZkTyEbBL8H52m0wRKEsNLWoMGOiXGHbPHTXlEQ==}
+    peerDependencies:
+      '@sinclair/typebox': '>=0.25.24'
+      '@standard-schema/spec': ^1.0.0
+      '@vinejs/vine': ^2.0.0 || ^3.0.0 || ^4.0.0
+      ajv: ^8.12.0
+      ajv-errors: ^3.0.0
+      ajv-formats: ^2.1.1
+      arktype: ^2.0.0
+      ata-validator: ^1.23.0
+      class-transformer: '>=0.4.0'
+      class-validator: '>=0.12.0'
+      computed-types: ^1.0.0
+      effect: ^4.0.0
+      fluentvalidation-ts: ^3.0.0
+      fp-ts: ^2.7.0
+      io-ts: ^2.0.0
+      joi: ^17.0.0 || ^18.0.0
+      nope-validator: '>=0.12.0'
+      react-hook-form: ^7.55.0
+      superstruct: '>=0.12.0'
+      typanion: ^3.3.2
+      valibot: '>=0.31.0 || ^1.0.0-beta.4 || ^1.0.0-rc'
+      vest: '>=6.0.0'
+      yup: ^1.0.0
+      zod: ^3.25.0 || ^4.0.0
+    peerDependenciesMeta:
+      '@sinclair/typebox':
+        optional: true
+      '@standard-schema/spec':
+        optional: true
+      '@vinejs/vine':
+        optional: true
+      ajv:
+        optional: true
+      ajv-errors:
+        optional: true
+      ajv-formats:
+        optional: true
+      arktype:
+        optional: true
+      ata-validator:
+        optional: true
+      class-transformer:
+        optional: true
+      class-validator:
+        optional: true
+      computed-types:
+        optional: true
+      effect:
+        optional: true
+      fluentvalidation-ts:
+        optional: true
+      fp-ts:
+        optional: true
+      io-ts:
+        optional: true
+      joi:
+        optional: true
+      nope-validator:
+        optional: true
+      superstruct:
+        optional: true
+      typanion:
+        optional: true
+      valibot:
+        optional: true
+      vest:
+        optional: true
+      yup:
+        optional: true
+      zod:
+        optional: true
+
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
     engines: {node: '>=18.18.0'}
@@ -773,6 +866,10 @@ packages:
 
   '@paralleldrive/cuid2@2.3.1':
     resolution: {integrity: sha512-XO7cAxhnTZl0Yggq6jOgjiOHhbgcO4NqFqwSmQpjK3b6TEE6Uj/jfSk6wzYyemh3+I0sHirKSetjQwn5cZktFw==}
+
+  '@phc/format@1.0.0':
+    resolution: {integrity: sha512-m7X9U6BG2+J+R1lSOdCiITLLrxm+cWlNI3HUFA92oLO77ObGNzaKdh8pMLqdZcshtkKuV84olNNXDfMc4FezBQ==}
+    engines: {node: '>=10'}
 
   '@pinojs/redact@0.4.0':
     resolution: {integrity: sha512-k2ENnmBugE/rzQfEcdWHcCY+/FM3VLzH9cYEsbdsoqrvzAKRhUZeRNhAZvB8OitQJ1TBed3yqWtdjzS6wJKBwg==}
@@ -1056,6 +1153,9 @@ packages:
 
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
+
+  '@standard-schema/utils@0.3.0':
+    resolution: {integrity: sha512-e7Mew686owMaPJVNNLs55PUvgz371nKgwsc4vxE49zsODpJEnxgxRo2y/OKrqueavXgZNMDVj3DdHFlaSAeU8g==}
 
   '@tailwindcss/node@4.3.3':
     resolution: {integrity: sha512-/T8IKEsf9VTU6tLjgC7+sv2mOPtQxzE2jMw7u4Tt40Tx+QSZxpzh95/H6cMKoja9XuW7iMdLJYBB0o9G1CaAgg==}
@@ -1573,6 +1673,10 @@ packages:
     resolution: {integrity: sha512-9k3v7xcHwgdO/DruxGIg4HtjvlAZlcnsX/mzqUb1t3NkYnl9kK2UJ+Gq0io+vQf7iT//BD/HB/NBkUR1LWxoeA==}
     engines: {node: '>=14'}
 
+  argon2@0.45.1:
+    resolution: {integrity: sha512-skm+/WCjkGqCQxF7FG1LuZXM5yvbFjgbfiCGsud2oLgaDhh6b6dbH0b1EkghbM+xx4Bj8Ape+KKgixoIlWZicQ==}
+    engines: {node: '>=16.17.0'}
+
   argparse@2.0.1:
     resolution: {integrity: sha512-8+9WqebbFzpX9OR+Wa6O29asIogeRMzcGtAINdpMHHyAg10f05aSFVBbcEqGf/PXw1EjAZ+q2/bEBg3DvurK3Q==}
 
@@ -1845,6 +1949,11 @@ packages:
     peerDependenciesMeta:
       typescript:
         optional: true
+
+  cross-env@10.1.0:
+    resolution: {integrity: sha512-GsYosgnACZTADcmEyJctkJIoqAhHjttw7RsFrVoJNXbsWWqaq6Ym+7kZjq6mS45O0jij6vtiReppKQEtqWy6Dw==}
+    engines: {node: '>=20'}
+    hasBin: true
 
   cross-spawn@7.0.6:
     resolution: {integrity: sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==}
@@ -2652,6 +2761,9 @@ packages:
     resolution: {integrity: sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ==}
     hasBin: true
 
+  jose@6.2.14:
+    resolution: {integrity: sha512-3JasLuki1NRLQvY4wCoC37KZk4qxoBx2k2aFqLxT84IezqW0bkJKnNtxnZj/Fu1xsQivoc/lytxaRHJoGLjJ1A==}
+
   joycon@3.1.1:
     resolution: {integrity: sha512-34wB/Y7MW7bzjKRjUKTa46I2Z7eV62Rkhva+KkopW7Qvv/OSWBqvkSY7vusOPrNuZcUG3tApvdVgNB8POj3SPw==}
     engines: {node: '>=10'}
@@ -3016,6 +3128,14 @@ packages:
     resolution: {integrity: sha512-NMPBRMJgiQHjbd8phG3Vebdx4kZ1H121rbl5IkMqeOsahptB9BKo/d7oJ3zTXqTgagn2bWlNSXkh0QUGM31RYg==}
     engines: {node: '>=18'}
 
+  node-addon-api@8.9.2:
+    resolution: {integrity: sha512-VijLXbi3UACN69I0JVXJsX4tjACjNoQDgv2gTF6sx2wWEi8tkSg2eX8p5gSIFi8z2+DL3oHmY6OyKce38SDolg==}
+    engines: {node: ^18 || ^20 || >= 21}
+
+  node-gyp-build@4.8.4:
+    resolution: {integrity: sha512-LA4ZjwlnUblHVgq0oBF3Jl/6h/Nvs5fzBLwdEF4nuxnFdsfajde4WfxtJr3CaiH+F6ewcIB/q4jQ4UzPyid+CQ==}
+    hasBin: true
+
   node-releases@2.0.60:
     resolution: {integrity: sha512-OmO8+GM1JUZqXET720VrJCwkjUCXmCMQm0Z3UDDRbfNLHS4NEAvY60j5jiFv0tkKw2PNNlqOLhahVmwJIOLDIQ==}
     engines: {node: '>=18'}
@@ -3306,6 +3426,16 @@ packages:
     resolution: {integrity: sha512-Y0bARz53lhEC1NMCASs0/j+faB/zqt3R8hpvg1e8+61ZVJ4UL0UdC4cBbXfZMcIuhrfgeILTLe+ZeBCavQPtKQ==}
     peerDependencies:
       react: ^19.3.1
+
+  react-hook-form@7.91.0:
+    resolution: {integrity: sha512-5BEBUnCBwa28AFXYTYmOaB/+CSpJ/+CWVASHEvIGUzFdHyUiPHeRhG7r5hOZ8nZi0yP7pbHdFNXO/p31EKTJFQ==}
+    engines: {node: '>=18.0.0'}
+    peerDependencies:
+      '@types/react': '*'
+      react: ^16.8.0 || ^17 || ^18 || ^19
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
 
   react-is@17.0.2:
     resolution: {integrity: sha512-w2GsyukL62IJnlaff/nRegPQR94C/XXamvMWmSHRJ4y7Ts/4ocGRmTHvOs8PSE6pB3dWOrD/nueuU5sduBsQ4w==}
@@ -4026,6 +4156,24 @@ packages:
   zod@4.6.7:
     resolution: {integrity: sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==}
 
+  zustand@5.0.16:
+    resolution: {integrity: sha512-Uv7e327ihlCfayfja3hDc0M64Upev1LWBKpRobdK4NyovDDPeeX4imWXc/wzC1yc6fkYPoAY/ncKVPAs2jrtQw==}
+    engines: {node: '>=12.20.0'}
+    peerDependencies:
+      '@types/react': '>=18.0.0'
+      immer: '>=9.0.6'
+      react: '>=18.0.0'
+      use-sync-external-store: '>=1.2.0'
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      immer:
+        optional: true
+      react:
+        optional: true
+      use-sync-external-store:
+        optional: true
+
 snapshots:
 
   '@adobe/css-tools@4.5.0': {}
@@ -4316,6 +4464,8 @@ snapshots:
 
   '@electric-sql/pglite@0.4.3': {}
 
+  '@epic-web/invariant@1.0.0': {}
+
   '@esbuild/aix-ppc64@0.28.2':
     optional: true
 
@@ -4434,6 +4584,16 @@ snapshots:
 
   '@fontsource-variable/open-sans@5.3.0': {}
 
+  '@hookform/resolvers@6.0.2(@standard-schema/spec@1.1.0)(ajv@8.20.0)(react-hook-form@7.91.0(@types/react@19.3.0)(react@19.3.1))(valibot@1.4.2(typescript@6.0.3))(zod@4.6.7)':
+    dependencies:
+      '@standard-schema/utils': 0.3.0
+      react-hook-form: 7.91.0(@types/react@19.3.0)(react@19.3.1)
+    optionalDependencies:
+      '@standard-schema/spec': 1.1.0
+      ajv: 8.20.0
+      valibot: 1.4.2(typescript@6.0.3)
+      zod: 4.6.7
+
   '@humanfs/core@0.19.2':
     dependencies:
       '@humanfs/types': 0.15.0
@@ -4526,6 +4686,8 @@ snapshots:
   '@paralleldrive/cuid2@2.3.1':
     dependencies:
       '@noble/hashes': 1.8.0
+
+  '@phc/format@1.0.0': {}
 
   '@pinojs/redact@0.4.0': {}
 
@@ -4769,6 +4931,8 @@ snapshots:
   '@stablelib/base64@1.0.1': {}
 
   '@standard-schema/spec@1.1.0': {}
+
+  '@standard-schema/utils@0.3.0': {}
 
   '@tailwindcss/node@4.3.3':
     dependencies:
@@ -5355,6 +5519,13 @@ snapshots:
 
   ansis@4.4.0: {}
 
+  argon2@0.45.1:
+    dependencies:
+      '@phc/format': 1.0.0
+      cross-env: 10.1.0
+      node-addon-api: 8.9.2
+      node-gyp-build: 4.8.4
+
   argparse@2.0.1: {}
 
   argue-cli@3.2.0: {}
@@ -5644,6 +5815,11 @@ snapshots:
       parse-json: 5.2.0
     optionalDependencies:
       typescript: 6.0.3
+
+  cross-env@10.1.0:
+    dependencies:
+      '@epic-web/invariant': 1.0.0
+      cross-spawn: 7.0.6
 
   cross-spawn@7.0.6:
     dependencies:
@@ -6564,6 +6740,8 @@ snapshots:
 
   jiti@2.7.0: {}
 
+  jose@6.2.14: {}
+
   joycon@3.1.1: {}
 
   js-tokens@10.0.0: {}
@@ -6868,6 +7046,10 @@ snapshots:
   negotiator@1.1.0:
     dependencies:
       content-type: 2.1.0
+
+  node-addon-api@8.9.2: {}
+
+  node-gyp-build@4.8.4: {}
 
   node-releases@2.0.60: {}
 
@@ -7187,6 +7369,12 @@ snapshots:
     dependencies:
       react: 19.3.1
       scheduler: 0.28.0
+
+  react-hook-form@7.91.0(@types/react@19.3.0)(react@19.3.1):
+    dependencies:
+      react: 19.3.1
+    optionalDependencies:
+      '@types/react': 19.3.0
 
   react-is@17.0.2: {}
 
@@ -7876,3 +8064,9 @@ snapshots:
       zod: 4.6.7
 
   zod@4.6.7: {}
+
+  zustand@5.0.16(@types/react@19.3.0)(react@19.3.1)(use-sync-external-store@1.7.0(react@19.3.1)):
+    optionalDependencies:
+      '@types/react': 19.3.0
+      react: 19.3.1
+      use-sync-external-store: 1.7.0(react@19.3.1)

@@ -301,9 +301,73 @@ describe('env configuration', () => {
         CLOUDINARY_CLOUD_NAME: 'cloud',
         CLOUDINARY_API_KEY: 'key',
         CLOUDINARY_API_SECRET: 'secret',
+        AUTH_JWT_SECRET: 'test-secret-at-least-32-chars-long-production-key',
         APP_PUBLIC_URL: 'https://sigoa.unterm.edu.pe/',
       });
       expect(valid.APP_PUBLIC_URL).toBe('https://sigoa.unterm.edu.pe');
+    });
+  });
+
+  describe('auth env settings (HU-001, T-001-10)', () => {
+    const validProdBase = {
+      DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
+      NODE_ENV: 'production',
+      EMAIL_PROVIDER: 'resend',
+      RESEND_API_KEY: 're_123',
+      EMAIL_FROM: 'sigoa@untrim.edu.pe',
+      FILE_STORAGE_PROVIDER: 'cloudinary',
+      CLOUDINARY_CLOUD_NAME: 'cloud',
+      CLOUDINARY_API_KEY: 'key',
+      CLOUDINARY_API_SECRET: 'secret',
+      APP_PUBLIC_URL: 'https://sigoa.unterm.edu.pe',
+    };
+
+    it('requires a 32 character jwt secret in production', () => {
+      expect(() =>
+        parseEnv({
+          ...validProdBase,
+          AUTH_JWT_SECRET: 'too-short-secret',
+        }),
+      ).toThrow(/AUTH_JWT_SECRET/);
+
+      expect(() =>
+        parseEnv({
+          ...validProdBase,
+        }),
+      ).toThrow(/AUTH_JWT_SECRET/);
+    });
+
+    it('rejects a weak or placeholder jwt secret in production', () => {
+      expect(() =>
+        parseEnv({
+          ...validProdBase,
+          AUTH_JWT_SECRET: '12345678901234567890123456789012',
+        }),
+      ).toThrow(/AUTH_JWT_SECRET/);
+    });
+
+    it('generates a random jwt secret outside production if omitted', () => {
+      const parsed = parseEnv({
+        DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
+      });
+
+      expect(parsed.AUTH_JWT_SECRET).toBeDefined();
+      expect(parsed.AUTH_JWT_SECRET.length).toBeGreaterThanOrEqual(32);
+    });
+
+    it('reads lockout and ttl settings with defaults', () => {
+      const parsed = parseEnv({
+        DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
+        AUTH_ACCESS_TTL_SECONDS: '1800',
+        AUTH_REFRESH_TTL_DAYS: '14',
+        AUTH_MAX_FAILED_ATTEMPTS: '3',
+        AUTH_LOCKOUT_MINUTES: '30',
+      });
+
+      expect(parsed.AUTH_ACCESS_TTL_SECONDS).toBe(1800);
+      expect(parsed.AUTH_REFRESH_TTL_DAYS).toBe(14);
+      expect(parsed.AUTH_MAX_FAILED_ATTEMPTS).toBe(3);
+      expect(parsed.AUTH_LOCKOUT_MINUTES).toBe(30);
     });
   });
 });

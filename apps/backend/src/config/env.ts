@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 
 export const envSchema = z
@@ -68,6 +69,15 @@ export const envSchema = z
       }
       return val;
     }, z.string().url('APP_PUBLIC_URL must be a valid URL').optional()),
+    // Variables de autenticación (HU-001, T-001-10, RNF-004)
+    AUTH_JWT_SECRET: z.preprocess(
+      (val) => (typeof val === 'string' && val.trim() === '' ? undefined : val),
+      z.string().optional(),
+    ),
+    AUTH_ACCESS_TTL_SECONDS: z.coerce.number().int().positive().default(900),
+    AUTH_REFRESH_TTL_DAYS: z.coerce.number().int().positive().default(7),
+    AUTH_MAX_FAILED_ATTEMPTS: z.coerce.number().int().positive().default(5),
+    AUTH_LOCKOUT_MINUTES: z.coerce.number().int().positive().default(15),
   })
   .superRefine((data, ctx) => {
     if (data.EMAIL_PROVIDER === 'resend') {
@@ -179,11 +189,37 @@ export const envSchema = z
           message: 'APP_PUBLIC_URL must use https:// in production environment',
         });
       }
+
+      if (!data.AUTH_JWT_SECRET) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['AUTH_JWT_SECRET'],
+          message: 'AUTH_JWT_SECRET is required in production environment',
+        });
+      } else if (data.AUTH_JWT_SECRET.length < 32) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['AUTH_JWT_SECRET'],
+          message: 'AUTH_JWT_SECRET must be at least 32 characters in production environment',
+        });
+      } else if (
+        /^(.)\1+$/.test(data.AUTH_JWT_SECRET) ||
+        data.AUTH_JWT_SECRET.includes('12345678901234567890123456789012') ||
+        data.AUTH_JWT_SECRET.toLowerCase().includes('change-me') ||
+        data.AUTH_JWT_SECRET.toLowerCase().includes('placeholder')
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['AUTH_JWT_SECRET'],
+          message: 'AUTH_JWT_SECRET is too weak or uses a predictable pattern',
+        });
+      }
     }
   })
   .transform((data) => ({
     ...data,
     APP_PUBLIC_URL: data.APP_PUBLIC_URL ?? 'http://localhost:5173',
+    AUTH_JWT_SECRET: data.AUTH_JWT_SECRET ?? randomBytes(32).toString('hex'),
   }));
 
 export type Env = z.infer<typeof envSchema>;
