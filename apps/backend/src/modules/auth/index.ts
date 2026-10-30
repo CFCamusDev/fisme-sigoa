@@ -13,8 +13,10 @@ export function createAuthModule(_deps: AuthModuleDependencies): Router {
 }
 
 export * from './domain/entities/user.js';
+export * from './domain/entities/refresh-token.js';
 export * from './domain/value-objects/login-policy.js';
 export * from './domain/errors/index.js';
 export * from './domain/ports/index.js';
 export * from './infrastructure/security/argon2-password-hasher.js';
 export * from './infrastructure/prisma/prisma-user-repository.js';
+export * from './infrastructure/prisma/prisma-refresh-token-repository.js';
