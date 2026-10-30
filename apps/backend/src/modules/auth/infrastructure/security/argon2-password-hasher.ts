@@ -11,7 +11,7 @@ const DUMMY_HASH =
 
 export class Argon2PasswordHasher implements PasswordHasher {
   // Parámetros recomendados por OWASP para Argon2id (m=19 MiB, t=2, p=1)
-  private readonly options: argon2.Options = {
+  private readonly options: argon2.HashOptions = {
     type: argon2.argon2id,
     memoryCost: 19456, // 19 MiB en KiB
     timeCost: 2,
@@ -19,7 +19,10 @@ export class Argon2PasswordHasher implements PasswordHasher {
   };
 
   async hash(plainPassword: string): Promise<string> {
-    return await argon2.hash(plainPassword, this.options);
+    return await argon2.hash(plainPassword, {
+      ...this.options,
+      raw: false,
+    });
   }
 
   async verify(plainPassword: string, hash: string): Promise<boolean> {
