@@ -290,4 +290,115 @@ describe('PuppeteerPdfGenerator (RS-063, RNF-021)', () => {
     // Segundo close no debe fallar
     await expect(generator.close()).resolves.toBeUndefined();
   });
+
+  it('launches with hardened args and without sandbox flags by default', async () => {
+    let capturedArgs: string[] = [];
+
+    const launcher: BrowserLauncher = {
+      async launch(options) {
+        capturedArgs = options.args;
+        return {
+          async newPage() {
+            const { page } = createMockPage();
+            return page;
+          },
+          isConnected: () => true,
+          close: async () => {},
+        };
+      },
+    };
+
+    const generator = new PuppeteerPdfGenerator({ launcher, noSandbox: false });
+    await generator.render({ html: '<p>Hardened</p>' });
+
+    expect(capturedArgs).toContain('--disable-extensions');
+    expect(capturedArgs).toContain('--disable-background-networking');
+    expect(capturedArgs).toContain('--host-resolver-rules=MAP * ~NOTFOUND');
+    expect(capturedArgs).not.toContain('--no-sandbox');
+    expect(capturedArgs).not.toContain('--disable-setuid-sandbox');
+
+    await generator.close();
+  });
+
+  it('includes --no-sandbox and logs warning when noSandbox is true', async () => {
+    let capturedArgs: string[] = [];
+    const mockLogger = {
+      warn: vi.fn(),
+    };
+
+    const launcher: BrowserLauncher = {
+      async launch(options) {
+        capturedArgs = options.args;
+        return {
+          async newPage() {
+            const { page } = createMockPage();
+            return page;
+          },
+          isConnected: () => true,
+          close: async () => {},
+        };
+      },
+    };
+
+    const generator = new PuppeteerPdfGenerator({
+      launcher,
+      noSandbox: true,
+      logger: mockLogger,
+    });
+    await generator.render({ html: '<p>No Sandbox</p>' });
+
+    expect(capturedArgs).toContain('--no-sandbox');
+    expect(capturedArgs).toContain('--disable-setuid-sandbox');
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('Chromium is executing without sandbox'),
+    );
+
+    await generator.close();
+  });
+
+  it('aborts file:, http: and https: requests but continues data: and about:blank', async () => {
+    let interceptedHandlers: ((req: BrowserRequest) => void)[] = [];
+
+    const launcher: BrowserLauncher = {
+      async launch() {
+        return {
+          async newPage() {
+            const { page, requestHandlers } = createMockPage();
+            interceptedHandlers = requestHandlers;
+            return page;
+          },
+          isConnected: () => true,
+          close: async () => {},
+        };
+      },
+    };
+
+    const generator = new PuppeteerPdfGenerator({ launcher });
+    await generator.render({ html: '<p>Security</p>' });
+
+    const handler = interceptedHandlers[0]!;
+
+    const testUrl = async (url: string) => {
+      let continued = false;
+      let aborted = false;
+      await handler({
+        url: () => url,
+        continue: async () => {
+          continued = true;
+        },
+        abort: async () => {
+          aborted = true;
+        },
+      });
+      return { continued, aborted };
+    };
+
+    expect(await testUrl('data:text/plain,hello')).toEqual({ continued: true, aborted: false });
+    expect(await testUrl('about:blank')).toEqual({ continued: true, aborted: false });
+    expect(await testUrl('http://example.com/test')).toEqual({ continued: false, aborted: true });
+    expect(await testUrl('https://example.com/test')).toEqual({ continued: false, aborted: true });
+    expect(await testUrl('file:///etc/passwd')).toEqual({ continued: false, aborted: true });
+
+    await generator.close();
+  });
 });
