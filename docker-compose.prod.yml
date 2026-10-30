@@ -53,6 +53,7 @@ services:
       PORT: ${SERVER_PORT:-3000}
       DATABASE_URL: postgresql://${APP_DB_USER:?Falta APP_DB_USER en las variables del entorno}:${APP_DB_PASSWORD:?Falta APP_DB_PASSWORD en las variables del entorno}@postgres:5432/${DB_NAME:?Falta DB_NAME en las variables del entorno}?schema=public
       CORS_ORIGIN: ${CORS_ORIGIN:?Falta CORS_ORIGIN en las variables del entorno}
+      APP_PUBLIC_URL: ${APP_PUBLIC_URL:?Falta APP_PUBLIC_URL en las variables del entorno}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       HSTS_ENABLED: ${HSTS_ENABLED:-true}
       TRUST_PROXY: ${TRUST_PROXY:-2}

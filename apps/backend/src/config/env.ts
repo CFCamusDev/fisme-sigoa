@@ -61,6 +61,13 @@ export const envSchema = z
       (val) => (typeof val === 'string' && val.trim() === '' ? undefined : val),
       z.string().min(1).optional(),
     ),
+    APP_PUBLIC_URL: z.preprocess((val) => {
+      if (typeof val === 'string') {
+        const trimmed = val.trim();
+        return trimmed === '' ? undefined : trimmed.replace(/\/+$/, '');
+      }
+      return val;
+    }, z.string().url('APP_PUBLIC_URL must be a valid URL').optional()),
   })
   .superRefine((data, ctx) => {
     if (data.EMAIL_PROVIDER === 'resend') {
@@ -157,7 +164,27 @@ export const envSchema = z
         message: 'FILE_STORAGE_PROVIDER "memory" is not allowed in production environment',
       });
     }
-  });
+
+    if (data.NODE_ENV === 'production') {
+      if (!data.APP_PUBLIC_URL) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['APP_PUBLIC_URL'],
+          message: 'APP_PUBLIC_URL is required in production environment',
+        });
+      } else if (!data.APP_PUBLIC_URL.startsWith('https://')) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['APP_PUBLIC_URL'],
+          message: 'APP_PUBLIC_URL must use https:// in production environment',
+        });
+      }
+    }
+  })
+  .transform((data) => ({
+    ...data,
+    APP_PUBLIC_URL: data.APP_PUBLIC_URL ?? 'http://localhost:5173',
+  }));
 
 export type Env = z.infer<typeof envSchema>;
 
