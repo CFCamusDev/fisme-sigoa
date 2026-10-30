@@ -6,3 +6,7 @@ export * from './data-table';
 export * from './logo';
 export * from './illustration';
 export * from './status-badge';
+export * from './error-page';
+export * from './not-found-page';
+export * from './forbidden-page';
+export * from './unexpected-error-page';
