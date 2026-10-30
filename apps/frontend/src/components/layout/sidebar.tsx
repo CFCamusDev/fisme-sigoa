@@ -19,6 +19,10 @@ export function Sidebar({ isOpen, onClose, items = MAIN_NAV_ITEMS }: SidebarProp
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClose();
+        const toggleButton = document.querySelector<HTMLButtonElement>(
+          'button[aria-controls="app-sidebar"]',
+        );
+        toggleButton?.focus();
       }
     };
 
@@ -46,20 +50,22 @@ export function Sidebar({ isOpen, onClose, items = MAIN_NAV_ITEMS }: SidebarProp
         }`}
         aria-label="Barra lateral de navegación"
       >
-        <div className="flex items-center justify-between p-4 lg:hidden border-b border-border">
-          <span className="text-meta font-bold uppercase tracking-wider text-muted-foreground">
-            Navegación
-          </span>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Cerrar barra lateral"
-            className="rounded-md p-1.5 text-muted-foreground hover:bg-brand-50"
-          >
-            <span className="sr-only">Cerrar barra lateral</span>
-            <X className="h-5 w-5" aria-hidden="true" />
-          </button>
-        </div>
+        {isOpen && (
+          <div className="flex items-center justify-between p-4 lg:hidden border-b border-border">
+            <span className="text-meta font-bold uppercase tracking-wider text-muted-foreground">
+              Navegación
+            </span>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Cerrar barra lateral"
+              className="rounded-md p-1.5 text-muted-foreground hover:bg-brand-50"
+            >
+              <span className="sr-only">Cerrar barra lateral</span>
+              <X className="h-5 w-5" aria-hidden="true" />
+            </button>
+          </div>
+        )}
 
         <nav className="flex-1 overflow-y-auto p-4" aria-label="Navegación principal">
           <ul className="space-y-1">
