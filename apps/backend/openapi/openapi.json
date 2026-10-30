@@ -1,0 +1,351 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "FISME-SIGOA API",
+    "version": "0.1.0",
+    "description": "API REST del Sistema Integrado de Gestión de Objetivos Educacionales (OE) y Atributos del Graduado (AG) del Programa de Estudios de Ingeniería de Sistemas (EPIS) de la UNTRM, alineado a estándares ICACIT."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Servidor de desarrollo local"
+    }
+  ],
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Iniciar sesión",
+        "description": "Autentica al usuario mediante credenciales institucionales. En caso de éxito, emite un access token JWT (duración 15 minutos) y un refresh token seguro (duración 7 días). Bloquea la cuenta temporalmente por 15 minutos tras 5 intentos fallidos consecutivos.",
+        "operationId": "login",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              },
+              "example": {
+                "email": "juan.perez@untrm.edu.pe",
+                "password": "Password123!"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Inicio de sesión exitoso. Retorna tokens de autenticación y datos del usuario.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva estricta anti-almacenamiento en caché para respuestas con credenciales."
+              },
+              "Pragma": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-cache"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                },
+                "example": {
+                  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example",
+                  "accessTokenExpiresAt": "2026-10-30T10:15:00.000Z",
+                  "refreshToken": "uG8x9...example",
+                  "refreshTokenExpiresAt": "2026-11-06T10:00:00.000Z",
+                  "user": {
+                    "id": "usr_cuid_123",
+                    "names": "Juan Carlos",
+                    "firstSurname": "Pérez",
+                    "secondSurname": "Gómez",
+                    "email": "juan.perez@untrm.edu.pe"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud contiene errores de validación sintáctica en el cuerpo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "La solicitud contiene errores de validación",
+                    "details": [
+                      {
+                        "path": "body.email",
+                        "message": "El formato del correo electrónico es inválido"
+                      }
+                    ],
+                    "requestId": "req_abc_123"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Credenciales inválidas (correo no registrado o contraseña incorrecta). Mensaje genérico para evitar enumeración.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "Correo o contraseña incorrectos",
+                    "requestId": "req_abc_123"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Acceso denegado: cuenta inactiva o pendiente de activación.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "accountInactive": {
+                    "summary": "Cuenta inactiva",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_INACTIVE",
+                        "message": "Tu cuenta se encuentra inactiva. Comunícate con el Administrador del sistema.",
+                        "requestId": "req_abc_123"
+                      }
+                    }
+                  },
+                  "accountPendingActivation": {
+                    "summary": "Cuenta pendiente de activación",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_PENDING_ACTIVATION",
+                        "message": "Tu cuenta está pendiente de activación. Revisa tu correo institucional para definir tu contraseña.",
+                        "requestId": "req_abc_123"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Cuenta bloqueada temporalmente por exceso de intentos fallidos o límite de peticiones por IP excedido.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                },
+                "example": 900,
+                "description": "Tiempo en segundos a esperar antes de volver a intentar la autenticación."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "accountLocked": {
+                    "summary": "Cuenta bloqueada por 5 intentos fallidos",
+                    "value": {
+                      "error": {
+                        "code": "ACCOUNT_LOCKED",
+                        "message": "Tu cuenta ha sido bloqueada temporalmente por exceso de intentos fallidos. Por favor intenta nuevamente en 15 minutos.",
+                        "retryAfterSeconds": 900,
+                        "requestId": "req_abc_123"
+                      }
+                    }
+                  },
+                  "rateLimited": {
+                    "summary": "Límite de solicitudes por IP excedido",
+                    "value": {
+                      "error": {
+                        "code": "RATE_LIMITED",
+                        "message": "Ha excedido el límite de solicitudes permitidas. Intente nuevamente más tarde.",
+                        "requestId": "req_abc_123"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error inesperado no controlado en el servidor.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "INTERNAL_ERROR",
+                    "message": "Ha ocurrido un error inesperado en el servidor.",
+                    "requestId": "req_abc_123"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "LoginRequest": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Correo institucional del usuario (normalizado a minúsculas sin espacios exteriores)."
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "description": "Contraseña en texto plano (máximo 128 caracteres para acotar el costo computacional de hashing)."
+          }
+        }
+      },
+      "AuthUser": {
+        "type": "object",
+        "required": ["id", "names", "firstSurname", "secondSurname", "email"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Identificador único del usuario."
+          },
+          "names": {
+            "type": "string",
+            "description": "Nombres del usuario."
+          },
+          "firstSurname": {
+            "type": "string",
+            "description": "Primer apellido del usuario."
+          },
+          "secondSurname": {
+            "type": ["string", "null"],
+            "description": "Segundo apellido del usuario (puede ser nulo)."
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Correo electrónico institucional del usuario."
+          }
+        }
+      },
+      "LoginResponse": {
+        "type": "object",
+        "required": [
+          "accessToken",
+          "accessTokenExpiresAt",
+          "refreshToken",
+          "refreshTokenExpiresAt",
+          "user"
+        ],
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "description": "Token JWT firmado con algoritmo HS256 válido por 15 minutos."
+          },
+          "accessTokenExpiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Fecha y hora ISO 8601 de expiración del token de acceso."
+          },
+          "refreshToken": {
+            "type": "string",
+            "description": "Token opaco aleatorio seguro de 32 bytes en formato base64url válido por 7 días."
+          },
+          "refreshTokenExpiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Fecha y hora ISO 8601 de expiración del refresh token."
+          },
+          "user": {
+            "$ref": "#/components/schemas/AuthUser"
+          }
+        }
+      },
+      "ValidationDetail": {
+        "type": "object",
+        "required": ["path", "message"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Ruta del campo con error."
+          },
+          "message": {
+            "type": "string",
+            "description": "Mensaje descriptivo del error de validación."
+          }
+        }
+      },
+      "ApiError": {
+        "type": "object",
+        "required": ["error"],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": ["code", "message"],
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": [
+                  "VALIDATION_ERROR",
+                  "NOT_FOUND",
+                  "FORBIDDEN",
+                  "CONFLICT",
+                  "INTERNAL_ERROR",
+                  "RATE_LIMITED",
+                  "UNAUTHORIZED",
+                  "ACCOUNT_LOCKED",
+                  "ACCOUNT_INACTIVE",
+                  "ACCOUNT_PENDING_ACTIVATION"
+                ],
+                "description": "Código machine-readable del error estándar."
+              },
+              "message": {
+                "type": "string",
+                "description": "Mensaje legible en español explicando la causa del error."
+              },
+              "details": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ValidationDetail"
+                },
+                "description": "Detalles específicos de campos fallidos en errores de validación."
+              },
+              "requestId": {
+                "type": "string",
+                "description": "Identificador de trazabilidad de la solicitud."
+              },
+              "retryAfterSeconds": {
+                "type": "integer",
+                "description": "Segundos a esperar antes de reintentar en bloqueos de cuenta."
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
