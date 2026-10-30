@@ -11,3 +11,7 @@ export interface AuthModuleDependencies {
 export function createAuthModule(_deps: AuthModuleDependencies): Router {
   return createAuthRouter();
 }
+
+export * from './domain/entities/user.js';
+export * from './domain/value-objects/login-policy.js';
+export * from './domain/errors/index.js';
