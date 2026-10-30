@@ -158,7 +158,7 @@ model StoredFile {
 }
 
 // ------------------------------------------------------------------------------
-// Usuarios y Autenticación (HU-001, LS s.4.1, LS s.5.14, RF-001, RS-015)
+// Usuarios y Autenticación (HU-001, LS s.4.1, LS s.5.14, RF-001, RS-015, RS-016)
 // ------------------------------------------------------------------------------
 
 enum UserStatus {
@@ -168,26 +168,44 @@ enum UserStatus {
 }
 
 model User {
-  id                  String      @id @default(cuid())
+  id                  String         @id @default(cuid())
   names               String
   firstSurname        String
   secondSurname       String?
-  email               String      @unique
-  dni                 String?     @unique
+  email               String         @unique
+  dni                 String?        @unique
   passwordHash        String?
-  status              UserStatus  @default(PENDING_ACTIVATION)
-  failedLoginAttempts Int         @default(0)
+  status              UserStatus     @default(PENDING_ACTIVATION)
+  failedLoginAttempts Int            @default(0)
   lockedUntil         DateTime?
   lastLoginAt         DateTime?
+
+  // Relaciones
+  refreshTokens       RefreshToken[]
 
   // Auditoría técnica de autoría
   createdBy           String?
   updatedBy           String?
 
   // Marcas temporales
-  createdAt           DateTime    @default(now())
-  updatedAt           DateTime    @updatedAt
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
 
   @@index([status])
   @@map("users")
+}
+
+model RefreshToken {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  createdByIp String?
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
 }
