@@ -45,6 +45,7 @@ services:
       resources:
         limits:
           memory: ${BACKEND_MEMORY_LIMIT:-1G}
+          pids: 512
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -65,7 +66,15 @@ services:
       CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
       CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
       PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
-      PDF_CHROMIUM_NO_SANDBOX: ${PDF_CHROMIUM_NO_SANDBOX:-true}
+      PDF_CHROMIUM_NO_SANDBOX: ${PDF_CHROMIUM_NO_SANDBOX:-false}
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+      - seccomp=./deploy/seccomp/chromium.json
+    read_only: true
+    tmpfs:
+      - /tmp:size=256M
 
   frontend:
     build:
