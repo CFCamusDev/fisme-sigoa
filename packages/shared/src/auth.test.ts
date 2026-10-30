@@ -2,11 +2,16 @@ import { describe, expect, it } from 'vitest';
 import {
   loginRequestSchema,
   loginResponseSchema,
+  refreshRequestSchema,
+  refreshResponseSchema,
+  logoutRequestSchema,
   type LoginRequest,
   type LoginResponse,
+  type RefreshRequest,
+  type LogoutRequest,
 } from './auth.js';
 
-describe('Auth Schemas (T-001-11, RS-016, RNF-003, RNF-004)', () => {
+describe('Auth Schemas (T-001-11, T-002-05, RS-016, RNF-003, RNF-004, RNF-008)', () => {
   describe('loginRequestSchema', () => {
     it('normalizes and validates a valid login request trimming and lowercasing the email', () => {
       const parsed: LoginRequest = loginRequestSchema.parse({
@@ -96,6 +101,72 @@ describe('Auth Schemas (T-001-11, RS-016, RNF-003, RNF-004)', () => {
       };
 
       expect(() => loginResponseSchema.parse(payloadWithSensitiveData)).toThrow();
+    });
+  });
+
+  describe('refreshRequestSchema (T-002-05, RF-002, RNF-008)', () => {
+    it('accepts a refresh request with a token', () => {
+      const validPayload: RefreshRequest = {
+        refreshToken: 'valid-refresh-token-opaque-string',
+      };
+      const parsed = refreshRequestSchema.parse(validPayload);
+      expect(parsed.refreshToken).toBe('valid-refresh-token-opaque-string');
+    });
+
+    it('rejects an empty, missing or oversized refresh token', () => {
+      expect(() => refreshRequestSchema.parse({})).toThrow();
+      expect(() => refreshRequestSchema.parse({ refreshToken: '' })).toThrow();
+      expect(() => refreshRequestSchema.parse({ refreshToken: 'a'.repeat(257) })).toThrow();
+    });
+
+    it('rejects unknown keys', () => {
+      expect(() =>
+        refreshRequestSchema.parse({
+          refreshToken: 'valid-token',
+          extraField: 'not-allowed',
+        }),
+      ).toThrow();
+    });
+  });
+
+  describe('refreshResponseSchema (T-002-05, RF-002)', () => {
+    it('refresh response has the same shape as the login response', () => {
+      expect(refreshResponseSchema).toBe(loginResponseSchema);
+      const payload = {
+        accessToken: 'access-jwt-token',
+        accessTokenExpiresAt: '2026-10-30T15:15:00.000Z',
+        refreshToken: 'refresh-opaque-token',
+        refreshTokenExpiresAt: '2026-11-06T15:00:00.000Z',
+        user: {
+          id: 'usr_1',
+          names: 'Carlos',
+          firstSurname: 'Gómez',
+          secondSurname: null,
+          email: 'carlos.gomez@untrm.edu.pe',
+        },
+      };
+      const parsed = refreshResponseSchema.parse(payload);
+      expect(parsed).toEqual(payload);
+    });
+  });
+
+  describe('logoutRequestSchema (T-002-05, RF-002, RNF-008)', () => {
+    it('logout request shares the refresh request shape', () => {
+      const validPayload: LogoutRequest = {
+        refreshToken: 'token-to-revoke',
+      };
+      const parsed = logoutRequestSchema.parse(validPayload);
+      expect(parsed.refreshToken).toBe('token-to-revoke');
+
+      expect(() => logoutRequestSchema.parse({})).toThrow();
+      expect(() => logoutRequestSchema.parse({ refreshToken: '' })).toThrow();
+      expect(() => logoutRequestSchema.parse({ refreshToken: 'a'.repeat(257) })).toThrow();
+      expect(() =>
+        logoutRequestSchema.parse({
+          refreshToken: 'token',
+          unexpected: true,
+        }),
+      ).toThrow();
     });
   });
 });

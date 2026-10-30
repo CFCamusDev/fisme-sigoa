@@ -38,3 +38,29 @@ export const loginResponseSchema = z
   .strict();
 
 export type LoginResponse = z.infer<typeof loginResponseSchema>;
+
+export const refreshRequestSchema = z
+  .object({
+    refreshToken: z
+      .string()
+      .min(1, 'El token de actualización es obligatorio')
+      .max(256, 'El token de actualización no puede exceder 256 caracteres'),
+  })
+  .strict();
+
+export type RefreshRequest = z.infer<typeof refreshRequestSchema>;
+
+export const refreshResponseSchema = loginResponseSchema;
+
+export type RefreshResponse = LoginResponse;
+
+export const logoutRequestSchema = z
+  .object({
+    refreshToken: z
+      .string()
+      .min(1, 'El token de actualización es obligatorio')
+      .max(256, 'El token de actualización no puede exceder 256 caracteres'),
+  })
+  .strict();
+
+export type LogoutRequest = z.infer<typeof logoutRequestSchema>;
