@@ -128,6 +128,11 @@ describe('PrismaUserRepository Integration (PostgreSQL real)', () => {
       tx1ReadNotify = resolve;
     });
 
+    let tx2AttemptNotify: () => void = () => {};
+    const tx2AttemptPromise = new Promise<void>((resolve) => {
+      tx2AttemptNotify = resolve;
+    });
+
     const now = new Date('2026-10-30T14:00:00.000Z');
 
     const tx1 = uow.run(async () => {
@@ -135,8 +140,11 @@ describe('PrismaUserRepository Integration (PostgreSQL real)', () => {
       expect(u1).not.toBeNull();
       tx1ReadNotify();
 
-      // Pequeño retardo asíncrono para dar oportunidad a tx2 de intentar adquirir el bloqueo
-      await new Promise((r) => setTimeout(r, 80));
+      // Esperar a que tx2 inicie su intento y ceder el ciclo de eventos a la I/O de red
+      await tx2AttemptPromise;
+      await new Promise<void>((resolve) => {
+        setImmediate(resolve);
+      });
 
       u1!.registerFailedLogin(now, policy);
       await userRepo.save(u1!);
@@ -145,6 +153,7 @@ describe('PrismaUserRepository Integration (PostgreSQL real)', () => {
     const tx2 = (async () => {
       await tx1ReadPromise;
       return uow.run(async () => {
+        tx2AttemptNotify();
         const u2 = await userRepo.findByEmailForUpdate(email);
         expect(u2).not.toBeNull();
         u2!.registerFailedLogin(now, policy);
