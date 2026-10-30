@@ -5,7 +5,7 @@ test.describe('Health check and backend connectivity', () => {
     await page.goto('/');
 
     await expect(page.getByRole('heading', { name: 'FISME-SIGOA' })).toBeVisible();
-    await expect(page.getByText('Servidor operativo (OK)')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Servidor operativo (OK)')).toBeVisible();
     await expect(page.getByText('Servicios de backend operativos (/health)')).toBeVisible();
     await expect(page.getByText(/Última comprobación:/i)).toBeVisible();
   });
@@ -16,7 +16,7 @@ test.describe('Health check and backend connectivity', () => {
     await page.goto('/');
 
     const alert = page.getByRole('alert');
-    await expect(alert).toBeVisible({ timeout: 10000 });
+    await expect(alert).toBeVisible();
     await expect(alert).toHaveText(
       /Servidor no disponible o con errores|No se pudo conectar con el servidor/i,
     );
