@@ -7,4 +7,5 @@ pnpm-lock.yaml
 **/coverage/**
 .git/**
 docs/**
+deploy/seccomp/docker-default.json
 **/routeTree.gen.ts

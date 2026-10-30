@@ -3,11 +3,9 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { describe, it, expect } from 'vitest';
+// prettier-ignore
 // @ts-expect-error script CLI en ESM sin .d.ts local
-import {
-  buildChromiumProfile,
-  DOCKER_DEFAULT_SHA256,
-} from '../../../../scripts/ci/build-seccomp-profile.mjs';
+import { buildChromiumProfile, DOCKER_DEFAULT_SHA256 } from '../../../../scripts/ci/build-seccomp-profile.mjs';
 
 interface SeccompRule {
   names?: string[];

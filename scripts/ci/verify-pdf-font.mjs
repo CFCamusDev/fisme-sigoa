@@ -42,7 +42,7 @@ async function main() {
 </html>`;
 
     console.log('==> Renderizando PDF de prueba...');
-    const pdfBuffer = await generator.renderHtml(html);
+    const pdfBuffer = await generator.render({ html });
     console.log(`==> PDF renderizado exitosamente (${pdfBuffer.length} bytes).`);
 
     const fontNames = extractPdfFontNames(pdfBuffer);
