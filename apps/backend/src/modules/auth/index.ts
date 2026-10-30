@@ -17,3 +17,4 @@ export * from './domain/value-objects/login-policy.js';
 export * from './domain/errors/index.js';
 export * from './domain/ports/index.js';
 export * from './infrastructure/security/argon2-password-hasher.js';
+export * from './infrastructure/prisma/prisma-user-repository.js';

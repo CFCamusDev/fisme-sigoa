@@ -4,6 +4,7 @@ import type { PrismaClient, Prisma } from './generated/client.js';
 
 export interface DbProvider {
   get(): PrismaClient | Prisma.TransactionClient;
+  isInTransaction?(): boolean;
 }
 
 export interface TransactionOptions {
@@ -34,5 +35,9 @@ export class PrismaUnitOfWork implements UnitOfWork, DbProvider {
   get(): PrismaClient | Prisma.TransactionClient {
     const activeTransaction = this.asyncLocalStorage.getStore();
     return activeTransaction ?? this.prisma;
+  }
+
+  isInTransaction(): boolean {
+    return this.asyncLocalStorage.getStore() !== undefined;
   }
 }
