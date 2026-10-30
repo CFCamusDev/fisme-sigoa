@@ -53,6 +53,22 @@ export function verifyHardening(config) {
     errors.push('PDF_CHROMIUM_NO_SANDBOX no debe estar en true por defecto; el sandbox debe estar habilitado.');
   }
 
+  // 6. Archivo seccomp debe existir y ser JSON válido
+  const possiblePaths = [
+    path.resolve('deploy/seccomp/chromium.json'),
+    path.resolve(process.cwd(), '../../deploy/seccomp/chromium.json'),
+  ];
+  const seccompPath = possiblePaths.find((p) => fs.existsSync(p));
+  if (!seccompPath) {
+    errors.push('No se encontró el archivo del perfil seccomp en "deploy/seccomp/chromium.json".');
+  } else {
+    try {
+      JSON.parse(fs.readFileSync(seccompPath, 'utf8'));
+    } catch {
+      errors.push('El archivo "deploy/seccomp/chromium.json" no es un JSON válido.');
+    }
+  }
+
   return errors;
 }
 

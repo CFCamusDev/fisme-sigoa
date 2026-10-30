@@ -10,10 +10,14 @@ FRONTEND_IMG="fisme-frontend:smoke-${RANDOM}"
 BACKEND_CONTAINER="smoke-backend-${RANDOM}"
 FRONTEND_CONTAINER="smoke-frontend-${RANDOM}"
 
-SECCOMP_ARGS=()
-if [ -f "deploy/seccomp/chromium.json" ]; then
-  SECCOMP_ARGS=("--security-opt" "seccomp=deploy/seccomp/chromium.json")
+SECCOMP_FILE="deploy/seccomp/chromium.json"
+if [ ! -f "$SECCOMP_FILE" ]; then
+  echo "ERROR: Perfil seccomp no encontrado en $SECCOMP_FILE" >&2
+  exit 1
 fi
+SECCOMP_SHA256=$(sha256sum "$SECCOMP_FILE" | cut -d' ' -f1)
+echo "==> Usando perfil seccomp: $SECCOMP_FILE (SHA-256: $SECCOMP_SHA256)"
+SECCOMP_ARGS=("--security-opt" "seccomp=$SECCOMP_FILE")
 
 cleanup() {
   echo "==> Limpiando contenedores e imágenes temporales..."
