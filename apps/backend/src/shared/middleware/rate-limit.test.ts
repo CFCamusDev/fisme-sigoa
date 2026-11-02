@@ -85,6 +85,29 @@ describe('rate-limit middleware', () => {
     expect(res2.body.error.code).toBe('RATE_LIMITED');
   });
 
+  it('session profile uses its own limit and responds 429 when exceeded', async () => {
+    const env = createTestEnv({
+      RATE_LIMIT_SESSION_MAX: 1,
+      RATE_LIMIT_PUBLIC_MAX: 10,
+    });
+
+    const app = createApp({
+      env,
+      setupRoutes: (router) => {
+        router.post('/session-endpoint', createRateLimiter('session', env), (_req, res) => {
+          res.status(200).json({ ok: true });
+        });
+      },
+    });
+
+    const res1 = await request(app).post('/session-endpoint');
+    expect(res1.status).toBe(200);
+
+    const res2 = await request(app).post('/session-endpoint');
+    expect(res2.status).toBe(429);
+    expect(res2.body.error.code).toBe('RATE_LIMITED');
+  });
+
   it('general limiter does not apply to /health', async () => {
     const env = createTestEnv({
       RATE_LIMIT_GENERAL_MAX: 2,

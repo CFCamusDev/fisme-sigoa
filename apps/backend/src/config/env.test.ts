@@ -116,6 +116,7 @@ describe('env configuration', () => {
     expect(parsed.RATE_LIMIT_WINDOW_MS).toBe(60000);
     expect(parsed.RATE_LIMIT_PUBLIC_MAX).toBe(30);
     expect(parsed.RATE_LIMIT_LOGIN_MAX).toBe(10);
+    expect(parsed.RATE_LIMIT_SESSION_MAX).toBe(30);
     expect(parsed.RATE_LIMIT_GENERAL_MAX).toBe(300);
   });
 

@@ -39,6 +39,7 @@ export const envSchema = z
     RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60000),
     RATE_LIMIT_PUBLIC_MAX: z.coerce.number().int().positive().default(30),
     RATE_LIMIT_LOGIN_MAX: z.coerce.number().int().positive().default(10),
+    RATE_LIMIT_SESSION_MAX: z.coerce.number().int().positive().default(30),
     RATE_LIMIT_GENERAL_MAX: z.coerce.number().int().positive().default(300),
     EMAIL_PROVIDER: z.enum(['resend', 'memory']).default('memory'),
     RESEND_API_KEY: z.preprocess(
