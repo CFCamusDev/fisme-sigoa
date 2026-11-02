@@ -50,6 +50,8 @@ export class RefreshSessionUseCase {
         throw new InvalidRefreshTokenError();
       }
 
+      existingToken.assertUsable(now);
+
       const user = await this.userRepository.findById(existingToken.userId);
       if (!user || user.status !== 'ACTIVE') {
         throw new InvalidRefreshTokenError();
