@@ -16,6 +16,7 @@ import type {
   UserRepository,
 } from '../domain/ports/index.js';
 import type { LoginCommand, LoginOutcome, LoginResult } from './login.types.js';
+import { toAuthUser } from './auth-user.js';
 
 export interface LoginUseCaseDependencies {
   userRepository: UserRepository;
@@ -244,13 +245,7 @@ export class LoginUseCase {
         accessTokenExpiresAt: accessExpiresAt.toISOString(),
         refreshToken,
         refreshTokenExpiresAt: refreshExpiresAt.toISOString(),
-        user: {
-          id: user.id,
-          names: user.names,
-          firstSurname: user.firstSurname,
-          secondSurname: user.secondSurname ?? null,
-          email: user.email,
-        },
+        user: toAuthUser(user),
       };
 
       return { outcome: 'SUCCESS', result };
