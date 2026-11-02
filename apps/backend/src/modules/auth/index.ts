@@ -78,6 +78,8 @@ export * from './application/auth-user.js';
 export * from './application/refresh-token-audit.js';
 export * from './application/refresh-session.types.js';
 export * from './application/refresh-session.js';
+export * from './application/logout.types.js';
+export * from './application/logout.js';
 export * from './infrastructure/security/argon2-password-hasher.js';
 export * from './infrastructure/security/jose-access-token-signer.js';
 export * from './infrastructure/security/jose-access-token-verifier.js';
