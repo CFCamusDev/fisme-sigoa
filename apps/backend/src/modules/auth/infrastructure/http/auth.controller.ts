@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { loginResponseSchema, type LoginRequest } from '@sigoa/shared';
 import { getValidated } from '../../../../shared/middleware/validate-request.js';
 import type { LoginUseCase } from '../../application/login.js';
+import { resolveClientIp } from './client-ip.js';
 
 export class AuthController {
   constructor(private readonly loginUseCase: LoginUseCase) {}
@@ -9,11 +10,7 @@ export class AuthController {
   login = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { body } = getValidated<LoginRequest>(res);
-      const ip =
-        (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ||
-        req.ip ||
-        req.socket.remoteAddress ||
-        '';
+      const ip = resolveClientIp(req);
 
       const result = await this.loginUseCase.execute({
         email: body.email,
