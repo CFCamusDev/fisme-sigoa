@@ -1,5 +1,5 @@
 import { Router, type RequestHandler } from 'express';
-import { loginRequestSchema, refreshRequestSchema } from '@sigoa/shared';
+import { loginRequestSchema, refreshRequestSchema, logoutRequestSchema } from '@sigoa/shared';
 import { validateRequest } from '../../../../shared/middleware/validate-request.js';
 import { AuthController } from './auth.controller.js';
 import type { LoginUseCase } from '../../application/login.js';
@@ -42,6 +42,21 @@ export function createAuthRouter(deps?: AuthRouterDependencies): Router {
     refreshMiddlewares.push(validateRequest({ body: refreshRequestSchema }));
     refreshMiddlewares.push(controller.refresh);
     router.post('/refresh', ...refreshMiddlewares);
+  }
+
+  // POST /logout (HU-002, T-002-07, RF-002, RS-016, RNF-007, RNF-009)
+  if (deps.logoutUseCase) {
+    const logoutMiddlewares: RequestHandler[] = [];
+    const logoutLimiter = deps.sessionRateLimiter ?? deps.rateLimiter;
+    if (logoutLimiter) {
+      logoutMiddlewares.push(logoutLimiter);
+    }
+    if (deps.authenticate) {
+      logoutMiddlewares.push(deps.authenticate);
+    }
+    logoutMiddlewares.push(validateRequest({ body: logoutRequestSchema }));
+    logoutMiddlewares.push(controller.logout);
+    router.post('/logout', ...logoutMiddlewares);
   }
 
   return router;

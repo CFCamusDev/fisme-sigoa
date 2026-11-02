@@ -14,6 +14,7 @@ import { RandomRefreshTokenGenerator } from './infrastructure/security/random-re
 import { LoginPolicy } from './domain/value-objects/login-policy.js';
 import { LoginUseCase } from './application/login.js';
 import { RefreshSessionUseCase } from './application/refresh-session.js';
+import { LogoutUseCase } from './application/logout.js';
 import { createAuthenticate } from './infrastructure/http/authenticate.js';
 
 export interface AuthModuleDependencies {
@@ -37,7 +38,7 @@ export function createAuthModule(deps: AuthModuleDependencies): Router {
     deps.env.AUTH_ACCESS_TTL_SECONDS,
   );
   const accessTokenVerifier = new JoseAccessTokenVerifier(deps.env.AUTH_JWT_SECRET);
-  const _authenticate = createAuthenticate({
+  const authenticate = createAuthenticate({
     verifier: accessTokenVerifier,
     userRepository,
     clock: deps.clock,
@@ -70,14 +71,24 @@ export function createAuthModule(deps: AuthModuleDependencies): Router {
     clock: deps.clock,
   });
 
+  const logoutUseCase = new LogoutUseCase({
+    refreshTokenRepository,
+    refreshTokenGenerator,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+    clock: deps.clock,
+  });
+
   const loginRateLimiter = createRateLimiter('login', deps.env);
   const sessionRateLimiter = createRateLimiter('session', deps.env);
 
   return createAuthRouter({
     loginUseCase,
     refreshSessionUseCase,
+    logoutUseCase,
     rateLimiter: loginRateLimiter,
     sessionRateLimiter,
+    authenticate,
   });
 }
 

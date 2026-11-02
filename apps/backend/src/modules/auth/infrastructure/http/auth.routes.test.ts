@@ -4,8 +4,13 @@ import request from 'supertest';
 import { createAuthRouter, type AuthRouterDependencies } from './auth.routes.js';
 import type { LoginUseCase } from '../../application/login.js';
 import type { RefreshSessionUseCase } from '../../application/refresh-session.js';
+import type { LogoutUseCase } from '../../application/logout.js';
 import { errorHandler } from '../../../../shared/middleware/error-handler.js';
-import { TooManyRequestsError, UnauthorizedError } from '../../../../shared/errors/app-error.js';
+import {
+  ForbiddenError,
+  TooManyRequestsError,
+  UnauthorizedError,
+} from '../../../../shared/errors/app-error.js';
 import {
   AccountInactiveError,
   AccountLockedError,
@@ -256,5 +261,93 @@ describe('Auth Routes (POST /auth/refresh) (HU-002, T-002-06, RF-002, RS-016, RN
     expect(response.status).toBe(500);
     expect(response.body.error.code).toBe('INTERNAL_ERROR');
     expect(response.body.sensitiveInternalSalt).toBeUndefined();
+  });
+});
+
+describe('Auth Routes (POST /auth/logout) (HU-002, T-002-07, RF-002, RS-016, RNF-007, RNF-009)', () => {
+  function setupLogoutApp(
+    logoutUseCaseMock: Partial<LogoutUseCase>,
+    authenticateMiddleware?: express.RequestHandler,
+    sessionRateLimiter?: express.RequestHandler,
+  ) {
+    const app = express();
+    app.use(express.json());
+
+    const defaultAuth: express.RequestHandler = (_req, res, next) => {
+      res.locals['auth'] = { userId: 'usr_authenticated_123' };
+      next();
+    };
+
+    const router = createAuthRouter({
+      loginUseCase: { execute: vi.fn() } as unknown as LoginUseCase,
+      logoutUseCase: logoutUseCaseMock as LogoutUseCase,
+      authenticate: authenticateMiddleware ?? defaultAuth,
+      sessionRateLimiter,
+    });
+
+    app.use('/auth', router);
+    app.use(errorHandler);
+
+    return app;
+  }
+
+  it('logout responds 204 without a body and passes the principal user id and the client ip', async () => {
+    const mockExecute = vi.fn().mockResolvedValue(undefined);
+    const app = setupLogoutApp({ execute: mockExecute });
+
+    const response = await request(app)
+      .post('/auth/logout')
+      .send({ refreshToken: 'valid-refresh-token-to-revoke' });
+
+    expect(response.status).toBe(204);
+    expect(response.text).toBe('');
+    expect(mockExecute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        refreshToken: 'valid-refresh-token-to-revoke',
+        userId: 'usr_authenticated_123',
+      }),
+    );
+  });
+
+  it('logout responds 401 without calling the use case when authenticate rejects', async () => {
+    const rejectingAuth: express.RequestHandler = (_req, _res, next) => {
+      next(new UnauthorizedError('Acceso no autorizado'));
+    };
+    const mockExecute = vi.fn();
+    const app = setupLogoutApp({ execute: mockExecute }, rejectingAuth);
+
+    const response = await request(app)
+      .post('/auth/logout')
+      .send({ refreshToken: 'valid-refresh-token' });
+
+    expect(response.status).toBe(401);
+    expect(response.body.error.code).toBe('UNAUTHORIZED');
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
+
+  it('logout responds 400 for an invalid body', async () => {
+    const mockExecute = vi.fn();
+    const app = setupLogoutApp({ execute: mockExecute });
+
+    const response = await request(app).post('/auth/logout').send({});
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe('VALIDATION_ERROR');
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
+
+  it('logout maps ForbiddenError to 403', async () => {
+    const mockExecute = vi
+      .fn()
+      .mockRejectedValue(new ForbiddenError('No tienes permiso para revocar una sesión ajena.'));
+    const app = setupLogoutApp({ execute: mockExecute });
+
+    const response = await request(app)
+      .post('/auth/logout')
+      .send({ refreshToken: 'token-owned-by-other-user' });
+
+    expect(response.status).toBe(403);
+    expect(response.body.error.code).toBe('FORBIDDEN');
+    expect(response.body.error.message).toContain('No tienes permiso');
   });
 });

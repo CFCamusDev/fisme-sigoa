@@ -4,12 +4,14 @@ import {
   refreshResponseSchema,
   type LoginRequest,
   type RefreshRequest,
+  type LogoutRequest,
 } from '@sigoa/shared';
 import { getValidated } from '../../../../shared/middleware/validate-request.js';
 import type { LoginUseCase } from '../../application/login.js';
 import type { RefreshSessionUseCase } from '../../application/refresh-session.js';
 import type { LogoutUseCase } from '../../application/logout.js';
 import { resolveClientIp } from './client-ip.js';
+import { getAuthenticatedPrincipal } from './authenticate.js';
 
 export interface AuthControllerDependencies {
   loginUseCase: LoginUseCase;
@@ -73,6 +75,28 @@ export class AuthController {
       res.setHeader('Cache-Control', 'no-store');
       res.setHeader('Pragma', 'no-cache');
       res.status(200).json(parsedResponse);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  logout = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!this.logoutUseCase) {
+        throw new Error('LogoutUseCase no configurado en AuthController');
+      }
+
+      const principal = getAuthenticatedPrincipal(res);
+      const { body } = getValidated<LogoutRequest>(res);
+      const ip = resolveClientIp(req);
+
+      await this.logoutUseCase.execute({
+        refreshToken: body.refreshToken,
+        userId: principal.userId,
+        ip,
+      });
+
+      res.status(204).end();
     } catch (error) {
       next(error);
     }
