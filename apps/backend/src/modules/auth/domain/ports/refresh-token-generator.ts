@@ -6,4 +6,5 @@ export interface GeneratedRefreshToken {
 
 export interface RefreshTokenGenerator {
   generate(now: Date): GeneratedRefreshToken;
+  hash(token: string): string;
 }
