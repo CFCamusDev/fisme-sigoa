@@ -13,6 +13,7 @@ import { JoseAccessTokenVerifier } from './infrastructure/security/jose-access-t
 import { RandomRefreshTokenGenerator } from './infrastructure/security/random-refresh-token-generator.js';
 import { LoginPolicy } from './domain/value-objects/login-policy.js';
 import { LoginUseCase } from './application/login.js';
+import { RefreshSessionUseCase } from './application/refresh-session.js';
 import { createAuthenticate } from './infrastructure/http/authenticate.js';
 
 export interface AuthModuleDependencies {
@@ -59,11 +60,24 @@ export function createAuthModule(deps: AuthModuleDependencies): Router {
     clock: deps.clock,
   });
 
-  const rateLimiter = createRateLimiter('login', deps.env);
+  const refreshSessionUseCase = new RefreshSessionUseCase({
+    refreshTokenRepository,
+    userRepository,
+    refreshTokenGenerator,
+    accessTokenSigner,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+    clock: deps.clock,
+  });
+
+  const loginRateLimiter = createRateLimiter('login', deps.env);
+  const sessionRateLimiter = createRateLimiter('session', deps.env);
 
   return createAuthRouter({
     loginUseCase,
-    rateLimiter,
+    refreshSessionUseCase,
+    rateLimiter: loginRateLimiter,
+    sessionRateLimiter,
   });
 }
 
