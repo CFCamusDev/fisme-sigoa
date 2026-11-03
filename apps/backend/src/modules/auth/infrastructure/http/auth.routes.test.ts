@@ -65,7 +65,13 @@ describe('Auth Routes (POST /auth/login) (T-001-12, RS-002, RNF-007, RNF-008)', 
     expect(response.status).toBe(200);
     expect(response.headers['cache-control']).toBe('no-store');
     expect(response.headers['pragma']).toBe('no-cache');
-    expect(response.body).toEqual(validResponseBody);
+    expect(response.headers['set-cookie']).toBeDefined();
+    expect(response.headers['set-cookie']![0]).toContain('sigoa_refresh_token=valid.refresh.token');
+    expect(response.headers['set-cookie']![0]).toContain('HttpOnly');
+    expect(response.headers['set-cookie']![0]).toContain('Path=/auth');
+    expect(response.body.refreshToken).toBeUndefined();
+    expect(response.body.accessToken).toBe(validResponseBody.accessToken);
+    expect(response.body.user).toEqual(validResponseBody.user);
   });
 
   it('responds 400 with validation details for an invalid body', async () => {
@@ -180,55 +186,54 @@ describe('Auth Routes (POST /auth/refresh) (HU-002, T-002-06, RF-002, RS-016, RN
     return app;
   }
 
-  it('refresh responds 200 with no-store headers and the parsed body', async () => {
+  it('refresh responds 200 with no-store headers, sets rotated cookie and returns parsed body without refreshToken', async () => {
     const mockExecute = vi.fn().mockResolvedValue(validRefreshResponseBody);
     const app = setupRefreshApp({ execute: mockExecute });
 
     const response = await request(app)
       .post('/auth/refresh')
-      .send({ refreshToken: 'valid-refresh-token-1234567890' });
+      .set('Cookie', 'sigoa_refresh_token=valid-refresh-token-1234567890');
 
     expect(response.status).toBe(200);
     expect(response.headers['cache-control']).toBe('no-store');
     expect(response.headers['pragma']).toBe('no-cache');
-    expect(response.body).toEqual(validRefreshResponseBody);
+    expect(response.headers['set-cookie']).toBeDefined();
+    expect(response.headers['set-cookie']![0]).toContain('sigoa_refresh_token=new.refresh.token');
+    expect(response.headers['set-cookie']![0]).toContain('HttpOnly');
+    expect(response.body.refreshToken).toBeUndefined();
+    expect(response.body.accessToken).toBe(validRefreshResponseBody.accessToken);
     expect(mockExecute).toHaveBeenCalledWith(
       expect.objectContaining({ refreshToken: 'valid-refresh-token-1234567890' }),
     );
   });
 
-  it('refresh responds 400 for a missing, empty or unknown-key body without calling the use case', async () => {
+  it('refresh responds 401 without calling the use case when refresh cookie is missing', async () => {
     const mockExecute = vi.fn();
     const app = setupRefreshApp({ execute: mockExecute });
 
-    const emptyRes = await request(app).post('/auth/refresh').send({});
-    expect(emptyRes.status).toBe(400);
-    expect(emptyRes.body.error.code).toBe('VALIDATION_ERROR');
+    const response = await request(app).post('/auth/refresh');
 
-    const blankRes = await request(app).post('/auth/refresh').send({ refreshToken: '' });
-    expect(blankRes.status).toBe(400);
-    expect(blankRes.body.error.code).toBe('VALIDATION_ERROR');
-
-    const extraKeysRes = await request(app)
-      .post('/auth/refresh')
-      .send({ refreshToken: 'valid-token', unexpectedField: 'malicious' });
-    expect(extraKeysRes.status).toBe(400);
-    expect(extraKeysRes.body.error.code).toBe('VALIDATION_ERROR');
-
+    expect(response.status).toBe(401);
+    expect(response.body.error.code).toBe('UNAUTHORIZED');
+    expect(response.body.error.message).toContain('La sesión expiró o ya no es válida');
     expect(mockExecute).not.toHaveBeenCalled();
   });
 
-  it('refresh maps InvalidRefreshTokenError to 401', async () => {
+  it('refresh maps InvalidRefreshTokenError to 401 and clears the cookie', async () => {
     const mockExecute = vi.fn().mockRejectedValue(new InvalidRefreshTokenError());
     const app = setupRefreshApp({ execute: mockExecute });
 
     const response = await request(app)
       .post('/auth/refresh')
-      .send({ refreshToken: 'revoked-or-expired-token' });
+      .set('Cookie', 'sigoa_refresh_token=revoked-or-expired-token');
 
     expect(response.status).toBe(401);
     expect(response.body.error.code).toBe('UNAUTHORIZED');
     expect(response.body.error.message).toContain('La sesión expiró o ya no es válida');
+    expect(response.headers['set-cookie']).toBeDefined();
+    expect(response.headers['set-cookie']![0]).toMatch(
+      /sigoa_refresh_token=;.*(Expires|Max-Age=0)/i,
+    );
   });
 
   it('refresh responds 429 when the rate limiter rejects', async () => {
@@ -238,7 +243,9 @@ describe('Auth Routes (POST /auth/refresh) (HU-002, T-002-06, RF-002, RS-016, RN
     const mockExecute = vi.fn();
     const app = setupRefreshApp({ execute: mockExecute }, rejectingLimiter);
 
-    const response = await request(app).post('/auth/refresh').send({ refreshToken: 'some-token' });
+    const response = await request(app)
+      .post('/auth/refresh')
+      .set('Cookie', 'sigoa_refresh_token=some-token');
 
     expect(response.status).toBe(429);
     expect(response.body.error.code).toBe('RATE_LIMITED');
@@ -255,7 +262,7 @@ describe('Auth Routes (POST /auth/refresh) (HU-002, T-002-06, RF-002, RS-016, RN
 
     const response = await request(app)
       .post('/auth/refresh')
-      .send({ refreshToken: 'valid-refresh-token' });
+      .set('Cookie', 'sigoa_refresh_token=valid-refresh-token');
 
     // Esquema strict: ante cualquier campo inesperado falla cerrado (500) y jamás expone datos al cliente
     expect(response.status).toBe(500);
@@ -291,22 +298,40 @@ describe('Auth Routes (POST /auth/logout) (HU-002, T-002-07, RF-002, RS-016, RNF
     return app;
   }
 
-  it('logout responds 204 without a body and passes the principal user id and the client ip', async () => {
+  it('logout reads token from cookie, responds 204 without a body, passes the principal user id and clears the cookie', async () => {
     const mockExecute = vi.fn().mockResolvedValue(undefined);
     const app = setupLogoutApp({ execute: mockExecute });
 
     const response = await request(app)
       .post('/auth/logout')
-      .send({ refreshToken: 'valid-refresh-token-to-revoke' });
+      .set('Cookie', 'sigoa_refresh_token=valid-refresh-token-to-revoke');
 
     expect(response.status).toBe(204);
     expect(response.text).toBe('');
+    expect(response.headers['set-cookie']).toBeDefined();
+    expect(response.headers['set-cookie']![0]).toMatch(
+      /sigoa_refresh_token=;.*(Expires|Max-Age=0)/i,
+    );
     expect(mockExecute).toHaveBeenCalledWith(
       expect.objectContaining({
         refreshToken: 'valid-refresh-token-to-revoke',
         userId: 'usr_authenticated_123',
       }),
     );
+  });
+
+  it('logout without cookie still responds 204 and clears the cookie without calling the use case', async () => {
+    const mockExecute = vi.fn().mockResolvedValue(undefined);
+    const app = setupLogoutApp({ execute: mockExecute });
+
+    const response = await request(app).post('/auth/logout');
+
+    expect(response.status).toBe(204);
+    expect(response.headers['set-cookie']).toBeDefined();
+    expect(response.headers['set-cookie']![0]).toMatch(
+      /sigoa_refresh_token=;.*(Expires|Max-Age=0)/i,
+    );
+    expect(mockExecute).not.toHaveBeenCalled();
   });
 
   it('logout responds 401 without calling the use case when authenticate rejects', async () => {
@@ -318,21 +343,10 @@ describe('Auth Routes (POST /auth/logout) (HU-002, T-002-07, RF-002, RS-016, RNF
 
     const response = await request(app)
       .post('/auth/logout')
-      .send({ refreshToken: 'valid-refresh-token' });
+      .set('Cookie', 'sigoa_refresh_token=valid-refresh-token');
 
     expect(response.status).toBe(401);
     expect(response.body.error.code).toBe('UNAUTHORIZED');
-    expect(mockExecute).not.toHaveBeenCalled();
-  });
-
-  it('logout responds 400 for an invalid body', async () => {
-    const mockExecute = vi.fn();
-    const app = setupLogoutApp({ execute: mockExecute });
-
-    const response = await request(app).post('/auth/logout').send({});
-
-    expect(response.status).toBe(400);
-    expect(response.body.error.code).toBe('VALIDATION_ERROR');
     expect(mockExecute).not.toHaveBeenCalled();
   });
 
@@ -344,7 +358,7 @@ describe('Auth Routes (POST /auth/logout) (HU-002, T-002-07, RF-002, RS-016, RNF
 
     const response = await request(app)
       .post('/auth/logout')
-      .send({ refreshToken: 'token-owned-by-other-user' });
+      .set('Cookie', 'sigoa_refresh_token=token-owned-by-other-user');
 
     expect(response.status).toBe(403);
     expect(response.body.error.code).toBe('FORBIDDEN');

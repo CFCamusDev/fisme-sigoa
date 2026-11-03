@@ -79,7 +79,13 @@ describe('POST /auth/login Integration (PostgreSQL real, CA1-CA4, RNF-004, RNF-0
 
     const body = response.body;
     expect(body.accessToken).toBeDefined();
-    expect(body.refreshToken).toBeDefined();
+    expect(body.refreshToken).toBeUndefined();
+    expect(response.headers['set-cookie']).toBeDefined();
+    const setCookieHeader = response.headers['set-cookie']![0] ?? '';
+    expect(setCookieHeader).toContain('sigoa_refresh_token=');
+    expect(setCookieHeader).toContain('HttpOnly');
+    expect(setCookieHeader).toContain('Path=/auth');
+    expect(setCookieHeader).toContain('SameSite=Strict');
     expect(body.user).toEqual({
       id: user.id,
       names: user.names,
@@ -100,7 +106,7 @@ describe('POST /auth/login Integration (PostgreSQL real, CA1-CA4, RNF-004, RNF-0
       where: { userId: user.id },
     });
     expect(storedTokens.length).toBe(1);
-    expect(storedTokens[0]!.tokenHash).not.toBe(body.refreshToken);
+    expect(storedTokens[0]!.tokenHash).toBeDefined();
     expect(storedTokens[0]!.createdByIp).toBe('10.0.1.1');
 
     // Validar que lastLoginAt se actualizó
@@ -108,6 +114,22 @@ describe('POST /auth/login Integration (PostgreSQL real, CA1-CA4, RNF-004, RNF-0
     expect(updatedUser.lastLoginAt).not.toBeNull();
     expect(updatedUser.failedLoginAttempts).toBe(0);
   }, 30_000);
+
+  it('rejects login with 403 when origin header does not match CORS_ORIGIN', async () => {
+    const email = `origin.forbidden.${Date.now()}@example.test`;
+    await createFixtureUser({ email, password: 'SuperPassword123!' });
+
+    const response = await request(app)
+      .post('/auth/login')
+      .set('Origin', 'http://malicious-site.example')
+      .send({
+        email,
+        password: 'SuperPassword123!',
+      });
+
+    expect(response.status).toBe(403);
+    expect(response.body.error.code).toBe('FORBIDDEN');
+  });
 
   it('rejects invalid credentials without indicating whether email or password was wrong (CA2)', async () => {
     const email = `wrong.pwd.${Date.now()}@example.test`;

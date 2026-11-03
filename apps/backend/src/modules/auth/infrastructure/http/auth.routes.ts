@@ -1,7 +1,8 @@
 import { Router, type RequestHandler } from 'express';
-import { loginRequestSchema, refreshRequestSchema, logoutRequestSchema } from '@sigoa/shared';
+import { loginRequestSchema } from '@sigoa/shared';
 import { validateRequest } from '../../../../shared/middleware/validate-request.js';
 import { AuthController } from './auth.controller.js';
+import type { RefreshCookieSettings } from './refresh-cookie.js';
 import type { LoginUseCase } from '../../application/login.js';
 import type { RefreshSessionUseCase } from '../../application/refresh-session.js';
 import type { LogoutUseCase } from '../../application/logout.js';
@@ -13,6 +14,8 @@ export interface AuthRouterDependencies {
   rateLimiter?: RequestHandler;
   sessionRateLimiter?: RequestHandler;
   authenticate?: RequestHandler;
+  cookieSettings?: RefreshCookieSettings;
+  requireAllowedOrigin?: RequestHandler;
 }
 
 export function createAuthRouter(deps?: AuthRouterDependencies): Router {
@@ -28,6 +31,9 @@ export function createAuthRouter(deps?: AuthRouterDependencies): Router {
   if (deps.rateLimiter) {
     loginMiddlewares.push(deps.rateLimiter);
   }
+  if (deps.requireAllowedOrigin) {
+    loginMiddlewares.push(deps.requireAllowedOrigin);
+  }
   loginMiddlewares.push(validateRequest({ body: loginRequestSchema }));
   loginMiddlewares.push(controller.login);
   router.post('/login', ...loginMiddlewares);
@@ -39,7 +45,9 @@ export function createAuthRouter(deps?: AuthRouterDependencies): Router {
     if (refreshLimiter) {
       refreshMiddlewares.push(refreshLimiter);
     }
-    refreshMiddlewares.push(validateRequest({ body: refreshRequestSchema }));
+    if (deps.requireAllowedOrigin) {
+      refreshMiddlewares.push(deps.requireAllowedOrigin);
+    }
     refreshMiddlewares.push(controller.refresh);
     router.post('/refresh', ...refreshMiddlewares);
   }
@@ -51,10 +59,12 @@ export function createAuthRouter(deps?: AuthRouterDependencies): Router {
     if (logoutLimiter) {
       logoutMiddlewares.push(logoutLimiter);
     }
+    if (deps.requireAllowedOrigin) {
+      logoutMiddlewares.push(deps.requireAllowedOrigin);
+    }
     if (deps.authenticate) {
       logoutMiddlewares.push(deps.authenticate);
     }
-    logoutMiddlewares.push(validateRequest({ body: logoutRequestSchema }));
     logoutMiddlewares.push(controller.logout);
     router.post('/logout', ...logoutMiddlewares);
   }

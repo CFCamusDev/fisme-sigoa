@@ -59,8 +59,24 @@ describe('Session Routes Integration (HU-002, PostgreSQL real, CA1-CA3, RF-002, 
     });
   }
 
+  function extractRefreshCookie(res: request.Response): string {
+    const setCookie = res.headers['set-cookie'];
+    if (!setCookie) return '';
+    const first = Array.isArray(setCookie) ? setCookie[0] : setCookie;
+    const match = first.match(/sigoa_refresh_token=([^;]+)/);
+    return match ? `sigoa_refresh_token=${match[1]}` : '';
+  }
+
+  function extractTokenValue(res: request.Response): string {
+    const setCookie = res.headers['set-cookie'];
+    if (!setCookie) return '';
+    const first = Array.isArray(setCookie) ? setCookie[0] : setCookie;
+    const match = first.match(/sigoa_refresh_token=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : '';
+  }
+
   describe('POST /auth/refresh (CA1, CA3)', () => {
-    it('refreshes the session with a valid refresh token (CA1)', async () => {
+    it('refreshes the session with a valid refresh cookie (CA1)', async () => {
       const email = `refresh.valid.${Date.now()}@example.test`;
       const user = await createFixtureUser({ email, password: 'SuperPassword123!' });
 
@@ -71,22 +87,30 @@ describe('Session Routes Integration (HU-002, PostgreSQL real, CA1-CA3, RF-002, 
         .send({ email, password: 'SuperPassword123!' });
 
       expect(loginRes.status).toBe(200);
-      const initialRefreshToken = loginRes.body.refreshToken;
+      expect(loginRes.body.refreshToken).toBeUndefined();
+      const initialCookie = extractRefreshCookie(loginRes);
+      const initialTokenValue = extractTokenValue(loginRes);
+      expect(initialCookie).not.toBe('');
 
-      // 2. Renovar sesión
+      // 2. Renovar sesión enviando cookie
       const refreshRes = await request(app)
         .post('/auth/refresh')
-        .set('x-forwarded-for', '10.10.1.2')
-        .send({ refreshToken: initialRefreshToken });
+        .set('Cookie', initialCookie)
+        .set('x-forwarded-for', '10.10.1.2');
 
       expect(refreshRes.status).toBe(200);
       expect(refreshRes.headers['cache-control']).toBe('no-store');
       expect(refreshRes.headers['pragma']).toBe('no-cache');
+      expect(refreshRes.headers['set-cookie']).toBeDefined();
+
+      const rotatedCookie = extractRefreshCookie(refreshRes);
+      const rotatedTokenValue = extractTokenValue(refreshRes);
+      expect(rotatedCookie).not.toBe('');
+      expect(rotatedTokenValue).not.toBe(initialTokenValue);
 
       const body = refreshRes.body;
       expect(body.accessToken).toBeDefined();
-      expect(body.refreshToken).toBeDefined();
-      expect(body.refreshToken).not.toBe(initialRefreshToken);
+      expect(body.refreshToken).toBeUndefined();
       expect(body.user).toEqual({
         id: user.id,
         names: user.names,
@@ -115,8 +139,8 @@ describe('Session Routes Integration (HU-002, PostgreSQL real, CA1-CA3, RF-002, 
       expect(tokens[1]!.revokedAt).toBeNull();
       expect(tokens[1]!.createdByIp).toBe('10.10.1.2');
       // Ninguno almacena el token en plano
-      expect(tokens[0]!.tokenHash).not.toBe(initialRefreshToken);
-      expect(tokens[1]!.tokenHash).not.toBe(body.refreshToken);
+      expect(tokens[0]!.tokenHash).not.toBe(initialTokenValue);
+      expect(tokens[1]!.tokenHash).not.toBe(rotatedTokenValue);
     }, 30_000);
 
     it('rejects the previous refresh token after rotation (CA1, CA3)', async () => {
@@ -128,27 +152,27 @@ describe('Session Routes Integration (HU-002, PostgreSQL real, CA1-CA3, RF-002, 
         .set('x-forwarded-for', '10.10.2.1')
         .send({ email, password: 'SuperPassword123!' });
 
-      const originalRefreshToken = loginRes.body.refreshToken;
+      const originalCookie = extractRefreshCookie(loginRes);
 
       // Primera rotación: éxito 200
       const firstRefresh = await request(app)
         .post('/auth/refresh')
-        .set('x-forwarded-for', '10.10.2.2')
-        .send({ refreshToken: originalRefreshToken });
+        .set('Cookie', originalCookie)
+        .set('x-forwarded-for', '10.10.2.2');
       expect(firstRefresh.status).toBe(200);
 
       // Intento de reusar el token original: rechazo 401
       const secondRefresh = await request(app)
         .post('/auth/refresh')
-        .set('x-forwarded-for', '10.10.2.3')
-        .send({ refreshToken: originalRefreshToken });
+        .set('Cookie', originalCookie)
+        .set('x-forwarded-for', '10.10.2.3');
 
       expect(secondRefresh.status).toBe(401);
       expect(secondRefresh.body.error.code).toBe('UNAUTHORIZED');
       expect(secondRefresh.body.error.message).toContain('La sesión expiró o ya no es válida');
     }, 30_000);
 
-    it('returns 401 for a revoked refresh token', async () => {
+    it('returns 401 and clears the cookie for a revoked refresh token', async () => {
       const email = `refresh.revoked.${Date.now()}@example.test`;
       const user = await createFixtureUser({ email });
       const generated = generator.generate(new Date());
@@ -165,15 +189,19 @@ describe('Session Routes Integration (HU-002, PostgreSQL real, CA1-CA3, RF-002, 
 
       const response = await request(app)
         .post('/auth/refresh')
-        .set('x-forwarded-for', '10.10.3.2')
-        .send({ refreshToken: generated.token });
+        .set('Cookie', `sigoa_refresh_token=${generated.token}`)
+        .set('x-forwarded-for', '10.10.3.2');
 
       expect(response.status).toBe(401);
       expect(response.body.error.code).toBe('UNAUTHORIZED');
       expect(response.body.error.message).toContain('La sesión expiró o ya no es válida');
+      expect(response.headers['set-cookie']).toBeDefined();
+      expect(response.headers['set-cookie']![0]).toMatch(
+        /sigoa_refresh_token=;.*(Expires|Max-Age=0)/i,
+      );
     }, 30_000);
 
-    it('returns 401 for an expired refresh token', async () => {
+    it('returns 401 and clears the cookie for an expired refresh token', async () => {
       const email = `refresh.expired.${Date.now()}@example.test`;
       const user = await createFixtureUser({ email });
       const generated = generator.generate(new Date());
@@ -190,23 +218,31 @@ describe('Session Routes Integration (HU-002, PostgreSQL real, CA1-CA3, RF-002, 
 
       const response = await request(app)
         .post('/auth/refresh')
-        .set('x-forwarded-for', '10.10.4.2')
-        .send({ refreshToken: generated.token });
+        .set('Cookie', `sigoa_refresh_token=${generated.token}`)
+        .set('x-forwarded-for', '10.10.4.2');
 
       expect(response.status).toBe(401);
       expect(response.body.error.code).toBe('UNAUTHORIZED');
       expect(response.body.error.message).toContain('La sesión expiró o ya no es válida');
+      expect(response.headers['set-cookie']).toBeDefined();
+      expect(response.headers['set-cookie']![0]).toMatch(
+        /sigoa_refresh_token=;.*(Expires|Max-Age=0)/i,
+      );
     }, 30_000);
 
     it('returns 401 with the same message for an unknown token (CA3)', async () => {
       const response = await request(app)
         .post('/auth/refresh')
-        .set('x-forwarded-for', '10.10.5.1')
-        .send({ refreshToken: 'unrecognized-non-existent-token-1234567890' });
+        .set('Cookie', 'sigoa_refresh_token=unrecognized-non-existent-token-1234567890')
+        .set('x-forwarded-for', '10.10.5.1');
 
       expect(response.status).toBe(401);
       expect(response.body.error.code).toBe('UNAUTHORIZED');
       expect(response.body.error.message).toContain('La sesión expiró o ya no es válida');
+      expect(response.headers['set-cookie']).toBeDefined();
+      expect(response.headers['set-cookie']![0]).toMatch(
+        /sigoa_refresh_token=;.*(Expires|Max-Age=0)/i,
+      );
     }, 30_000);
 
     it('returns 401 for an inactive user', async () => {
@@ -226,23 +262,30 @@ describe('Session Routes Integration (HU-002, PostgreSQL real, CA1-CA3, RF-002, 
 
       const response = await request(app)
         .post('/auth/refresh')
-        .set('x-forwarded-for', '10.10.6.2')
-        .send({ refreshToken: generated.token });
+        .set('Cookie', `sigoa_refresh_token=${generated.token}`)
+        .set('x-forwarded-for', '10.10.6.2');
 
       expect(response.status).toBe(401);
       expect(response.body.error.code).toBe('UNAUTHORIZED');
       expect(response.body.error.message).toContain('La sesión expiró o ya no es válida');
     }, 30_000);
 
-    it('returns 400 for an invalid body without modifying database', async () => {
+    it('returns 401 when the refresh cookie is missing', async () => {
+      const response = await request(app).post('/auth/refresh').set('x-forwarded-for', '10.10.7.1');
+
+      expect(response.status).toBe(401);
+      expect(response.body.error.code).toBe('UNAUTHORIZED');
+      expect(response.body.error.message).toContain('La sesión expiró o ya no es válida');
+    }, 30_000);
+
+    it('returns 403 for an untrusted Origin header on refresh', async () => {
       const response = await request(app)
         .post('/auth/refresh')
-        .set('x-forwarded-for', '10.10.7.1')
-        .send({ unexpectedField: 'invalid' });
+        .set('Origin', 'http://malicious.evil.com')
+        .set('Cookie', 'sigoa_refresh_token=some-token');
 
-      expect(response.status).toBe(400);
-      expect(response.body.error.code).toBe('VALIDATION_ERROR');
-      expect(response.body.error.details).toBeDefined();
+      expect(response.status).toBe(403);
+      expect(response.body.error.code).toBe('FORBIDDEN');
     }, 30_000);
 
     it('returns 429 after the session rate limit', async () => {
@@ -253,15 +296,15 @@ describe('Session Routes Integration (HU-002, PostgreSQL real, CA1-CA3, RF-002, 
         const res = await request(app)
           .post('/auth/refresh')
           .set('x-forwarded-for', targetIp)
-          .send({ refreshToken: 'any-token' });
-        expect([400, 401]).toContain(res.status);
+          .set('Cookie', 'sigoa_refresh_token=any-token');
+        expect(res.status).toBe(401);
       }
 
       // Cuarta petición: bloqueada por rate limit
       const blockedRes = await request(app)
         .post('/auth/refresh')
         .set('x-forwarded-for', targetIp)
-        .send({ refreshToken: 'any-token' });
+        .set('Cookie', 'sigoa_refresh_token=any-token');
 
       expect(blockedRes.status).toBe(429);
       expect(blockedRes.body.error.code).toBe('RATE_LIMITED');
@@ -276,12 +319,13 @@ describe('Session Routes Integration (HU-002, PostgreSQL real, CA1-CA3, RF-002, 
         .set('x-forwarded-for', '10.10.9.1')
         .send({ email, password: 'SuperPassword123!' });
 
-      const refreshToken = loginRes.body.refreshToken;
+      const cookie = extractRefreshCookie(loginRes);
+      const tokenValue = extractTokenValue(loginRes);
 
       const refreshRes = await request(app)
         .post('/auth/refresh')
-        .set('x-forwarded-for', '10.10.9.2')
-        .send({ refreshToken });
+        .set('Cookie', cookie)
+        .set('x-forwarded-for', '10.10.9.2');
 
       expect(refreshRes.status).toBe(200);
 
@@ -310,8 +354,8 @@ describe('Session Routes Integration (HU-002, PostgreSQL real, CA1-CA3, RF-002, 
         before: rotationAudit!.before,
         after: rotationAudit!.after,
       });
-      expect(auditPayload).not.toContain(refreshToken);
-      expect(auditPayload).not.toContain(refreshRes.body.refreshToken);
+      expect(auditPayload).not.toContain(tokenValue);
+      expect(auditPayload).not.toContain(extractTokenValue(refreshRes));
     }, 30_000);
 
     it('rotates only once under concurrent requests with the same token', async () => {
@@ -323,18 +367,18 @@ describe('Session Routes Integration (HU-002, PostgreSQL real, CA1-CA3, RF-002, 
         .set('x-forwarded-for', '10.10.10.1')
         .send({ email, password: 'SuperPassword123!' });
 
-      const tokenToRotate = loginRes.body.refreshToken;
+      const cookieToRotate = extractRefreshCookie(loginRes);
 
       // Lanzar dos peticiones concurrentes con el mismo refresh token
       const [res1, res2] = await Promise.all([
         request(app)
           .post('/auth/refresh')
-          .set('x-forwarded-for', '10.10.10.2')
-          .send({ refreshToken: tokenToRotate }),
+          .set('Cookie', cookieToRotate)
+          .set('x-forwarded-for', '10.10.10.2'),
         request(app)
           .post('/auth/refresh')
-          .set('x-forwarded-for', '10.10.10.3')
-          .send({ refreshToken: tokenToRotate }),
+          .set('Cookie', cookieToRotate)
+          .set('x-forwarded-for', '10.10.10.3'),
       ]);
 
       const statuses = [res1.status, res2.status].sort();
@@ -355,7 +399,7 @@ describe('Session Routes Integration (HU-002, PostgreSQL real, CA1-CA3, RF-002, 
   });
 
   describe('POST /auth/logout (CA2, RF-002, RS-016, RNF-004, RNF-007, RNF-009, RS-020)', () => {
-    it('logs out and revokes the refresh token (CA2)', async () => {
+    it('logs out and revokes the refresh token from cookie, clearing the cookie (CA2)', async () => {
       const email = `logout.valid.${Date.now()}@example.test`;
       const user = await createFixtureUser({ email, password: 'SuperPassword123!' });
 
@@ -364,16 +408,21 @@ describe('Session Routes Integration (HU-002, PostgreSQL real, CA1-CA3, RF-002, 
         .set('x-forwarded-for', '10.20.1.1')
         .send({ email, password: 'SuperPassword123!' });
 
-      const { accessToken, refreshToken } = loginRes.body;
+      const { accessToken } = loginRes.body;
+      const cookie = extractRefreshCookie(loginRes);
 
       const logoutRes = await request(app)
         .post('/auth/logout')
         .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-forwarded-for', '10.20.1.2')
-        .send({ refreshToken });
+        .set('Cookie', cookie)
+        .set('x-forwarded-for', '10.20.1.2');
 
       expect(logoutRes.status).toBe(204);
       expect(logoutRes.text).toBe('');
+      expect(logoutRes.headers['set-cookie']).toBeDefined();
+      expect(logoutRes.headers['set-cookie']![0]).toMatch(
+        /sigoa_refresh_token=;.*(Expires|Max-Age=0)/i,
+      );
 
       // Validar en PostgreSQL que el refresh token quedó revocado
       const storedTokens = await prisma.refreshToken.findMany({
@@ -392,25 +441,27 @@ describe('Session Routes Integration (HU-002, PostgreSQL real, CA1-CA3, RF-002, 
         .set('x-forwarded-for', '10.20.2.1')
         .send({ email, password: 'SuperPassword123!' });
 
-      const { accessToken, refreshToken } = loginRes.body;
+      const { accessToken } = loginRes.body;
+      const cookie = extractRefreshCookie(loginRes);
 
       // 1. Cerrar sesión
       const logoutRes = await request(app)
         .post('/auth/logout')
         .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-forwarded-for', '10.20.2.2')
-        .send({ refreshToken });
+        .set('Cookie', cookie)
+        .set('x-forwarded-for', '10.20.2.2');
       expect(logoutRes.status).toBe(204);
 
-      // 2. Intentar renovar con el token revocado
+      // 2. Intentar renovar con la cookie del token revocado
       const refreshRes = await request(app)
         .post('/auth/refresh')
-        .set('x-forwarded-for', '10.20.2.3')
-        .send({ refreshToken });
+        .set('Cookie', cookie)
+        .set('x-forwarded-for', '10.20.2.3');
 
       expect(refreshRes.status).toBe(401);
       expect(refreshRes.body.error.code).toBe('UNAUTHORIZED');
       expect(refreshRes.body.error.message).toContain('La sesión expiró o ya no es válida');
+      expect(refreshRes.headers['set-cookie']).toBeDefined();
     }, 30_000);
 
     it('is idempotent for an already revoked token', async () => {
@@ -422,14 +473,15 @@ describe('Session Routes Integration (HU-002, PostgreSQL real, CA1-CA3, RF-002, 
         .set('x-forwarded-for', '10.20.3.1')
         .send({ email, password: 'SuperPassword123!' });
 
-      const { accessToken, refreshToken } = loginRes.body;
+      const { accessToken } = loginRes.body;
+      const cookie = extractRefreshCookie(loginRes);
 
       // Primer logout: 204
       const firstLogout = await request(app)
         .post('/auth/logout')
         .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-forwarded-for', '10.20.3.2')
-        .send({ refreshToken });
+        .set('Cookie', cookie)
+        .set('x-forwarded-for', '10.20.3.2');
       expect(firstLogout.status).toBe(204);
 
       const auditCountAfterFirst = await prisma.auditLog.count({
@@ -443,8 +495,8 @@ describe('Session Routes Integration (HU-002, PostgreSQL real, CA1-CA3, RF-002, 
       const secondLogout = await request(app)
         .post('/auth/logout')
         .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-forwarded-for', '10.20.3.3')
-        .send({ refreshToken });
+        .set('Cookie', cookie)
+        .set('x-forwarded-for', '10.20.3.3');
       expect(secondLogout.status).toBe(204);
 
       const auditCountAfterSecond = await prisma.auditLog.count({
@@ -467,13 +519,13 @@ describe('Session Routes Integration (HU-002, PostgreSQL real, CA1-CA3, RF-002, 
         .set('x-forwarded-for', '10.20.4.1')
         .send({ email, password: 'SuperPassword123!' });
 
-      const { refreshToken } = loginRes.body;
+      const cookie = extractRefreshCookie(loginRes);
 
       // 1. Sin Bearer token
       const noTokenRes = await request(app)
         .post('/auth/logout')
-        .set('x-forwarded-for', '10.20.4.2')
-        .send({ refreshToken });
+        .set('Cookie', cookie)
+        .set('x-forwarded-for', '10.20.4.2');
       expect(noTokenRes.status).toBe(401);
       expect(noTokenRes.body.error.code).toBe('UNAUTHORIZED');
 
@@ -481,8 +533,8 @@ describe('Session Routes Integration (HU-002, PostgreSQL real, CA1-CA3, RF-002, 
       const malformedTokenRes = await request(app)
         .post('/auth/logout')
         .set('Authorization', 'Bearer invalid.malformed.jwt')
-        .set('x-forwarded-for', '10.20.4.3')
-        .send({ refreshToken });
+        .set('Cookie', cookie)
+        .set('x-forwarded-for', '10.20.4.3');
       expect(malformedTokenRes.status).toBe(401);
 
       // 3. Token expirado
@@ -497,8 +549,8 @@ describe('Session Routes Integration (HU-002, PostgreSQL real, CA1-CA3, RF-002, 
       const expiredRes = await request(app)
         .post('/auth/logout')
         .set('Authorization', `Bearer ${expiredToken}`)
-        .set('x-forwarded-for', '10.20.4.4')
-        .send({ refreshToken });
+        .set('Cookie', cookie)
+        .set('x-forwarded-for', '10.20.4.4');
       expect(expiredRes.status).toBe(401);
 
       // 4. Usuario inactivado
@@ -517,8 +569,8 @@ describe('Session Routes Integration (HU-002, PostgreSQL real, CA1-CA3, RF-002, 
       const inactiveUserRes = await request(app)
         .post('/auth/logout')
         .set('Authorization', `Bearer ${validTokenInactiveUser}`)
-        .set('x-forwarded-for', '10.20.4.5')
-        .send({ refreshToken });
+        .set('Cookie', cookie)
+        .set('x-forwarded-for', '10.20.4.5');
       expect(inactiveUserRes.status).toBe(401);
     }, 30_000);
 
@@ -542,14 +594,14 @@ describe('Session Routes Integration (HU-002, PostgreSQL real, CA1-CA3, RF-002, 
         .post('/auth/login')
         .set('x-forwarded-for', '10.20.5.2')
         .send({ email: userB.email, password: 'PasswordB123!' });
-      const { refreshToken: refreshTokenB } = loginResB.body;
+      const cookieB = extractRefreshCookie(loginResB);
 
       // Usuario A intenta revocar el token del usuario B
       const forbiddenRes = await request(app)
         .post('/auth/logout')
         .set('Authorization', `Bearer ${accessTokenA}`)
-        .set('x-forwarded-for', '10.20.5.3')
-        .send({ refreshToken: refreshTokenB });
+        .set('Cookie', cookieB)
+        .set('x-forwarded-for', '10.20.5.3');
 
       expect(forbiddenRes.status).toBe(403);
       expect(forbiddenRes.body.error.code).toBe('FORBIDDEN');
@@ -562,9 +614,9 @@ describe('Session Routes Integration (HU-002, PostgreSQL real, CA1-CA3, RF-002, 
       expect(tokenBInDb[0]!.revokedAt).toBeNull();
     }, 30_000);
 
-    it('returns 400 for an invalid body', async () => {
+    it('logout without cookie still responds 204 and clears the cookie gracefully', async () => {
       const user = await createFixtureUser({
-        email: `logout.badbody.${Date.now()}@example.test`,
+        email: `logout.nocookie.${Date.now()}@example.test`,
         password: 'Password123!',
       });
       const loginRes = await request(app)
@@ -576,11 +628,33 @@ describe('Session Routes Integration (HU-002, PostgreSQL real, CA1-CA3, RF-002, 
       const response = await request(app)
         .post('/auth/logout')
         .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-forwarded-for', '10.20.6.2')
-        .send({ unexpected: 'field' });
+        .set('x-forwarded-for', '10.20.6.2');
 
-      expect(response.status).toBe(400);
-      expect(response.body.error.code).toBe('VALIDATION_ERROR');
+      expect(response.status).toBe(204);
+      expect(response.headers['set-cookie']).toBeDefined();
+      expect(response.headers['set-cookie']![0]).toMatch(
+        /sigoa_refresh_token=;.*(Expires|Max-Age=0)/i,
+      );
+    }, 30_000);
+
+    it('returns 403 for an untrusted Origin header on logout', async () => {
+      const user = await createFixtureUser({
+        email: `logout.origin.${Date.now()}@example.test`,
+        password: 'Password123!',
+      });
+      const loginRes = await request(app)
+        .post('/auth/login')
+        .set('x-forwarded-for', '10.20.6.1')
+        .send({ email: user.email, password: 'Password123!' });
+      const { accessToken } = loginRes.body;
+
+      const response = await request(app)
+        .post('/auth/logout')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .set('Origin', 'http://unauthorized-origin.evil');
+
+      expect(response.status).toBe(403);
+      expect(response.body.error.code).toBe('FORBIDDEN');
     }, 30_000);
 
     it('returns 429 after the session rate limit', async () => {
@@ -592,7 +666,8 @@ describe('Session Routes Integration (HU-002, PostgreSQL real, CA1-CA3, RF-002, 
         .post('/auth/login')
         .set('x-forwarded-for', '10.20.7.1')
         .send({ email: user.email, password: 'Password123!' });
-      const { accessToken, refreshToken } = loginRes.body;
+      const { accessToken } = loginRes.body;
+      const cookie = extractRefreshCookie(loginRes);
 
       const targetIp = '10.20.7.2';
 
@@ -601,17 +676,17 @@ describe('Session Routes Integration (HU-002, PostgreSQL real, CA1-CA3, RF-002, 
         const res = await request(app)
           .post('/auth/logout')
           .set('Authorization', `Bearer ${accessToken}`)
-          .set('x-forwarded-for', targetIp)
-          .send({ refreshToken });
-        expect([204, 400]).toContain(res.status);
+          .set('Cookie', cookie)
+          .set('x-forwarded-for', targetIp);
+        expect(res.status).toBe(204);
       }
 
       // Cuarta petición: bloqueada por rate limit
       const blockedRes = await request(app)
         .post('/auth/logout')
         .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-forwarded-for', targetIp)
-        .send({ refreshToken });
+        .set('Cookie', cookie)
+        .set('x-forwarded-for', targetIp);
 
       expect(blockedRes.status).toBe(429);
       expect(blockedRes.body.error.code).toBe('RATE_LIMITED');
@@ -626,13 +701,15 @@ describe('Session Routes Integration (HU-002, PostgreSQL real, CA1-CA3, RF-002, 
         .set('x-forwarded-for', '10.20.8.1')
         .send({ email, password: 'SuperPassword123!' });
 
-      const { accessToken, refreshToken } = loginRes.body;
+      const { accessToken } = loginRes.body;
+      const cookie = extractRefreshCookie(loginRes);
+      const tokenValue = extractTokenValue(loginRes);
 
       const logoutRes = await request(app)
         .post('/auth/logout')
         .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-forwarded-for', '10.20.8.2')
-        .send({ refreshToken });
+        .set('Cookie', cookie)
+        .set('x-forwarded-for', '10.20.8.2');
 
       expect(logoutRes.status).toBe(204);
 
@@ -658,7 +735,7 @@ describe('Session Routes Integration (HU-002, PostgreSQL real, CA1-CA3, RF-002, 
         before: logoutAudit!.before,
         after: logoutAudit!.after,
       });
-      expect(auditPayload).not.toContain(refreshToken);
+      expect(auditPayload).not.toContain(tokenValue);
     }, 30_000);
   });
 });

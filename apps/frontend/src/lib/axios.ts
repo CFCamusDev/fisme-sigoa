@@ -18,7 +18,7 @@ export function getAuthTokenProvider(): AuthTokenProvider | null {
 export const apiClient: AxiosInstance = axios.create({
   baseURL: env.VITE_API_URL,
   timeout: 15000,
-  withCredentials: false,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },

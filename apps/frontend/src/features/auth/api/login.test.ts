@@ -7,7 +7,6 @@ import { login } from './login';
 const mockValidResponse = {
   accessToken: 'header.payload.signature',
   accessTokenExpiresAt: '2026-10-30T10:15:00.000Z',
-  refreshToken: 'refresh-token-uuid-12345678901234567890',
   refreshTokenExpiresAt: '2026-11-06T10:00:00.000Z',
   user: {
     id: 'usr-123',

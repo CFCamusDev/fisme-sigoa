@@ -6,9 +6,7 @@ import {
   apiErrorResponseSchema,
   loginRequestSchema,
   loginResponseSchema,
-  refreshRequestSchema,
   refreshResponseSchema,
-  logoutRequestSchema,
 } from '@sigoa/shared';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -27,16 +25,27 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
     expect(spec.paths['/auth/login'].post).toBeDefined();
   });
 
-  it('documents refresh and logout endpoints (T-002-08)', () => {
+  it('documents refresh and logout endpoints with cookie scheme (T-002-08, HU-002)', () => {
     expect(spec.paths['/auth/refresh']).toBeDefined();
     expect(spec.paths['/auth/refresh'].post).toBeDefined();
     expect(spec.paths['/auth/logout']).toBeDefined();
     expect(spec.paths['/auth/logout'].post).toBeDefined();
 
-    expect(spec.components.schemas.RefreshRequest).toBeDefined();
-    expect(spec.components.schemas.LogoutRequest).toBeDefined();
     expect(spec.components.schemas.RefreshResponse).toBeDefined();
     expect(spec.components.securitySchemes.bearerAuth).toBeDefined();
+    expect(spec.components.securitySchemes.refreshCookie).toBeDefined();
+    expect(spec.components.securitySchemes.refreshCookie.type).toBe('apiKey');
+    expect(spec.components.securitySchemes.refreshCookie.in).toBe('cookie');
+    expect(spec.components.securitySchemes.refreshCookie.name).toBe('sigoa_refresh_token');
+  });
+
+  it('documents refresh and logout without request bodies and Set-Cookie headers', () => {
+    expect(spec.paths['/auth/refresh'].post.requestBody).toBeUndefined();
+    expect(spec.paths['/auth/logout'].post.requestBody).toBeUndefined();
+
+    expect(spec.paths['/auth/login'].post.responses['200'].headers['Set-Cookie']).toBeDefined();
+    expect(spec.paths['/auth/refresh'].post.responses['200'].headers['Set-Cookie']).toBeDefined();
+    expect(spec.paths['/auth/logout'].post.responses['204'].headers['Set-Cookie']).toBeDefined();
   });
 
   it('keeps every request and response example valid against the shared schemas (T-002-08)', () => {
@@ -47,29 +56,21 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
     const loginRes =
       spec.paths['/auth/login'].post.responses['200'].content['application/json'].example;
     expect(loginResponseSchema.safeParse(loginRes).success).toBe(true);
+    expect(loginRes.refreshToken).toBeUndefined();
 
     // 2. /auth/refresh
-    const refreshReq =
-      spec.paths['/auth/refresh'].post.requestBody.content['application/json'].example;
-    expect(refreshRequestSchema.safeParse(refreshReq).success).toBe(true);
-
     const refreshRes =
       spec.paths['/auth/refresh'].post.responses['200'].content['application/json'].example;
     expect(refreshResponseSchema.safeParse(refreshRes).success).toBe(true);
-
-    // 3. /auth/logout
-    const logoutReq =
-      spec.paths['/auth/logout'].post.requestBody.content['application/json'].example;
-    expect(logoutRequestSchema.safeParse(logoutReq).success).toBe(true);
+    expect(refreshRes.refreshToken).toBeUndefined();
   });
 
-  it('declares bearer security on logout and none on refresh (T-002-08)', () => {
+  it('declares refreshCookie on refresh and bearerAuth + refreshCookie on logout', () => {
     const refreshPost = spec.paths['/auth/refresh'].post;
-    expect(refreshPost.security).toBeUndefined();
+    expect(refreshPost.security).toEqual([{ refreshCookie: [] }]);
 
     const logoutPost = spec.paths['/auth/logout'].post;
-    expect(logoutPost.security).toBeDefined();
-    expect(logoutPost.security).toEqual([{ bearerAuth: [] }]);
+    expect(logoutPost.security).toEqual([{ bearerAuth: [] }, { refreshCookie: [] }]);
   });
 
   it('documents logout success as 204 without content (T-002-08)', () => {
@@ -80,17 +81,17 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
 
   it('lists every error status each endpoint can return (T-002-08)', () => {
     const refreshResponses = spec.paths['/auth/refresh'].post.responses;
-    expect(refreshResponses['400']).toBeDefined();
     expect(refreshResponses['401']).toBeDefined();
+    expect(refreshResponses['403']).toBeDefined();
     expect(refreshResponses['429']).toBeDefined();
     expect(refreshResponses['500']).toBeDefined();
 
     expect(
-      apiErrorResponseSchema.safeParse(refreshResponses['400'].content['application/json'].example)
+      apiErrorResponseSchema.safeParse(refreshResponses['401'].content['application/json'].example)
         .success,
     ).toBe(true);
     expect(
-      apiErrorResponseSchema.safeParse(refreshResponses['401'].content['application/json'].example)
+      apiErrorResponseSchema.safeParse(refreshResponses['403'].content['application/json'].example)
         .success,
     ).toBe(true);
     expect(
@@ -103,16 +104,11 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
     ).toBe(true);
 
     const logoutResponses = spec.paths['/auth/logout'].post.responses;
-    expect(logoutResponses['400']).toBeDefined();
     expect(logoutResponses['401']).toBeDefined();
     expect(logoutResponses['403']).toBeDefined();
     expect(logoutResponses['429']).toBeDefined();
     expect(logoutResponses['500']).toBeDefined();
 
-    expect(
-      apiErrorResponseSchema.safeParse(logoutResponses['400'].content['application/json'].example)
-        .success,
-    ).toBe(true);
     expect(
       apiErrorResponseSchema.safeParse(logoutResponses['401'].content['application/json'].example)
         .success,

@@ -2,13 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   loginRequestSchema,
   loginResponseSchema,
-  refreshRequestSchema,
   refreshResponseSchema,
-  logoutRequestSchema,
   type LoginRequest,
   type LoginResponse,
-  type RefreshRequest,
-  type LogoutRequest,
 } from './auth.js';
 
 describe('Auth Schemas (T-001-11, T-002-05, RS-016, RNF-003, RNF-004, RNF-008)', () => {
@@ -63,7 +59,6 @@ describe('Auth Schemas (T-001-11, T-002-05, RS-016, RNF-003, RNF-004, RNF-008)',
     const validResponse: LoginResponse = {
       accessToken: 'header.payload.signature',
       accessTokenExpiresAt: '2026-10-30T15:15:00.000Z',
-      refreshToken: 'opaque-refresh-token-base64url',
       refreshTokenExpiresAt: '2026-11-06T15:00:00.000Z',
       user: {
         id: 'usr_abc_123',
@@ -74,7 +69,7 @@ describe('Auth Schemas (T-001-11, T-002-05, RS-016, RNF-003, RNF-004, RNF-008)',
       },
     };
 
-    it('accepts a valid login response with all expected fields', () => {
+    it('accepts a valid login response with all expected fields without exposing refreshToken', () => {
       const parsed = loginResponseSchema.parse(validResponse);
       expect(parsed).toEqual(validResponse);
     });
@@ -88,6 +83,15 @@ describe('Auth Schemas (T-001-11, T-002-05, RS-016, RNF-003, RNF-004, RNF-008)',
         },
       });
       expect(parsed.user.secondSurname).toBeNull();
+    });
+
+    it('rejects refreshToken in the body (now delivered strictly via HttpOnly cookie)', () => {
+      expect(() =>
+        loginResponseSchema.parse({
+          ...validResponse,
+          refreshToken: 'forbidden-in-body',
+        }),
+      ).toThrow();
     });
 
     it('rejects extra sensitive fields in user such as passwordHash or dni (Ley 29733)', () => {
@@ -104,38 +108,12 @@ describe('Auth Schemas (T-001-11, T-002-05, RS-016, RNF-003, RNF-004, RNF-008)',
     });
   });
 
-  describe('refreshRequestSchema (T-002-05, RF-002, RNF-008)', () => {
-    it('accepts a refresh request with a token', () => {
-      const validPayload: RefreshRequest = {
-        refreshToken: 'valid-refresh-token-opaque-string',
-      };
-      const parsed = refreshRequestSchema.parse(validPayload);
-      expect(parsed.refreshToken).toBe('valid-refresh-token-opaque-string');
-    });
-
-    it('rejects an empty, missing or oversized refresh token', () => {
-      expect(() => refreshRequestSchema.parse({})).toThrow();
-      expect(() => refreshRequestSchema.parse({ refreshToken: '' })).toThrow();
-      expect(() => refreshRequestSchema.parse({ refreshToken: 'a'.repeat(257) })).toThrow();
-    });
-
-    it('rejects unknown keys', () => {
-      expect(() =>
-        refreshRequestSchema.parse({
-          refreshToken: 'valid-token',
-          extraField: 'not-allowed',
-        }),
-      ).toThrow();
-    });
-  });
-
   describe('refreshResponseSchema (T-002-05, RF-002)', () => {
     it('refresh response has the same shape as the login response', () => {
       expect(refreshResponseSchema).toBe(loginResponseSchema);
       const payload = {
         accessToken: 'access-jwt-token',
         accessTokenExpiresAt: '2026-10-30T15:15:00.000Z',
-        refreshToken: 'refresh-opaque-token',
         refreshTokenExpiresAt: '2026-11-06T15:00:00.000Z',
         user: {
           id: 'usr_1',
@@ -147,26 +125,6 @@ describe('Auth Schemas (T-001-11, T-002-05, RS-016, RNF-003, RNF-004, RNF-008)',
       };
       const parsed = refreshResponseSchema.parse(payload);
       expect(parsed).toEqual(payload);
-    });
-  });
-
-  describe('logoutRequestSchema (T-002-05, RF-002, RNF-008)', () => {
-    it('logout request shares the refresh request shape', () => {
-      const validPayload: LogoutRequest = {
-        refreshToken: 'token-to-revoke',
-      };
-      const parsed = logoutRequestSchema.parse(validPayload);
-      expect(parsed.refreshToken).toBe('token-to-revoke');
-
-      expect(() => logoutRequestSchema.parse({})).toThrow();
-      expect(() => logoutRequestSchema.parse({ refreshToken: '' })).toThrow();
-      expect(() => logoutRequestSchema.parse({ refreshToken: 'a'.repeat(257) })).toThrow();
-      expect(() =>
-        logoutRequestSchema.parse({
-          refreshToken: 'token',
-          unexpected: true,
-        }),
-      ).toThrow();
     });
   });
 });

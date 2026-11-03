@@ -1,36 +1,41 @@
 import type { Request, Response, NextFunction } from 'express';
-import {
-  loginResponseSchema,
-  refreshResponseSchema,
-  type LoginRequest,
-  type RefreshRequest,
-  type LogoutRequest,
-} from '@sigoa/shared';
+import { loginResponseSchema, refreshResponseSchema, type LoginRequest } from '@sigoa/shared';
 import { getValidated } from '../../../../shared/middleware/validate-request.js';
+import { InvalidRefreshTokenError } from '../../domain/errors/index.js';
 import type { LoginUseCase } from '../../application/login.js';
 import type { RefreshSessionUseCase } from '../../application/refresh-session.js';
 import type { LogoutUseCase } from '../../application/logout.js';
 import { resolveClientIp } from './client-ip.js';
 import { getAuthenticatedPrincipal } from './authenticate.js';
+import {
+  setRefreshCookie,
+  clearRefreshCookie,
+  readRefreshCookie,
+  type RefreshCookieSettings,
+} from './refresh-cookie.js';
 
 export interface AuthControllerDependencies {
   loginUseCase: LoginUseCase;
   refreshSessionUseCase?: RefreshSessionUseCase;
   logoutUseCase?: LogoutUseCase;
+  cookieSettings?: RefreshCookieSettings;
 }
 
 export class AuthController {
   private readonly loginUseCase: LoginUseCase;
   private readonly refreshSessionUseCase?: RefreshSessionUseCase;
   private readonly logoutUseCase?: LogoutUseCase;
+  private readonly cookieSettings: RefreshCookieSettings;
 
   constructor(deps: LoginUseCase | AuthControllerDependencies) {
     if ('execute' in deps) {
       this.loginUseCase = deps;
+      this.cookieSettings = { sameSite: 'strict', isProduction: false };
     } else {
       this.loginUseCase = deps.loginUseCase;
       this.refreshSessionUseCase = deps.refreshSessionUseCase;
       this.logoutUseCase = deps.logoutUseCase;
+      this.cookieSettings = deps.cookieSettings ?? { sameSite: 'strict', isProduction: false };
     }
   }
 
@@ -45,8 +50,16 @@ export class AuthController {
         ip,
       });
 
+      setRefreshCookie(
+        res,
+        result.refreshToken,
+        new Date(result.refreshTokenExpiresAt),
+        this.cookieSettings,
+      );
+
+      const { refreshToken: _ignored, ...publicPayload } = result;
       // Parseo estricto de la respuesta para garantizar cumplimiento de Ley 29733 (sin filtrar campos sensibles)
-      const parsedResponse = loginResponseSchema.parse(result);
+      const parsedResponse = loginResponseSchema.parse(publicPayload);
 
       res.setHeader('Cache-Control', 'no-store');
       res.setHeader('Pragma', 'no-cache');
@@ -62,19 +75,38 @@ export class AuthController {
         throw new Error('RefreshSessionUseCase no configurado en AuthController');
       }
 
-      const { body } = getValidated<RefreshRequest>(res);
+      const refreshToken = readRefreshCookie(req);
+      if (!refreshToken) {
+        throw new InvalidRefreshTokenError();
+      }
+
       const ip = resolveClientIp(req);
 
-      const result = await this.refreshSessionUseCase.execute({
-        refreshToken: body.refreshToken,
-        ip,
-      });
+      try {
+        const result = await this.refreshSessionUseCase.execute({
+          refreshToken,
+          ip,
+        });
 
-      const parsedResponse = refreshResponseSchema.parse(result);
+        setRefreshCookie(
+          res,
+          result.refreshToken,
+          new Date(result.refreshTokenExpiresAt),
+          this.cookieSettings,
+        );
 
-      res.setHeader('Cache-Control', 'no-store');
-      res.setHeader('Pragma', 'no-cache');
-      res.status(200).json(parsedResponse);
+        const { refreshToken: _ignored, ...publicPayload } = result;
+        const parsedResponse = refreshResponseSchema.parse(publicPayload);
+
+        res.setHeader('Cache-Control', 'no-store');
+        res.setHeader('Pragma', 'no-cache');
+        res.status(200).json(parsedResponse);
+      } catch (error) {
+        if (error instanceof InvalidRefreshTokenError) {
+          clearRefreshCookie(res, this.cookieSettings);
+        }
+        throw error;
+      }
     } catch (error) {
       next(error);
     }
@@ -87,15 +119,18 @@ export class AuthController {
       }
 
       const principal = getAuthenticatedPrincipal(res);
-      const { body } = getValidated<LogoutRequest>(res);
+      const refreshToken = readRefreshCookie(req);
       const ip = resolveClientIp(req);
 
-      await this.logoutUseCase.execute({
-        refreshToken: body.refreshToken,
-        userId: principal.userId,
-        ip,
-      });
+      if (refreshToken) {
+        await this.logoutUseCase.execute({
+          refreshToken,
+          userId: principal.userId,
+          ip,
+        });
+      }
 
+      clearRefreshCookie(res, this.cookieSettings);
       res.status(204).end();
     } catch (error) {
       next(error);

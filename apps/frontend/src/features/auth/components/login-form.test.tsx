@@ -10,7 +10,6 @@ import { LoginForm } from './login-form';
 const mockValidResponse = {
   accessToken: 'header.payload.signature',
   accessTokenExpiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-  refreshToken: 'refresh-token-uuid-12345678901234567890',
   refreshTokenExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
   user: {
     id: 'usr-123',

@@ -16,6 +16,7 @@ import { LoginUseCase } from './application/login.js';
 import { RefreshSessionUseCase } from './application/refresh-session.js';
 import { LogoutUseCase } from './application/logout.js';
 import { createAuthenticate } from './infrastructure/http/authenticate.js';
+import { createRequireAllowedOrigin } from './infrastructure/http/require-allowed-origin.js';
 
 export interface AuthModuleDependencies {
   unitOfWork: UnitOfWork;
@@ -82,6 +83,12 @@ export function createAuthModule(deps: AuthModuleDependencies): Router {
   const loginRateLimiter = createRateLimiter('login', deps.env);
   const sessionRateLimiter = createRateLimiter('session', deps.env);
 
+  const cookieSettings = {
+    sameSite: deps.env.AUTH_COOKIE_SAMESITE,
+    isProduction: deps.env.NODE_ENV === 'production',
+  };
+  const requireAllowedOrigin = createRequireAllowedOrigin(deps.env.CORS_ORIGIN);
+
   return createAuthRouter({
     loginUseCase,
     refreshSessionUseCase,
@@ -89,6 +96,8 @@ export function createAuthModule(deps: AuthModuleDependencies): Router {
     rateLimiter: loginRateLimiter,
     sessionRateLimiter,
     authenticate,
+    cookieSettings,
+    requireAllowedOrigin,
   });
 }
 
@@ -112,5 +121,7 @@ export * from './infrastructure/security/random-refresh-token-generator.js';
 export * from './infrastructure/http/auth.controller.js';
 export * from './infrastructure/http/auth.routes.js';
 export * from './infrastructure/http/authenticate.js';
+export * from './infrastructure/http/refresh-cookie.js';
+export * from './infrastructure/http/require-allowed-origin.js';
 export * from './infrastructure/prisma/prisma-user-repository.js';
 export * from './infrastructure/prisma/prisma-refresh-token-repository.js';

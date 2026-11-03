@@ -48,6 +48,13 @@
                   "type": "string"
                 },
                 "example": "no-cache"
+              },
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "sigoa_refresh_token=...; Path=/auth; HttpOnly; SameSite=Strict",
+                "description": "Cookie HttpOnly sigoa_refresh_token con el token de actualización opaco."
               }
             },
             "content": {
@@ -58,7 +65,6 @@
                 "example": {
                   "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example",
                   "accessTokenExpiresAt": "2026-10-30T10:15:00.000Z",
-                  "refreshToken": "uG8x9...example",
                   "refreshTokenExpiresAt": "2026-11-06T10:00:00.000Z",
                   "user": {
                     "id": "usr_cuid_123",
@@ -211,19 +217,6 @@
         "summary": "Renovar sesión (rotación de tokens)",
         "description": "Rota el refresh token actual por uno nuevo y emite un nuevo access token de 15 minutos. El refresh token previo queda invalidado de forma inmediata e irreversible (CA1, CA3).",
         "operationId": "refreshSession",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RefreshRequest"
-              },
-              "example": {
-                "refreshToken": "dGhpcy1pcy1hLXNhbXBsZS1yZWZyZXNoLXRva2VuLTEyMw"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Sesión renovada exitosamente. Retorna nuevos tokens rotados y datos del usuario.",
@@ -240,6 +233,13 @@
                   "type": "string"
                 },
                 "example": "no-cache"
+              },
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "sigoa_refresh_token=...; Path=/auth; HttpOnly; SameSite=Strict",
+                "description": "Cookie HttpOnly rotada sigoa_refresh_token."
               }
             },
             "content": {
@@ -250,7 +250,6 @@
                 "example": {
                   "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example.rotated",
                   "accessTokenExpiresAt": "2026-10-30T10:30:00.000Z",
-                  "refreshToken": "uG8x9...rotated.example",
                   "refreshTokenExpiresAt": "2026-11-06T10:15:00.000Z",
                   "user": {
                     "id": "usr_cuid_123",
@@ -303,6 +302,23 @@
               }
             }
           },
+          "403": {
+            "description": "Origen no permitido para peticiones con cookies de autenticación.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "Origen no permitido",
+                    "requestId": "req_abc_123"
+                  }
+                }
+              }
+            }
+          },
           "429": {
             "description": "Límite de peticiones de sesión excedido para la IP.",
             "content": {
@@ -337,7 +353,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "refreshCookie": []
+          }
+        ]
       }
     },
     "/auth/logout": {
@@ -349,24 +370,23 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "refreshCookie": []
           }
         ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/LogoutRequest"
-              },
-              "example": {
-                "refreshToken": "dGhpcy1pcy1hLXNhbXBsZS1yZWZyZXNoLXRva2VuLTEyMw"
-              }
-            }
-          }
-        },
         "responses": {
           "204": {
-            "description": "Sesión cerrada exitosamente. El refresh token fue revocado y ya no permite renovaciones."
+            "description": "Sesión cerrada exitosamente. El refresh token fue revocado y ya no permite renovaciones.",
+            "headers": {
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "sigoa_refresh_token=; Path=/auth; HttpOnly; Max-Age=0",
+                "description": "Limpieza de la cookie de sesión al cerrar sesión."
+              }
+            }
           },
           "400": {
             "description": "Solicitud contiene errores de sintaxis o cuerpo mal formado.",
@@ -511,13 +531,7 @@
       },
       "LoginResponse": {
         "type": "object",
-        "required": [
-          "accessToken",
-          "accessTokenExpiresAt",
-          "refreshToken",
-          "refreshTokenExpiresAt",
-          "user"
-        ],
+        "required": ["accessToken", "accessTokenExpiresAt", "refreshTokenExpiresAt", "user"],
         "properties": {
           "accessToken": {
             "type": "string",
@@ -527,10 +541,6 @@
             "type": "string",
             "format": "date-time",
             "description": "Fecha y hora ISO 8601 de expiración del token de acceso."
-          },
-          "refreshToken": {
-            "type": "string",
-            "description": "Token opaco aleatorio seguro de 32 bytes en formato base64url válido por 7 días."
           },
           "refreshTokenExpiresAt": {
             "type": "string",
@@ -603,30 +613,6 @@
           }
         }
       },
-      "RefreshRequest": {
-        "type": "object",
-        "required": ["refreshToken"],
-        "properties": {
-          "refreshToken": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 256,
-            "description": "Token opaco de actualización emitido previamente en login o refresh."
-          }
-        }
-      },
-      "LogoutRequest": {
-        "type": "object",
-        "required": ["refreshToken"],
-        "properties": {
-          "refreshToken": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 256,
-            "description": "Token de actualización que se desea revocar para cerrar la sesión."
-          }
-        }
-      },
       "RefreshResponse": {
         "$ref": "#/components/schemas/LoginResponse"
       }
@@ -637,6 +623,12 @@
         "scheme": "bearer",
         "bearerFormat": "JWT",
         "description": "Token de acceso JWT firmado con HS256 emitido en /auth/login o /auth/refresh (duración 15 minutos)."
+      },
+      "refreshCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "sigoa_refresh_token",
+        "description": "Cookie HttpOnly con el token de actualización emitida en /auth/login o /auth/refresh."
       }
     }
   }

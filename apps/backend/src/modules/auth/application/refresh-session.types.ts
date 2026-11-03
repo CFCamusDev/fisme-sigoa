@@ -5,4 +5,6 @@ export interface RefreshSessionCommand {
   ip?: string | null;
 }
 
-export type RefreshSessionResult = RefreshResponse;
+export type RefreshSessionResult = RefreshResponse & {
+  refreshToken: string;
+};

@@ -7,7 +7,6 @@ import { useAuth } from './use-auth';
 const mockSession: LoginResponse = {
   accessToken: 'jwt-access-token-xyz',
   accessTokenExpiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-  refreshToken: 'refresh-token-uuid-12345678901234567890',
   refreshTokenExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
   user: {
     id: 'usr-123',
