@@ -28,7 +28,7 @@ export function ErrorState({
     >
       <Illustration name={illustration} size={160} />
       <h3 className="mt-4 text-h3 font-semibold text-danger">{title}</h3>
-      <p className="mt-1 text-body text-danger/90">{message}</p>
+      <p className="mt-1 text-body text-danger">{message}</p>
       {onRetry && (
         <Button
           variant="outline"
