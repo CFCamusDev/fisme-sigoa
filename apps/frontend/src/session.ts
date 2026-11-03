@@ -1,6 +1,6 @@
+import { clearSessionHint, createSessionRefresher, setSessionHint } from './features/auth';
 import { queryClient } from './lib/query-client';
 import { setSessionRefresher } from './lib/session-refresh';
-import { createSessionRefresher } from './features/auth/lib/session-refresher';
 import { useAuthStore } from './stores/auth.store';
 
 export type SessionExpiredReason = 'session-expired';
@@ -27,4 +27,12 @@ export function configureSession(options: ConfigureSessionOptions): void {
   });
 
   setSessionRefresher(refresher);
+
+  useAuthStore.subscribe((state) => {
+    if (state.refreshTokenExpiresAt) {
+      setSessionHint(state.refreshTokenExpiresAt);
+    } else {
+      clearSessionHint();
+    }
+  });
 }

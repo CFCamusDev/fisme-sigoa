@@ -5,6 +5,7 @@ import '@fontsource-variable/open-sans';
 import { setAuthTokenProvider } from './lib/axios';
 import { useAuthStore } from './stores/auth.store';
 import { configureSession } from './session';
+import { AppBootstrap } from './app-bootstrap';
 import { router } from './router';
 import './index.css';
 
@@ -27,6 +28,8 @@ if (!rootElement) {
 
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
-    <RouterProvider router={router} />
+    <AppBootstrap>
+      <RouterProvider router={router} />
+    </AppBootstrap>
   </React.StrictMode>,
 );
