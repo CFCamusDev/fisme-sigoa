@@ -1,11 +1,12 @@
 import { test, expect } from '@playwright/test';
+import { loginAsTestUser } from './support/seed-user';
 
 test.describe('Navigation, layout accessibility and responsiveness', () => {
   test('navigates between the dashboard and the login page', async ({ page }) => {
     await page.goto('/login');
     await expect(page.getByRole('heading', { name: /Iniciar sesión/i })).toBeVisible();
 
-    await page.goto('/');
+    await loginAsTestUser(page);
     await expect(page.getByRole('heading', { name: 'FISME-SIGOA' })).toBeVisible();
   });
 
@@ -22,7 +23,7 @@ test.describe('Navigation, layout accessibility and responsiveness', () => {
   });
 
   test('skip link moves focus to the main content', async ({ page }) => {
-    await page.goto('/');
+    await loginAsTestUser(page);
 
     await page.keyboard.press('Tab');
     const skipLink = page.getByRole('link', { name: /Saltar al contenido principal/i });
@@ -36,7 +37,7 @@ test.describe('Navigation, layout accessibility and responsiveness', () => {
   test('sidebar is fixed at desktop width and collapsible below 1024px', async ({ page }) => {
     // Modo Desktop (1440x900)
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto('/');
+    await loginAsTestUser(page);
 
     const sidebar = page.locator('#app-sidebar');
     await expect(sidebar).toBeVisible();

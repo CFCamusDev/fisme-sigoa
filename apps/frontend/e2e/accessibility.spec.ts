@@ -1,11 +1,12 @@
 import { test, expect } from '@playwright/test';
+import { loginAsTestUser } from './support/seed-user';
 
 test.describe('Keyboard Navigation and Focus Indicator (WCAG 2.1 AA)', () => {
   test('interactive controls display a visible computed focus indicator when navigated with Tab', async ({
     page,
   }) => {
     test.setTimeout(30_000);
-    await page.goto('/');
+    await loginAsTestUser(page);
 
     // 1. Skip link
     await page.keyboard.press('Tab');
@@ -18,7 +19,22 @@ test.describe('Keyboard Navigation and Focus Indicator (WCAG 2.1 AA)', () => {
     });
     expect(skipHasFocusRing).toBe(true);
 
-    // 2. Enlace de navegación
+    // 2. Botón de cerrar sesión en el Header
+    await page.keyboard.press('Tab');
+    const logoutBtn = page.getByRole('button', { name: /Cerrar sesión/i });
+    await expect(logoutBtn).toBeFocused();
+
+    const logoutHasFocusRing = await logoutBtn.evaluate((el) => {
+      const style = window.getComputedStyle(el);
+      return (
+        style.outlineStyle !== 'none' ||
+        style.boxShadow !== 'none' ||
+        style.backgroundColor !== 'transparent'
+      );
+    });
+    expect(logoutHasFocusRing).toBe(true);
+
+    // 3. Enlace de navegación en el sidebar
     await page.keyboard.press('Tab');
     const navLink = page.getByRole('link', { name: /Panel/i });
     await expect(navLink).toBeFocused();
@@ -33,7 +49,7 @@ test.describe('Keyboard Navigation and Focus Indicator (WCAG 2.1 AA)', () => {
     });
     expect(navHasFocusRing).toBe(true);
 
-    // 3. Botón de acción en el dashboard
+    // 4. Botón de acción en el dashboard
     await page.keyboard.press('Tab');
     const actionButton = page.getByRole('button', { name: /Comprobar estado/i });
     await expect(actionButton).toBeFocused();
@@ -47,9 +63,10 @@ test.describe('Keyboard Navigation and Focus Indicator (WCAG 2.1 AA)', () => {
 
   test('navigates sidebar menu items using keyboard only', async ({ page }) => {
     test.setTimeout(30_000);
-    await page.goto('/');
+    await loginAsTestUser(page);
 
-    // Saltar el skip link y enfocarse en el enlace de navegación
+    // Skip link (Tab 1), Logout button (Tab 2), Nav link Panel (Tab 3)
+    await page.keyboard.press('Tab');
     await page.keyboard.press('Tab');
     await page.keyboard.press('Tab');
 
