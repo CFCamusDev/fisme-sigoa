@@ -4,10 +4,20 @@ import { RouterProvider } from '@tanstack/react-router';
 import '@fontsource-variable/open-sans';
 import { setAuthTokenProvider } from './lib/axios';
 import { useAuthStore } from './stores/auth.store';
+import { configureSession } from './session';
 import { router } from './router';
 import './index.css';
 
 setAuthTokenProvider(() => useAuthStore.getState().accessToken);
+configureSession({
+  navigateToLogin: (reason) => {
+    void router.navigate({
+      to: '/login',
+      search: reason ? { reason } : undefined,
+      replace: true,
+    });
+  },
+});
 
 const rootElement = document.getElementById('root');
 

@@ -2,6 +2,7 @@ import axios, { type AxiosError, type AxiosInstance, type InternalAxiosRequestCo
 import { apiErrorResponseSchema } from '@sigoa/shared';
 import { ApiError } from './api-error';
 import { env } from './env';
+import { tryRefreshAndRetry } from './session-refresh';
 
 type AuthTokenProvider = () => string | null | undefined;
 
@@ -44,6 +45,12 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
+    // Intento de renovación reactiva ante 401 si hay un refresher registrado (HU-002, CA1)
+    const refreshAndRetryPromise = tryRefreshAndRetry(error, apiClient);
+    if (refreshAndRetryPromise) {
+      return refreshAndRetryPromise;
+    }
+
     // Caso A: El servidor respondió con un status fuera del rango 2xx
     if (error.response) {
       const status = error.response.status;
