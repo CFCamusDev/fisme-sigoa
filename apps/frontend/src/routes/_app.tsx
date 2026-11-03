@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout';
+import { LogoutButton } from '@/features/auth';
 
 export const Route = createFileRoute('/_app')({
   component: AppRouteLayout,
@@ -7,7 +8,7 @@ export const Route = createFileRoute('/_app')({
 
 function AppRouteLayout() {
   return (
-    <AppLayout>
+    <AppLayout userMenu={<LogoutButton />}>
       <Outlet />
     </AppLayout>
   );
