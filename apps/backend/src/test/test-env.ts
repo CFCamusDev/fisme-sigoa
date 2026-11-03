@@ -22,6 +22,7 @@ export function createTestEnv(overrides: Partial<Env> = {}): Env {
     AUTH_REFRESH_TTL_DAYS: 7,
     AUTH_MAX_FAILED_ATTEMPTS: 5,
     AUTH_LOCKOUT_MINUTES: 15,
+    AUTH_COOKIE_SAMESITE: 'strict',
     ...overrides,
   };
 }
