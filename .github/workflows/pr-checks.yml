@@ -98,6 +98,8 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Paridad de variables de entorno
+        run: pnpm check:env-parity
       - name: Lint y formato
         run: pnpm lint && pnpm format:check
       - name: Typecheck (TypeScript estricto)

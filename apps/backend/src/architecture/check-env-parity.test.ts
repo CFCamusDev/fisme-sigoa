@@ -264,3 +264,15 @@ jobs:
     ).toBe(true);
   });
 });
+
+describe('checkEnvParity repository contract (T-002-20)', () => {
+  it('the real repository is in parity', async () => {
+    // @ts-expect-error script sin archivo de declaraciones .d.ts
+    const { collectInputs } = await import('../../../../scripts/ci/check-env-parity.mjs');
+    const path = await import('node:path');
+    const rootDir = path.resolve(__dirname, '../../../../');
+    const inputs = await collectInputs(rootDir);
+    const errors: string[] = checkEnvParity(inputs);
+    expect(errors).toEqual([]);
+  });
+});
