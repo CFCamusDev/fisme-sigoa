@@ -4,6 +4,7 @@ import type { DbProvider } from '../../shared/prisma/prisma-unit-of-work.js';
 import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
 import { CreateUserUseCase } from './application/create-user.js';
 import { EditUserUseCase } from './application/edit-user.js';
+import { ChangeUserStatusUseCase } from './application/change-user-status.js';
 import type {
   ActivationEmailSender,
   ActivationTokenIssuer,
@@ -16,6 +17,7 @@ import {
   type UserRoutePermissionScope,
 } from './infrastructure/http/users.routes.js';
 import { PrismaUserRepository } from './infrastructure/prisma/prisma-user-repository.js';
+import { PrismaUserSessionRevoker } from './infrastructure/prisma/prisma-user-session-revoker.js';
 
 export interface UsersModuleDependencies {
   readonly unitOfWork: UnitOfWork;
@@ -60,9 +62,21 @@ export function createUsersModule(deps?: UsersModuleDependencies): Router {
     unitOfWork: deps.unitOfWork,
   });
 
+  const userSessionRevoker = new PrismaUserSessionRevoker(deps.dbProvider);
+  const changeUserStatusUseCase = new ChangeUserStatusUseCase({
+    userRepository,
+    userRoleGateway: deps.userRoleGateway,
+    userSessionRevoker,
+    permissionChecker: deps.permissionChecker,
+    auditLogger: deps.auditLogger,
+    unitOfWork: deps.unitOfWork,
+    clock: deps.clock,
+  });
+
   const controller = new UsersController({
     createUserUseCase,
     editUserUseCase,
+    changeUserStatusUseCase,
   });
 
   return createUsersRouter({

@@ -5,12 +5,13 @@ import type { UserDto } from '@sigoa/shared';
 import { runWithRequestContext } from '../../../../shared/audit/request-context.js';
 import { ForbiddenError } from '../../../../shared/errors/app-error.js';
 import { errorHandler } from '../../../../shared/middleware/error-handler.js';
+import type { ChangeUserStatusUseCase } from '../../application/change-user-status.js';
 import type { CreateUserUseCase } from '../../application/create-user.js';
 import type { EditUserUseCase } from '../../application/edit-user.js';
 import { UsersController } from './users.controller.js';
 import { createUsersRouter } from './users.routes.js';
 
-describe('Users Routes Unit Tests (T-003-10, T-003-11, RS-002, D7, D8)', () => {
+describe('Users Routes Unit Tests (T-003-10, T-003-11, T-003-12, RS-002, D7, D8)', () => {
   const dummyActorId = 'admin-actor-uuid';
 
   const mockUserDto: UserDto = {
@@ -31,6 +32,7 @@ describe('Users Routes Unit Tests (T-003-10, T-003-11, RS-002, D7, D8)', () => {
     app: Express;
     createUserUseCase: CreateUserUseCase;
     editUserUseCase: EditUserUseCase;
+    changeUserStatusUseCase: ChangeUserStatusUseCase;
   } {
     const app = express();
     app.use(express.json());
@@ -65,9 +67,14 @@ describe('Users Routes Unit Tests (T-003-10, T-003-11, RS-002, D7, D8)', () => {
       execute: vi.fn().mockResolvedValue(options?.useCaseResult ?? mockUserDto),
     } as unknown as EditUserUseCase;
 
+    const changeUserStatusUseCase = {
+      execute: vi.fn().mockResolvedValue(options?.useCaseResult ?? mockUserDto),
+    } as unknown as ChangeUserStatusUseCase;
+
     const controller = new UsersController({
       createUserUseCase,
       editUserUseCase,
+      changeUserStatusUseCase,
     });
 
     const router = createUsersRouter({
@@ -79,7 +86,7 @@ describe('Users Routes Unit Tests (T-003-10, T-003-11, RS-002, D7, D8)', () => {
     app.use('/users', router);
     app.use(errorHandler);
 
-    return { app, createUserUseCase, editUserUseCase };
+    return { app, createUserUseCase, editUserUseCase, changeUserStatusUseCase };
   }
 
   describe('POST /users', () => {
@@ -177,11 +184,9 @@ describe('Users Routes Unit Tests (T-003-10, T-003-11, RS-002, D7, D8)', () => {
     it('returns 400 when body has no fields or invalid fields', async () => {
       const { app } = setupTestApp({ permissionAllowed: true });
 
-      // Body vacío (viola refine de al menos un campo)
       const resEmpty = await request(app).patch('/users/user-123').send({});
       expect(resEmpty.status).toBe(400);
 
-      // Campo no permitido (status o roleIds no permitidos en PATCH /users/:id)
       const resInvalidField = await request(app)
         .patch('/users/user-123')
         .send({ status: 'INACTIVE' });
@@ -191,10 +196,60 @@ describe('Users Routes Unit Tests (T-003-10, T-003-11, RS-002, D7, D8)', () => {
     it('returns 400 when param id is invalid or empty whitespace', async () => {
       const { app } = setupTestApp({ permissionAllowed: true });
 
-      const resBadId = await request(app)
-        .patch('/users/%20') // whitespace
-        .send(validPatchPayload);
+      const resBadId = await request(app).patch('/users/%20').send(validPatchPayload);
       expect(resBadId.status).toBe(400);
+    });
+  });
+
+  describe('PATCH /users/:id/status (T-003-12)', () => {
+    const validStatusPayload = {
+      status: 'INACTIVE',
+    };
+
+    it('checks the permission before validating the body (403 on invalid input if no permission)', async () => {
+      const { app, changeUserStatusUseCase } = setupTestApp({ permissionAllowed: false });
+
+      const response = await request(app)
+        .patch('/users/user-123/status')
+        .send({ status: 'PENDING_ACTIVATION' });
+
+      expect(response.status).toBe(403);
+      expect(response.body.error.code).toBe('FORBIDDEN');
+      expect(changeUserStatusUseCase.execute).not.toHaveBeenCalled();
+    });
+
+    it('rejects any status other than ACTIVE or INACTIVE with 400', async () => {
+      const { app } = setupTestApp({ permissionAllowed: true });
+
+      const resPending = await request(app)
+        .patch('/users/user-123/status')
+        .send({ status: 'PENDING_ACTIVATION' });
+      expect(resPending.status).toBe(400);
+
+      const resOther = await request(app)
+        .patch('/users/user-123/status')
+        .send({ status: 'SUSPENDED' });
+      expect(resOther.status).toBe(400);
+    });
+
+    it('responds 200 with Cache-Control: no-store and updated UserDto body', async () => {
+      const inactiveDto = { ...mockUserDto, status: 'INACTIVE' as const };
+      const { app, changeUserStatusUseCase } = setupTestApp({
+        permissionAllowed: true,
+        useCaseResult: inactiveDto,
+      });
+
+      const response = await request(app).patch('/users/user-123/status').send(validStatusPayload);
+
+      expect(response.status).toBe(200);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.body).toEqual(inactiveDto);
+      expect(changeUserStatusUseCase.execute).toHaveBeenCalledWith({
+        actorId: dummyActorId,
+        ip: '192.168.1.10',
+        userId: 'user-123',
+        input: validStatusPayload,
+      });
     });
   });
 });
