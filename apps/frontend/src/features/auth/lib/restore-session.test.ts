@@ -97,4 +97,25 @@ describe('restoreSession (T-002-10, CA1)', () => {
     expect(selectIsAuthenticated(useAuthStore.getState())).toBe(false);
     expect(hasValidSessionHint()).toBe(true);
   });
+
+  it('deduplicates concurrent restoreSession calls into a single network request (CA1)', async () => {
+    setSessionHint(new Date(Date.now() + 60_000).toISOString());
+
+    let callCount = 0;
+    server.use(
+      http.post('http://localhost:3000/auth/refresh', async () => {
+        callCount++;
+        // Simular latencia de red para forzar coincidencia concurrente
+        await new Promise((resolve) => setTimeout(resolve, 30));
+        return HttpResponse.json(mockRefreshPayload, { status: 200 });
+      }),
+    );
+
+    const [firstResult, secondResult] = await Promise.all([restoreSession(), restoreSession()]);
+
+    expect(callCount).toBe(1);
+    expect(firstResult).toBe(true);
+    expect(secondResult).toBe(true);
+    expect(selectIsAuthenticated(useAuthStore.getState())).toBe(true);
+  });
 });
