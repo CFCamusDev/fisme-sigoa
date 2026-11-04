@@ -97,7 +97,6 @@ export const updateUserRequestSchema = z
       .optional(),
     email: emailSchema.optional(),
     dni: dniSchema.optional(),
-    roleIds: roleIdsSchema.optional(),
   })
   .strict()
   .refine(
@@ -106,8 +105,7 @@ export const updateUserRequestSchema = z
       data.firstSurname !== undefined ||
       data.secondSurname !== undefined ||
       data.email !== undefined ||
-      data.dni !== undefined ||
-      data.roleIds !== undefined,
+      data.dni !== undefined,
     {
       message: 'Debe proporcionar al menos un campo para actualizar',
     },

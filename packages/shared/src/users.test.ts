@@ -137,6 +137,15 @@ describe('Users Schemas (T-003-09, RF-003, RNF-008, CA1-CA4)', () => {
         }),
       ).toThrow();
     });
+
+    it('update request does not accept roleIds', () => {
+      expect(() =>
+        updateUserRequestSchema.parse({
+          names: 'Nuevo Nombre',
+          roleIds: ['role-1'],
+        }),
+      ).toThrow();
+    });
   });
 
   describe('changeUserStatusRequestSchema', () => {
