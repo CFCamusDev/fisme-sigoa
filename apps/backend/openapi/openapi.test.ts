@@ -6,15 +6,19 @@ import {
   apiErrorResponseSchema,
   changeUserStatusRequestSchema,
   createUserRequestSchema,
+  listRolesResponseSchema,
   listUsersResponseSchema,
   loginRequestSchema,
   loginResponseSchema,
   refreshResponseSchema,
+  roleSummarySchema,
   updateUserRequestSchema,
   userDtoSchema,
 } from '@sigoa/shared';
 import { createUsersRouter } from '../src/modules/users/infrastructure/http/users.routes.js';
 import type { UsersController } from '../src/modules/users/infrastructure/http/users.controller.js';
+import { createRolesRouter } from '../src/modules/authorization/infrastructure/http/roles.routes.js';
+import type { RolesController } from '../src/modules/authorization/infrastructure/http/roles.controller.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -285,6 +289,12 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
       expect(
         spec.paths['/users/{id}/status'].patch.responses['200'].headers['Cache-Control'],
       ).toBeDefined();
+
+      // 5. GET /users/{id}
+      const getUserRes =
+        spec.paths['/users/{id}'].get.responses['200'].content['application/json'].example;
+      expect(userDtoSchema.safeParse(getUserRes).success).toBe(true);
+      expect(spec.paths['/users/{id}'].get.responses['200'].headers['Cache-Control']).toBeDefined();
     });
 
     it('documents the null dni in User schema and update schema', () => {
@@ -303,6 +313,7 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
       const operations = [
         spec.paths['/users'].get,
         spec.paths['/users'].post,
+        spec.paths['/users/{id}'].get,
         spec.paths['/users/{id}'].patch,
         spec.paths['/users/{id}/status'].patch,
       ];
@@ -385,6 +396,110 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
           expect(
             matching,
             `OpenAPI has ${method.toUpperCase()} ${pathKey} which is not in usersRouter`,
+          ).toBeDefined();
+        }
+      }
+    });
+  });
+
+  describe('OpenAPI Specification for Roles (HU-003, T-003-15, A2, A4)', () => {
+    const rolePaths = ['/roles'];
+
+    it('documents GET /roles endpoint with bearer security and Roles tag', () => {
+      expect(spec.paths['/roles']).toBeDefined();
+      expect(spec.paths['/roles'].get).toBeDefined();
+
+      const op = spec.paths['/roles'].get;
+      expect(op.tags).toContain('Roles');
+      expect(op.security).toEqual([{ bearerAuth: [] }]);
+      expect(op.operationId).toBe('listRoles');
+      expect(op.description).toContain('rol.ver');
+    });
+
+    it('documents RoleSummary and ListRolesResponse components', () => {
+      expect(spec.components.schemas.RoleSummary).toBeDefined();
+      expect(spec.components.schemas.ListRolesResponse).toBeDefined();
+
+      const roleSummary = spec.components.schemas.RoleSummary;
+      expect(roleSummary.properties.id).toBeDefined();
+      expect(roleSummary.properties.code).toBeDefined();
+      expect(roleSummary.properties.name).toBeDefined();
+      expect(roleSummary.properties.description).toBeDefined();
+      expect(roleSummary.properties.isPredefined).toBeDefined();
+    });
+
+    it('keeps GET /roles response example valid against listRolesResponseSchema', () => {
+      const getRolesRes =
+        spec.paths['/roles'].get.responses['200'].content['application/json'].example;
+      expect(listRolesResponseSchema.safeParse(getRolesRes).success).toBe(true);
+      expect(spec.paths['/roles'].get.responses['200'].headers['Cache-Control']).toBeDefined();
+
+      for (const item of getRolesRes.items) {
+        expect(roleSummarySchema.safeParse(item).success).toBe(true);
+      }
+    });
+
+    it('documents 401 and 403 error responses with the shared error contract', () => {
+      const op = spec.paths['/roles'].get;
+      expect(op.responses['401']).toBeDefined();
+      expect(op.responses['403']).toBeDefined();
+
+      const err401 = op.responses['401'].content['application/json'].example;
+      expect(apiErrorResponseSchema.safeParse(err401).success).toBe(true);
+
+      const err403 = op.responses['403'].content['application/json'].example;
+      expect(apiErrorResponseSchema.safeParse(err403).success).toBe(true);
+    });
+
+    it('documents every route of the roles router and nothing else (guard against drift, A4)', () => {
+      const dummyController = {
+        list: () => {},
+      } as unknown as RolesController;
+
+      const dummyAuth = () => {};
+      const dummyRequirePermission = () => () => {};
+
+      const router = createRolesRouter({
+        controller: dummyController,
+        authenticate: dummyAuth as never,
+        requirePermission: dummyRequirePermission as never,
+      });
+
+      const routerEndpoints: { method: string; path: string }[] = [];
+      for (const layer of router.stack) {
+        if (layer.route) {
+          const routePath = layer.route.path;
+          const methods = Object.keys(layer.route.methods);
+          for (const method of methods) {
+            const normalizedPath = ('/roles' + (routePath === '/' ? '' : routePath)).replace(
+              /:([a-zA-Z0-9_]+)/g,
+              '{$1}',
+            );
+            routerEndpoints.push({ method: method.toLowerCase(), path: normalizedPath });
+          }
+        }
+      }
+
+      expect(routerEndpoints.length).toBe(1);
+
+      for (const endpoint of routerEndpoints) {
+        const specPath = spec.paths[endpoint.path];
+        expect(specPath, `Path ${endpoint.path} must exist in openapi.json`).toBeDefined();
+        expect(
+          specPath[endpoint.method],
+          `Method ${endpoint.method.toUpperCase()} ${endpoint.path} must exist in openapi.json`,
+        ).toBeDefined();
+      }
+
+      for (const pathKey of rolePaths) {
+        const specPath = spec.paths[pathKey];
+        for (const method of Object.keys(specPath)) {
+          const matching = routerEndpoints.find(
+            (ep) => ep.path === pathKey && ep.method === method.toLowerCase(),
+          );
+          expect(
+            matching,
+            `OpenAPI has ${method.toUpperCase()} ${pathKey} which is not in rolesRouter`,
           ).toBeDefined();
         }
       }
