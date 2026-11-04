@@ -54,9 +54,11 @@ describe('Users HTTP Routes Integration (PostgreSQL real, CA1-CA7, RS-002, RS-02
     secondSurname?: string;
     email?: string;
     dni?: string;
+    status?: 'ACTIVE' | 'INACTIVE' | 'PENDING_ACTIVATION';
+    roleCodes?: string[];
   }) {
     const unique = `${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-    return prisma.user.create({
+    const user = await prisma.user.create({
       data: {
         names: overrides?.names ?? 'Original Name',
         firstSurname: overrides?.firstSurname ?? 'Original Surname',
@@ -65,10 +67,28 @@ describe('Users HTTP Routes Integration (PostgreSQL real, CA1-CA7, RS-002, RS-02
         dni:
           overrides?.dni ??
           String(Math.floor(10000000 + Math.random() * 89999999)).padStart(8, '0'),
-        status: 'ACTIVE',
+        status: overrides?.status ?? 'ACTIVE',
         passwordHash: '$argon2id$v=19$m=65536,t=3,p=4$dummyhash$dummyhash',
       },
     });
+
+    if (overrides?.roleCodes && overrides.roleCodes.length > 0) {
+      const roles = await prisma.role.findMany({
+        where: { code: { in: overrides.roleCodes } },
+        select: { id: true },
+      });
+      for (const role of roles) {
+        await prisma.userRole.create({
+          data: {
+            userId: user.id,
+            roleId: role.id,
+            createdBy: 'TEST',
+          },
+        });
+      }
+    }
+
+    return user;
   }
 
   describe('POST /users', () => {
@@ -1021,6 +1041,204 @@ describe('Users HTTP Routes Integration (PostgreSQL real, CA1-CA7, RS-002, RS-02
         },
       });
       expect(auditCount).toBe(1);
+    }, 15_000);
+  });
+
+  describe('GET /users (T-003-26, CA4, RS-002, RS-015, RS-020, RNF-009, RNF-017, RNF-030)', () => {
+    it('lists users filtered by status and paginates (CA4)', async () => {
+      const admin = await createAuthenticatedActor({
+        prisma,
+        jwtSecret: env.AUTH_JWT_SECRET,
+        roles: ['ADMINISTRATOR'],
+      });
+
+      const u1 = await createTestTargetUser({ status: 'ACTIVE' });
+      const u2 = await createTestTargetUser({ status: 'ACTIVE' });
+      const u3 = await createTestTargetUser({ status: 'INACTIVE' });
+
+      const response = await request(app)
+        .get('/users?status=ACTIVE&page=1&pageSize=10')
+        .set('Authorization', admin.authHeader);
+
+      expect(response.status).toBe(200);
+      expect(response.body.items.length).toBeGreaterThanOrEqual(2);
+      expect(response.body.items.every((u: { status: string }) => u.status === 'ACTIVE')).toBe(
+        true,
+      );
+      const ids = response.body.items.map((u: { id: string }) => u.id);
+      expect(ids).toContain(u1.id);
+      expect(ids).toContain(u2.id);
+      expect(ids).not.toContain(u3.id);
+    }, 15_000);
+
+    it('lists users filtered by role', async () => {
+      const admin = await createAuthenticatedActor({
+        prisma,
+        jwtSecret: env.AUTH_JWT_SECRET,
+        roles: ['ADMINISTRATOR'],
+      });
+
+      const teacherRole = await prisma.role.findUniqueOrThrow({ where: { code: 'TEACHER' } });
+      const teacherUser = await createTestTargetUser({ roleCodes: ['TEACHER'] });
+
+      const response = await request(app)
+        .get(`/users?roleId=${teacherRole.id}`)
+        .set('Authorization', admin.authHeader);
+
+      expect(response.status).toBe(200);
+      const items = response.body.items;
+      expect(items.length).toBeGreaterThanOrEqual(1);
+      expect(items.every((u: { roleIds: string[] }) => u.roleIds.includes(teacherRole.id))).toBe(
+        true,
+      );
+      const ids = items.map((u: { id: string }) => u.id);
+      expect(ids).toContain(teacherUser.id);
+    }, 15_000);
+
+    it('applies the default page and page size (page: 1, pageSize: 20)', async () => {
+      const admin = await createAuthenticatedActor({
+        prisma,
+        jwtSecret: env.AUTH_JWT_SECRET,
+        roles: ['ADMINISTRATOR'],
+      });
+
+      const response = await request(app).get('/users').set('Authorization', admin.authHeader);
+
+      expect(response.status).toBe(200);
+      expect(response.body.page).toBe(1);
+      expect(response.body.pageSize).toBe(20);
+    }, 15_000);
+
+    it('returns the total pages and total count', async () => {
+      const admin = await createAuthenticatedActor({
+        prisma,
+        jwtSecret: env.AUTH_JWT_SECRET,
+        roles: ['ADMINISTRATOR'],
+      });
+
+      const response = await request(app)
+        .get('/users?page=1&pageSize=5')
+        .set('Authorization', admin.authHeader);
+
+      expect(response.status).toBe(200);
+      expect(typeof response.body.total).toBe('number');
+      expect(response.body.totalPages).toBe(Math.ceil(response.body.total / 5));
+    }, 15_000);
+
+    it('returns 400 for an invalid status, page, page size or unknown key', async () => {
+      const admin = await createAuthenticatedActor({
+        prisma,
+        jwtSecret: env.AUTH_JWT_SECRET,
+        roles: ['ADMINISTRATOR'],
+      });
+
+      const resBadStatus = await request(app)
+        .get('/users?status=SUSPENDED')
+        .set('Authorization', admin.authHeader);
+      expect(resBadStatus.status).toBe(400);
+
+      const resBadPage = await request(app)
+        .get('/users?page=0')
+        .set('Authorization', admin.authHeader);
+      expect(resBadPage.status).toBe(400);
+
+      const resHugePage = await request(app)
+        .get('/users?page=10001')
+        .set('Authorization', admin.authHeader);
+      expect(resHugePage.status).toBe(400);
+
+      const resBadPageSize = await request(app)
+        .get('/users?pageSize=101')
+        .set('Authorization', admin.authHeader);
+      expect(resBadPageSize.status).toBe(400);
+
+      const resUnknownKey = await request(app)
+        .get('/users?maliciousParam=1')
+        .set('Authorization', admin.authHeader);
+      expect(resUnknownKey.status).toBe(400);
+    }, 15_000);
+
+    it('returns 401 without a token', async () => {
+      const response = await request(app).get('/users');
+      expect(response.status).toBe(401);
+      expect(response.body.error.code).toBe('UNAUTHORIZED');
+    }, 15_000);
+
+    it('returns 403 without usuario.ver', async () => {
+      const teacher = await createAuthenticatedActor({
+        prisma,
+        jwtSecret: env.AUTH_JWT_SECRET,
+        roles: ['TEACHER'],
+      });
+
+      const response = await request(app).get('/users').set('Authorization', teacher.authHeader);
+
+      expect(response.status).toBe(403);
+      expect(response.body.error.code).toBe('FORBIDDEN');
+    }, 15_000);
+
+    it('does not return password hashes or lockout data', async () => {
+      const admin = await createAuthenticatedActor({
+        prisma,
+        jwtSecret: env.AUTH_JWT_SECRET,
+        roles: ['ADMINISTRATOR'],
+      });
+
+      await createTestTargetUser();
+
+      const response = await request(app)
+        .get('/users?page=1&pageSize=10')
+        .set('Authorization', admin.authHeader);
+
+      expect(response.status).toBe(200);
+      expect(response.body.items.length).toBeGreaterThan(0);
+      for (const item of response.body.items) {
+        expect(item.passwordHash).toBeUndefined();
+        expect(item.password).toBeUndefined();
+        expect(item.failedLoginAttempts).toBeUndefined();
+        expect(item.lockoutUntil).toBeUndefined();
+      }
+    }, 15_000);
+
+    it('returns users without dni without failing', async () => {
+      const admin = await createAuthenticatedActor({
+        prisma,
+        jwtSecret: env.AUTH_JWT_SECRET,
+        roles: ['ADMINISTRATOR'],
+      });
+
+      const noDniUser = await prisma.user.create({
+        data: {
+          names: 'Sin',
+          firstSurname: 'Dni',
+          email: `sin.dni.${Date.now()}@untrm.edu.pe`,
+          dni: null,
+          status: 'ACTIVE',
+          passwordHash: '$argon2id$v=19$m=65536,t=3,p=4$dummy$dummy',
+        },
+      });
+
+      const response = await request(app)
+        .get('/users?status=ACTIVE&pageSize=100')
+        .set('Authorization', admin.authHeader);
+
+      expect(response.status).toBe(200);
+      const found = response.body.items.find((u: { id: string }) => u.id === noDniUser.id);
+      expect(found).toBeDefined();
+      expect(found.dni).toBeNull();
+    }, 15_000);
+
+    it('answers with Cache-Control: no-store', async () => {
+      const admin = await createAuthenticatedActor({
+        prisma,
+        jwtSecret: env.AUTH_JWT_SECRET,
+        roles: ['ADMINISTRATOR'],
+      });
+
+      const response = await request(app).get('/users').set('Authorization', admin.authHeader);
+
+      expect(response.status).toBe(200);
+      expect(response.headers['cache-control']).toBe('no-store');
     }, 15_000);
   });
 });
