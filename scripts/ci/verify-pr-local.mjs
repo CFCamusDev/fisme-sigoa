@@ -468,3 +468,131 @@ export function formatReportTable(report) {
 
   return lines.join('\n');
 }
+
+/**
+ * Genera un nombre aleatorio para una base de datos desechable de pruebas.
+ * Formato: sigoa_verify_<8 hex>_test
+ * @returns {string}
+ */
+export function generateDisposableDbName() {
+  const hex = Math.floor(Math.random() * 0xffffffff)
+    .toString(16)
+    .padStart(8, '0');
+  return `sigoa_verify_${hex}_test`;
+}
+
+/**
+ * Verifica si es seguro eliminar una base de datos.
+ * Únicamente devuelve true si coincide con el patrón estricto de base desechable sigoa_verify_<8 hex>_test.
+ * Rechaza explícitamente bases de datos reales o persistentes como sigoa_dev o sigoa_test.
+ * @param {string} dbName
+ * @returns {boolean}
+ */
+export function isSafeToDropDatabase(dbName) {
+  if (!dbName || typeof dbName !== 'string') return false;
+  return /^sigoa_verify_[0-9a-f]{8}_test$/.test(dbName.trim());
+}
+
+/**
+ * Construye el entorno de ejecución limpio con únicamente las variables requeridas por el CI.
+ * @param {string} disposableDbUrl
+ * @param {NodeJS.ProcessEnv} [baseEnv={}]
+ * @returns {NodeJS.ProcessEnv}
+ */
+export function buildCleanEnvironment(disposableDbUrl, baseEnv = process.env) {
+  const allowedSystemVars = [
+    'PATH',
+    'Path',
+    'SYSTEMROOT',
+    'SystemRoot',
+    'WINDIR',
+    'windir',
+    'HOME',
+    'USERPROFILE',
+    'APPDATA',
+    'LOCALAPPDATA',
+    'TMP',
+    'TEMP',
+    'SHELL',
+    'TERM',
+  ];
+
+  const env = {};
+  for (const key of allowedSystemVars) {
+    if (baseEnv[key] !== undefined) {
+      env[key] = baseEnv[key];
+    }
+  }
+
+  // Variables oficiales del CI (workflow pr-checks.yml)
+  env.DATABASE_URL = disposableDbUrl;
+  env.NODE_ENV = 'test';
+  env.CI = 'true';
+
+  return env;
+}
+
+/**
+ * Comprueba si el árbol de trabajo está limpio para la ejecución en modo --clean.
+ * @param {string} statusOutput
+ * @returns {{ isClean: boolean, warning?: string }}
+ */
+export function checkCleanWorkingTree(statusOutput) {
+  if (!statusOutput || statusOutput.trim() === '') {
+    return { isClean: true };
+  }
+
+  return {
+    isClean: false,
+    warning:
+      'El árbol de trabajo tiene cambios sin confirmar. En modo --clean solo se verificará el commit HEAD actual.',
+  };
+}
+
+/**
+ * Marca como omitidos los pasos que requieren base de datos si PostgreSQL no está disponible.
+ * @param {Array<{ id: string, name: string, status?: string, reason?: string }>} checks
+ * @param {string} reason
+ * @returns {Array<{ id: string, name: string, status: string, reason?: string }>}
+ */
+export function markDatabaseStepsOmitted(checks, reason) {
+  const dbStepIds = new Set(['disposable-db', 'integration-tests', 'pdf-stability']);
+  return checks.map((check) => {
+    if (dbStepIds.has(check.id)) {
+      return {
+        ...check,
+        status: 'omitted',
+        reason,
+      };
+    }
+    return check;
+  });
+}
+
+/**
+ * Expande los pasos repetibles (integración, pdf, e2e) según el factor de repetición repeatCount.
+ * @param {Array<{ id: string, name: string, command?: string }>} steps
+ * @param {number} [repeatCount=1]
+ * @returns {Array<{ id: string, name: string, command?: string, iteration?: number }>}
+ */
+export function planRepeatedSteps(steps, repeatCount = 1) {
+  const repeatableIds = new Set(['integration-tests', 'pdf-stability', 'e2e']);
+  const result = [];
+
+  for (const step of steps) {
+    if (repeatableIds.has(step.id) && repeatCount > 1) {
+      for (let i = 1; i <= repeatCount; i++) {
+        result.push({
+          ...step,
+          name: `${step.name} (Pasada ${i} de ${repeatCount})`,
+          iteration: i,
+        });
+      }
+    } else {
+      result.push(step);
+    }
+  }
+
+  return result;
+}
+

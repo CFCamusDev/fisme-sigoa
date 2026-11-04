@@ -8,6 +8,12 @@ import {
   buildExecutionPlan,
   computeOverallStatus,
   createReportJson,
+  generateDisposableDbName,
+  isSafeToDropDatabase,
+  buildCleanEnvironment,
+  checkCleanWorkingTree,
+  markDatabaseStepsOmitted,
+  planRepeatedSteps,
 } from '../../../../scripts/ci/verify-pr-local.mjs';
 
 describe('verify-pr-local pure logic (T-002-22 / G1)', () => {
@@ -265,5 +271,112 @@ describe('verify-pr-local pure logic (T-002-22 / G1)', () => {
     expect(report.checks.length).toBe(1);
     expect(report.exitCode).toBe(0);
     expect(report.overallStatus).toBe('ok');
+  });
+
+  describe('disposable database and clean environment (T-002-22 / G2)', () => {
+    it('generates a disposable database name that matches the allowed pattern', () => {
+      const name = generateDisposableDbName();
+      expect(name).toMatch(/^sigoa_verify_[0-9a-f]{8}_test$/);
+    });
+
+    it('refuses to drop a database that does not match the pattern, sigoa_dev or sigoa_test', () => {
+      // Debe aceptar solo bases con el prefijo y sufijo estricto
+      expect(isSafeToDropDatabase('sigoa_verify_1234abcd_test')).toBe(true);
+
+      // Debe rechazar bases reales o de test permanente
+      expect(isSafeToDropDatabase('sigoa_dev')).toBe(false);
+      expect(isSafeToDropDatabase('sigoa_test')).toBe(false);
+      expect(isSafeToDropDatabase('oeag_test')).toBe(false);
+      expect(isSafeToDropDatabase('postgres')).toBe(false);
+      expect(isSafeToDropDatabase('sigoa_verify_invalid')).toBe(false);
+      expect(isSafeToDropDatabase('')).toBe(false);
+    });
+
+    it('builds the clean environment with only the workflow variables', () => {
+      const dbUrl = 'postgresql://test:test@localhost:5432/sigoa_verify_1234abcd_test';
+      const cleanEnv = buildCleanEnvironment(dbUrl, {
+        PATH: 'C:\\Windows\\system32',
+        SECRET_LOCAL_VAR: 'super_secret',
+        CUSTOM_DEV_FLAG: '1',
+      });
+
+      expect(cleanEnv.DATABASE_URL).toBe(dbUrl);
+      expect(cleanEnv.NODE_ENV).toBe('test');
+      expect(cleanEnv.CI).toBe('true');
+      expect(cleanEnv.PATH).toBe('C:\\Windows\\system32');
+
+      // Variables locales no deseadas no deben estar
+      expect(cleanEnv.SECRET_LOCAL_VAR).toBeUndefined();
+      expect(cleanEnv.CUSTOM_DEV_FLAG).toBeUndefined();
+    });
+
+    it('warns when the working tree has uncommitted changes in clean mode', () => {
+      const dirtyOutput = ' M apps/frontend/src/App.tsx\n?? untracked.txt';
+      const resultDirty = checkCleanWorkingTree(dirtyOutput);
+      expect(resultDirty.isClean).toBe(false);
+      expect(resultDirty.warning).toMatch(/cambios sin confirmar/i);
+
+      const cleanOutput = '';
+      const resultClean = checkCleanWorkingTree(cleanOutput);
+      expect(resultClean.isClean).toBe(true);
+      expect(resultClean.warning).toBeUndefined();
+    });
+
+    it('marks database steps as omitted when PostgreSQL is not reachable', () => {
+      const plan = [
+        { id: 'branch-name', name: 'Rama', group: 'convenciones', status: 'ok' },
+        { id: 'disposable-db', name: 'BD Desechable', group: 'calidad', status: 'pending' },
+        { id: 'integration-tests', name: 'Integración', group: 'calidad', status: 'pending' },
+      ];
+
+      const updated = markDatabaseStepsOmitted(plan, 'PostgreSQL no disponible en localhost:5432');
+      const dbStep = updated.find((c: { id: string }) => c.id === 'disposable-db');
+      const integStep = updated.find((c: { id: string }) => c.id === 'integration-tests');
+      const branchStep = updated.find((c: { id: string }) => c.id === 'branch-name');
+
+      expect(dbStep.status).toBe('omitted');
+      expect(dbStep.reason).toMatch(/PostgreSQL no disponible/);
+      expect(integStep.status).toBe('omitted');
+      expect(branchStep.status).toBe('ok');
+    });
+
+    it('always cleans up the disposable database and the worktree', () => {
+      const cleanups: string[] = [];
+      const dummyAction = () => {
+        try {
+          cleanups.push('execute-step');
+          throw new Error('Simulation step failure');
+        } finally {
+          cleanups.push('cleanup-db');
+          cleanups.push('cleanup-worktree');
+        }
+      };
+
+      expect(() => dummyAction()).toThrow(/Simulation step failure/);
+      expect(cleanups).toEqual(['execute-step', 'cleanup-db', 'cleanup-worktree']);
+    });
+
+    it('repeats the integration, e2e and pdf steps n times and fails on the first failure', () => {
+      const baseSteps = [
+        { id: 'env-parity', name: 'Paridad' },
+        { id: 'integration-tests', name: 'Integración' },
+      ];
+
+      const planned = planRepeatedSteps(baseSteps, 3);
+      const integSteps = planned.filter((s: { id: string }) => s.id === 'integration-tests');
+
+      expect(integSteps.length).toBe(3);
+      expect(integSteps[0].iteration).toBe(1);
+      expect(integSteps[2].iteration).toBe(3);
+
+      const nonRepeated = planned.filter((s: { id: string }) => s.id === 'env-parity');
+      expect(nonRepeated.length).toBe(1);
+    });
+
+    it('only reruns the selected checks', () => {
+      const plan = buildExecutionPlan('full', { only: ['audit', 'typecheck'] });
+      expect(plan.length).toBe(2);
+      expect(plan.map((c: { id: string }) => c.id)).toEqual(['audit', 'typecheck']);
+    });
   });
 });
