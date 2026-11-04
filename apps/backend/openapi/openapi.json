@@ -481,6 +481,611 @@
           }
         }
       }
+    },
+    "/users": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Listar usuarios",
+        "description": "Lista usuarios de forma paginada y filtrada por estado y/o rol. Requiere el permiso 'usuario.ver' con alcance GLOBAL.",
+        "operationId": "listUsers",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/UserStatus"
+            },
+            "description": "Filtrar por estado del usuario."
+          },
+          {
+            "name": "roleId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            },
+            "description": "Filtrar por identificador de rol asignado."
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000,
+              "default": 1
+            },
+            "description": "Número de página a consultar."
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "description": "Cantidad de registros por página."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista paginada de usuarios retornada con éxito.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListUsersResponse"
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "usr_cuid_123",
+                      "names": "Carlos",
+                      "firstSurname": "Pérez",
+                      "secondSurname": "Gómez",
+                      "email": "carlos.perez@example.test",
+                      "dni": "12345678",
+                      "status": "ACTIVE",
+                      "roleIds": ["role_teacher_cuid"],
+                      "lastLoginAt": "2026-11-04T00:00:00.000Z",
+                      "createdAt": "2026-11-04T00:00:00.000Z",
+                      "updatedAt": "2026-11-04T00:00:00.000Z"
+                    }
+                  ],
+                  "total": 1,
+                  "page": 1,
+                  "pageSize": 20,
+                  "totalPages": 1
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros de consulta inválidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Error de validación en la consulta.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token de acceso no proporcionado o inválido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere 'usuario.ver' con alcance GLOBAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para realizar esta acción.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Users"],
+        "summary": "Registrar nuevo usuario",
+        "description": "Crea una nueva cuenta de usuario en estado PENDING_ACTIVATION, asigna roles e inicia el flujo de activación. Requiere el permiso 'usuario.crear' con alcance GLOBAL.",
+        "operationId": "createUser",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserRequest"
+              },
+              "example": {
+                "names": "María Elena",
+                "firstSurname": "Ríos",
+                "secondSurname": "Vega",
+                "email": "maria.rios@example.test",
+                "dni": "87654321",
+                "roleIds": ["role_teacher_cuid"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Usuario creado exitosamente.",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "/users/usr_new_456",
+                "description": "Ubicación del recurso recién creado."
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                },
+                "example": {
+                  "id": "usr_new_456",
+                  "names": "María Elena",
+                  "firstSurname": "Ríos",
+                  "secondSurname": "Vega",
+                  "email": "maria.rios@example.test",
+                  "dni": "87654321",
+                  "status": "PENDING_ACTIVATION",
+                  "roleIds": ["role_teacher_cuid"],
+                  "lastLoginAt": null,
+                  "createdAt": "2026-11-04T00:00:00.000Z",
+                  "updatedAt": "2026-11-04T00:00:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Cuerpo de solicitud inválido o roles inexistentes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Datos de registro de usuario inválidos.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere 'usuario.crear' con alcance GLOBAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para realizar esta acción.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto por email o DNI duplicado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "Ya existe un usuario con este correo electrónico.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/{id}": {
+      "patch": {
+        "tags": ["Users"],
+        "summary": "Actualizar perfil de usuario",
+        "description": "Actualiza los campos editables del perfil de un usuario. Requiere el permiso 'usuario.editar' con alcance GLOBAL.",
+        "operationId": "updateUser",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Identificador único del usuario (CUID)."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserRequest"
+              },
+              "example": {
+                "names": "Carlos Alberto",
+                "firstSurname": "Pérez",
+                "secondSurname": null,
+                "email": "carlos.alberto@example.test",
+                "dni": "12345678"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Usuario actualizado exitosamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                },
+                "example": {
+                  "id": "usr_cuid_123",
+                  "names": "Carlos Alberto",
+                  "firstSurname": "Pérez",
+                  "secondSurname": null,
+                  "email": "carlos.alberto@example.test",
+                  "dni": "12345678",
+                  "status": "ACTIVE",
+                  "roleIds": ["role_teacher_cuid"],
+                  "lastLoginAt": "2026-11-04T00:00:00.000Z",
+                  "createdAt": "2026-11-04T00:00:00.000Z",
+                  "updatedAt": "2026-11-04T00:00:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Cuerpo de solicitud inválido o intento de modificar campos restringidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Datos de actualización inválidos.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere 'usuario.editar' con alcance GLOBAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para realizar esta acción.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Usuario no encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "Usuario no encontrado.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto por email o DNI ya en uso por otro usuario.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "Ya existe otro usuario con este correo electrónico.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/{id}/status": {
+      "patch": {
+        "tags": ["Users"],
+        "summary": "Cambiar estado de usuario",
+        "description": "Modifica el estado de un usuario (activación o inactivación). Al inactivar se revocan inmediatamente todas sus sesiones activas (refresh tokens). Un administrador no puede auto-inactivarse. Requiere el permiso 'usuario.editar' con alcance GLOBAL.",
+        "operationId": "changeUserStatus",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Identificador único del usuario (CUID)."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeUserStatusRequest"
+              },
+              "example": {
+                "status": "INACTIVE"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Estado del usuario actualizado exitosamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                },
+                "example": {
+                  "id": "usr_cuid_123",
+                  "names": "Carlos Alberto",
+                  "firstSurname": "Pérez",
+                  "secondSurname": null,
+                  "email": "carlos.alberto@example.test",
+                  "dni": "12345678",
+                  "status": "INACTIVE",
+                  "roleIds": ["role_teacher_cuid"],
+                  "lastLoginAt": "2026-11-04T00:00:00.000Z",
+                  "createdAt": "2026-11-04T00:00:00.000Z",
+                  "updatedAt": "2026-11-04T00:00:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Estado inválido (solo se permite ACTIVE o INACTIVE).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Estado de usuario inválido.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere 'usuario.editar' con alcance GLOBAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para realizar esta acción.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Usuario no encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "Usuario no encontrado.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Transición de estado inválida o intento de auto-inactivación.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "No puedes desactivar tu propia cuenta de usuario.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -615,6 +1220,184 @@
       },
       "RefreshResponse": {
         "$ref": "#/components/schemas/LoginResponse"
+      },
+      "UserStatus": {
+        "type": "string",
+        "enum": ["ACTIVE", "INACTIVE", "PENDING_ACTIVATION"],
+        "description": "Estado de la cuenta de usuario en el ciclo de vida (LS 5.14)."
+      },
+      "User": {
+        "type": "object",
+        "required": [
+          "id",
+          "names",
+          "firstSurname",
+          "email",
+          "status",
+          "roleIds",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Identificador único del usuario (CUID)."
+          },
+          "names": {
+            "type": "string",
+            "description": "Nombres del usuario."
+          },
+          "firstSurname": {
+            "type": "string",
+            "description": "Primer apellido del usuario."
+          },
+          "secondSurname": {
+            "type": ["string", "null"],
+            "description": "Segundo apellido (opcional o nulo)."
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Correo electrónico institucional."
+          },
+          "dni": {
+            "type": ["string", "null"],
+            "pattern": "^[0-9]{8}$",
+            "description": "Documento Nacional de Identidad de 8 dígitos (opcional o nulo)."
+          },
+          "status": {
+            "$ref": "#/components/schemas/UserStatus"
+          },
+          "roleIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Identificadores de roles asignados al usuario."
+          },
+          "lastLoginAt": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "Fecha y hora del último inicio de sesión exitoso."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Fecha y hora de registro del usuario."
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Fecha y hora de última modificación del usuario."
+          }
+        }
+      },
+      "CreateUserRequest": {
+        "type": "object",
+        "required": ["names", "firstSurname", "email", "roleIds"],
+        "properties": {
+          "names": {
+            "type": "string",
+            "description": "Nombres del usuario (1 a 100 caracteres)."
+          },
+          "firstSurname": {
+            "type": "string",
+            "description": "Primer apellido (1 a 100 caracteres)."
+          },
+          "secondSurname": {
+            "type": "string",
+            "description": "Segundo apellido (opcional, 1 a 100 caracteres)."
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Correo institucional único."
+          },
+          "dni": {
+            "type": "string",
+            "pattern": "^[0-9]{8}$",
+            "description": "DNI de 8 dígitos (opcional)."
+          },
+          "roleIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "description": "Al menos un identificador de rol válido a asignar."
+          }
+        }
+      },
+      "UpdateUserRequest": {
+        "type": "object",
+        "properties": {
+          "names": {
+            "type": "string",
+            "description": "Nombres actualizados (1 a 100 caracteres)."
+          },
+          "firstSurname": {
+            "type": "string",
+            "description": "Primer apellido actualizado (1 a 100 caracteres)."
+          },
+          "secondSurname": {
+            "type": ["string", "null"],
+            "description": "Segundo apellido actualizado (opcional o null para remover)."
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Correo institucional actualizado."
+          },
+          "dni": {
+            "type": ["string", "null"],
+            "pattern": "^[0-9]{8}$",
+            "description": "DNI actualizado (o null para remover)."
+          }
+        }
+      },
+      "ChangeUserStatusRequest": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["ACTIVE", "INACTIVE"],
+            "description": "Nuevo estado de la cuenta (solo transiciones permitidas: ACTIVE o INACTIVE)."
+          }
+        }
+      },
+      "ListUsersResponse": {
+        "type": "object",
+        "required": ["items", "total", "page", "pageSize", "totalPages"],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/User"
+            },
+            "description": "Usuarios pertenecientes a la página consultada."
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Cantidad total de usuarios que coinciden con los filtros."
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Número de página actual."
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Tamaño de página actual."
+          },
+          "totalPages": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Cantidad total de páginas disponibles."
+          }
+        }
       }
     },
     "securitySchemes": {

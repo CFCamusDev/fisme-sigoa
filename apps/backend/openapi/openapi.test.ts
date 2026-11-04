@@ -4,10 +4,17 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   apiErrorResponseSchema,
+  changeUserStatusRequestSchema,
+  createUserRequestSchema,
+  listUsersResponseSchema,
   loginRequestSchema,
   loginResponseSchema,
   refreshResponseSchema,
+  updateUserRequestSchema,
+  userDtoSchema,
 } from '@sigoa/shared';
+import { createUsersRouter } from '../src/modules/users/infrastructure/http/users.routes.js';
+import type { UsersController } from '../src/modules/users/infrastructure/http/users.controller.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -144,6 +151,10 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
     expect(operationIds).toContain('login');
     expect(operationIds).toContain('refreshSession');
     expect(operationIds).toContain('logout');
+    expect(operationIds).toContain('createUser');
+    expect(operationIds).toContain('listUsers');
+    expect(operationIds).toContain('updateUser');
+    expect(operationIds).toContain('changeUserStatus');
   });
 
   it('documents every login response with a valid example matching its schema', () => {
@@ -200,5 +211,178 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
 
     expect(rawString).not.toContain('passwordHash');
     expect(rawString).not.toContain('$argon2id');
+  });
+
+  describe('OpenAPI Specification for Users (T-003-14, CA1-CA4, D9, D10, RNF-032)', () => {
+    const userPaths = ['/users', '/users/{id}', '/users/{id}/status'];
+
+    it('documents the four user endpoints with bearer security', () => {
+      expect(spec.paths['/users']).toBeDefined();
+      expect(spec.paths['/users'].get).toBeDefined();
+      expect(spec.paths['/users'].post).toBeDefined();
+
+      expect(spec.paths['/users/{id}']).toBeDefined();
+      expect(spec.paths['/users/{id}'].patch).toBeDefined();
+
+      expect(spec.paths['/users/{id}/status']).toBeDefined();
+      expect(spec.paths['/users/{id}/status'].patch).toBeDefined();
+
+      // Verificar que todos exigen bearerAuth y tienen tag Users
+      const operations = [
+        spec.paths['/users'].get,
+        spec.paths['/users'].post,
+        spec.paths['/users/{id}'].patch,
+        spec.paths['/users/{id}/status'].patch,
+      ];
+
+      for (const op of operations) {
+        expect(op.tags).toContain('Users');
+        expect(op.security).toEqual([{ bearerAuth: [] }]);
+        expect(op.operationId).toBeDefined();
+      }
+    });
+
+    it('keeps every users request and response example valid against the shared schemas', () => {
+      // 1. POST /users
+      const postReq = spec.paths['/users'].post.requestBody.content['application/json'].example;
+      expect(createUserRequestSchema.safeParse(postReq).success).toBe(true);
+
+      const postRes =
+        spec.paths['/users'].post.responses['201'].content['application/json'].example;
+      expect(userDtoSchema.safeParse(postRes).success).toBe(true);
+      expect(spec.paths['/users'].post.responses['201'].headers['Location']).toBeDefined();
+      expect(spec.paths['/users'].post.responses['201'].headers['Cache-Control']).toBeDefined();
+
+      // 2. GET /users
+      const getRes = spec.paths['/users'].get.responses['200'].content['application/json'].example;
+      expect(listUsersResponseSchema.safeParse(getRes).success).toBe(true);
+      expect(spec.paths['/users'].get.responses['200'].headers['Cache-Control']).toBeDefined();
+
+      // 3. PATCH /users/{id}
+      const patchReq =
+        spec.paths['/users/{id}'].patch.requestBody.content['application/json'].example;
+      expect(updateUserRequestSchema.safeParse(patchReq).success).toBe(true);
+
+      const patchRes =
+        spec.paths['/users/{id}'].patch.responses['200'].content['application/json'].example;
+      expect(userDtoSchema.safeParse(patchRes).success).toBe(true);
+      expect(
+        spec.paths['/users/{id}'].patch.responses['200'].headers['Cache-Control'],
+      ).toBeDefined();
+
+      // 4. PATCH /users/{id}/status
+      const patchStatusReq =
+        spec.paths['/users/{id}/status'].patch.requestBody.content['application/json'].example;
+      expect(changeUserStatusRequestSchema.safeParse(patchStatusReq).success).toBe(true);
+
+      const patchStatusRes =
+        spec.paths['/users/{id}/status'].patch.responses['200'].content['application/json'].example;
+      expect(userDtoSchema.safeParse(patchStatusRes).success).toBe(true);
+      expect(
+        spec.paths['/users/{id}/status'].patch.responses['200'].headers['Cache-Control'],
+      ).toBeDefined();
+    });
+
+    it('documents the null dni in User schema and update schema', () => {
+      const userSchema = spec.components.schemas.User;
+      expect(userSchema).toBeDefined();
+      expect(userSchema.properties.dni.type).toContain('null');
+      expect(userSchema.properties.dni.type).toContain('string');
+
+      const updateSchema = spec.components.schemas.UpdateUserRequest;
+      expect(updateSchema).toBeDefined();
+      expect(updateSchema.properties.dni.type).toContain('null');
+      expect(updateSchema.properties.dni.type).toContain('string');
+    });
+
+    it('documents 400, 401, 403, 404 and 409 with the shared error contract', () => {
+      const operations = [
+        spec.paths['/users'].get,
+        spec.paths['/users'].post,
+        spec.paths['/users/{id}'].patch,
+        spec.paths['/users/{id}/status'].patch,
+      ];
+
+      for (const op of operations) {
+        expect(op.responses['400']).toBeDefined();
+        expect(op.responses['401']).toBeDefined();
+        expect(op.responses['403']).toBeDefined();
+
+        for (const code of ['400', '401', '403']) {
+          const example = op.responses[code].content['application/json'].example;
+          expect(apiErrorResponseSchema.safeParse(example).success).toBe(true);
+        }
+
+        if (op.responses['404']) {
+          const example = op.responses['404'].content['application/json'].example;
+          expect(apiErrorResponseSchema.safeParse(example).success).toBe(true);
+        }
+
+        if (op.responses['409']) {
+          const example = op.responses['409'].content['application/json'].example;
+          expect(apiErrorResponseSchema.safeParse(example).success).toBe(true);
+        }
+      }
+    });
+
+    it('documents every route of the users router and nothing else (guard against drift, D9)', () => {
+      const dummyController = {
+        create: () => {},
+        update: () => {},
+        changeStatus: () => {},
+        list: () => {},
+      } as unknown as UsersController;
+
+      const dummyAuth = () => {};
+      const dummyRequirePermission = () => () => {};
+
+      const router = createUsersRouter({
+        controller: dummyController,
+        authenticate: dummyAuth as never,
+        requirePermission: dummyRequirePermission as never,
+      });
+
+      // Extraer pares { method, path } del router de Express
+      const routerEndpoints: { method: string; path: string }[] = [];
+      for (const layer of router.stack) {
+        if (layer.route) {
+          const routePath = layer.route.path;
+          const methods = Object.keys(layer.route.methods);
+          for (const method of methods) {
+            const normalizedPath = ('/users' + (routePath === '/' ? '' : routePath)).replace(
+              /:([a-zA-Z0-9_]+)/g,
+              '{$1}',
+            );
+            routerEndpoints.push({ method: method.toLowerCase(), path: normalizedPath });
+          }
+        }
+      }
+
+      expect(routerEndpoints.length).toBe(4);
+
+      // Comprobar que cada ruta del router está en OpenAPI
+      for (const endpoint of routerEndpoints) {
+        const specPath = spec.paths[endpoint.path];
+        expect(specPath, `Path ${endpoint.path} must exist in openapi.json`).toBeDefined();
+        expect(
+          specPath[endpoint.method],
+          `Method ${endpoint.method.toUpperCase()} ${endpoint.path} must exist in openapi.json`,
+        ).toBeDefined();
+      }
+
+      // Comprobar que en OpenAPI no haya rutas de /users que no existan en el router
+      for (const pathKey of userPaths) {
+        const specPath = spec.paths[pathKey];
+        for (const method of Object.keys(specPath)) {
+          const matching = routerEndpoints.find(
+            (ep) => ep.path === pathKey && ep.method === method.toLowerCase(),
+          );
+          expect(
+            matching,
+            `OpenAPI has ${method.toUpperCase()} ${pathKey} which is not in usersRouter`,
+          ).toBeDefined();
+        }
+      }
+    });
   });
 });
