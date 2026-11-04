@@ -8,7 +8,7 @@ export function toUserDto(user: User, roleIds: string[]): UserDto {
     firstSurname: user.firstSurname,
     secondSurname: user.secondSurname,
     email: user.email,
-    dni: user.dni ?? '',
+    dni: user.dni ?? null,
     status: user.status,
     roleIds,
     lastLoginAt: user.lastLoginAt ? user.lastLoginAt.toISOString() : null,

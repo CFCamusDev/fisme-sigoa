@@ -146,7 +146,7 @@ export const userDtoSchema = z
     firstSurname: z.string().min(1),
     secondSurname: z.string().nullable(),
     email: z.string().email(),
-    dni: z.string().regex(DNI_PATTERN),
+    dni: z.string().regex(DNI_PATTERN).nullable(),
     status: userStatusSchema,
     roleIds: z.array(z.string()),
     lastLoginAt: z.string().datetime().nullable(),

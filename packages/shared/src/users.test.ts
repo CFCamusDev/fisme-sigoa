@@ -207,21 +207,38 @@ describe('Users Schemas (T-003-09, RF-003, RNF-008, CA1-CA4)', () => {
   });
 
   describe('userDtoSchema', () => {
-    it('user dto has no password or lockout fields', () => {
-      const validDto: UserDto = {
-        id: 'usr-123',
-        names: 'Juan Carlos',
-        firstSurname: 'Pérez',
-        secondSurname: null,
-        email: 'juan.perez@untrm.edu.pe',
-        dni: '12345678',
-        status: 'ACTIVE',
-        roleIds: ['role-admin'],
-        lastLoginAt: '2026-11-03T12:00:00.000Z',
-        createdAt: '2026-11-03T10:00:00.000Z',
-        updatedAt: '2026-11-03T10:00:00.000Z',
-      };
+    const validDto: UserDto = {
+      id: 'usr-123',
+      names: 'Juan Carlos',
+      firstSurname: 'Pérez',
+      secondSurname: null,
+      email: 'juan.perez@untrm.edu.pe',
+      dni: '12345678',
+      status: 'ACTIVE',
+      roleIds: ['role-admin'],
+      lastLoginAt: '2026-11-03T12:00:00.000Z',
+      createdAt: '2026-11-03T10:00:00.000Z',
+      updatedAt: '2026-11-03T10:00:00.000Z',
+    };
 
+    it('user dto accepts a null dni', () => {
+      const parsed = userDtoSchema.parse({
+        ...validDto,
+        dni: null,
+      });
+      expect(parsed.dni).toBeNull();
+    });
+
+    it('user dto still rejects a malformed dni', () => {
+      expect(() =>
+        userDtoSchema.parse({
+          ...validDto,
+          dni: '1234',
+        }),
+      ).toThrow();
+    });
+
+    it('user dto has no password or lockout fields', () => {
       const parsed = userDtoSchema.parse(validDto);
       expect(parsed.id).toBe('usr-123');
       expect((parsed as Record<string, unknown>).passwordHash).toBeUndefined();
