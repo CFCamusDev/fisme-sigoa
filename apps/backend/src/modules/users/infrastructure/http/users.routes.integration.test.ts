@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
+import { userDtoSchema } from '@sigoa/shared';
 import { useTestDatabase } from '../../../../test/db/use-test-database.js';
 import { createTestEnv } from '../../../../test/test-env.js';
 import { createApp } from '../../../../app.js';
@@ -1236,6 +1237,147 @@ describe('Users HTTP Routes Integration (PostgreSQL real, CA1-CA7, RS-002, RS-02
       });
 
       const response = await request(app).get('/users').set('Authorization', admin.authHeader);
+
+      expect(response.status).toBe(200);
+      expect(response.headers['cache-control']).toBe('no-store');
+    }, 15_000);
+  });
+
+  describe('GET /users/:id (A3, A5)', () => {
+    it('returns a user by id with its roles', async () => {
+      const admin = await createAuthenticatedActor({
+        prisma,
+        jwtSecret: env.AUTH_JWT_SECRET,
+        roles: ['ADMINISTRATOR'],
+      });
+
+      const target = await createTestTargetUser({
+        names: 'Lucía',
+        firstSurname: 'Mendoza',
+        roleCodes: ['TEACHER', 'COMMITTEE_MEMBER'],
+      });
+
+      const response = await request(app)
+        .get(`/users/${target.id}`)
+        .set('Authorization', admin.authHeader);
+
+      expect(response.status).toBe(200);
+      expect(response.headers['cache-control']).toBe('no-store');
+
+      const parsed = userDtoSchema.safeParse(response.body);
+      expect(parsed.success).toBe(true);
+      if (parsed.success) {
+        expect(parsed.data.id).toBe(target.id);
+        expect(parsed.data.names).toBe('Lucía');
+        expect(parsed.data.firstSurname).toBe('Mendoza');
+        expect(parsed.data.roleIds.length).toBe(2);
+      }
+    }, 15_000);
+
+    it('returns 404 for an unknown id', async () => {
+      const admin = await createAuthenticatedActor({
+        prisma,
+        jwtSecret: env.AUTH_JWT_SECRET,
+        roles: ['ADMINISTRATOR'],
+      });
+
+      const response = await request(app)
+        .get('/users/usr_non_existent_cuid_99999999')
+        .set('Authorization', admin.authHeader);
+
+      expect(response.status).toBe(404);
+      expect(response.body.error).toBeDefined();
+      expect(response.body.error.code).toBe('NOT_FOUND');
+    }, 15_000);
+
+    it('returns 400 for an oversized id', async () => {
+      const admin = await createAuthenticatedActor({
+        prisma,
+        jwtSecret: env.AUTH_JWT_SECRET,
+        roles: ['ADMINISTRATOR'],
+      });
+
+      const oversizedId = 'a'.repeat(65);
+      const response = await request(app)
+        .get(`/users/${oversizedId}`)
+        .set('Authorization', admin.authHeader);
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBeDefined();
+      expect(response.body.error.code).toBe('VALIDATION_ERROR');
+    }, 15_000);
+
+    it('returns 401 without a token for the user detail', async () => {
+      const target = await createTestTargetUser();
+
+      const response = await request(app).get(`/users/${target.id}`);
+
+      expect(response.status).toBe(401);
+      expect(response.body.error).toBeDefined();
+      expect(response.body.error.code).toBe('UNAUTHORIZED');
+    }, 15_000);
+
+    it('returns 403 without usuario.ver', async () => {
+      const teacherWithoutPerm = await createAuthenticatedActor({
+        prisma,
+        jwtSecret: env.AUTH_JWT_SECRET,
+        roles: ['TEACHER'],
+      });
+
+      const target = await createTestTargetUser();
+
+      const response = await request(app)
+        .get(`/users/${target.id}`)
+        .set('Authorization', teacherWithoutPerm.authHeader);
+
+      expect(response.status).toBe(403);
+      expect(response.body.error).toBeDefined();
+      expect(response.body.error.code).toBe('FORBIDDEN');
+    }, 15_000);
+
+    it('returns a user without dni', async () => {
+      const admin = await createAuthenticatedActor({
+        prisma,
+        jwtSecret: env.AUTH_JWT_SECRET,
+        roles: ['ADMINISTRATOR'],
+      });
+
+      const noDniUser = await prisma.user.create({
+        data: {
+          names: 'Elena',
+          firstSurname: 'Rosas',
+          email: `elena.rosas.${Date.now()}@untrm.edu.pe`,
+          dni: null,
+          status: 'ACTIVE',
+          passwordHash: '$argon2id$v=19$m=65536,t=3,p=4$dummy$dummy',
+        },
+      });
+
+      const response = await request(app)
+        .get(`/users/${noDniUser.id}`)
+        .set('Authorization', admin.authHeader);
+
+      expect(response.status).toBe(200);
+      const parsed = userDtoSchema.safeParse(response.body);
+      expect(parsed.success).toBe(true);
+      if (parsed.success) {
+        expect(parsed.data.id).toBe(noDniUser.id);
+        expect(parsed.data.dni).toBeNull();
+      }
+    }, 15_000);
+
+    it('answers with Cache-Control: no-store', async () => {
+      const admin = await createAuthenticatedActor({
+        prisma,
+        jwtSecret: env.AUTH_JWT_SECRET,
+        roles: ['ADMINISTRATOR'],
+      });
+
+      const target = await createTestTargetUser();
+
+      const response = await request(app)
+        .get(`/users/${target.id}`)
+        .set('Authorization', admin.authHeader);
 
       expect(response.status).toBe(200);
       expect(response.headers['cache-control']).toBe('no-store');
