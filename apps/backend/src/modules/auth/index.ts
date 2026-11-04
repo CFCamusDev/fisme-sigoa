@@ -7,14 +7,17 @@ import { createRateLimiter } from '../../shared/middleware/rate-limit.js';
 import { createAuthRouter } from './infrastructure/http/auth.routes.js';
 import { PrismaUserRepository } from './infrastructure/prisma/prisma-user-repository.js';
 import { PrismaRefreshTokenRepository } from './infrastructure/prisma/prisma-refresh-token-repository.js';
+import { PrismaActivationTokenRepository } from './infrastructure/prisma/prisma-activation-token-repository.js';
 import { Argon2PasswordHasher } from './infrastructure/security/argon2-password-hasher.js';
 import { JoseAccessTokenSigner } from './infrastructure/security/jose-access-token-signer.js';
 import { JoseAccessTokenVerifier } from './infrastructure/security/jose-access-token-verifier.js';
 import { RandomRefreshTokenGenerator } from './infrastructure/security/random-refresh-token-generator.js';
+import { RandomActivationTokenGenerator } from './infrastructure/security/random-activation-token-generator.js';
 import { LoginPolicy } from './domain/value-objects/login-policy.js';
 import { LoginUseCase } from './application/login.js';
 import { RefreshSessionUseCase } from './application/refresh-session.js';
 import { LogoutUseCase } from './application/logout.js';
+import { ActivationTokenIssuerService } from './application/activation-token-issuer-service.js';
 import { createAuthenticate } from './infrastructure/http/authenticate.js';
 import { createRequireAllowedOrigin } from './infrastructure/http/require-allowed-origin.js';
 
@@ -26,13 +29,37 @@ export interface AuthModuleDependencies {
   clock?: () => Date;
 }
 
-export function createAuthModule(deps: AuthModuleDependencies): Router {
-  if (!deps.env || !deps.dbProvider) {
-    return createAuthRouter();
-  }
+export interface AuthServicesDependencies {
+  dbProvider: DbProvider;
+  env: Pick<
+    Env,
+    | 'AUTH_JWT_SECRET'
+    | 'AUTH_ACCESS_TTL_SECONDS'
+    | 'AUTH_REFRESH_TTL_DAYS'
+    | 'AUTH_MAX_FAILED_ATTEMPTS'
+    | 'AUTH_LOCKOUT_MINUTES'
+  >;
+  clock?: () => Date;
+}
 
+export interface AuthServices {
+  readonly userRepository: PrismaUserRepository;
+  readonly refreshTokenRepository: PrismaRefreshTokenRepository;
+  readonly activationTokenRepository: PrismaActivationTokenRepository;
+  readonly passwordHasher: Argon2PasswordHasher;
+  readonly accessTokenSigner: JoseAccessTokenSigner;
+  readonly accessTokenVerifier: JoseAccessTokenVerifier;
+  readonly refreshTokenGenerator: RandomRefreshTokenGenerator;
+  readonly activationTokenGenerator: RandomActivationTokenGenerator;
+  readonly activationTokenIssuer: ActivationTokenIssuerService;
+  readonly loginPolicy: LoginPolicy;
+  readonly authenticate: ReturnType<typeof createAuthenticate>;
+}
+
+export function createAuthServices(deps: AuthServicesDependencies): AuthServices {
   const userRepository = new PrismaUserRepository(deps.dbProvider);
   const refreshTokenRepository = new PrismaRefreshTokenRepository(deps.dbProvider);
+  const activationTokenRepository = new PrismaActivationTokenRepository(deps.dbProvider);
   const passwordHasher = new Argon2PasswordHasher();
   const accessTokenSigner = new JoseAccessTokenSigner(
     deps.env.AUTH_JWT_SECRET,
@@ -45,36 +72,67 @@ export function createAuthModule(deps: AuthModuleDependencies): Router {
     clock: deps.clock,
   });
   const refreshTokenGenerator = new RandomRefreshTokenGenerator(deps.env.AUTH_REFRESH_TTL_DAYS);
+  const activationTokenGenerator = new RandomActivationTokenGenerator();
+  const activationTokenIssuer = new ActivationTokenIssuerService(
+    activationTokenRepository,
+    activationTokenGenerator,
+  );
   const loginPolicy = new LoginPolicy({
     maxFailedAttempts: deps.env.AUTH_MAX_FAILED_ATTEMPTS,
     lockoutMinutes: deps.env.AUTH_LOCKOUT_MINUTES,
   });
 
-  const loginUseCase = new LoginUseCase({
+  return {
     userRepository,
     refreshTokenRepository,
+    activationTokenRepository,
     passwordHasher,
     accessTokenSigner,
+    accessTokenVerifier,
     refreshTokenGenerator,
+    activationTokenGenerator,
+    activationTokenIssuer,
+    loginPolicy,
+    authenticate,
+  };
+}
+
+export function createAuthModule(deps: AuthModuleDependencies): Router {
+  if (!deps.env || !deps.dbProvider) {
+    return createAuthRouter();
+  }
+
+  const services = createAuthServices({
+    dbProvider: deps.dbProvider,
+    env: deps.env,
+    clock: deps.clock,
+  });
+
+  const loginUseCase = new LoginUseCase({
+    userRepository: services.userRepository,
+    refreshTokenRepository: services.refreshTokenRepository,
+    passwordHasher: services.passwordHasher,
+    accessTokenSigner: services.accessTokenSigner,
+    refreshTokenGenerator: services.refreshTokenGenerator,
     unitOfWork: deps.unitOfWork,
     auditLogger: deps.auditLogger,
-    loginPolicy,
+    loginPolicy: services.loginPolicy,
     clock: deps.clock,
   });
 
   const refreshSessionUseCase = new RefreshSessionUseCase({
-    refreshTokenRepository,
-    userRepository,
-    refreshTokenGenerator,
-    accessTokenSigner,
+    refreshTokenRepository: services.refreshTokenRepository,
+    userRepository: services.userRepository,
+    refreshTokenGenerator: services.refreshTokenGenerator,
+    accessTokenSigner: services.accessTokenSigner,
     unitOfWork: deps.unitOfWork,
     auditLogger: deps.auditLogger,
     clock: deps.clock,
   });
 
   const logoutUseCase = new LogoutUseCase({
-    refreshTokenRepository,
-    refreshTokenGenerator,
+    refreshTokenRepository: services.refreshTokenRepository,
+    refreshTokenGenerator: services.refreshTokenGenerator,
     unitOfWork: deps.unitOfWork,
     auditLogger: deps.auditLogger,
     clock: deps.clock,
@@ -95,7 +153,7 @@ export function createAuthModule(deps: AuthModuleDependencies): Router {
     logoutUseCase,
     rateLimiter: loginRateLimiter,
     sessionRateLimiter,
-    authenticate,
+    authenticate: services.authenticate,
     cookieSettings,
     requireAllowedOrigin,
   });
