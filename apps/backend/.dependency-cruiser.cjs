@@ -45,7 +45,7 @@ module.exports = {
         pathNot: [
           '^src/modules/$1/domain',
           '^src/shared/errors',
-          '(^|/)@sigoa/shared(/|$)',
+          '(^|/)(@sigoa/shared|packages/shared)(/|$)',
           '^node:',
         ],
       },
