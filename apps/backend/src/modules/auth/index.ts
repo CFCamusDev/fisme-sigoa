@@ -103,6 +103,7 @@ export function createAuthModule(deps: AuthModuleDependencies): Router {
 
 export * from './domain/entities/user.js';
 export * from './domain/entities/refresh-token.js';
+export * from './domain/entities/activation-token.js';
 export * from './domain/value-objects/login-policy.js';
 export * from './domain/errors/index.js';
 export * from './domain/ports/index.js';
