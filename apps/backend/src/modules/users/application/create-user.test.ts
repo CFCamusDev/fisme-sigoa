@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { AuditLogger } from '../../../shared/audit/audit-logger.js';
 import { ForbiddenError } from '../../../shared/errors/app-error.js';
 import type { UnitOfWork } from '../../../shared/unit-of-work/unit-of-work.js';
+import type { User } from '../domain/entities/user.js';
 import {
   UserDniAlreadyExistsError,
   UserEmailAlreadyExistsError,
@@ -139,8 +140,8 @@ describe('CreateUserUseCase Unit Tests (T-003-04, T-003-19, CA1, CA2, RS-002, RS
         action: 'CREATE',
         entity: 'User',
         entityId: 'fixed-new-user-id',
-        actorId: 'admin-actor-uuid',
-        ipAddress: '192.168.1.1',
+        actor: 'admin-actor-uuid',
+        ip: '192.168.1.1',
       }),
     );
     expect(activationEmailSender.send).toHaveBeenCalledWith({
@@ -198,7 +199,7 @@ describe('CreateUserUseCase Unit Tests (T-003-04, T-003-19, CA1, CA2, RS-002, RS
     const { useCase, auditLogger } = setupMocks();
     await useCase.execute(baseCommand);
 
-    const callArg = vi.mocked(auditLogger.log).mock.calls[0][0];
+    const callArg = vi.mocked(auditLogger.log).mock.calls[0]![0];
     const after = callArg.after as Record<string, unknown>;
 
     expect(after.dni).toBe('******78');
@@ -238,7 +239,7 @@ describe('CreateUserUseCase Unit Tests (T-003-04, T-003-19, CA1, CA2, RS-002, RS
     expect(dto.id).toBe('fixed-new-user-id');
     expect(logger.error).toHaveBeenCalledTimes(1);
 
-    const logMessage = logger.error.mock.calls[0][0];
+    const logMessage = logger.error.mock.calls[0]![0];
     expect(logMessage).not.toContain('juan.perez@untrm.edu.pe');
     expect(logMessage).not.toContain('12345678');
     expect(logMessage).not.toContain('raw-activation-token-32b');

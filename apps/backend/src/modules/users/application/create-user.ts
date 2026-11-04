@@ -94,8 +94,8 @@ export class CreateUserUseCase {
         action: 'CREATE',
         entity: 'User',
         entityId: newUser.id,
-        actorId: command.actorId,
-        ipAddress: command.ip,
+        actor: command.actorId,
+        ip: command.ip,
         after: {
           ...newUser.toAuditSnapshot(),
           roleIds: command.input.roleIds,
