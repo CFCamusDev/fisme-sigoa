@@ -12,6 +12,7 @@ export function createTestEnv(overrides: Partial<Env> = {}): Env {
     RATE_LIMIT_WINDOW_MS: 60000,
     RATE_LIMIT_PUBLIC_MAX: 30,
     RATE_LIMIT_LOGIN_MAX: 10,
+    RATE_LIMIT_SESSION_MAX: 30,
     RATE_LIMIT_GENERAL_MAX: 300,
     EMAIL_PROVIDER: 'memory',
     FILE_STORAGE_PROVIDER: 'memory',
@@ -21,6 +22,7 @@ export function createTestEnv(overrides: Partial<Env> = {}): Env {
     AUTH_REFRESH_TTL_DAYS: 7,
     AUTH_MAX_FAILED_ATTEMPTS: 5,
     AUTH_LOCKOUT_MINUTES: 15,
+    AUTH_COOKIE_SAMESITE: 'strict',
     ...overrides,
   };
 }

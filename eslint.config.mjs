@@ -10,6 +10,8 @@ export default tseslint.config(
       '**/node_modules/**',
       '**/dist/**',
       '**/coverage/**',
+      '**/playwright-report/**',
+      '**/test-results/**',
       '**/src/shared/prisma/generated/**',
       '**/test-fixtures/**',
       '**/.dependency-cruiser.cjs',

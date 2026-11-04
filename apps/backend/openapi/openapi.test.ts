@@ -2,13 +2,18 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { apiErrorResponseSchema, loginRequestSchema, loginResponseSchema } from '@sigoa/shared';
+import {
+  apiErrorResponseSchema,
+  loginRequestSchema,
+  loginResponseSchema,
+  refreshResponseSchema,
+} from '@sigoa/shared';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const openApiPath = path.resolve(__dirname, 'openapi.json');
 
-describe('OpenAPI Specification for Auth (T-001-13, RNF-032)', () => {
+describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
   const content = fs.readFileSync(openApiPath, 'utf-8');
   const spec = JSON.parse(content);
 
@@ -20,13 +25,125 @@ describe('OpenAPI Specification for Auth (T-001-13, RNF-032)', () => {
     expect(spec.paths['/auth/login'].post).toBeDefined();
   });
 
-  it('keeps the request example valid matching loginRequestSchema', () => {
-    const postOperation = spec.paths['/auth/login'].post;
-    const requestExample = postOperation.requestBody.content['application/json'].example;
+  it('documents refresh and logout endpoints with cookie scheme (T-002-08, HU-002)', () => {
+    expect(spec.paths['/auth/refresh']).toBeDefined();
+    expect(spec.paths['/auth/refresh'].post).toBeDefined();
+    expect(spec.paths['/auth/logout']).toBeDefined();
+    expect(spec.paths['/auth/logout'].post).toBeDefined();
 
-    expect(requestExample).toBeDefined();
-    const parsed = loginRequestSchema.safeParse(requestExample);
-    expect(parsed.success).toBe(true);
+    expect(spec.components.schemas.RefreshResponse).toBeDefined();
+    expect(spec.components.securitySchemes.bearerAuth).toBeDefined();
+    expect(spec.components.securitySchemes.refreshCookie).toBeDefined();
+    expect(spec.components.securitySchemes.refreshCookie.type).toBe('apiKey');
+    expect(spec.components.securitySchemes.refreshCookie.in).toBe('cookie');
+    expect(spec.components.securitySchemes.refreshCookie.name).toBe('sigoa_refresh_token');
+  });
+
+  it('documents refresh and logout without request bodies and Set-Cookie headers', () => {
+    expect(spec.paths['/auth/refresh'].post.requestBody).toBeUndefined();
+    expect(spec.paths['/auth/logout'].post.requestBody).toBeUndefined();
+
+    expect(spec.paths['/auth/login'].post.responses['200'].headers['Set-Cookie']).toBeDefined();
+    expect(spec.paths['/auth/refresh'].post.responses['200'].headers['Set-Cookie']).toBeDefined();
+    expect(spec.paths['/auth/logout'].post.responses['204'].headers['Set-Cookie']).toBeDefined();
+  });
+
+  it('keeps every request and response example valid against the shared schemas (T-002-08)', () => {
+    // 1. /auth/login
+    const loginReq = spec.paths['/auth/login'].post.requestBody.content['application/json'].example;
+    expect(loginRequestSchema.safeParse(loginReq).success).toBe(true);
+
+    const loginRes =
+      spec.paths['/auth/login'].post.responses['200'].content['application/json'].example;
+    expect(loginResponseSchema.safeParse(loginRes).success).toBe(true);
+    expect(loginRes.refreshToken).toBeUndefined();
+
+    // 2. /auth/refresh
+    const refreshRes =
+      spec.paths['/auth/refresh'].post.responses['200'].content['application/json'].example;
+    expect(refreshResponseSchema.safeParse(refreshRes).success).toBe(true);
+    expect(refreshRes.refreshToken).toBeUndefined();
+  });
+
+  it('declares refreshCookie on refresh and bearerAuth + refreshCookie on logout', () => {
+    const refreshPost = spec.paths['/auth/refresh'].post;
+    expect(refreshPost.security).toEqual([{ refreshCookie: [] }]);
+
+    const logoutPost = spec.paths['/auth/logout'].post;
+    expect(logoutPost.security).toEqual([{ bearerAuth: [] }, { refreshCookie: [] }]);
+  });
+
+  it('documents logout success as 204 without content (T-002-08)', () => {
+    const logoutResponses = spec.paths['/auth/logout'].post.responses;
+    expect(logoutResponses['204']).toBeDefined();
+    expect(logoutResponses['204'].content).toBeUndefined();
+  });
+
+  it('lists every error status each endpoint can return (T-002-08)', () => {
+    const refreshResponses = spec.paths['/auth/refresh'].post.responses;
+    expect(refreshResponses['401']).toBeDefined();
+    expect(refreshResponses['403']).toBeDefined();
+    expect(refreshResponses['429']).toBeDefined();
+    expect(refreshResponses['500']).toBeDefined();
+
+    expect(
+      apiErrorResponseSchema.safeParse(refreshResponses['401'].content['application/json'].example)
+        .success,
+    ).toBe(true);
+    expect(
+      apiErrorResponseSchema.safeParse(refreshResponses['403'].content['application/json'].example)
+        .success,
+    ).toBe(true);
+    expect(
+      apiErrorResponseSchema.safeParse(refreshResponses['429'].content['application/json'].example)
+        .success,
+    ).toBe(true);
+    expect(
+      apiErrorResponseSchema.safeParse(refreshResponses['500'].content['application/json'].example)
+        .success,
+    ).toBe(true);
+
+    const logoutResponses = spec.paths['/auth/logout'].post.responses;
+    expect(logoutResponses['401']).toBeDefined();
+    expect(logoutResponses['403']).toBeDefined();
+    expect(logoutResponses['429']).toBeDefined();
+    expect(logoutResponses['500']).toBeDefined();
+
+    expect(
+      apiErrorResponseSchema.safeParse(logoutResponses['401'].content['application/json'].example)
+        .success,
+    ).toBe(true);
+    expect(
+      apiErrorResponseSchema.safeParse(logoutResponses['403'].content['application/json'].example)
+        .success,
+    ).toBe(true);
+    expect(
+      apiErrorResponseSchema.safeParse(logoutResponses['429'].content['application/json'].example)
+        .success,
+    ).toBe(true);
+    expect(
+      apiErrorResponseSchema.safeParse(logoutResponses['500'].content['application/json'].example)
+        .success,
+    ).toBe(true);
+  });
+
+  it('keeps unique operation ids (T-002-08)', () => {
+    const operationIds: string[] = [];
+    for (const pathItem of Object.values(
+      spec.paths as Record<string, Record<string, { operationId?: string }>>,
+    )) {
+      for (const operation of Object.values(pathItem)) {
+        if (operation.operationId) {
+          operationIds.push(operation.operationId);
+        }
+      }
+    }
+
+    const uniqueIds = new Set(operationIds);
+    expect(operationIds.length).toBe(uniqueIds.size);
+    expect(operationIds).toContain('login');
+    expect(operationIds).toContain('refreshSession');
+    expect(operationIds).toContain('logout');
   });
 
   it('documents every login response with a valid example matching its schema', () => {

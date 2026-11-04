@@ -6,7 +6,6 @@ import { getAuthTokenProvider, setAuthTokenProvider } from '@/lib/axios';
 const mockSession: LoginResponse = {
   accessToken: 'jwt-access-token-xyz',
   accessTokenExpiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-  refreshToken: 'refresh-token-uuid-12345678901234567890',
   refreshTokenExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
   user: {
     id: 'usr-123',
@@ -30,7 +29,6 @@ describe('auth.store', () => {
     const state = useAuthStore.getState();
     expect(state.accessToken).toBe(mockSession.accessToken);
     expect(state.accessTokenExpiresAt).toBe(mockSession.accessTokenExpiresAt);
-    expect(state.refreshToken).toBe(mockSession.refreshToken);
     expect(state.refreshTokenExpiresAt).toBe(mockSession.refreshTokenExpiresAt);
     expect(state.user).toEqual(mockSession.user);
     expect(selectIsAuthenticated(state)).toBe(true);
@@ -45,7 +43,6 @@ describe('auth.store', () => {
     const state = useAuthStore.getState();
     expect(state.accessToken).toBeNull();
     expect(state.accessTokenExpiresAt).toBeNull();
-    expect(state.refreshToken).toBeNull();
     expect(state.refreshTokenExpiresAt).toBeNull();
     expect(state.user).toBeNull();
     expect(selectIsAuthenticated(state)).toBe(false);

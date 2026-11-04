@@ -34,7 +34,7 @@ export const HealthStatus: React.FC<HealthStatusProps> = ({
           <span className="inline-block size-2.5 rounded-full bg-danger" aria-hidden="true" />
           <span>Servidor no disponible o con errores</span>
         </div>
-        {message && <p className="mt-1 text-meta text-danger/90">{message}</p>}
+        {message && <p className="mt-1 text-meta text-danger">{message}</p>}
       </div>
     );
   }
@@ -49,11 +49,11 @@ export const HealthStatus: React.FC<HealthStatusProps> = ({
         <span className="inline-block size-2.5 rounded-full bg-success" aria-hidden="true" />
         <span>Servidor operativo (OK)</span>
       </div>
-      {message && <p className="mt-1 text-meta text-success/90">{message}</p>}
+      {message && <p className="mt-1 text-meta text-success">{message}</p>}
       {uptime !== undefined && (
-        <p className="mt-1 text-meta text-success/90">Tiempo activo: {Math.floor(uptime)}s</p>
+        <p className="mt-1 text-meta text-success">Tiempo activo: {Math.floor(uptime)}s</p>
       )}
-      {timestamp && <p className="text-meta text-success/90">Última comprobación: {timestamp}</p>}
+      {timestamp && <p className="text-meta text-success">Última comprobación: {timestamp}</p>}
     </div>
   );
 };

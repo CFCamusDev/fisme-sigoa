@@ -31,10 +31,13 @@ export const loginResponseSchema = z
   .object({
     accessToken: z.string().min(1),
     accessTokenExpiresAt: z.string().datetime(),
-    refreshToken: z.string().min(1),
     refreshTokenExpiresAt: z.string().datetime(),
     user: authUserSchema,
   })
   .strict();
 
 export type LoginResponse = z.infer<typeof loginResponseSchema>;
+
+export const refreshResponseSchema = loginResponseSchema;
+
+export type RefreshResponse = LoginResponse;

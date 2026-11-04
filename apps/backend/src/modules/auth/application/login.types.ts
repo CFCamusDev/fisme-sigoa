@@ -6,7 +6,9 @@ export interface LoginCommand {
   ip: string;
 }
 
-export type LoginResult = LoginResponse;
+export type LoginResult = LoginResponse & {
+  refreshToken: string;
+};
 
 export type LoginFailureReason =
   'INVALID_CREDENTIALS' | 'ACCOUNT_LOCKED' | 'ACCOUNT_INACTIVE' | 'ACCOUNT_PENDING_ACTIVATION';

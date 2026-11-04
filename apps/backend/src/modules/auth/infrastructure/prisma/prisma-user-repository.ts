@@ -57,6 +57,15 @@ export class PrismaUserRepository implements UserRepository {
     );
   }
 
+  async findById(id: string): Promise<User | null> {
+    const client = this.dbProvider.get();
+    const row = await client.user.findUnique({
+      where: { id },
+    });
+
+    return row ? this.mapToDomain(row) : null;
+  }
+
   async findByEmail(email: string): Promise<User | null> {
     const client = this.dbProvider.get();
     const normalized = this.normalizeEmail(email);

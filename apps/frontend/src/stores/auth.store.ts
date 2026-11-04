@@ -4,7 +4,6 @@ import type { AuthUser, LoginResponse } from '@sigoa/shared';
 export interface AuthSession {
   accessToken: string | null;
   accessTokenExpiresAt: string | null;
-  refreshToken: string | null;
   refreshTokenExpiresAt: string | null;
   user: AuthUser | null;
 }
@@ -17,7 +16,6 @@ export interface AuthStoreState extends AuthSession {
 const initialState: AuthSession = {
   accessToken: null,
   accessTokenExpiresAt: null,
-  refreshToken: null,
   refreshTokenExpiresAt: null,
   user: null,
 };
@@ -28,7 +26,6 @@ export const useAuthStore = create<AuthStoreState>((set) => ({
     set({
       accessToken: session.accessToken,
       accessTokenExpiresAt: session.accessTokenExpiresAt,
-      refreshToken: session.refreshToken,
       refreshTokenExpiresAt: session.refreshTokenExpiresAt,
       user: session.user,
     }),

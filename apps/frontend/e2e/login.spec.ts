@@ -1,30 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { execSync } from 'node:child_process';
-
-function seedUser(options: {
-  email: string;
-  password?: string;
-  names?: string;
-  firstSurname?: string;
-  status?: 'ACTIVE' | 'INACTIVE' | 'PENDING_ACTIVATION';
-  failedLoginAttempts?: number;
-  lockedUntil?: string | null;
-}) {
-  const testDbUrl =
-    process.env['TEST_DATABASE_URL'] ||
-    process.env['DATABASE_URL'] ||
-    'postgresql://postgres:postgres@localhost:5432/sigoa_test?schema=public';
-
-  execSync('pnpm --filter backend run seed:e2e-user', {
-    stdio: 'pipe',
-    env: {
-      ...process.env,
-      TEST_DATABASE_URL: testDbUrl,
-      DATABASE_URL: testDbUrl,
-      SEED_USER_DATA: JSON.stringify(options),
-    },
-  });
-}
+import { seedUser } from './support/seed-user';
 
 test.describe('HU-001 — Iniciar sesión E2E', () => {
   test.setTimeout(30_000);

@@ -116,7 +116,58 @@ describe('env configuration', () => {
     expect(parsed.RATE_LIMIT_WINDOW_MS).toBe(60000);
     expect(parsed.RATE_LIMIT_PUBLIC_MAX).toBe(30);
     expect(parsed.RATE_LIMIT_LOGIN_MAX).toBe(10);
+    expect(parsed.RATE_LIMIT_SESSION_MAX).toBe(30);
     expect(parsed.RATE_LIMIT_GENERAL_MAX).toBe(300);
+    expect(parsed.AUTH_COOKIE_SAMESITE).toBe('strict');
+  });
+
+  it('validates AUTH_COOKIE_SAMESITE configurations', () => {
+    // Valor por defecto en development: strict
+    const defaultDev = parseEnv({
+      DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
+    });
+    expect(defaultDev.AUTH_COOKIE_SAMESITE).toBe('strict');
+
+    // Valor explícito válido: lax
+    const laxParsed = parseEnv({
+      DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
+      AUTH_COOKIE_SAMESITE: 'lax',
+    });
+    expect(laxParsed.AUTH_COOKIE_SAMESITE).toBe('lax');
+
+    // Rechaza valor desconocido
+    expect(() =>
+      parseEnv({
+        DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
+        AUTH_COOKIE_SAMESITE: 'invalid-samesite',
+      }),
+    ).toThrow(/AUTH_COOKIE_SAMESITE/);
+
+    // Rechaza none fuera de production
+    expect(() =>
+      parseEnv({
+        DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
+        NODE_ENV: 'development',
+        AUTH_COOKIE_SAMESITE: 'none',
+      }),
+    ).toThrow(/AUTH_COOKIE_SAMESITE/);
+
+    // Permite none en production (cuando hay HTTPS)
+    const noneProd = parseEnv({
+      DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
+      NODE_ENV: 'production',
+      AUTH_COOKIE_SAMESITE: 'none',
+      EMAIL_PROVIDER: 'resend',
+      RESEND_API_KEY: 're_valid_key_123',
+      EMAIL_FROM: 'sigoa@untrim.edu.pe',
+      FILE_STORAGE_PROVIDER: 'cloudinary',
+      CLOUDINARY_CLOUD_NAME: 'cloud',
+      CLOUDINARY_API_KEY: 'key',
+      CLOUDINARY_API_SECRET: 'secret',
+      APP_PUBLIC_URL: 'https://sigoa.untrim.edu.pe',
+      AUTH_JWT_SECRET: 'super-secret-production-key-at-least-32-chars-long',
+    });
+    expect(noneProd.AUTH_COOKIE_SAMESITE).toBe('none');
   });
 
   it('parseEnv defaults EMAIL_PROVIDER to memory and treats empty strings as undefined', () => {

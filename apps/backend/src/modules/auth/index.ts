@@ -9,9 +9,14 @@ import { PrismaUserRepository } from './infrastructure/prisma/prisma-user-reposi
 import { PrismaRefreshTokenRepository } from './infrastructure/prisma/prisma-refresh-token-repository.js';
 import { Argon2PasswordHasher } from './infrastructure/security/argon2-password-hasher.js';
 import { JoseAccessTokenSigner } from './infrastructure/security/jose-access-token-signer.js';
+import { JoseAccessTokenVerifier } from './infrastructure/security/jose-access-token-verifier.js';
 import { RandomRefreshTokenGenerator } from './infrastructure/security/random-refresh-token-generator.js';
 import { LoginPolicy } from './domain/value-objects/login-policy.js';
 import { LoginUseCase } from './application/login.js';
+import { RefreshSessionUseCase } from './application/refresh-session.js';
+import { LogoutUseCase } from './application/logout.js';
+import { createAuthenticate } from './infrastructure/http/authenticate.js';
+import { createRequireAllowedOrigin } from './infrastructure/http/require-allowed-origin.js';
 
 export interface AuthModuleDependencies {
   unitOfWork: UnitOfWork;
@@ -33,6 +38,12 @@ export function createAuthModule(deps: AuthModuleDependencies): Router {
     deps.env.AUTH_JWT_SECRET,
     deps.env.AUTH_ACCESS_TTL_SECONDS,
   );
+  const accessTokenVerifier = new JoseAccessTokenVerifier(deps.env.AUTH_JWT_SECRET);
+  const authenticate = createAuthenticate({
+    verifier: accessTokenVerifier,
+    userRepository,
+    clock: deps.clock,
+  });
   const refreshTokenGenerator = new RandomRefreshTokenGenerator(deps.env.AUTH_REFRESH_TTL_DAYS);
   const loginPolicy = new LoginPolicy({
     maxFailedAttempts: deps.env.AUTH_MAX_FAILED_ATTEMPTS,
@@ -51,11 +62,42 @@ export function createAuthModule(deps: AuthModuleDependencies): Router {
     clock: deps.clock,
   });
 
-  const rateLimiter = createRateLimiter('login', deps.env);
+  const refreshSessionUseCase = new RefreshSessionUseCase({
+    refreshTokenRepository,
+    userRepository,
+    refreshTokenGenerator,
+    accessTokenSigner,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+    clock: deps.clock,
+  });
+
+  const logoutUseCase = new LogoutUseCase({
+    refreshTokenRepository,
+    refreshTokenGenerator,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+    clock: deps.clock,
+  });
+
+  const loginRateLimiter = createRateLimiter('login', deps.env);
+  const sessionRateLimiter = createRateLimiter('session', deps.env);
+
+  const cookieSettings = {
+    sameSite: deps.env.AUTH_COOKIE_SAMESITE,
+    isProduction: deps.env.NODE_ENV === 'production',
+  };
+  const requireAllowedOrigin = createRequireAllowedOrigin(deps.env.CORS_ORIGIN);
 
   return createAuthRouter({
     loginUseCase,
-    rateLimiter,
+    refreshSessionUseCase,
+    logoutUseCase,
+    rateLimiter: loginRateLimiter,
+    sessionRateLimiter,
+    authenticate,
+    cookieSettings,
+    requireAllowedOrigin,
   });
 }
 
@@ -66,10 +108,20 @@ export * from './domain/errors/index.js';
 export * from './domain/ports/index.js';
 export * from './application/login.types.js';
 export * from './application/login.js';
+export * from './application/auth-user.js';
+export * from './application/refresh-token-audit.js';
+export * from './application/refresh-session.types.js';
+export * from './application/refresh-session.js';
+export * from './application/logout.types.js';
+export * from './application/logout.js';
 export * from './infrastructure/security/argon2-password-hasher.js';
 export * from './infrastructure/security/jose-access-token-signer.js';
+export * from './infrastructure/security/jose-access-token-verifier.js';
 export * from './infrastructure/security/random-refresh-token-generator.js';
 export * from './infrastructure/http/auth.controller.js';
 export * from './infrastructure/http/auth.routes.js';
+export * from './infrastructure/http/authenticate.js';
+export * from './infrastructure/http/refresh-cookie.js';
+export * from './infrastructure/http/require-allowed-origin.js';
 export * from './infrastructure/prisma/prisma-user-repository.js';
 export * from './infrastructure/prisma/prisma-refresh-token-repository.js';

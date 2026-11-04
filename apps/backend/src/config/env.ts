@@ -39,6 +39,7 @@ export const envSchema = z
     RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60000),
     RATE_LIMIT_PUBLIC_MAX: z.coerce.number().int().positive().default(30),
     RATE_LIMIT_LOGIN_MAX: z.coerce.number().int().positive().default(10),
+    RATE_LIMIT_SESSION_MAX: z.coerce.number().int().positive().default(30),
     RATE_LIMIT_GENERAL_MAX: z.coerce.number().int().positive().default(300),
     EMAIL_PROVIDER: z.enum(['resend', 'memory']).default('memory'),
     RESEND_API_KEY: z.preprocess(
@@ -78,8 +79,18 @@ export const envSchema = z
     AUTH_REFRESH_TTL_DAYS: z.coerce.number().int().positive().default(7),
     AUTH_MAX_FAILED_ATTEMPTS: z.coerce.number().int().positive().default(5),
     AUTH_LOCKOUT_MINUTES: z.coerce.number().int().positive().default(15),
+    AUTH_COOKIE_SAMESITE: z.enum(['strict', 'lax', 'none']).default('strict'),
   })
   .superRefine((data, ctx) => {
+    if (data.AUTH_COOKIE_SAMESITE === 'none' && data.NODE_ENV !== 'production') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['AUTH_COOKIE_SAMESITE'],
+        message:
+          'AUTH_COOKIE_SAMESITE "none" is only allowed in production environment as it requires Secure',
+      });
+    }
+
     if (data.EMAIL_PROVIDER === 'resend') {
       if (!data.RESEND_API_KEY) {
         ctx.addIssue({

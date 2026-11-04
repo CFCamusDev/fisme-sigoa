@@ -25,6 +25,14 @@ describe('RandomRefreshTokenGenerator (RS-016, RNF-004)', () => {
     expect(result.expiresAt).toEqual(expectedExpiresAt);
   });
 
+  it('hash matches the hash returned by generate', () => {
+    const now = new Date('2026-10-30T15:00:00.000Z');
+    const { token, tokenHash } = generator.generate(now);
+
+    const computedHash = generator.hash(token);
+    expect(computedHash).toBe(tokenHash);
+  });
+
   it('generates distinct tokens on consecutive calls', () => {
     const now = new Date('2026-10-30T15:00:00.000Z');
     const first = generator.generate(now);
