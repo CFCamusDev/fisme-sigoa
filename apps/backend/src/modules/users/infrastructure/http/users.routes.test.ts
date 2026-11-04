@@ -6,20 +6,21 @@ import { runWithRequestContext } from '../../../../shared/audit/request-context.
 import { ForbiddenError } from '../../../../shared/errors/app-error.js';
 import { errorHandler } from '../../../../shared/middleware/error-handler.js';
 import type { CreateUserUseCase } from '../../application/create-user.js';
+import type { EditUserUseCase } from '../../application/edit-user.js';
 import { UsersController } from './users.controller.js';
 import { createUsersRouter } from './users.routes.js';
 
-describe('POST /users Route Unit Tests (T-003-10, RS-002, D7, D8)', () => {
+describe('Users Routes Unit Tests (T-003-10, T-003-11, RS-002, D7, D8)', () => {
   const dummyActorId = 'admin-actor-uuid';
 
   const mockUserDto: UserDto = {
-    id: 'new-user-123',
+    id: 'user-123',
     names: 'Carlos',
     firstSurname: 'Pérez',
     secondSurname: 'Gómez',
     email: 'carlos.perez@untrm.edu.pe',
     dni: '12345678',
-    status: 'PENDING_ACTIVATION',
+    status: 'ACTIVE',
     roleIds: ['role-admin'],
     lastLoginAt: null,
     createdAt: '2026-11-04T00:00:00.000Z',
@@ -29,6 +30,7 @@ describe('POST /users Route Unit Tests (T-003-10, RS-002, D7, D8)', () => {
   function setupTestApp(options?: { permissionAllowed?: boolean; useCaseResult?: UserDto }): {
     app: Express;
     createUserUseCase: CreateUserUseCase;
+    editUserUseCase: EditUserUseCase;
   } {
     const app = express();
     app.use(express.json());
@@ -59,7 +61,14 @@ describe('POST /users Route Unit Tests (T-003-10, RS-002, D7, D8)', () => {
       execute: vi.fn().mockResolvedValue(options?.useCaseResult ?? mockUserDto),
     } as unknown as CreateUserUseCase;
 
-    const controller = new UsersController({ createUserUseCase });
+    const editUserUseCase = {
+      execute: vi.fn().mockResolvedValue(options?.useCaseResult ?? mockUserDto),
+    } as unknown as EditUserUseCase;
+
+    const controller = new UsersController({
+      createUserUseCase,
+      editUserUseCase,
+    });
 
     const router = createUsersRouter({
       controller,
@@ -70,65 +79,122 @@ describe('POST /users Route Unit Tests (T-003-10, RS-002, D7, D8)', () => {
     app.use('/users', router);
     app.use(errorHandler);
 
-    return { app, createUserUseCase };
+    return { app, createUserUseCase, editUserUseCase };
   }
 
-  const validPayload = {
-    names: 'Carlos',
-    firstSurname: 'Pérez',
-    secondSurname: 'Gómez',
-    email: 'carlos.perez@untrm.edu.pe',
-    dni: '12345678',
-    roleIds: ['role-admin'],
-  };
-
-  it('checks the permission before validating the body (D7, fails closed with 403 on invalid body)', async () => {
-    // Si no tiene permiso pero el body es completamente inválido, debe responder 403 (no 400)
-    const { app, createUserUseCase } = setupTestApp({ permissionAllowed: false });
-
-    const response = await request(app).post('/users').send({ invalidField: true, dni: 'short' });
-
-    expect(response.status).toBe(403);
-    expect(response.body.error.code).toBe('FORBIDDEN');
-    expect(createUserUseCase.execute).not.toHaveBeenCalled();
-  });
-
-  it('responds 201 with Location header, Cache-Control: no-store and UserDto body', async () => {
-    const { app, createUserUseCase } = setupTestApp({ permissionAllowed: true });
-
-    const response = await request(app).post('/users').send(validPayload);
-
-    expect(response.status).toBe(201);
-    expect(response.headers['location']).toBe('/users/new-user-123');
-    expect(response.headers['cache-control']).toBe('no-store');
-    expect(response.body).toEqual(mockUserDto);
-    expect(createUserUseCase.execute).toHaveBeenCalledWith({
-      actorId: dummyActorId,
-      ip: '192.168.1.10',
-      input: expect.objectContaining({
-        email: 'carlos.perez@untrm.edu.pe',
-        dni: '12345678',
-      }),
-    });
-  });
-
-  it('strips fields that are not in the UserDto schema (D8)', async () => {
-    // Si el caso de uso por algún motivo devolviera campos extra sensibles, zod los filtra o rechaza
-    const extendedResult = {
-      ...mockUserDto,
-      extraSensitiveInternalField: 'forbidden-leak',
+  describe('POST /users', () => {
+    const validPayload = {
+      names: 'Carlos',
+      firstSurname: 'Pérez',
+      secondSurname: 'Gómez',
+      email: 'carlos.perez@untrm.edu.pe',
+      dni: '12345678',
+      roleIds: ['role-admin'],
     };
 
-    const { app } = setupTestApp({
-      permissionAllowed: true,
-      useCaseResult: extendedResult as unknown as UserDto,
+    it('checks the permission before validating the body (D7, fails closed with 403 on invalid body)', async () => {
+      const { app, createUserUseCase } = setupTestApp({ permissionAllowed: false });
+
+      const response = await request(app).post('/users').send({ invalidField: true, dni: 'short' });
+
+      expect(response.status).toBe(403);
+      expect(response.body.error.code).toBe('FORBIDDEN');
+      expect(createUserUseCase.execute).not.toHaveBeenCalled();
     });
 
-    // userDtoSchema es .strict(), así que si vinieran campos extra, userDtoSchema.parse fallaría
-    // En el caso normal el DTO cumple estrictamente el esquema
-    const response = await request(app).post('/users').send(validPayload);
+    it('responds 201 with Location header, Cache-Control: no-store and UserDto body', async () => {
+      const { app, createUserUseCase } = setupTestApp({ permissionAllowed: true });
 
-    // Al ser strict, si el useCase retornó campos no permitidos, errorHandler responde 500
-    expect(response.status).toBe(500);
+      const response = await request(app).post('/users').send(validPayload);
+
+      expect(response.status).toBe(201);
+      expect(response.headers['location']).toBe('/users/user-123');
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.body).toEqual(mockUserDto);
+      expect(createUserUseCase.execute).toHaveBeenCalledWith({
+        actorId: dummyActorId,
+        ip: '192.168.1.10',
+        input: expect.objectContaining({
+          email: 'carlos.perez@untrm.edu.pe',
+          dni: '12345678',
+        }),
+      });
+    });
+
+    it('strips fields that are not in the UserDto schema (D8)', async () => {
+      const extendedResult = {
+        ...mockUserDto,
+        extraSensitiveInternalField: 'forbidden-leak',
+      };
+
+      const { app } = setupTestApp({
+        permissionAllowed: true,
+        useCaseResult: extendedResult as unknown as UserDto,
+      });
+
+      const response = await request(app).post('/users').send(validPayload);
+
+      expect(response.status).toBe(500);
+    });
+  });
+
+  describe('PATCH /users/:id (T-003-11)', () => {
+    const validPatchPayload = {
+      names: 'Carlos Modificado',
+      firstSurname: 'Pérez Modificado',
+    };
+
+    it('checks permission before validating params or body (403 without permission)', async () => {
+      const { app, editUserUseCase } = setupTestApp({ permissionAllowed: false });
+
+      const response = await request(app).patch('/users/user-123').send({ invalidField: true });
+
+      expect(response.status).toBe(403);
+      expect(response.body.error.code).toBe('FORBIDDEN');
+      expect(editUserUseCase.execute).not.toHaveBeenCalled();
+    });
+
+    it('responds 200 with Cache-Control: no-store and updated UserDto body', async () => {
+      const updatedDto = { ...mockUserDto, names: 'Carlos Modificado' };
+      const { app, editUserUseCase } = setupTestApp({
+        permissionAllowed: true,
+        useCaseResult: updatedDto,
+      });
+
+      const response = await request(app).patch('/users/user-123').send(validPatchPayload);
+
+      expect(response.status).toBe(200);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.body).toEqual(updatedDto);
+      expect(editUserUseCase.execute).toHaveBeenCalledWith({
+        actorId: dummyActorId,
+        ip: '192.168.1.10',
+        userId: 'user-123',
+        input: validPatchPayload,
+      });
+    });
+
+    it('returns 400 when body has no fields or invalid fields', async () => {
+      const { app } = setupTestApp({ permissionAllowed: true });
+
+      // Body vacío (viola refine de al menos un campo)
+      const resEmpty = await request(app).patch('/users/user-123').send({});
+      expect(resEmpty.status).toBe(400);
+
+      // Campo no permitido (status o roleIds no permitidos en PATCH /users/:id)
+      const resInvalidField = await request(app)
+        .patch('/users/user-123')
+        .send({ status: 'INACTIVE' });
+      expect(resInvalidField.status).toBe(400);
+    });
+
+    it('returns 400 when param id is invalid or empty whitespace', async () => {
+      const { app } = setupTestApp({ permissionAllowed: true });
+
+      const resBadId = await request(app)
+        .patch('/users/%20') // whitespace
+        .send(validPatchPayload);
+      expect(resBadId.status).toBe(400);
+    });
   });
 });

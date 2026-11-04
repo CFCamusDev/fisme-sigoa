@@ -3,6 +3,7 @@ import type { AuditLogger } from '../../shared/audit/audit-logger.js';
 import type { DbProvider } from '../../shared/prisma/prisma-unit-of-work.js';
 import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
 import { CreateUserUseCase } from './application/create-user.js';
+import { EditUserUseCase } from './application/edit-user.js';
 import type {
   ActivationEmailSender,
   ActivationTokenIssuer,
@@ -51,8 +52,17 @@ export function createUsersModule(deps?: UsersModuleDependencies): Router {
     clock: deps.clock,
   });
 
+  const editUserUseCase = new EditUserUseCase({
+    userRepository,
+    userRoleGateway: deps.userRoleGateway,
+    permissionChecker: deps.permissionChecker,
+    auditLogger: deps.auditLogger,
+    unitOfWork: deps.unitOfWork,
+  });
+
   const controller = new UsersController({
     createUserUseCase,
+    editUserUseCase,
   });
 
   return createUsersRouter({

@@ -1,7 +1,8 @@
 import { Router, type RequestHandler } from 'express';
-import { createUserRequestSchema } from '@sigoa/shared';
+import { createUserRequestSchema, updateUserRequestSchema } from '@sigoa/shared';
 import { validateRequest } from '../../../../shared/middleware/validate-request.js';
 import type { UsersController } from './users.controller.js';
+import { userParamSchema } from './users.schema.js';
 
 export type UserRoutePermissionScope = 'GLOBAL' | 'OWN';
 
@@ -22,6 +23,15 @@ export function createUsersRouter(deps: UsersRouterDependencies): Router {
     deps.requirePermission('usuario.crear', 'GLOBAL'),
     validateRequest({ body: createUserRequestSchema }),
     deps.controller.create,
+  );
+
+  // PATCH /users/:id (CA3, RF-003, RS-002, RS-015, RS-020, D7)
+  router.patch(
+    '/:id',
+    deps.authenticate,
+    deps.requirePermission('usuario.editar', 'GLOBAL'),
+    validateRequest({ params: userParamSchema, body: updateUserRequestSchema }),
+    deps.controller.update,
   );
 
   return router;
