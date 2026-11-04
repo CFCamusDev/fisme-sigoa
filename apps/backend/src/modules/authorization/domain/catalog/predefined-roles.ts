@@ -56,4 +56,9 @@ export const DEFAULT_ROLE_PERMISSIONS: readonly DefaultRolePermissionGrant[] = [
     permissionCode: 'usuario.editar',
     scope: 'GLOBAL',
   },
+  {
+    roleCode: 'ADMINISTRATOR',
+    permissionCode: 'rol.ver',
+    scope: 'GLOBAL',
+  },
 ] as const;

@@ -1,4 +1,4 @@
-export type PermissionCode = 'usuario.ver' | 'usuario.crear' | 'usuario.editar';
+export type PermissionCode = 'usuario.ver' | 'usuario.crear' | 'usuario.editar' | 'rol.ver';
 
 export interface PermissionDefinition {
   readonly code: PermissionCode;
@@ -26,6 +26,11 @@ export const CATALOG_PERMISSIONS: readonly PermissionDefinition[] = [
   {
     code: 'usuario.editar',
     description: 'Permite modificar datos de perfil y cambiar estados de usuarios',
+    module: 'M01 Seguridad',
+  },
+  {
+    code: 'rol.ver',
+    description: 'Permite visualizar y listar los roles del sistema',
     module: 'M01 Seguridad',
   },
 ] as const;

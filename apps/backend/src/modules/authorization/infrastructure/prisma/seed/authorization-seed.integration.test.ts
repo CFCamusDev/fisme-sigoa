@@ -21,23 +21,24 @@ describe('Authorization Seed Integration (PostgreSQL real, F3)', () => {
     expect(roleCodes).toContain('PROGRAM_DIRECTOR');
     expect(roleCodes).toContain('TEACHER');
 
-    // Verificar que los 3 permisos existan
+    // Verificar que los 4 permisos existan
     const permissions = await prisma.permission.findMany({
       orderBy: { code: 'asc' },
     });
-    expect(permissions).toHaveLength(3);
+    expect(permissions).toHaveLength(4);
     const permCodes = permissions.map((p) => p.code);
     expect(permCodes).toContain('usuario.ver');
     expect(permCodes).toContain('usuario.crear');
     expect(permCodes).toContain('usuario.editar');
+    expect(permCodes).toContain('rol.ver');
 
-    // Verificar que el Administrador tenga las 3 concesiones con alcance GLOBAL
+    // Verificar que el Administrador tenga las 4 concesiones con alcance GLOBAL
     const adminRole = roles.find((r) => r.code === 'ADMINISTRATOR')!;
     const adminGrants = await prisma.rolePermission.findMany({
       where: { roleId: adminRole.id },
       include: { permission: true },
     });
-    expect(adminGrants).toHaveLength(3);
+    expect(adminGrants).toHaveLength(4);
     for (const grant of adminGrants) {
       expect(grant.scope).toBe('GLOBAL');
     }
