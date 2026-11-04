@@ -66,6 +66,44 @@ describe('ResendEmailSender', () => {
     expect(logCalls).not.toContain('docente@untrim.edu.pe');
   });
 
+  it('logs the template version when sending an email (RN-004)', async () => {
+    const fakeClient: ResendClient = {
+      emails: {
+        send: vi.fn().mockResolvedValue({
+          data: { id: 'resend-msg-v1' },
+          error: null,
+        }),
+      },
+    };
+    const logger = createMockLogger();
+    const versionedRenderer = () => ({
+      html: '<p>test</p>',
+      text: 'test',
+      templateVersion: 1,
+    });
+    const sender = new ResendEmailSender({
+      client: fakeClient,
+      from: dummyFrom,
+      renderer: versionedRenderer,
+      logger,
+    });
+
+    await sender.send({
+      to: 'docente@untrm.edu.pe',
+      subject: 'Test subject',
+      template: 'test-template',
+      variables: {},
+    });
+
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.objectContaining({
+        template: 'test-template',
+        templateVersion: 1,
+      }),
+      expect.any(String),
+    );
+  });
+
   it('retries transient 500 error from provider and succeeds on subsequent attempt', async () => {
     const transientError = { message: 'Internal provider outage', status: 500 };
     const fakeClient: ResendClient = {
