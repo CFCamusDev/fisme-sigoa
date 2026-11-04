@@ -1,6 +1,10 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 // @ts-expect-error script sin archivo de declaraciones .d.ts
-import {
+import * as verifyPr from '../../../../scripts/ci/verify-pr-local.mjs';
+
+const {
   validateBranchName,
   validatePrTitle,
   validateCommitMessage,
@@ -18,7 +22,8 @@ import {
   checkBranchSync,
   checkLockfileConsistency,
   verifyReportStatus,
-} from '../../../../scripts/ci/verify-pr-local.mjs';
+  checkWorkflowDrift,
+} = verifyPr;
 
 describe('verify-pr-local pure logic (T-002-22 / G1)', () => {
   it('accepts valid work branch names and rejects main, develop and malformed names', () => {
@@ -557,6 +562,47 @@ describe('verify-pr-local pure logic (T-002-22 / G1)', () => {
       const res = verifyReportStatus(report, validContext, { requireMode: 'standard' });
       expect(res.valid).toBe(true);
       expect(res.errors).toEqual([]);
+    });
+  });
+
+  describe('shortcuts, pre-push hook and workflow drift guard (T-002-22 / G4)', () => {
+    const repoRootDir = path.resolve(__dirname, '../../../../');
+
+    it('every run step of pr-checks.yml is mapped to a local check or listed as an exclusion with a reason', () => {
+      const workflowPath = path.join(repoRootDir, '.github', 'workflows', 'pr-checks.yml');
+      const workflowContent = fs.readFileSync(workflowPath, 'utf-8');
+
+      const driftResult = checkWorkflowDrift(workflowContent);
+      expect(
+        driftResult.inParity,
+        `Se encontraron pasos en pr-checks.yml no mapeados en verify-pr-local:\n${driftResult.unmappedCommands.join('\n')}`,
+      ).toBe(true);
+      expect(driftResult.unmappedCommands).toEqual([]);
+    });
+
+    it('package.json exposes the five verify scripts', () => {
+      const packageJsonPath = path.join(repoRootDir, 'package.json');
+      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+      const scripts = packageJson.scripts || {};
+
+      expect(scripts['verify:pr']).toBeDefined();
+      expect(scripts['verify:pr:quick']).toBeDefined();
+      expect(scripts['verify:pr:full']).toBeDefined();
+      expect(scripts['verify:pr:clean']).toBeDefined();
+      expect(scripts['verify:pr:status']).toBeDefined();
+    });
+
+    it('the pre-push hook keeps the protected branch block and calls the quick verification only for work branches', () => {
+      const prePushPath = path.join(repoRootDir, '.husky', 'pre-push');
+      const content = fs.readFileSync(prePushPath, 'utf-8');
+
+      // Mantiene el bloqueo de main y develop
+      expect(content).toMatch(/refs\/heads\/main\|refs\/heads\/develop/);
+      expect(content).toMatch(/Empujón directo denegado/);
+
+      // Invoca verify:pr:quick para ramas de trabajo
+      expect(content).toMatch(/pnpm verify:pr:quick/);
+      expect(content).toMatch(/node_modules/);
     });
   });
 });

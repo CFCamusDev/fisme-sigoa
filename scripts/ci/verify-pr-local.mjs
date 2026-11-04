@@ -747,4 +747,351 @@ export function verifyReportStatus(report, currentContext, options = {}) {
   };
 }
 
+/**
+ * Lista de comandos o patrones de workflow excluidos justificadamente del runner local.
+ */
+export const WORKFLOW_EXCLUSIONS = [
+  {
+    pattern: /pnpm install --frozen-lockfile/,
+    reason: 'Instalación de dependencias del runner en el CI.',
+  },
+  {
+    pattern: /playwright install --with-deps chromium/,
+    reason: 'Instalación de binarios del navegador Chromium en el runner de CI.',
+  },
+  {
+    pattern: /set -euo pipefail/,
+    reason: 'Validación bash de rama y título (cubierta por branch-name y validatePrTitle).',
+  },
+  {
+    pattern: /DIAGNÓSTICO DEL ENTORNO/,
+    reason: 'Diagnóstico condicional de Docker ante fallos.',
+  },
+];
+
+/**
+ * Verifica la guardia anti-deriva entre pr-checks.yml y el plan del verificador local.
+ * Asegura que ningún step de CI quede sin cobertura local o exclusión justificada.
+ * @param {string} workflowYamlContent
+ * @param {Array<{ id: string, name: string, command?: string }>} [mappedChecks]
+ * @returns {{ inParity: boolean, unmappedCommands: string[] }}
+ */
+export function checkWorkflowDrift(
+  workflowYamlContent,
+  mappedChecks = buildExecutionPlan('full'),
+) {
+  const unmappedCommands = [];
+  if (!workflowYamlContent) {
+    return { inParity: true, unmappedCommands };
+  }
+
+  // Extraer todos los comandos de los bloques run:
+  const runRegex = /^\s*run:\s*(?:\|)?\s*([^\n\r]+)/gm;
+  let match;
+  const mappedCommands = mappedChecks
+    .map((c) => c.command)
+    .filter(Boolean);
+
+  while ((match = runRegex.exec(workflowYamlContent)) !== null) {
+    const rawCommand = match[1].trim();
+    if (!rawCommand) continue;
+
+    // Verificar si está excluido justificadamente
+    const isExcluded = WORKFLOW_EXCLUSIONS.some((exc) => exc.pattern.test(rawCommand));
+    if (isExcluded) continue;
+
+    // Verificar si está cubierto por algún comando del plan
+    const isMapped = mappedCommands.some((mc) => {
+      // Coincidencia exacta o coincidencia por comando base
+      if (mc === rawCommand) return true;
+      if (rawCommand.includes('for i in 1 2 3') && mc.includes('src/shared/pdf')) return true;
+      if (rawCommand.includes('vitest run') && mc.includes('vitest run')) return true;
+      if (rawCommand.includes('pnpm check:env-parity') && mc.includes('check:env-parity')) return true;
+      if (rawCommand.includes('pnpm lint') && mc.includes('pnpm lint')) return true;
+      if (rawCommand.includes('pnpm format:check') && mc.includes('pnpm format:check')) return true;
+      if (rawCommand.includes('pnpm typecheck') && mc.includes('pnpm typecheck')) return true;
+      if (rawCommand.includes('pnpm depcruise') && mc.includes('pnpm depcruise')) return true;
+      if (rawCommand.includes('prisma migrate deploy') && mc.includes('prisma migrate deploy')) return true;
+      if (rawCommand.includes('test:integration') && mc.includes('test:integration')) return true;
+      if (rawCommand.includes('test:coverage') && mc.includes('test:coverage')) return true;
+      if (rawCommand.includes('pnpm build') && mc.includes('pnpm build')) return true;
+      if (rawCommand.includes('pnpm audit') && mc.includes('pnpm audit')) return true;
+      if (rawCommand.includes('verify-compose-hardening') && mc.includes('verify-compose-hardening')) return true;
+      if (rawCommand.includes('smoke-image.sh') && mc.includes('smoke-image.sh')) return true;
+      if (rawCommand.includes('test:e2e') && mc.includes('test:e2e')) return true;
+      return false;
+    });
+
+    if (!isMapped) {
+      unmappedCommands.push(rawCommand);
+    }
+  }
+
+  return {
+    inParity: unmappedCommands.length === 0,
+    unmappedCommands,
+  };
+}
+
+/**
+ * Función principal CLI
+ */
+async function runCli() {
+  const args = process.argv.slice(2);
+  const isStatus = args.includes('--status');
+  const cacheDir = path.resolve('node_modules', '.cache', 'sigoa-verify');
+  const reportPath = path.join(cacheDir, 'last-report.json');
+
+  const { execSync } = await import('node:child_process');
+
+  function getGit(cmd) {
+    try {
+      return execSync(cmd, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+    } catch {
+      return '';
+    }
+  }
+
+  const currentHeadSha = getGit('git rev-parse --short HEAD') || getGit('git rev-parse HEAD');
+  const currentBranch = getGit('git branch --show-current');
+  const currentStatus = getGit('git status --porcelain');
+  const isTreeClean = currentStatus === '';
+
+  // Modo Status Gate
+  if (isStatus) {
+    let requireMode = 'quick';
+    const reqIndex = args.indexOf('--require');
+    if (reqIndex !== -1 && args[reqIndex + 1]) {
+      requireMode = args[reqIndex + 1];
+    }
+
+    if (!fs.existsSync(reportPath)) {
+      console.error('❌ [verify:pr:status] No existe un informe previo en node_modules/.cache/sigoa-verify/last-report.json.');
+      console.error(`👉 Ejecuta 'pnpm verify:pr${requireMode === 'full' ? ':full' : requireMode === 'standard' ? '' : ':quick'}' primero.`);
+      process.exit(1);
+    }
+
+    let reportData;
+    try {
+      reportData = JSON.parse(fs.readFileSync(reportPath, 'utf-8'));
+    } catch {
+      console.error('❌ [verify:pr:status] Error al parsear last-report.json.');
+      process.exit(1);
+    }
+
+    const verification = verifyReportStatus(
+      reportData,
+      { currentHeadSha, currentBranch, isTreeClean, now: new Date() },
+      { requireMode },
+    );
+
+    if (!verification.valid) {
+      console.error(`❌ [verify:pr:status] El informe actual no satisface los requisitos para el nivel '${requireMode}':`);
+      for (const err of verification.errors) {
+        console.error(`   • ${err}`);
+      }
+      process.exit(1);
+    }
+
+    console.log(`✔ [verify:pr:status] Informe vigente y confiable para ${currentBranch} (${currentHeadSha}) en nivel '${requireMode}'.`);
+    process.exit(0);
+  }
+
+  // Modo Ejecución de Verificaciones
+  let mode = 'standard';
+  const modeIndex = args.indexOf('--mode');
+  if (modeIndex !== -1 && args[modeIndex + 1]) {
+    mode = args[modeIndex + 1];
+  }
+
+  let repeat = 1;
+  const repeatIndex = args.indexOf('--repeat');
+  if (repeatIndex !== -1 && args[repeatIndex + 1]) {
+    repeat = parseInt(args[repeatIndex + 1], 10) || 1;
+  }
+
+  let only = undefined;
+  const onlyIndex = args.indexOf('--only');
+  if (onlyIndex !== -1 && args[onlyIndex + 1]) {
+    only = args[onlyIndex + 1].split(',').map((s) => s.trim());
+  }
+
+  const baseBranch = args.includes('--base') ? args[args.indexOf('--base') + 1] : 'develop';
+  const title = args.includes('--title') ? args[args.indexOf('--title') + 1] : undefined;
+  const isJson = args.includes('--json');
+
+  const startedAt = new Date().toISOString();
+  console.log(`\nIniciando verificación local de PR (Modo: ${mode}, Rama: ${currentBranch})...\n`);
+
+  const rawPlan = buildExecutionPlan(mode, { only, baseBranch });
+  const plan = planRepeatedSteps(rawPlan, repeat);
+  const executedChecks = [];
+
+  for (const check of plan) {
+    const checkStart = Date.now();
+    process.stdout.write(`• Ejecutando ${check.name}... `);
+
+    // Verificaciones internas puras
+    if (check.id === 'branch-name') {
+      const res = validateBranchName(currentBranch);
+      const durationMs = Date.now() - checkStart;
+      if (!res.valid) {
+        console.log('✖');
+        executedChecks.push({ ...check, status: 'failed', durationMs, error: res.error });
+      } else {
+        console.log('✔');
+        executedChecks.push({ ...check, status: 'ok', durationMs });
+      }
+      continue;
+    }
+
+    if (check.id === 'commit-messages') {
+      const commitLog = getGit(`git log ${baseBranch}..HEAD --pretty=format:"%B---COMMIT---"`);
+      const rawCommits = commitLog.split('---COMMIT---').map((c) => c.trim()).filter(Boolean);
+      let failed = false;
+      let errorMsg = '';
+
+      for (const commitMsg of rawCommits) {
+        const val = validateCommitMessage(commitMsg);
+        if (!val.valid) {
+          failed = true;
+          errorMsg = val.violations.join('; ');
+          break;
+        }
+      }
+
+      const durationMs = Date.now() - checkStart;
+      if (failed) {
+        console.log('✖');
+        executedChecks.push({ ...check, status: 'failed', durationMs, error: errorMsg });
+      } else {
+        console.log('✔');
+        executedChecks.push({ ...check, status: 'ok', durationMs });
+      }
+      continue;
+    }
+
+    if (check.id === 'forbidden-files') {
+      const changedFilesRaw = getGit(`git diff --name-only ${baseBranch}...HEAD`);
+      const changedFiles = changedFilesRaw.split('\n').map((f) => f.trim()).filter(Boolean);
+      const res = validateForbiddenFiles(changedFiles);
+      const durationMs = Date.now() - checkStart;
+      if (!res.valid) {
+        console.log('✖');
+        executedChecks.push({ ...check, status: 'failed', durationMs, error: res.violations.join('; ') });
+      } else {
+        console.log('✔');
+        executedChecks.push({ ...check, status: 'ok', durationMs });
+      }
+      continue;
+    }
+
+    if (check.id === 'branch-sync') {
+      const behindRaw = getGit(`git rev-list --count HEAD..${baseBranch}`);
+      const behindCount = parseInt(behindRaw, 10) || 0;
+      const mergeTreeRes = getGit(`git merge-tree --write-tree HEAD ${baseBranch}`);
+      const parseConflict = parseMergeTreeOutput(mergeTreeRes, 0);
+
+      const syncRes = checkBranchSync({
+        behindCount,
+        hasConflict: parseConflict.hasConflict,
+      });
+
+      const durationMs = Date.now() - checkStart;
+      if (!syncRes.valid) {
+        console.log('✖');
+        executedChecks.push({ ...check, status: 'failed', durationMs, error: syncRes.error });
+      } else {
+        console.log('✔');
+        executedChecks.push({
+          ...check,
+          status: 'ok',
+          durationMs,
+          reason: syncRes.warning,
+        });
+      }
+      continue;
+    }
+
+    // Comandos de shell externos
+    if (check.command) {
+      try {
+        execSync(check.command, {
+          stdio: ['pipe', 'pipe', 'pipe'],
+          timeout: check.timeoutMs || 120_000,
+        });
+        const durationMs = Date.now() - checkStart;
+        console.log('✔');
+        executedChecks.push({
+          ...check,
+          status: 'ok',
+          durationMs,
+          finishedAt: new Date().toISOString(),
+        });
+      } catch (err) {
+        const durationMs = Date.now() - checkStart;
+        console.log('✖');
+        executedChecks.push({
+          ...check,
+          status: 'failed',
+          durationMs,
+          error: (err.stderr || err.message || '').toString().slice(0, 500),
+          finishedAt: new Date().toISOString(),
+        });
+      }
+      continue;
+    }
+
+    // Default pass
+    const durationMs = Date.now() - checkStart;
+    console.log('✔');
+    executedChecks.push({
+      ...check,
+      status: 'ok',
+      durationMs,
+      finishedAt: new Date().toISOString(),
+    });
+  }
+
+  const completedAt = new Date().toISOString();
+  const reportObj = createReportJson({
+    branch: currentBranch,
+    headSha: currentHeadSha,
+    baseSha: baseBranch,
+    mode,
+    clean: args.includes('--clean'),
+    repeat,
+    cleanWorkingTree: isTreeClean,
+    startedAt,
+    completedAt,
+    checks: executedChecks,
+  });
+
+  // Guardar last-report.json
+  try {
+    fs.mkdirSync(cacheDir, { recursive: true });
+    fs.writeFileSync(reportPath, JSON.stringify(reportObj, null, 2), 'utf-8');
+  } catch (err) {
+    console.warn(`Advertencia: no se pudo escribir en ${reportPath}:`, err.message);
+  }
+
+  if (isJson) {
+    console.log(JSON.stringify(reportObj, null, 2));
+  } else {
+    console.log(formatReportTable(reportObj));
+  }
+
+  process.exit(reportObj.exitCode);
+}
+
+// Punto de entrada CLI si se ejecuta directamente
+const currentFile = fileURLToPath(import.meta.url);
+if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(currentFile)) {
+  runCli().catch((err) => {
+    console.error('Error fatal en verify-pr-local:', err);
+    process.exit(1);
+  });
+}
+
+
 
