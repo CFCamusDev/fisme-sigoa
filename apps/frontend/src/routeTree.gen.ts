@@ -14,6 +14,7 @@ import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as EncuestaTokenRouteImport } from './routes/encuesta/$token'
+import { Route as AppUsuariosIndexRouteImport } from './routes/_app/usuarios/index'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -38,16 +39,23 @@ const EncuestaTokenRoute = EncuestaTokenRouteImport.update({
   path: '/encuesta/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppUsuariosIndexRoute = AppUsuariosIndexRouteImport.update({
+  id: '/usuarios/',
+  path: '/usuarios/',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof AuthLoginRoute
   '/encuesta/$token': typeof EncuestaTokenRoute
+  '/usuarios/': typeof AppUsuariosIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
   '/login': typeof AuthLoginRoute
   '/encuesta/$token': typeof EncuestaTokenRoute
+  '/usuarios': typeof AppUsuariosIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -56,12 +64,13 @@ export interface FileRoutesById {
   '/_auth/login': typeof AuthLoginRoute
   '/encuesta/$token': typeof EncuestaTokenRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/usuarios/': typeof AppUsuariosIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/encuesta/$token'
+  fullPaths: '/' | '/login' | '/encuesta/$token' | '/usuarios/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/encuesta/$token'
+  to: '/' | '/login' | '/encuesta/$token' | '/usuarios'
   id:
     | '__root__'
     | '/_app'
@@ -69,6 +78,7 @@ export interface FileRouteTypes {
     | '/_auth/login'
     | '/encuesta/$token'
     | '/_app/'
+    | '/_app/usuarios/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -114,15 +124,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EncuestaTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/usuarios/': {
+      id: '/_app/usuarios/'
+      path: '/usuarios'
+      fullPath: '/usuarios/'
+      preLoaderRoute: typeof AppUsuariosIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
+  AppUsuariosIndexRoute: typeof AppUsuariosIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
+  AppUsuariosIndexRoute: AppUsuariosIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
