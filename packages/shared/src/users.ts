@@ -6,6 +6,8 @@ export const DNI_PATTERN = /^\d{8}$/;
 export const USER_ROLE_IDS_MAX = 10;
 export const USERS_PAGE_SIZE_DEFAULT = 20;
 export const USERS_PAGE_SIZE_MAX = 100;
+export const USERS_PAGE_MAX = 10_000;
+export const USER_ROLE_ID_MAX_LENGTH = 64;
 
 export const userStatusSchema = z.enum(['PENDING_ACTIVATION', 'ACTIVE', 'INACTIVE']);
 export type UserStatus = z.infer<typeof userStatusSchema>;
@@ -126,8 +128,21 @@ export type ChangeUserStatusRequest = z.infer<typeof changeUserStatusRequestSche
 export const listUsersQuerySchema = z
   .object({
     status: userStatusSchema.optional(),
-    roleId: z.string().min(1).optional(),
-    page: z.coerce.number().int().min(1, 'La página debe ser mayor o igual a 1').default(1),
+    roleId: z
+      .string()
+      .trim()
+      .min(1, 'El identificador de rol no puede estar vacío')
+      .max(
+        USER_ROLE_ID_MAX_LENGTH,
+        `El identificador de rol no puede exceder ${USER_ROLE_ID_MAX_LENGTH} caracteres`,
+      )
+      .optional(),
+    page: z.coerce
+      .number()
+      .int()
+      .min(1, 'La página debe ser mayor o igual a 1')
+      .max(USERS_PAGE_MAX, `La página no puede exceder ${USERS_PAGE_MAX}`)
+      .default(1),
     pageSize: z.coerce
       .number()
       .int()

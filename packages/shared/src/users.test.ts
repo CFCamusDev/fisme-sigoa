@@ -204,6 +204,22 @@ describe('Users Schemas (T-003-09, RF-003, RNF-008, CA1-CA4)', () => {
         }),
       ).toThrow();
     });
+
+    it('list query rejects a page above the maximum', () => {
+      expect(() =>
+        listUsersQuerySchema.parse({
+          page: 10_001,
+        }),
+      ).toThrow();
+    });
+
+    it('list query rejects an oversized role id', () => {
+      expect(() =>
+        listUsersQuerySchema.parse({
+          roleId: 'a'.repeat(65),
+        }),
+      ).toThrow();
+    });
   });
 
   describe('userDtoSchema', () => {
