@@ -4,3 +4,4 @@ export * from './user-role-gateway.js';
 export * from './activation-token-issuer.js';
 export * from './activation-email-sender.js';
 export * from './user-session-revoker.js';
+export * from './user-list-reader.js';
