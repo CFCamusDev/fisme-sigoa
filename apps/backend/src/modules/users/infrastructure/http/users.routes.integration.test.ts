@@ -671,4 +671,356 @@ describe('Users HTTP Routes Integration (PostgreSQL real, CA1-CA7, RS-002, RS-02
       expect(response.body.error.code).toBe('FORBIDDEN');
     }, 15_000);
   });
+
+  describe('PATCH /users/:id/status (T-003-25)', () => {
+    it('deactivates an active user, revokes its refresh tokens and audits it (CA3, RS-020, RNF-022)', async () => {
+      const admin = await createAuthenticatedActor({
+        prisma,
+        jwtSecret: env.AUTH_JWT_SECRET,
+        roles: ['ADMINISTRATOR'],
+      });
+
+      const target = await createTestTargetUser();
+
+      // Crear dos refresh tokens activos para el usuario
+      await prisma.refreshToken.createMany({
+        data: [
+          {
+            userId: target.id,
+            tokenHash: 'hash-session-1-64-chars-long-abcdef0123456789abcdef0123456789abcdef01',
+            expiresAt: new Date(Date.now() + 86400000),
+          },
+          {
+            userId: target.id,
+            tokenHash: 'hash-session-2-64-chars-long-abcdef0123456789abcdef0123456789abcdef01',
+            expiresAt: new Date(Date.now() + 86400000),
+          },
+        ],
+      });
+
+      const response = await request(app)
+        .patch(`/users/${target.id}/status`)
+        .set('Authorization', admin.authHeader)
+        .send({ status: 'INACTIVE' });
+
+      expect(response.status).toBe(200);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.body.id).toBe(target.id);
+      expect(response.body.status).toBe('INACTIVE');
+
+      // Verificar base de datos
+      const dbUser = await prisma.user.findUniqueOrThrow({ where: { id: target.id } });
+      expect(dbUser.status).toBe('INACTIVE');
+
+      const activeTokens = await prisma.refreshToken.findMany({
+        where: { userId: target.id, revokedAt: null },
+      });
+      expect(activeTokens.length).toBe(0);
+
+      const revokedTokens = await prisma.refreshToken.findMany({
+        where: { userId: target.id, revokedAt: { not: null } },
+      });
+      expect(revokedTokens.length).toBe(2);
+
+      // Verificar auditoría
+      const auditLog = await prisma.auditLog.findFirst({
+        where: {
+          action: 'STATE_CHANGE',
+          entity: 'User',
+          entityId: target.id,
+        },
+      });
+      expect(auditLog).not.toBeNull();
+      expect(auditLog?.actor).toBe(admin.user.id);
+      const before = auditLog?.before as Record<string, unknown>;
+      const after = auditLog?.after as Record<string, unknown>;
+      expect(before?.['status']).toBe('ACTIVE');
+      expect(after?.['status']).toBe('INACTIVE');
+      expect(after?.['revokedSessions']).toBe(2);
+    }, 15_000);
+
+    it('an inactivated user can no longer call protected routes nor refresh session (D7, CA3, RNF-004)', async () => {
+      const admin = await createAuthenticatedActor({
+        prisma,
+        jwtSecret: env.AUTH_JWT_SECRET,
+        roles: ['ADMINISTRATOR'],
+      });
+
+      const victim = await createAuthenticatedActor({
+        prisma,
+        jwtSecret: env.AUTH_JWT_SECRET,
+        roles: ['TEACHER'],
+      });
+
+      // Crear refresh token válido para victim
+      const tokenHash = 'dummy-victim-refresh-token-hash-64-chars-long-1234567890abcdef012345';
+      await prisma.refreshToken.create({
+        data: {
+          userId: victim.user.id,
+          tokenHash,
+          expiresAt: new Date(Date.now() + 86400000),
+        },
+      });
+
+      // Inactivar a victim
+      const resDeactivate = await request(app)
+        .patch(`/users/${victim.user.id}/status`)
+        .set('Authorization', admin.authHeader)
+        .send({ status: 'INACTIVE' });
+      expect(resDeactivate.status).toBe(200);
+
+      // Intentar usar el access token de victim en ruta protegida
+      const resAccess = await request(app)
+        .patch(`/users/${victim.user.id}`)
+        .set('Authorization', victim.authHeader)
+        .send({ names: 'Hack' });
+      expect(resAccess.status).toBe(401);
+
+      // Intentar usar el refresh token revocado en /auth/refresh
+      const resRefresh = await request(app)
+        .post('/auth/refresh')
+        .set('Cookie', [`sigoa_refresh_token=some_token`]);
+      expect(resRefresh.status).toBe(401);
+    }, 15_000);
+
+    it('reactivates an inactive user (LS 5.14)', async () => {
+      const admin = await createAuthenticatedActor({
+        prisma,
+        jwtSecret: env.AUTH_JWT_SECRET,
+        roles: ['ADMINISTRATOR'],
+      });
+
+      const target = await prisma.user.create({
+        data: {
+          names: 'Inactivo',
+          firstSurname: 'Usuario',
+          email: `inactivo.${Date.now()}@unterm.edu.pe`,
+          dni: String(Math.floor(10000000 + Math.random() * 89999999)),
+          status: 'INACTIVE',
+          passwordHash: '$argon2id$v=19$m=65536,t=3,p=4$dummy$dummy',
+        },
+      });
+
+      const response = await request(app)
+        .patch(`/users/${target.id}/status`)
+        .set('Authorization', admin.authHeader)
+        .send({ status: 'ACTIVE' });
+
+      expect(response.status).toBe(200);
+      expect(response.body.status).toBe('ACTIVE');
+
+      const dbUser = await prisma.user.findUniqueOrThrow({ where: { id: target.id } });
+      expect(dbUser.status).toBe('ACTIVE');
+
+      const auditLog = await prisma.auditLog.findFirst({
+        where: {
+          action: 'STATE_CHANGE',
+          entity: 'User',
+          entityId: target.id,
+        },
+      });
+      expect(auditLog).not.toBeNull();
+      const before = auditLog?.before as Record<string, unknown>;
+      const after = auditLog?.after as Record<string, unknown>;
+      expect(before?.['status']).toBe('INACTIVE');
+      expect(after?.['status']).toBe('ACTIVE');
+    }, 15_000);
+
+    it('returns 409 when deactivating a pending or already inactive user (LS 5.14)', async () => {
+      const admin = await createAuthenticatedActor({
+        prisma,
+        jwtSecret: env.AUTH_JWT_SECRET,
+        roles: ['ADMINISTRATOR'],
+      });
+
+      // Usuario en PENDING_ACTIVATION
+      const pendingUser = await prisma.user.create({
+        data: {
+          names: 'Pending',
+          firstSurname: 'User',
+          email: `pending.${Date.now()}@unterm.edu.pe`,
+          dni: String(Math.floor(10000000 + Math.random() * 89999999)),
+          status: 'PENDING_ACTIVATION',
+          passwordHash: '$argon2id$v=19$m=65536,t=3,p=4$dummy$dummy',
+        },
+      });
+
+      const resPending = await request(app)
+        .patch(`/users/${pendingUser.id}/status`)
+        .set('Authorization', admin.authHeader)
+        .send({ status: 'INACTIVE' });
+      expect(resPending.status).toBe(409);
+      expect(resPending.body.error.code).toBe('CONFLICT');
+
+      // Usuario ya INACTIVE
+      const inactiveUser = await prisma.user.create({
+        data: {
+          names: 'Already',
+          firstSurname: 'Inactive',
+          email: `already.inactive.${Date.now()}@unterm.edu.pe`,
+          dni: String(Math.floor(10000000 + Math.random() * 89999999)),
+          status: 'INACTIVE',
+          passwordHash: '$argon2id$v=19$m=65536,t=3,p=4$dummy$dummy',
+        },
+      });
+
+      const resInactive = await request(app)
+        .patch(`/users/${inactiveUser.id}/status`)
+        .set('Authorization', admin.authHeader)
+        .send({ status: 'INACTIVE' });
+      expect(resInactive.status).toBe(409);
+      expect(resInactive.body.error.code).toBe('CONFLICT');
+    }, 15_000);
+
+    it('returns 409 when an administrator tries to deactivate itself (D9, RS-002)', async () => {
+      const admin = await createAuthenticatedActor({
+        prisma,
+        jwtSecret: env.AUTH_JWT_SECRET,
+        roles: ['ADMINISTRATOR'],
+      });
+
+      const response = await request(app)
+        .patch(`/users/${admin.user.id}/status`)
+        .set('Authorization', admin.authHeader)
+        .send({ status: 'INACTIVE' });
+
+      expect(response.status).toBe(409);
+      expect(response.body.error.code).toBe('CONFLICT');
+
+      const dbUser = await prisma.user.findUniqueOrThrow({ where: { id: admin.user.id } });
+      expect(dbUser.status).toBe('ACTIVE');
+    }, 15_000);
+
+    it('returns 404 for an unknown user', async () => {
+      const admin = await createAuthenticatedActor({
+        prisma,
+        jwtSecret: env.AUTH_JWT_SECRET,
+        roles: ['ADMINISTRATOR'],
+      });
+
+      const response = await request(app)
+        .patch('/users/usr-unknown-status-999/status')
+        .set('Authorization', admin.authHeader)
+        .send({ status: 'INACTIVE' });
+
+      expect(response.status).toBe(404);
+      expect(response.body.error.code).toBe('NOT_FOUND');
+    }, 15_000);
+
+    it('returns 400 for an invalid status or unknown fields', async () => {
+      const admin = await createAuthenticatedActor({
+        prisma,
+        jwtSecret: env.AUTH_JWT_SECRET,
+        roles: ['ADMINISTRATOR'],
+      });
+
+      const target = await createTestTargetUser();
+
+      const resBadStatus = await request(app)
+        .patch(`/users/${target.id}/status`)
+        .set('Authorization', admin.authHeader)
+        .send({ status: 'SUSPENDED' });
+      expect(resBadStatus.status).toBe(400);
+
+      const resExtra = await request(app)
+        .patch(`/users/${target.id}/status`)
+        .set('Authorization', admin.authHeader)
+        .send({ status: 'INACTIVE', extra: 123 });
+      expect(resExtra.status).toBe(400);
+    }, 15_000);
+
+    it('returns 401 without a token', async () => {
+      const target = await createTestTargetUser();
+
+      const response = await request(app)
+        .patch(`/users/${target.id}/status`)
+        .send({ status: 'INACTIVE' });
+
+      expect(response.status).toBe(401);
+    }, 15_000);
+
+    it('returns 403 without usuario.editar and changes nothing', async () => {
+      const teacher = await createAuthenticatedActor({
+        prisma,
+        jwtSecret: env.AUTH_JWT_SECRET,
+        roles: ['TEACHER'],
+      });
+
+      const target = await createTestTargetUser();
+
+      const response = await request(app)
+        .patch(`/users/${target.id}/status`)
+        .set('Authorization', teacher.authHeader)
+        .send({ status: 'INACTIVE' });
+
+      expect(response.status).toBe(403);
+      expect(response.body.error.code).toBe('FORBIDDEN');
+
+      const dbUser = await prisma.user.findUniqueOrThrow({ where: { id: target.id } });
+      expect(dbUser.status).toBe('ACTIVE');
+    }, 15_000);
+
+    it('answers 200 for a user without dni', async () => {
+      const admin = await createAuthenticatedActor({
+        prisma,
+        jwtSecret: env.AUTH_JWT_SECRET,
+        roles: ['ADMINISTRATOR'],
+      });
+
+      const target = await prisma.user.create({
+        data: {
+          names: 'No',
+          firstSurname: 'Dni',
+          email: `no.dni.${Date.now()}@unterm.edu.pe`,
+          dni: null,
+          status: 'ACTIVE',
+          passwordHash: '$argon2id$v=19$m=65536,t=3,p=4$dummy$dummy',
+        },
+      });
+
+      const response = await request(app)
+        .patch(`/users/${target.id}/status`)
+        .set('Authorization', admin.authHeader)
+        .send({ status: 'INACTIVE' });
+
+      expect(response.status).toBe(200);
+      expect(response.body.id).toBe(target.id);
+      expect(response.body.dni).toBeNull();
+      expect(response.body.status).toBe('INACTIVE');
+    }, 15_000);
+
+    it('handles concurrent deactivations: only one of 5 simultaneous requests succeeds (D8, RNF-017, RS-002)', async () => {
+      const admin = await createAuthenticatedActor({
+        prisma,
+        jwtSecret: env.AUTH_JWT_SECRET,
+        roles: ['ADMINISTRATOR'],
+      });
+
+      const target = await createTestTargetUser();
+
+      const requests = Array.from({ length: 5 }, () =>
+        request(app)
+          .patch(`/users/${target.id}/status`)
+          .set('Authorization', admin.authHeader)
+          .send({ status: 'INACTIVE' }),
+      );
+
+      const responses = await Promise.all(requests);
+      const successes = responses.filter((r) => r.status === 200);
+      const conflicts = responses.filter((r) => r.status === 409);
+
+      expect(successes.length).toBe(1);
+      expect(conflicts.length).toBe(4);
+
+      // Exactamente una auditoría de cambio de estado
+      const auditCount = await prisma.auditLog.count({
+        where: {
+          action: 'STATE_CHANGE',
+          entity: 'User',
+          entityId: target.id,
+        },
+      });
+      expect(auditCount).toBe(1);
+    }, 15_000);
+  });
 });
