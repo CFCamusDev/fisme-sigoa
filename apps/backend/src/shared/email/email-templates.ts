@@ -1,35 +1,14 @@
 import { z } from 'zod';
 import { EmailDeliveryError } from './email-delivery-error.js';
+import { accountActivationTemplate } from './templates/account-activation.js';
+import {
+  escapeHtml,
+  type EmailTemplateRenderer,
+  type RenderedEmail,
+  type TemplateDefinition,
+} from './template-types.js';
 
-export interface RenderedEmail {
-  html: string;
-  text: string;
-  templateVersion?: number;
-}
-
-export type EmailTemplateRenderer = (
-  template: string,
-  variables: Record<string, unknown>,
-) => RenderedEmail;
-
-/**
- * Escapa caracteres especiales de HTML para prevenir inyecciones.
- */
-export function escapeHtml(value: string | number | boolean): string {
-  const str = String(value);
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-export interface TemplateDefinition<T = Record<string, unknown>> {
-  readonly version: number;
-  readonly variablesSchema: z.ZodType<T>;
-  readonly render: (variables: T) => { html: string; text: string };
-}
+export * from './template-types.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const TEMPLATE_REGISTRY = new Map<string, TemplateDefinition<any>>([
@@ -50,6 +29,7 @@ const TEMPLATE_REGISTRY = new Map<string, TemplateDefinition<any>>([
       },
     },
   ],
+  ['account-activation', accountActivationTemplate],
 ]);
 
 /**
