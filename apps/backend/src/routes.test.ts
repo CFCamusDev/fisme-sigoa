@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 import { setupAppRoutes } from './routes.js';
+import { errorHandler } from './shared/middleware/error-handler.js';
 import type { UnitOfWork } from './shared/unit-of-work/unit-of-work.js';
 import type { AuditLogger } from './shared/audit/audit-logger.js';
 import type { DbProvider } from './shared/prisma/prisma-unit-of-work.js';
@@ -32,5 +33,40 @@ describe('setupAppRoutes', () => {
 
     const response = await request(app).get('/auth/unregistered');
     expect(response.status).toBe(404);
+  });
+
+  it('mounts /users router and rejects unauthenticated requests with 401', async () => {
+    const app = express();
+    app.use(express.json());
+    setupAppRoutes(app, {
+      unitOfWork: dummyUnitOfWork,
+      auditLogger: dummyAuditLogger,
+      dbProvider: dummyDbProvider,
+      env: createTestEnv(),
+    });
+    app.use(errorHandler);
+
+    const response = await request(app).post('/users').send({
+      email: 'test@unterm.edu.pe',
+    });
+    expect(response.status).toBe(401);
+  });
+
+  it('throws an error in production if APP_PUBLIC_URL is not configured', () => {
+    const app = express();
+    const prodEnv = createTestEnv({
+      NODE_ENV: 'production',
+      APP_PUBLIC_URL: undefined as unknown as string,
+    });
+    delete (prodEnv as Record<string, unknown>).APP_PUBLIC_URL;
+
+    expect(() => {
+      setupAppRoutes(app, {
+        unitOfWork: dummyUnitOfWork,
+        auditLogger: dummyAuditLogger,
+        dbProvider: dummyDbProvider,
+        env: prodEnv,
+      });
+    }).toThrow(/APP_PUBLIC_URL es obligatorio/);
   });
 });
