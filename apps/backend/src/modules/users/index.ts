@@ -5,6 +5,7 @@ import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
 import { CreateUserUseCase } from './application/create-user.js';
 import { EditUserUseCase } from './application/edit-user.js';
 import { ChangeUserStatusUseCase } from './application/change-user-status.js';
+import { GetUserUseCase } from './application/get-user.js';
 import { ListUsersUseCase } from './application/list-users.js';
 import type {
   ActivationEmailSender,
@@ -82,11 +83,18 @@ export function createUsersModule(deps?: UsersModuleDependencies): Router {
     permissionChecker: deps.permissionChecker,
   });
 
+  const getUserUseCase = new GetUserUseCase({
+    userRepository,
+    userRoleGateway: deps.userRoleGateway,
+    permissionChecker: deps.permissionChecker,
+  });
+
   const controller = new UsersController({
     createUserUseCase,
     editUserUseCase,
     changeUserStatusUseCase,
     listUsersUseCase,
+    getUserUseCase,
   });
 
   return createUsersRouter({

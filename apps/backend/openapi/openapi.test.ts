@@ -156,6 +156,7 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
     expect(operationIds).toContain('updateUser');
     expect(operationIds).toContain('changeUserStatus');
     expect(operationIds).toContain('listRoles');
+    expect(operationIds).toContain('getUser');
   });
 
   it('documents every login response with a valid example matching its schema', () => {
@@ -217,12 +218,13 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
   describe('OpenAPI Specification for Users (T-003-14, CA1-CA4, D9, D10, RNF-032)', () => {
     const userPaths = ['/users', '/users/{id}', '/users/{id}/status'];
 
-    it('documents the four user endpoints with bearer security', () => {
+    it('documents the user endpoints with bearer security', () => {
       expect(spec.paths['/users']).toBeDefined();
       expect(spec.paths['/users'].get).toBeDefined();
       expect(spec.paths['/users'].post).toBeDefined();
 
       expect(spec.paths['/users/{id}']).toBeDefined();
+      expect(spec.paths['/users/{id}'].get).toBeDefined();
       expect(spec.paths['/users/{id}'].patch).toBeDefined();
 
       expect(spec.paths['/users/{id}/status']).toBeDefined();
@@ -232,6 +234,7 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
       const operations = [
         spec.paths['/users'].get,
         spec.paths['/users'].post,
+        spec.paths['/users/{id}'].get,
         spec.paths['/users/{id}'].patch,
         spec.paths['/users/{id}/status'].patch,
       ];
@@ -332,6 +335,7 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
         update: () => {},
         changeStatus: () => {},
         list: () => {},
+        get: () => {},
       } as unknown as UsersController;
 
       const dummyAuth = () => {};
@@ -359,7 +363,7 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
         }
       }
 
-      expect(routerEndpoints.length).toBe(4);
+      expect(routerEndpoints.length).toBe(5);
 
       // Comprobar que cada ruta del router está en OpenAPI
       for (const endpoint of routerEndpoints) {

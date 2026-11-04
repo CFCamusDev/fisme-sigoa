@@ -8,6 +8,7 @@ import { errorHandler } from '../../../../shared/middleware/error-handler.js';
 import type { ChangeUserStatusUseCase } from '../../application/change-user-status.js';
 import type { CreateUserUseCase } from '../../application/create-user.js';
 import type { EditUserUseCase } from '../../application/edit-user.js';
+import type { GetUserUseCase } from '../../application/get-user.js';
 import type { ListUsersUseCase } from '../../application/list-users.js';
 import { UsersController } from './users.controller.js';
 import { createUsersRouter } from './users.routes.js';
@@ -47,6 +48,7 @@ describe('Users Routes Unit Tests (T-003-10, T-003-11, T-003-12, RS-002, D7, D8)
     editUserUseCase: EditUserUseCase;
     changeUserStatusUseCase: ChangeUserStatusUseCase;
     listUsersUseCase: ListUsersUseCase;
+    getUserUseCase: GetUserUseCase;
   } {
     const app = express();
     app.use(express.json());
@@ -89,11 +91,16 @@ describe('Users Routes Unit Tests (T-003-10, T-003-11, T-003-12, RS-002, D7, D8)
       execute: vi.fn().mockResolvedValue(options?.listUseCaseResult ?? mockListResponse),
     } as unknown as ListUsersUseCase;
 
+    const getUserUseCase = {
+      execute: vi.fn().mockResolvedValue(options?.useCaseResult ?? mockUserDto),
+    } as unknown as GetUserUseCase;
+
     const controller = new UsersController({
       createUserUseCase,
       editUserUseCase,
       changeUserStatusUseCase,
       listUsersUseCase,
+      getUserUseCase,
     });
 
     const router = createUsersRouter({
@@ -111,6 +118,7 @@ describe('Users Routes Unit Tests (T-003-10, T-003-11, T-003-12, RS-002, D7, D8)
       editUserUseCase,
       changeUserStatusUseCase,
       listUsersUseCase,
+      getUserUseCase,
     };
   }
 
@@ -323,6 +331,46 @@ describe('Users Routes Unit Tests (T-003-10, T-003-11, T-003-12, RS-002, D7, D8)
           page: 1,
           pageSize: 20,
         },
+      });
+    });
+  });
+
+  describe('GET /users/:id (A3)', () => {
+    it('checks the permission before validating the id (403 without usuario.ver)', async () => {
+      const { app, getUserUseCase } = setupTestApp({ permissionAllowed: false });
+
+      const response = await request(app).get('/users/user-123');
+
+      expect(response.status).toBe(403);
+      expect(response.body.error.code).toBe('FORBIDDEN');
+      expect(getUserUseCase.execute).not.toHaveBeenCalled();
+    });
+
+    it('rejects invalid or oversized id with 400', async () => {
+      const { app } = setupTestApp({ permissionAllowed: true });
+
+      const resEmptyId = await request(app).get('/users/%20');
+      expect(resEmptyId.status).toBe(400);
+
+      const hugeId = 'a'.repeat(65);
+      const resHugeId = await request(app).get(`/users/${hugeId}`);
+      expect(resHugeId.status).toBe(400);
+    });
+
+    it('responds 200 with Cache-Control: no-store and UserDto body', async () => {
+      const { app, getUserUseCase } = setupTestApp({
+        permissionAllowed: true,
+        useCaseResult: mockUserDto,
+      });
+
+      const response = await request(app).get('/users/user-123');
+
+      expect(response.status).toBe(200);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.body).toEqual(mockUserDto);
+      expect(getUserUseCase.execute).toHaveBeenCalledWith({
+        actorId: dummyActorId,
+        userId: 'user-123',
       });
     });
   });

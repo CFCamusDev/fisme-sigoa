@@ -13,6 +13,7 @@ import { getValidated } from '../../../../shared/middleware/validate-request.js'
 import type { ChangeUserStatusUseCase } from '../../application/change-user-status.js';
 import type { CreateUserUseCase } from '../../application/create-user.js';
 import type { EditUserUseCase } from '../../application/edit-user.js';
+import type { GetUserUseCase } from '../../application/get-user.js';
 import type { ListUsersUseCase } from '../../application/list-users.js';
 
 export interface UsersControllerDependencies {
@@ -20,6 +21,7 @@ export interface UsersControllerDependencies {
   editUserUseCase?: EditUserUseCase;
   changeUserStatusUseCase?: ChangeUserStatusUseCase;
   listUsersUseCase?: ListUsersUseCase;
+  getUserUseCase?: GetUserUseCase;
 }
 
 export class UsersController {
@@ -27,12 +29,14 @@ export class UsersController {
   private readonly editUserUseCase?: EditUserUseCase;
   private readonly changeUserStatusUseCase?: ChangeUserStatusUseCase;
   private readonly listUsersUseCase?: ListUsersUseCase;
+  private readonly getUserUseCase?: GetUserUseCase;
 
   constructor(deps: UsersControllerDependencies) {
     this.createUserUseCase = deps.createUserUseCase;
     this.editUserUseCase = deps.editUserUseCase;
     this.changeUserStatusUseCase = deps.changeUserStatusUseCase;
     this.listUsersUseCase = deps.listUsersUseCase;
+    this.getUserUseCase = deps.getUserUseCase;
   }
 
   create: RequestHandler = async (req, res, next) => {
@@ -146,6 +150,33 @@ export class UsersController {
       });
 
       const parsed = listUsersResponseSchema.parse(response);
+
+      res.setHeader('Cache-Control', 'no-store');
+      res.status(200).json(parsed);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  get: RequestHandler = async (req, res, next) => {
+    try {
+      const context = getRequestContext();
+      const actorId = context?.actor;
+
+      if (!actorId) {
+        throw new UnauthorizedError('No autenticado');
+      }
+
+      if (!this.getUserUseCase) {
+        throw new Error('GetUserUseCase no inyectado en UsersController');
+      }
+
+      const dto = await this.getUserUseCase.execute({
+        actorId,
+        userId: req.params.id as string,
+      });
+
+      const parsed = userDtoSchema.parse(dto);
 
       res.setHeader('Cache-Control', 'no-store');
       res.status(200).json(parsed);

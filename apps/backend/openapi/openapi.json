@@ -929,6 +929,130 @@
             }
           }
         }
+      },
+      "get": {
+        "tags": ["Users"],
+        "summary": "Obtener usuario por identificador",
+        "description": "Retorna el perfil detallado de un usuario por su identificador único. Requiere el permiso 'usuario.ver' con alcance GLOBAL.",
+        "operationId": "getUser",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Identificador único del usuario (CUID)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detalle del usuario obtenido exitosamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                },
+                "example": {
+                  "id": "usr_cuid_123",
+                  "names": "Carlos Alberto",
+                  "firstSurname": "Pérez",
+                  "secondSurname": null,
+                  "email": "carlos.alberto@example.test",
+                  "dni": "12345678",
+                  "status": "ACTIVE",
+                  "roleIds": ["role_teacher_cuid"],
+                  "lastLoginAt": "2026-11-04T00:00:00.000Z",
+                  "createdAt": "2026-11-04T00:00:00.000Z",
+                  "updatedAt": "2026-11-04T00:00:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Identificador de usuario inválido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Parámetro de identificador inválido.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere 'usuario.ver' con alcance GLOBAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para ver este usuario.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Usuario no encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "Usuario no encontrado.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/users/{id}/status": {

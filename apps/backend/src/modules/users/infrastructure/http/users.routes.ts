@@ -58,5 +58,14 @@ export function createUsersRouter(deps: UsersRouterDependencies): Router {
     deps.controller.update,
   );
 
+  // GET /users/:id (A3, HU-003, RF-003, RS-002, RS-015, RS-020)
+  router.get(
+    '/:id',
+    deps.authenticate,
+    deps.requirePermission('usuario.ver', 'GLOBAL'),
+    validateRequest({ params: userParamSchema }),
+    deps.controller.get,
+  );
+
   return router;
 }
