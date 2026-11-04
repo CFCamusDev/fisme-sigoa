@@ -1,19 +1,40 @@
-/**
- * Módulo de Autorización (HU-006, HU-007, HU-008, cimientos para HU-003).
- * Provee servicios de cálculo de permisos efectivos, lectura de concesiones
- * y middleware requirePermission.
- */
+import type { DbProvider } from '../../shared/prisma/prisma-unit-of-work.js';
+import { PermissionAuthorizer } from './application/permission-authorizer.js';
+import { createRequirePermission } from './infrastructure/http/require-permission.js';
+import { PrismaGrantReader } from './infrastructure/prisma/prisma-grant-reader.js';
+import { PrismaUserRoleGateway } from './infrastructure/prisma/prisma-user-role-gateway.js';
+
+export * from './domain/index.js';
+export * from './application/index.js';
+export * from './infrastructure/http/require-permission.js';
+export * from './infrastructure/prisma/prisma-grant-reader.js';
+export * from './infrastructure/prisma/prisma-user-role-gateway.js';
 
 export interface AuthorizationModuleServices {
-  readonly isInitialized?: boolean;
+  readonly grantReader: PrismaGrantReader;
+  readonly userRoleGateway: PrismaUserRoleGateway;
+  readonly authorizer: PermissionAuthorizer;
+  readonly requirePermission: ReturnType<typeof createRequirePermission>;
 }
 
 export interface AuthorizationModuleDependencies {
-  readonly placeholder?: never;
+  readonly dbProvider: DbProvider;
 }
 
 export function createAuthorizationServices(
-  _deps: AuthorizationModuleDependencies,
+  deps: AuthorizationModuleDependencies,
 ): AuthorizationModuleServices {
-  return {};
+  const grantReader = new PrismaGrantReader(deps.dbProvider);
+  const userRoleGateway = new PrismaUserRoleGateway(deps.dbProvider);
+  const authorizer = new PermissionAuthorizer(grantReader);
+  const requirePermission = createRequirePermission(authorizer);
+
+  return {
+    grantReader,
+    userRoleGateway,
+    authorizer,
+    requirePermission,
+  };
 }
+
+export const createAuthorizationModule = createAuthorizationServices;
