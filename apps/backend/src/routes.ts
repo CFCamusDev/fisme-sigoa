@@ -11,7 +11,7 @@ import {
 } from './shared/email/index.js';
 import { LogoUrlResolver } from './shared/branding/logo-url-resolver.js';
 import { createAuthModule, createAuthServices } from './modules/auth/index.js';
-import { createAuthorizationServices } from './modules/authorization/index.js';
+import { createAuthorizationServices, createRolesModule } from './modules/authorization/index.js';
 import { createUsersModule, EmailActivationSender } from './modules/users/index.js';
 
 export interface AppRoutesDependencies {
@@ -52,6 +52,13 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
   });
 
   app.use('/auth', createAuthModule(deps));
+  app.use(
+    '/roles',
+    createRolesModule({
+      authenticate: authServices.authenticate,
+      services: authorizationServices,
+    }),
+  );
   app.use(
     '/users',
     createUsersModule({

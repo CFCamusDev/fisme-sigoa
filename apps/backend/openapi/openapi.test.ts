@@ -155,6 +155,7 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
     expect(operationIds).toContain('listUsers');
     expect(operationIds).toContain('updateUser');
     expect(operationIds).toContain('changeUserStatus');
+    expect(operationIds).toContain('listRoles');
   });
 
   it('documents every login response with a valid example matching its schema', () => {

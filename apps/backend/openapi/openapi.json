@@ -1086,6 +1086,92 @@
           }
         }
       }
+    },
+    "/roles": {
+      "get": {
+        "tags": ["Roles"],
+        "summary": "Listar roles del sistema",
+        "description": "Lista el catálogo de roles disponibles ordenados por predefinidos primero y luego por nombre. Requiere el permiso 'rol.ver' con alcance GLOBAL.",
+        "operationId": "listRoles",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de roles retornada exitosamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListRolesResponse"
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "role_admin_cuid",
+                      "code": "ADMINISTRATOR",
+                      "name": "Administrador",
+                      "description": "Acceso y administración general del sistema",
+                      "isPredefined": true
+                    },
+                    {
+                      "id": "role_teacher_cuid",
+                      "code": "TEACHER",
+                      "name": "Docente",
+                      "description": "Docente de la Escuela Profesional de Ingeniería de Sistemas",
+                      "isPredefined": true
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere 'rol.ver' con alcance GLOBAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para ver los roles.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1396,6 +1482,45 @@
             "type": "integer",
             "minimum": 0,
             "description": "Cantidad total de páginas disponibles."
+          }
+        }
+      },
+      "RoleSummary": {
+        "type": "object",
+        "required": ["id", "code", "name", "description", "isPredefined"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Identificador único del rol (CUID)."
+          },
+          "code": {
+            "type": "string",
+            "description": "Código machine-readable del rol (ej. ADMINISTRATOR)."
+          },
+          "name": {
+            "type": "string",
+            "description": "Nombre legible del rol en español."
+          },
+          "description": {
+            "type": ["string", "null"],
+            "description": "Descripción funcional del rol o null si no posee."
+          },
+          "isPredefined": {
+            "type": "boolean",
+            "description": "Indica si es un rol base del sistema inmutable en código."
+          }
+        }
+      },
+      "ListRolesResponse": {
+        "type": "object",
+        "required": ["items"],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RoleSummary"
+            },
+            "description": "Lista de roles del sistema."
           }
         }
       }
