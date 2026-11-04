@@ -3,3 +3,4 @@ export * from './permission-checker.js';
 export * from './user-role-gateway.js';
 export * from './activation-token-issuer.js';
 export * from './activation-email-sender.js';
+export * from './user-session-revoker.js';
