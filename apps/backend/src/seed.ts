@@ -4,6 +4,7 @@ import { createLogger } from './shared/logger/logger.js';
 import { getPrismaClient, disconnectPrisma } from './shared/prisma/prisma-client.js';
 import { runSeed, type SeedStep } from './shared/seed/seed-runner.js';
 import type { PrismaClient } from './shared/prisma/generated/client.js';
+import { seedAuthorization } from './modules/authorization/infrastructure/prisma/seed/authorization-seed.js';
 
 loadEnvFileIfPresent();
 
@@ -13,7 +14,14 @@ async function main(): Promise<void> {
   const prisma = getPrismaClient(env);
 
   // Lista de pasos de semilla (cada HU posterior registra aquí sus pasos idempotentes)
-  const seedSteps: SeedStep<PrismaClient>[] = [];
+  const seedSteps: SeedStep<PrismaClient>[] = [
+    {
+      id: 'authorization-predefined-roles-and-permissions',
+      run: async (tx) => {
+        await seedAuthorization(tx);
+      },
+    },
+  ];
 
   try {
     await runSeed({
