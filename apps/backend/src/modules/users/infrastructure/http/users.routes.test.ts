@@ -1,13 +1,14 @@
 import express, { type Express, type RequestHandler } from 'express';
 import request from 'supertest';
 import { describe, expect, it, vi } from 'vitest';
-import type { UserDto } from '@sigoa/shared';
+import type { ListUsersResponse, UserDto } from '@sigoa/shared';
 import { runWithRequestContext } from '../../../../shared/audit/request-context.js';
 import { ForbiddenError } from '../../../../shared/errors/app-error.js';
 import { errorHandler } from '../../../../shared/middleware/error-handler.js';
 import type { ChangeUserStatusUseCase } from '../../application/change-user-status.js';
 import type { CreateUserUseCase } from '../../application/create-user.js';
 import type { EditUserUseCase } from '../../application/edit-user.js';
+import type { ListUsersUseCase } from '../../application/list-users.js';
 import { UsersController } from './users.controller.js';
 import { createUsersRouter } from './users.routes.js';
 
@@ -28,11 +29,24 @@ describe('Users Routes Unit Tests (T-003-10, T-003-11, T-003-12, RS-002, D7, D8)
     updatedAt: '2026-11-04T00:00:00.000Z',
   };
 
-  function setupTestApp(options?: { permissionAllowed?: boolean; useCaseResult?: UserDto }): {
+  const mockListResponse: ListUsersResponse = {
+    items: [mockUserDto],
+    total: 1,
+    page: 1,
+    pageSize: 20,
+    totalPages: 1,
+  };
+
+  function setupTestApp(options?: {
+    permissionAllowed?: boolean;
+    useCaseResult?: UserDto;
+    listUseCaseResult?: ListUsersResponse;
+  }): {
     app: Express;
     createUserUseCase: CreateUserUseCase;
     editUserUseCase: EditUserUseCase;
     changeUserStatusUseCase: ChangeUserStatusUseCase;
+    listUsersUseCase: ListUsersUseCase;
   } {
     const app = express();
     app.use(express.json());
@@ -71,10 +85,15 @@ describe('Users Routes Unit Tests (T-003-10, T-003-11, T-003-12, RS-002, D7, D8)
       execute: vi.fn().mockResolvedValue(options?.useCaseResult ?? mockUserDto),
     } as unknown as ChangeUserStatusUseCase;
 
+    const listUsersUseCase = {
+      execute: vi.fn().mockResolvedValue(options?.listUseCaseResult ?? mockListResponse),
+    } as unknown as ListUsersUseCase;
+
     const controller = new UsersController({
       createUserUseCase,
       editUserUseCase,
       changeUserStatusUseCase,
+      listUsersUseCase,
     });
 
     const router = createUsersRouter({
@@ -86,7 +105,13 @@ describe('Users Routes Unit Tests (T-003-10, T-003-11, T-003-12, RS-002, D7, D8)
     app.use('/users', router);
     app.use(errorHandler);
 
-    return { app, createUserUseCase, editUserUseCase, changeUserStatusUseCase };
+    return {
+      app,
+      createUserUseCase,
+      editUserUseCase,
+      changeUserStatusUseCase,
+      listUsersUseCase,
+    };
   }
 
   describe('POST /users', () => {
@@ -249,6 +274,55 @@ describe('Users Routes Unit Tests (T-003-10, T-003-11, T-003-12, RS-002, D7, D8)
         ip: '192.168.1.10',
         userId: 'user-123',
         input: validStatusPayload,
+      });
+    });
+  });
+
+  describe('GET /users (T-003-13)', () => {
+    it('checks the permission before validating the query (403 on invalid query if no permission)', async () => {
+      const { app, listUsersUseCase } = setupTestApp({ permissionAllowed: false });
+
+      const response = await request(app).get('/users?page=-1');
+
+      expect(response.status).toBe(403);
+      expect(response.body.error.code).toBe('FORBIDDEN');
+      expect(listUsersUseCase.execute).not.toHaveBeenCalled();
+    });
+
+    it('rejects invalid query parameters with 400', async () => {
+      const { app } = setupTestApp({ permissionAllowed: true });
+
+      const resBadStatus = await request(app).get('/users?status=UNKNOWN');
+      expect(resBadStatus.status).toBe(400);
+
+      const resBadPage = await request(app).get('/users?page=0');
+      expect(resBadPage.status).toBe(400);
+
+      const resHugePage = await request(app).get('/users?page=10001');
+      expect(resHugePage.status).toBe(400);
+
+      const resBadPageSize = await request(app).get('/users?pageSize=101');
+      expect(resBadPageSize.status).toBe(400);
+
+      const resUnknownKey = await request(app).get('/users?unknownParam=true');
+      expect(resUnknownKey.status).toBe(400);
+    });
+
+    it('responds 200 with Cache-Control: no-store and ListUsersResponse body', async () => {
+      const { app, listUsersUseCase } = setupTestApp({ permissionAllowed: true });
+
+      const response = await request(app).get('/users?status=ACTIVE&page=1&pageSize=20');
+
+      expect(response.status).toBe(200);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.body).toEqual(mockListResponse);
+      expect(listUsersUseCase.execute).toHaveBeenCalledWith({
+        actorId: dummyActorId,
+        query: {
+          status: 'ACTIVE',
+          page: 1,
+          pageSize: 20,
+        },
       });
     });
   });

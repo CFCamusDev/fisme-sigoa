@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { USERS_PAGE_SIZE_DEFAULT } from '@sigoa/shared';
 import { ForbiddenError } from '../../../shared/errors/app-error.js';
 import { User } from '../domain/entities/user.js';
 import type { PermissionChecker, UserListReader, UserRoleGateway } from '../domain/ports/index.js';
@@ -162,9 +163,9 @@ describe('ListUsersUseCase Unit Tests (T-003-07, T-003-22, CA4, RS-002, D10)', (
       status: undefined,
       roleId: undefined,
       page: 1,
-      pageSize: 10,
+      pageSize: USERS_PAGE_SIZE_DEFAULT,
     });
     expect(result.page).toBe(1);
-    expect(result.pageSize).toBe(10);
+    expect(result.pageSize).toBe(USERS_PAGE_SIZE_DEFAULT);
   });
 });

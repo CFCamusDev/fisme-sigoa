@@ -2,6 +2,7 @@ import { Router, type RequestHandler } from 'express';
 import {
   changeUserStatusRequestSchema,
   createUserRequestSchema,
+  listUsersQuerySchema,
   updateUserRequestSchema,
 } from '@sigoa/shared';
 import { validateRequest } from '../../../../shared/middleware/validate-request.js';
@@ -18,6 +19,15 @@ export interface UsersRouterDependencies {
 
 export function createUsersRouter(deps: UsersRouterDependencies): Router {
   const router = Router();
+
+  // GET /users (CA4, RF-003, RS-002, RS-015, RS-020, D10)
+  router.get(
+    '/',
+    deps.authenticate,
+    deps.requirePermission('usuario.ver', 'GLOBAL'),
+    validateRequest({ query: listUsersQuerySchema }),
+    deps.controller.list,
+  );
 
   // POST /users (CA1, CA2, RF-003, RS-002, RS-015, RS-020, D7)
   // Cadena obligatoria de middlewares: authenticate -> requirePermission -> validateRequest -> controller

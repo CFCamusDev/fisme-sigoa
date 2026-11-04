@@ -1,4 +1,4 @@
-import type { ListUsersResponse } from '@sigoa/shared';
+import { USERS_PAGE_SIZE_DEFAULT, type ListUsersResponse } from '@sigoa/shared';
 import type { PermissionChecker, UserListReader, UserRoleGateway } from '../domain/ports/index.js';
 import type { ListUsersCommand } from './list-users.types.js';
 import { toUserDto } from './user-dto.js';
@@ -22,7 +22,7 @@ export class ListUsersUseCase {
 
     // 2. Parámetros de paginación con valores por defecto
     const page = command.query.page ?? 1;
-    const pageSize = command.query.pageSize ?? 10;
+    const pageSize = command.query.pageSize ?? USERS_PAGE_SIZE_DEFAULT;
 
     // 3. Lectura de usuarios mediante el puerto de lectura (D10)
     const { items, total } = await this.deps.userListReader.list({
