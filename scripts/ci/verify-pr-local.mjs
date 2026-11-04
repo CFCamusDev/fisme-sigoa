@@ -596,3 +596,155 @@ export function planRepeatedSteps(steps, repeatCount = 1) {
   return result;
 }
 
+/**
+ * Parsea la salida de `git merge-tree --write-tree HEAD <base>`.
+ * @param {string} output
+ * @param {number} exitCode
+ * @returns {{ hasConflict: boolean, conflictDetails?: string }}
+ */
+export function parseMergeTreeOutput(output, exitCode) {
+  if (exitCode !== 0 || /conflict/i.test(output)) {
+    return {
+      hasConflict: true,
+      conflictDetails: output.trim(),
+    };
+  }
+
+  return { hasConflict: false };
+}
+
+/**
+ * Valida la sincronía de la rama de trabajo con la rama base.
+ * @param {{ behindCount: number, hasConflict: boolean, isOffline?: boolean }} data
+ * @returns {{ valid: boolean, error?: string, warning?: string, actionSuggestion?: string, skippedUpdate?: boolean, reason?: string }}
+ */
+export function checkBranchSync(data) {
+  if (data.isOffline) {
+    return {
+      valid: true,
+      skippedUpdate: true,
+      reason: 'Sin conexión a la red; se usó la referencia local de la rama base.',
+    };
+  }
+
+  if (data.hasConflict) {
+    return {
+      valid: false,
+      error:
+        'Se detectaron conflictos de fusión con la rama base. Se requiere rebase o resolución de conflictos antes del PR.',
+      actionSuggestion: 'Ejecuta git fetch origin develop && git rebase origin/develop y resuelve los conflictos.',
+    };
+  }
+
+  if (data.behindCount > 0) {
+    return {
+      valid: true,
+      warning: `La rama está ${data.behindCount} commits detrás de la base.`,
+      actionSuggestion: 'Ejecuta git rebase origin/develop para poner la rama al día con la base.',
+    };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Comprueba el resultado de consistencia de pnpm-lock.yaml.
+ * @param {number} exitCode
+ * @param {string} output
+ * @returns {{ valid: boolean, error?: string }}
+ */
+export function checkLockfileConsistency(exitCode, output) {
+  if (exitCode !== 0) {
+    return {
+      valid: false,
+      error: `El lockfile pnpm-lock.yaml no está en sincronía con package.json. Ejecuta pnpm install localmente.\n${output}`,
+    };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Valida que un informe last-report.json cumpla las reglas de frescura y confiabilidad (Reglas a - g).
+ * @param {Object} report
+ * @param {{ currentHeadSha: string, currentBranch: string, isTreeClean: boolean, now?: Date }} currentContext
+ * @param {{ requireMode?: 'quick'|'standard'|'full', maxAgeHours?: number, maxAuditAgeHours?: number }} [options={}]
+ * @returns {{ valid: boolean, errors: string[], warnings: string[] }}
+ */
+export function verifyReportStatus(report, currentContext, options = {}) {
+  const errors = [];
+  const warnings = [];
+  const requireMode = options.requireMode || 'quick';
+  const maxAgeHours = options.maxAgeHours || 24;
+  const maxAuditAgeHours = options.maxAuditAgeHours || 2;
+  const now = currentContext.now || new Date();
+
+  if (!report || typeof report !== 'object') {
+    return { valid: false, errors: ['No existe o no se pudo leer el informe de verificación.'], warnings };
+  }
+
+  // Regla (a): headSha y branch coinciden con el HEAD actual
+  if (report.headSha !== currentContext.currentHeadSha || report.branch !== currentContext.currentBranch) {
+    errors.push(
+      `El informe corresponde a otro commit (${report.headSha} en ${report.branch}), pero el HEAD actual es ${currentContext.currentHeadSha} en ${currentContext.currentBranch}.`,
+    );
+  }
+
+  // Regla (b): árbol limpio en la ejecución y ahora
+  if (!report.cleanWorkingTree) {
+    errors.push('El informe fue generado con cambios sin confirmar en el árbol de trabajo.');
+  }
+  if (!currentContext.isTreeClean) {
+    errors.push('El árbol actual está sucio (tiene cambios sin confirmar). Confirma o descarta los cambios.');
+  }
+
+  // Regla (c): modo del informe cubre el nivel exigido (quick < standard < full)
+  const modeLevels = { quick: 1, standard: 2, full: 3 };
+  const reportLevel = modeLevels[report.mode] || 0;
+  const requiredLevel = modeLevels[requireMode] || 1;
+
+  if (reportLevel < requiredLevel) {
+    errors.push(
+      `El informe cubre el modo '${report.mode}', pero se requiere el nivel requerido '${requireMode}'.`,
+    );
+  }
+
+  // Regla (d): ningún check con fallos ni omitidos en el alcance requerido
+  if (report.overallStatus === 'failed') {
+    errors.push('El informe contiene verificaciones con estado de fallos.');
+  }
+  if (report.overallStatus === 'omitted' && requireMode !== 'quick') {
+    errors.push('El informe contiene verificaciones con estado de omitidos dentro del alcance requerido.');
+  }
+
+  // Regla (e): auditoría ejecutada hace <= maxAuditAgeHours
+  const auditCheck = (report.checks || []).find((c) => c.id === 'audit');
+  if (auditCheck && auditCheck.finishedAt) {
+    const auditTime = new Date(auditCheck.finishedAt).getTime();
+    const diffHours = (now.getTime() - auditTime) / (1000 * 60 * 60);
+    if (diffHours > maxAuditAgeHours) {
+      errors.push(
+        `La auditoría de dependencias tiene más de ${maxAuditAgeHours} horas de antigüedad (${diffHours.toFixed(1)}h). Se requiere volver a auditar.`,
+      );
+    }
+  }
+
+  // Regla (f): informe completado hace <= maxAgeHours
+  if (report.completedAt) {
+    const reportTime = new Date(report.completedAt).getTime();
+    const diffHours = (now.getTime() - reportTime) / (1000 * 60 * 60);
+    if (diffHours > maxAgeHours) {
+      errors.push(
+        `El informe de verificación tiene más de ${maxAgeHours} horas de antigüedad (${diffHours.toFixed(1)}h).`,
+      );
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    warnings,
+  };
+}
+
+

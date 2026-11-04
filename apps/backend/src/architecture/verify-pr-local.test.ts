@@ -14,6 +14,10 @@ import {
   checkCleanWorkingTree,
   markDatabaseStepsOmitted,
   planRepeatedSteps,
+  parseMergeTreeOutput,
+  checkBranchSync,
+  checkLockfileConsistency,
+  verifyReportStatus,
 } from '../../../../scripts/ci/verify-pr-local.mjs';
 
 describe('verify-pr-local pure logic (T-002-22 / G1)', () => {
@@ -377,6 +381,182 @@ describe('verify-pr-local pure logic (T-002-22 / G1)', () => {
       const plan = buildExecutionPlan('full', { only: ['audit', 'typecheck'] });
       expect(plan.length).toBe(2);
       expect(plan.map((c: { id: string }) => c.id)).toEqual(['audit', 'typecheck']);
+    });
+  });
+
+  describe('sync, lockfile and report status gate (T-002-22 / G3)', () => {
+    it('detects merge conflicts with the base without touching the working tree', () => {
+      const cleanTreeOutput = 'f37eadc987654321fedcba1234567890abcdef12\n';
+      expect(parseMergeTreeOutput(cleanTreeOutput, 0)).toEqual({
+        hasConflict: false,
+      });
+
+      const conflictOutput = 'CONFLICT (content): Merge conflict in apps/backend/src/server.ts';
+      expect(parseMergeTreeOutput(conflictOutput, 1)).toEqual({
+        hasConflict: true,
+        conflictDetails: expect.stringMatching(/conflict in apps\/backend\/src\/server\.ts/i),
+      });
+    });
+
+    it('warns when the branch is behind the base and fails on conflicts', () => {
+      // Al día y sin conflictos
+      const syncOk = checkBranchSync({ behindCount: 0, hasConflict: false });
+      expect(syncOk.valid).toBe(true);
+      expect(syncOk.warning).toBeUndefined();
+
+      // Detrás pero sin conflictos (advertencia)
+      const behindOk = checkBranchSync({ behindCount: 3, hasConflict: false });
+      expect(behindOk.valid).toBe(true);
+      expect(behindOk.warning).toMatch(/3 commits detrás/i);
+      expect(behindOk.actionSuggestion).toMatch(/rebase/i);
+
+      // Con conflicto (falla)
+      const conflictFail = checkBranchSync({ behindCount: 2, hasConflict: true });
+      expect(conflictFail.valid).toBe(false);
+      expect(conflictFail.error).toMatch(/conflicto/i);
+    });
+
+    it('skips the base update when offline', () => {
+      const offlineSync = checkBranchSync({
+        behindCount: 0,
+        hasConflict: false,
+        isOffline: true,
+      });
+      expect(offlineSync.valid).toBe(true);
+      expect(offlineSync.skippedUpdate).toBe(true);
+      expect(offlineSync.reason).toMatch(/sin conexión/i);
+    });
+
+    it('flags an inconsistent lockfile', () => {
+      expect(checkLockfileConsistency(0, '')).toEqual({ valid: true });
+
+      const failResult = checkLockfileConsistency(1, 'ERR_PNPM_LOCKFILE_OUTDATED');
+      expect(failResult.valid).toBe(false);
+      expect(failResult.error).toMatch(/pnpm-lock\.yaml no está en sincronía/i);
+    });
+
+    const createValidReport = (overrides = {}) => ({
+      version: '1.0.0',
+      branch: 'feature/HU-002-logout-refresh',
+      headSha: 'c0e7b52',
+      baseSha: 'develop',
+      mode: 'standard',
+      clean: false,
+      repeat: 1,
+      cleanWorkingTree: true,
+      startedAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+      completedAt: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+      overallStatus: 'ok',
+      exitCode: 0,
+      checks: [
+        {
+          id: 'audit',
+          name: 'Auditoría',
+          status: 'ok',
+          finishedAt: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
+        },
+        {
+          id: 'integration-tests',
+          name: 'Integración',
+          status: 'ok',
+          finishedAt: new Date(Date.now() - 12 * 60 * 1000).toISOString(),
+        },
+      ],
+      ...overrides,
+    });
+
+    const validContext = {
+      currentHeadSha: 'c0e7b52',
+      currentBranch: 'feature/HU-002-logout-refresh',
+      isTreeClean: true,
+      now: new Date(),
+    };
+
+    it('status rejects a report from another commit', () => {
+      const report = createValidReport({ headSha: 'different_sha' });
+      const res = verifyReportStatus(report, validContext, { requireMode: 'standard' });
+      expect(res.valid).toBe(false);
+      expect(res.errors.some((e: string) => /otro commit/i.test(e))).toBe(true);
+    });
+
+    it('status rejects a report taken with uncommitted changes or now with a dirty tree', () => {
+      const reportDirty = createValidReport({ cleanWorkingTree: false });
+      const resDirty = verifyReportStatus(reportDirty, validContext, { requireMode: 'standard' });
+      expect(resDirty.valid).toBe(false);
+      expect(resDirty.errors.some((e: string) => /cambios sin confirmar/i.test(e))).toBe(true);
+
+      const reportClean = createValidReport({ cleanWorkingTree: true });
+      const contextDirty = { ...validContext, isTreeClean: false };
+      const resContextDirty = verifyReportStatus(reportClean, contextDirty, {
+        requireMode: 'standard',
+      });
+      expect(resContextDirty.valid).toBe(false);
+      expect(resContextDirty.errors.some((e: string) => /árbol actual está sucio/i.test(e))).toBe(
+        true,
+      );
+    });
+
+    it('status rejects a report whose mode does not cover the required level', () => {
+      const quickReport = createValidReport({ mode: 'quick' });
+      const res = verifyReportStatus(quickReport, validContext, { requireMode: 'full' });
+      expect(res.valid).toBe(false);
+      expect(res.errors.some((e: string) => /nivel requerido/i.test(e))).toBe(true);
+    });
+
+    it('status rejects reports with failed or omitted checks in the required scope', () => {
+      const reportWithFail = createValidReport({
+        overallStatus: 'failed',
+        checks: [{ id: 'audit', name: 'Auditoría', status: 'failed' }],
+      });
+      const resFail = verifyReportStatus(reportWithFail, validContext, { requireMode: 'standard' });
+      expect(resFail.valid).toBe(false);
+      expect(resFail.errors.some((e: string) => /fallos/i.test(e))).toBe(true);
+
+      const reportWithOmitted = createValidReport({
+        overallStatus: 'omitted',
+        checks: [{ id: 'integration-tests', name: 'Integración', status: 'omitted' }],
+      });
+      const resOmitted = verifyReportStatus(reportWithOmitted, validContext, {
+        requireMode: 'standard',
+      });
+      expect(resOmitted.valid).toBe(false);
+      expect(resOmitted.errors.some((e: string) => /omitidos/i.test(e))).toBe(true);
+    });
+
+    it('status rejects an audit older than two hours and a report older than 24 hours', () => {
+      // Auditoría con más de 2h
+      const reportOldAudit = createValidReport({
+        checks: [
+          {
+            id: 'audit',
+            name: 'Auditoría',
+            status: 'ok',
+            finishedAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+          },
+        ],
+      });
+      const resOldAudit = verifyReportStatus(reportOldAudit, validContext, {
+        requireMode: 'standard',
+      });
+      expect(resOldAudit.valid).toBe(false);
+      expect(resOldAudit.errors.some((e: string) => /auditoría.*2 horas/i.test(e))).toBe(true);
+
+      // Reporte con más de 24h
+      const reportOldCompleted = createValidReport({
+        completedAt: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
+      });
+      const resOldReport = verifyReportStatus(reportOldCompleted, validContext, {
+        requireMode: 'standard',
+      });
+      expect(resOldReport.valid).toBe(false);
+      expect(resOldReport.errors.some((e: string) => /24 horas/i.test(e))).toBe(true);
+    });
+
+    it('status accepts a fresh green report', () => {
+      const report = createValidReport();
+      const res = verifyReportStatus(report, validContext, { requireMode: 'standard' });
+      expect(res.valid).toBe(true);
+      expect(res.errors).toEqual([]);
     });
   });
 });
