@@ -49,6 +49,7 @@ export function UserRowActions({
   }, [isConfirmingDeactivation]);
 
   const handleDeactivate = () => {
+    if (isPending) return;
     changeStatusMutation.mutate(
       { id: user.id, body: { status: 'INACTIVE' } },
       {
@@ -66,6 +67,7 @@ export function UserRowActions({
   };
 
   const handleReactivate = () => {
+    if (isPending) return;
     changeStatusMutation.mutate(
       { id: user.id, body: { status: 'ACTIVE' } },
       {
