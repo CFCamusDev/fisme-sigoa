@@ -96,7 +96,7 @@ test.describe('Keyboard Navigation and Focus Indicator (WCAG 2.1 AA)', () => {
     // Verificar transición a /usuarios, estado aria-current y encabezado
     await expect(page).toHaveURL(/\/usuarios/);
     await expect(usersLink).toHaveAttribute('aria-current', 'page');
-    const heading = page.getByRole('heading', { name: /Usuarios/i });
+    const heading = page.getByRole('heading', { name: 'Usuarios', exact: true });
     await expect(heading).toBeVisible();
   });
 });
