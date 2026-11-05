@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { expectNoContrastViolations } from './support/contrast';
-import { loginAsTestUser } from './support/seed-user';
+import { loginAsTestUser, seedUser } from './support/seed-user';
 
 test.describe('Color Contrast Accessibility (WCAG 2.1 AA)', () => {
   test.setTimeout(30_000);
@@ -68,5 +68,127 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA)', () => {
     await expectNoContrastViolations(page, {
       context: 'authenticated-layout-mobile-menu-open',
     });
+  });
+
+  test('users list has no contrast violations on desktop and mobile', async ({ page }) => {
+    const adminEmail = `contrast-admin-${Date.now()}@example.test`;
+    await loginAsTestUser(page, {
+      email: adminEmail,
+      roles: ['ADMINISTRATOR'],
+    });
+
+    // 1. Escritorio (1280px)
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.goto('/usuarios');
+    await expect(page.getByRole('heading', { level: 1, name: 'Usuarios' })).toBeVisible();
+    await expectNoContrastViolations(page, { context: 'users-list-desktop' });
+
+    // 2. Móvil (375px)
+    await page.setViewportSize({ width: 375, height: 812 });
+    await expectNoContrastViolations(page, { context: 'users-list-mobile' });
+  });
+
+  test('deactivation confirmation has no contrast violations', async ({ page }) => {
+    const timestamp = Date.now();
+    const adminEmail = `contrast-admin-deact-${timestamp}@example.test`;
+    const targetEmail = `contrast-target-${timestamp}@example.test`;
+
+    const uniqueName = `Destino${timestamp % 10000}`;
+
+    seedUser({
+      email: targetEmail,
+      names: 'Usuario',
+      firstSurname: uniqueName,
+      roles: ['TEACHER'],
+      status: 'ACTIVE',
+    });
+
+    await loginAsTestUser(page, {
+      email: adminEmail,
+      roles: ['ADMINISTRATOR'],
+    });
+
+    await page.goto('/usuarios');
+    await expect(page.getByText(`Usuario ${uniqueName}`)).toBeVisible();
+
+    const deactivateBtn = page.getByRole('button', {
+      name: new RegExp(`inactivar a usuario ${uniqueName}`, 'i'),
+    });
+    await deactivateBtn.click();
+
+    const dialog = page.getByRole('alertdialog');
+    await expect(dialog).toBeVisible();
+
+    await expectNoContrastViolations(page, { context: 'users-deactivation-confirmation' });
+  });
+
+  test('empty filtered list has no contrast violations', async ({ page }) => {
+    const adminEmail = `contrast-admin-empty-${Date.now()}@example.test`;
+    await loginAsTestUser(page, {
+      email: adminEmail,
+      roles: ['ADMINISTRATOR'],
+    });
+
+    await page.goto('/usuarios?status=INACTIVE');
+    await expect(page.getByRole('heading', { level: 1, name: 'Usuarios' })).toBeVisible();
+    await expectNoContrastViolations(page, { context: 'users-list-empty-filtered' });
+  });
+
+  test('create user form has no contrast violations (empty and with errors)', async ({ page }) => {
+    const adminEmail = `contrast-admin-create-${Date.now()}@example.test`;
+    await loginAsTestUser(page, {
+      email: adminEmail,
+      roles: ['ADMINISTRATOR'],
+    });
+
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.goto('/usuarios/nuevo');
+    await expect(page.getByRole('heading', { level: 1, name: 'Nuevo usuario' })).toBeVisible();
+
+    // 1. Formulario vacío en escritorio
+    await expectNoContrastViolations(page, { context: 'create-user-empty-desktop' });
+
+    // 2. Formulario vacío en móvil
+    await page.setViewportSize({ width: 375, height: 812 });
+    await expectNoContrastViolations(page, { context: 'create-user-empty-mobile' });
+
+    // 3. Formulario con errores de validación
+    await page.getByRole('button', { name: /crear usuario/i }).click();
+    await expect(page.getByText('Los nombres son obligatorios')).toBeVisible();
+    await expectNoContrastViolations(page, { context: 'create-user-with-errors' });
+  });
+
+  test('edit user form has no contrast violations', async ({ page }) => {
+    const timestamp = Date.now();
+    const adminEmail = `contrast-admin-edit-${timestamp}@example.test`;
+    const targetEmail = `contrast-edit-target-${timestamp}@example.test`;
+
+    const uniqueEditSurname = `Objetivo${timestamp % 10000}`;
+
+    seedUser({
+      email: targetEmail,
+      names: 'Editar',
+      firstSurname: uniqueEditSurname,
+      secondSurname: 'Prueba',
+      dni: String(40000000 + (timestamp % 10000000)),
+      roles: ['TEACHER'],
+      status: 'ACTIVE',
+    });
+
+    await loginAsTestUser(page, {
+      email: adminEmail,
+      roles: ['ADMINISTRATOR'],
+    });
+
+    await page.goto('/usuarios');
+    await expect(page.getByText(`Editar ${uniqueEditSurname} Prueba`)).toBeVisible();
+
+    const editLink = page.getByRole('link', {
+      name: new RegExp(`editar a editar ${uniqueEditSurname}`, 'i'),
+    });
+    await editLink.click();
+
+    await expect(page.getByRole('heading', { level: 1, name: /editar usuario/i })).toBeVisible();
+    await expectNoContrastViolations(page, { context: 'edit-user-form' });
   });
 });
