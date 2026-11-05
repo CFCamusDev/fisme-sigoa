@@ -6,3 +6,4 @@ export * from './email-templates.js';
 export * from './in-memory-email-sender.js';
 export * from './resend-email-sender.js';
 export * from './retry.js';
+export * from './templates/account-activation.js';

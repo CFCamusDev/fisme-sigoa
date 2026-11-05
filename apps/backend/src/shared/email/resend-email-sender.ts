@@ -103,6 +103,7 @@ export class ResendEmailSender implements EmailSender {
             {
               domain,
               template: message.template,
+              templateVersion: rendered.templateVersion,
               attempt,
               status,
               errorName: error.name,
@@ -129,6 +130,7 @@ export class ResendEmailSender implements EmailSender {
         {
           messageId: result.messageId,
           template: message.template,
+          templateVersion: rendered.templateVersion,
           domain,
           attempts: result.attempts,
         },
@@ -143,6 +145,7 @@ export class ResendEmailSender implements EmailSender {
         {
           domain,
           template: message.template,
+          templateVersion: rendered.templateVersion,
           error: error instanceof Error ? error.message : String(error),
         },
         'Error definitivo al intentar enviar el correo electrónico',

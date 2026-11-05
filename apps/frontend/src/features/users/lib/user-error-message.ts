@@ -1,0 +1,48 @@
+import type { ApiError } from '@/lib/api-error';
+
+export function getUserErrorMessage(error: unknown): string {
+  if (!error || typeof error !== 'object') {
+    return 'Ha ocurrido un error inesperado. Por favor, intenta de nuevo.';
+  }
+
+  const apiErr = error as ApiError;
+  if (apiErr.status === 403) {
+    return 'No tienes permiso para realizar esta acción.';
+  }
+  if (apiErr.status === 404) {
+    return 'El usuario solicitado no fue encontrado.';
+  }
+  if (apiErr.status === 409) {
+    return apiErr.message || 'Ya existe un usuario con estos datos.';
+  }
+  if (apiErr.status === 400) {
+    if (apiErr.details && typeof apiErr.details === 'string') {
+      return apiErr.details;
+    }
+    return apiErr.message || 'Los datos proporcionados son inválidos.';
+  }
+  if (apiErr.message) {
+    return apiErr.message;
+  }
+
+  return 'Ha ocurrido un error inesperado. Por favor, intenta de nuevo.';
+}
+
+export function extractUserConflictField(error: unknown): 'email' | 'dni' | null {
+  if (!error || typeof error !== 'object') {
+    return null;
+  }
+  const apiErr = error as ApiError;
+  if (apiErr.status !== 409 && apiErr.code !== 'CONFLICT') {
+    return null;
+  }
+
+  const message = (apiErr.message || '').toLowerCase();
+  if (message.includes('correo') || message.includes('email')) {
+    return 'email';
+  }
+  if (message.includes('dni')) {
+    return 'dni';
+  }
+  return null;
+}

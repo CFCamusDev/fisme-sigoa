@@ -4,3 +4,5 @@ export * from './refresh-token-repository.js';
 export * from './access-token-signer.js';
 export * from './access-token-verifier.js';
 export * from './refresh-token-generator.js';
+export * from './activation-token-generator.js';
+export * from './activation-token-repository.js';
