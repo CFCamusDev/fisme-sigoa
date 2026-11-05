@@ -346,6 +346,12 @@ export function buildExecutionPlan(mode, options = {}) {
 
   // 4. Pasos adicionales exclusivos para full
   if (mode === 'full') {
+    const gitBashPath = 'C:\\Program Files\\Git\\bin\\bash.exe';
+    const bashBinary =
+      process.platform === 'win32' && fs.existsSync(gitBashPath)
+        ? `"${gitBashPath}"`
+        : 'bash';
+
     plan.push({
       id: 'pdf-stability',
       name: 'Estabilidad de PDF con Chromium real (3 pasadas)',
@@ -367,7 +373,7 @@ export function buildExecutionPlan(mode, options = {}) {
       id: 'docker-smoke',
       name: 'Pruebas de humo de imágenes Docker y tipografía',
       group: 'imagenes',
-      command: 'bash scripts/ci/smoke-image.sh',
+      command: `${bashBinary} scripts/ci/smoke-image.sh`,
       actionSuggestion: 'Asegúrate de que el demonio de Docker esté corriendo y las imágenes compilen.',
       timeoutMs: 600_000,
     });
