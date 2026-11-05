@@ -7,6 +7,8 @@ export interface SeedUserOptions {
   names?: string;
   firstSurname?: string;
   secondSurname?: string | null;
+  dni?: string | null;
+  roles?: string[];
   status?: 'ACTIVE' | 'INACTIVE' | 'PENDING_ACTIVATION';
   failedLoginAttempts?: number;
   lockedUntil?: string | null;

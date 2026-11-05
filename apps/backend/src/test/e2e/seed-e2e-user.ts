@@ -1,6 +1,7 @@
 import { createPrismaClient } from '../../shared/prisma/prisma-client.js';
 import { assertTestDatabase, getTestDatabaseUrl } from '../db/assert-test-database.js';
 import { Argon2PasswordHasher } from '../../modules/auth/infrastructure/security/argon2-password-hasher.js';
+import { seedAuthorization } from '../../modules/authorization/infrastructure/prisma/seed/authorization-seed.js';
 
 export interface SeedUserOptions {
   email: string;
@@ -8,6 +9,8 @@ export interface SeedUserOptions {
   names?: string;
   firstSurname?: string;
   secondSurname?: string | null;
+  dni?: string | null;
+  roles?: string[];
   status?: 'ACTIVE' | 'INACTIVE' | 'PENDING_ACTIVATION';
   failedLoginAttempts?: number;
   lockedUntil?: string | null;
@@ -31,6 +34,7 @@ export async function seedE2EUser(
         names: options.names ?? 'Usuario',
         firstSurname: options.firstSurname ?? 'Prueba',
         secondSurname: options.secondSurname ?? null,
+        dni: options.dni ?? null,
         passwordHash,
         status: options.status ?? 'ACTIVE',
         failedLoginAttempts: options.failedLoginAttempts ?? 0,
@@ -40,12 +44,34 @@ export async function seedE2EUser(
         names: options.names ?? 'Usuario',
         firstSurname: options.firstSurname ?? 'Prueba',
         secondSurname: options.secondSurname ?? null,
+        ...(options.dni !== undefined ? { dni: options.dni } : {}),
         passwordHash,
         status: options.status ?? 'ACTIVE',
         failedLoginAttempts: options.failedLoginAttempts ?? 0,
         lockedUntil: options.lockedUntil ? new Date(options.lockedUntil) : null,
       },
     });
+
+    if (options.roles && options.roles.length > 0) {
+      await seedAuthorization(prisma);
+      const roles = await prisma.role.findMany({
+        where: { code: { in: options.roles } },
+      });
+
+      await prisma.userRole.deleteMany({
+        where: { userId: user.id },
+      });
+
+      for (const role of roles) {
+        await prisma.userRole.create({
+          data: {
+            userId: user.id,
+            roleId: role.id,
+            createdBy: 'SEED',
+          },
+        });
+      }
+    }
 
     return { id: user.id, email: user.email };
   } finally {
