@@ -48,6 +48,18 @@ describe('AppLayout Component', () => {
     expect(panelLink).toHaveAttribute('href', '/');
   });
 
+  it('renders navigation item "Usuarios" linking to /usuarios (T-003-16)', async () => {
+    renderWithProviders(
+      <AppLayout>
+        <p>Dashboard</p>
+      </AppLayout>,
+    );
+
+    const usersLink = await screen.findByRole('link', { name: /Usuarios/i });
+    expect(usersLink).toBeInTheDocument();
+    expect(usersLink).toHaveAttribute('href', '/usuarios');
+  });
+
   it('controls mobile sidebar visibility with accessible aria-expanded button', async () => {
     const user = userEvent.setup();
 

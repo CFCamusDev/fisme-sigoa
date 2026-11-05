@@ -1,11 +1,9 @@
 import type { ReactNode } from 'react';
-import { Link } from '@tanstack/react-router';
 import { DataTable, type DataTableColumn } from '@/components/common/data-table';
 import { StatusBadge } from '@/components/common/status-badge';
-import { buttonVariants } from '@/components/ui/button';
 import { formatDateTime } from '@/lib/date';
-import { cn } from '@/lib/utils';
 import type { RoleSummary, UserDto } from '@sigoa/shared';
+import { UserRowActions } from './user-row-actions';
 
 export interface UsersTableProps {
   users: UserDto[];
@@ -15,6 +13,8 @@ export interface UsersTableProps {
   hasFiltersApplied?: boolean;
   onRetry?: () => void;
   renderRowActions?: (user: UserDto) => ReactNode;
+  onStatusChangeError?: (message: string) => void;
+  onStatusChangeSuccess?: (message: string) => void;
 }
 
 export function UsersTable({
@@ -25,6 +25,8 @@ export function UsersTable({
   hasFiltersApplied = false,
   onRetry,
   renderRowActions,
+  onStatusChangeError,
+  onStatusChangeSuccess,
 }: UsersTableProps) {
   const rolesMap = new Map<string, string>();
   for (const role of roles) {
@@ -77,21 +79,15 @@ export function UsersTable({
       headerClassName: 'text-right',
       className: 'text-right',
       render: (u) => {
-        const fullName = [u.names, u.firstSurname].filter(Boolean).join(' ');
         if (renderRowActions) {
           return renderRowActions(u);
         }
         return (
-          <div className="flex items-center justify-end gap-2">
-            <Link
-              to={'/usuarios/$userId/editar' as never}
-              params={{ userId: u.id } as never}
-              className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}
-              aria-label={`Editar a ${fullName}`}
-            >
-              Editar
-            </Link>
-          </div>
+          <UserRowActions
+            user={u}
+            onStatusChangeError={onStatusChangeError}
+            onStatusChangeSuccess={onStatusChangeSuccess}
+          />
         );
       },
     },

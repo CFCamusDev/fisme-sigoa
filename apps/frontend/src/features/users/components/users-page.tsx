@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { PageHeader } from '@/components/common/page-header';
 import { ErrorState } from '@/components/common/error-state';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { UserStatus } from '@sigoa/shared';
@@ -31,6 +32,12 @@ export function UsersPage({
     pageSize: 20,
   });
 
+  const [feedback, setFeedback] = useState<{
+    type: 'success' | 'danger';
+    title?: string;
+    message: string;
+  } | null>(null);
+
   const search = externalSearch ?? internalSearch;
   const updateSearch =
     externalOnSearchChange ??
@@ -53,14 +60,17 @@ export function UsersPage({
   const roles = rolesQuery.data?.items ?? [];
 
   const handleStatusChange = (newStatus: UserStatus | undefined) => {
+    setFeedback(null);
     updateSearch({ status: newStatus, page: 1 });
   };
 
   const handleRoleIdChange = (newRoleId: string | undefined) => {
+    setFeedback(null);
     updateSearch({ roleId: newRoleId, page: 1 });
   };
 
   const handlePageChange = (newPage: number) => {
+    setFeedback(null);
     updateSearch({ page: newPage });
   };
 
@@ -73,10 +83,7 @@ export function UsersPage({
         title="Usuarios"
         description="Administra los usuarios del sistema, sus roles institucionales y sus estados de acceso."
         actions={
-          <Link
-            to={'/usuarios/nuevo' as never}
-            className={cn(buttonVariants({ variant: 'default' }))}
-          >
+          <Link to="/usuarios/nuevo" className={cn(buttonVariants({ variant: 'default' }))}>
             Nuevo usuario
           </Link>
         }
@@ -90,6 +97,13 @@ export function UsersPage({
         onStatusChange={handleStatusChange}
         onRoleIdChange={handleRoleIdChange}
       />
+
+      {feedback && (
+        <Alert variant={feedback.type}>
+          {feedback.title && <AlertTitle>{feedback.title}</AlertTitle>}
+          <AlertDescription>{feedback.message}</AlertDescription>
+        </Alert>
+      )}
 
       {isForbidden ? (
         <div className="surface rounded-lg p-6">
@@ -111,6 +125,14 @@ export function UsersPage({
             error={usersQuery.error}
             hasFiltersApplied={hasFiltersApplied}
             onRetry={() => usersQuery.refetch()}
+            onStatusChangeSuccess={(msg) => setFeedback({ type: 'success', message: msg })}
+            onStatusChangeError={(msg) =>
+              setFeedback({
+                type: 'danger',
+                title: 'Error al cambiar estado',
+                message: msg,
+              })
+            }
           />
 
           {usersQuery.data && (

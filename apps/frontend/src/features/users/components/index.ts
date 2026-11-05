@@ -1,4 +1,5 @@
 export * from './users-filters';
 export * from './users-pagination';
 export * from './users-table';
+export * from './user-row-actions';
 export * from './users-page';
