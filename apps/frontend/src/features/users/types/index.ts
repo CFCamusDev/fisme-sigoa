@@ -9,3 +9,4 @@ export type {
   UserDto,
   UserStatus,
 } from '@sigoa/shared';
+export type { ListUsersQueryInput } from '../api/list-users';
