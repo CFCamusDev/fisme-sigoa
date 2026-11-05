@@ -1,7 +1,16 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { parseArgs, runSmokeAdapters } from './smoke-adapters.js';
 
 describe('smoke-adapters script (T-076-05, T-076-02)', () => {
+  beforeEach(() => {
+    vi.stubEnv('EMAIL_PROVIDER', 'memory');
+    vi.stubEnv('FILE_STORAGE_PROVIDER', 'memory');
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it('correctly parses CLI arguments', () => {
     const opts = parseArgs(['--email', 'test@unexample.edu.pe', '--storage', '--pdf']);
     expect(opts.email).toBe('test@unexample.edu.pe');
