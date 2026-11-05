@@ -92,7 +92,11 @@ export function UserForm({ mode, initialUser, onSuccess }: UserFormProps) {
   // Manejo de submit en modo creación
   const handleCreateSubmit = (values: CreateUserRequest) => {
     setGeneralError(null);
-    createMutation.mutate(values, {
+    const payload: CreateUserRequest = {
+      ...values,
+      secondSurname: values.secondSurname?.trim() ? values.secondSurname.trim() : null,
+    };
+    createMutation.mutate(payload, {
       onSuccess: (data) => {
         setCreatedResult(data);
         onSuccess?.(data);

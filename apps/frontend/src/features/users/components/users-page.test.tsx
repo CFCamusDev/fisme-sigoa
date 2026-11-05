@@ -318,7 +318,7 @@ describe('UsersPage component (T-003-27)', () => {
         email: 'carlos@unterm.edu.pe',
         names: 'Carlos',
         firstSurname: 'Mendoza',
-        roles: ['ADMINISTRATOR'],
+        secondSurname: 'Ruiz',
       },
     });
 
@@ -361,7 +361,7 @@ describe('UsersPage component (T-003-27)', () => {
         email: 'admin@unterm.edu.pe',
         names: 'Admin',
         firstSurname: 'General',
-        roles: ['ADMINISTRATOR'],
+        secondSurname: null,
       },
     });
 
@@ -397,7 +397,7 @@ describe('UsersPage component (T-003-27)', () => {
         email: 'admin@unterm.edu.pe',
         names: 'Admin',
         firstSurname: 'General',
-        roles: ['ADMINISTRATOR'],
+        secondSurname: null,
       },
     });
 
@@ -454,7 +454,7 @@ describe('UsersPage component (T-003-27)', () => {
         email: 'admin@unterm.edu.pe',
         names: 'Admin',
         firstSurname: 'General',
-        roles: ['ADMINISTRATOR'],
+        secondSurname: null,
       },
     });
 
