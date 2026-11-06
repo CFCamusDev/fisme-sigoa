@@ -76,7 +76,7 @@ export function ResetPasswordPage({ token }: ResetPasswordPageProps) {
 
         <Alert variant="success" role="status">
           <CheckCircle2 className="size-5" />
-          <AlertTitle>Contraseña actualizada</AlertTitle>
+          <AlertTitle>Restablecimiento exitoso</AlertTitle>
           <AlertDescription>
             Tu contraseña se actualizó y cerramos tus sesiones abiertas. Inicia sesión con la nueva
             contraseña.

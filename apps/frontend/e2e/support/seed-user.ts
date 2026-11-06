@@ -88,3 +88,31 @@ export function seedPendingUser(options: {
 
   return { email, token };
 }
+
+export function seedRecoveryUser(options: {
+  email?: string;
+  token?: string;
+  password?: string;
+  expiresAt?: string | Date;
+  used?: boolean;
+}): { email: string; token: string; password: string } {
+  const timestamp = Date.now();
+  const email = options.email ?? `e2e-recovery-${timestamp}@example.test`;
+  const token = options.token ?? `e2e-recovery-token-${timestamp}-1234567890abcdef1234567890`;
+  const password = options.password ?? 'OldPassword123!';
+
+  seedUser({
+    email,
+    password,
+    names: 'Usuario',
+    firstSurname: 'Recuperacion',
+    status: 'ACTIVE',
+    activationToken: {
+      token,
+      expiresAt: options.expiresAt,
+      used: options.used,
+    },
+  });
+
+  return { email, token, password };
+}
