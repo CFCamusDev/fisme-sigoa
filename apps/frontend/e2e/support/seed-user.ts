@@ -1,6 +1,12 @@
 import { execSync } from 'node:child_process';
 import { expect, type Page } from '@playwright/test';
 
+export interface ActivationTokenSeedOptions {
+  token: string;
+  expiresAt?: string | Date;
+  used?: boolean;
+}
+
 export interface SeedUserOptions {
   email: string;
   password?: string;
@@ -12,6 +18,7 @@ export interface SeedUserOptions {
   status?: 'ACTIVE' | 'INACTIVE' | 'PENDING_ACTIVATION';
   failedLoginAttempts?: number;
   lockedUntil?: string | null;
+  activationToken?: ActivationTokenSeedOptions;
 }
 
 export function seedUser(options: SeedUserOptions): void {
@@ -55,4 +62,29 @@ export async function loginAsTestUser(
   await expect(page.getByRole('heading', { name: 'FISME-SIGOA' })).toBeVisible();
 
   return { email, password };
+}
+
+export function seedPendingUser(options: {
+  email?: string;
+  token?: string;
+  expiresAt?: string | Date;
+  used?: boolean;
+}): { email: string; token: string } {
+  const timestamp = Date.now();
+  const email = options.email ?? `e2e-pending-${timestamp}@example.test`;
+  const token = options.token ?? `e2e-token-${timestamp}-1234567890abcdef1234567890abcdef`;
+
+  seedUser({
+    email,
+    names: 'Usuario',
+    firstSurname: 'Pendiente',
+    status: 'PENDING_ACTIVATION',
+    activationToken: {
+      token,
+      expiresAt: options.expiresAt,
+      used: options.used,
+    },
+  });
+
+  return { email, token };
 }
