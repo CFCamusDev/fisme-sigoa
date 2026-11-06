@@ -6,6 +6,11 @@ import {
   passwordSchema,
   activateAccountRequestSchema,
   activateAccountResponseSchema,
+  accountTokenSchema,
+  forgotPasswordRequestSchema,
+  forgotPasswordResponseSchema,
+  resetPasswordRequestSchema,
+  resetPasswordResponseSchema,
   PASSWORD_MIN_LENGTH,
   PASSWORD_MAX_LENGTH,
   ACTIVATION_TOKEN_MAX_LENGTH,
@@ -13,6 +18,10 @@ import {
   type LoginResponse,
   type ActivateAccountRequest,
   type ActivateAccountResponse,
+  type ForgotPasswordRequest,
+  type ForgotPasswordResponse,
+  type ResetPasswordRequest,
+  type ResetPasswordResponse,
 } from './auth.js';
 import { errorCodeSchema } from './errors.js';
 
@@ -251,6 +260,143 @@ describe('Auth Schemas (T-001-11, T-002-05, RS-016, RNF-003, RNF-004, RNF-008)',
 
     it('errorCodeSchema includes INVALID_ACTIVATION_TOKEN', () => {
       expect(errorCodeSchema.parse('INVALID_ACTIVATION_TOKEN')).toBe('INVALID_ACTIVATION_TOKEN');
+    });
+
+    it('accountTokenSchema validates token constraints directly', () => {
+      expect(accountTokenSchema.parse('token-valido-123')).toBe('token-valido-123');
+      expect(() => accountTokenSchema.parse('')).toThrow();
+    });
+
+    it('activateAccountRequestSchema keeps its messages', () => {
+      const emptyTokenRes = activateAccountRequestSchema.safeParse({
+        token: '',
+        password: 'PasswordSegura2026',
+      });
+      expect(emptyTokenRes.success).toBe(false);
+      if (!emptyTokenRes.success) {
+        expect(emptyTokenRes.error.issues[0]?.message).toBe(
+          'El token de activación es obligatorio',
+        );
+      }
+
+      const longTokenRes = activateAccountRequestSchema.safeParse({
+        token: 'a'.repeat(129),
+        password: 'PasswordSegura2026',
+      });
+      expect(longTokenRes.success).toBe(false);
+      if (!longTokenRes.success) {
+        expect(longTokenRes.error.issues[0]?.message).toBe(
+          'El token de activación no puede exceder 128 caracteres',
+        );
+      }
+    });
+  });
+
+  describe('Password Recovery Schemas (T-005-05, RF-005, RNF-008)', () => {
+    it('normalizes the recovery email', () => {
+      const raw = {
+        email: '   Docente.EPIS@UNTRM.edu.pe   ',
+      };
+      const parsed: ForgotPasswordRequest = forgotPasswordRequestSchema.parse(raw);
+      expect(parsed).toEqual({
+        email: 'docente.epis@untrm.edu.pe',
+      });
+    });
+
+    it('rejects an email longer than 254 characters', () => {
+      const localPart = 'a'.repeat(245);
+      const oversizedEmail = `${localPart}@untrm.edu.pe`; // > 254 chars
+      expect(oversizedEmail.length).toBeGreaterThan(254);
+
+      expect(() =>
+        forgotPasswordRequestSchema.parse({
+          email: oversizedEmail,
+        }),
+      ).toThrow();
+    });
+
+    it('rejects unknown fields in the recovery and reset requests', () => {
+      expect(() =>
+        forgotPasswordRequestSchema.parse({
+          email: 'valid.user@untrm.edu.pe',
+          extraField: 'intruder',
+        }),
+      ).toThrow();
+
+      expect(() =>
+        resetPasswordRequestSchema.parse({
+          token: 'valid-token-string',
+          password: 'Password123!',
+          extraField: 'intruder',
+        }),
+      ).toThrow();
+    });
+
+    it('rejects an empty or oversized token', () => {
+      expect(() =>
+        resetPasswordRequestSchema.parse({
+          token: '',
+          password: 'Password123!',
+        }),
+      ).toThrow();
+
+      expect(() =>
+        resetPasswordRequestSchema.parse({
+          token: 'a'.repeat(ACTIVATION_TOKEN_MAX_LENGTH + 1),
+          password: 'Password123!',
+        }),
+      ).toThrow();
+    });
+
+    it('reuses the password policy for the reset request', () => {
+      const validPayload: ResetPasswordRequest = {
+        token: 'valid-secure-token-123',
+        password: 'PasswordSegura2026',
+      };
+      const parsed = resetPasswordRequestSchema.parse(validPayload);
+      expect(parsed).toEqual(validPayload);
+
+      // Falla si la contraseña no cumple la política (ej. sin números)
+      expect(() =>
+        resetPasswordRequestSchema.parse({
+          token: 'valid-secure-token-123',
+          password: 'Sololetraslargas',
+        }),
+      ).toThrow();
+
+      // Falla si es muy corta
+      expect(() =>
+        resetPasswordRequestSchema.parse({
+          token: 'valid-secure-token-123',
+          password: 'Corto1',
+        }),
+      ).toThrow();
+    });
+
+    it('accepts valid response schemas and rejects unknown fields', () => {
+      const forgotResponse: ForgotPasswordResponse = {
+        status: 'RECEIVED',
+      };
+      expect(forgotPasswordResponseSchema.parse(forgotResponse)).toEqual(forgotResponse);
+
+      expect(() =>
+        forgotPasswordResponseSchema.parse({
+          status: 'RECEIVED',
+          extra: true,
+        }),
+      ).toThrow();
+
+      const resetResponse: ResetPasswordResponse = {
+        status: 'PASSWORD_RESET',
+      };
+      expect(resetPasswordResponseSchema.parse(resetResponse)).toEqual(resetResponse);
+
+      expect(() =>
+        resetPasswordResponseSchema.parse({
+          status: 'PASSWORD_RESET',
+          extra: true,
+        }),
+      ).toThrow();
     });
   });
 });
