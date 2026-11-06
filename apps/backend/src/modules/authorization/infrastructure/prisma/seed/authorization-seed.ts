@@ -6,28 +6,41 @@ import {
 } from '../../../domain/index.js';
 
 export async function seedAuthorization(prisma: PrismaClient): Promise<void> {
-  // 1. Roles predefinidos (LS 3.2)
+  // Identificar qué roles y permisos ya existen antes de sembrar
+  const existingRoles = await prisma.role.findMany({
+    select: { id: true, code: true },
+  });
+  const existingRoleCodes = new Set(existingRoles.map((r) => r.code));
+
+  const existingPerms = await prisma.permission.findMany({
+    select: { id: true, code: true },
+  });
+  const existingPermCodes = new Set(existingPerms.map((p) => p.code));
+
+  const createdRoleCodes = new Set<string>();
+  const createdPermCodes = new Set<string>();
+
+  // 1. Roles predefinidos (LS 3.2): crear solo si no existen (no pisar ediciones)
   for (const role of PREDEFINED_ROLES) {
-    await prisma.role.upsert({
-      where: { code: role.code },
-      update: {
-        name: role.name,
-        description: role.description,
-        updatedBy: 'SEED',
-      },
-      create: {
-        code: role.code,
-        name: role.name,
-        description: role.description,
-        isPredefined: true,
-        createdBy: 'SEED',
-        updatedBy: 'SEED',
-      },
-    });
+    if (!existingRoleCodes.has(role.code)) {
+      await prisma.role.create({
+        data: {
+          code: role.code,
+          name: role.name,
+          description: role.description,
+          isPredefined: true,
+          status: 'ACTIVE',
+          createdBy: 'SEED',
+          updatedBy: 'SEED',
+        },
+      });
+      createdRoleCodes.add(role.code);
+    }
   }
 
-  // 2. Permisos del catálogo (RS-010)
+  // 2. Permisos del catálogo (RS-010): upsert (descripción y módulo oficiales)
   for (const perm of CATALOG_PERMISSIONS) {
+    const isNew = !existingPermCodes.has(perm.code);
     await prisma.permission.upsert({
       where: { code: perm.code },
       update: {
@@ -43,33 +56,49 @@ export async function seedAuthorization(prisma: PrismaClient): Promise<void> {
         updatedBy: 'SEED',
       },
     });
+    if (isNew) {
+      createdPermCodes.add(perm.code);
+    }
   }
 
-  // 3. Matriz por defecto rol-permiso (LS 3.3)
-  for (const grant of DEFAULT_ROLE_PERMISSIONS) {
-    const role = await prisma.role.findUniqueOrThrow({
-      where: { code: grant.roleCode },
-    });
-    const perm = await prisma.permission.findUniqueOrThrow({
-      where: { code: grant.permissionCode },
-    });
+  // Cargar mapas de roles y permisos
+  const allRoles = await prisma.role.findMany({
+    select: { id: true, code: true },
+  });
+  const roleIdByCode = new Map(allRoles.map((r) => [r.code, r.id]));
 
-    await prisma.rolePermission.upsert({
-      where: {
-        roleId_permissionId: {
-          roleId: role.id,
-          permissionId: perm.id,
-        },
-      },
-      update: {
-        scope: grant.scope,
-      },
-      create: {
-        roleId: role.id,
-        permissionId: perm.id,
-        scope: grant.scope,
-        createdBy: 'SEED',
-      },
-    });
+  const allPerms = await prisma.permission.findMany({
+    select: { id: true, code: true },
+  });
+  const permIdByCode = new Map(allPerms.map((p) => [p.code, p.id]));
+
+  // 3. Matriz por defecto rol-permiso (LS 3.3):
+  // Solo se insertan concesiones por defecto si el rol O el permiso fue creado en esta ejecución.
+  for (const grant of DEFAULT_ROLE_PERMISSIONS) {
+    const isRoleNew = createdRoleCodes.has(grant.roleCode);
+    const isPermNew = createdPermCodes.has(grant.permissionCode);
+
+    if (isRoleNew || isPermNew) {
+      const roleId = roleIdByCode.get(grant.roleCode);
+      const permissionId = permIdByCode.get(grant.permissionCode);
+
+      if (roleId && permissionId) {
+        await prisma.rolePermission.upsert({
+          where: {
+            roleId_permissionId: {
+              roleId,
+              permissionId,
+            },
+          },
+          update: {},
+          create: {
+            roleId,
+            permissionId,
+            scope: grant.scope,
+            createdBy: 'SEED',
+          },
+        });
+      }
+    }
   }
 }
