@@ -6,6 +6,7 @@ import { User } from '../../domain/entities/user.js';
 import { LoginPolicy } from '../../domain/value-objects/login-policy.js';
 import { NotFoundError } from '../../../../shared/errors/app-error.js';
 import { UserNotPendingActivationError } from '../../domain/errors/user-not-pending-activation-error.js';
+import { UserNotActiveError } from '../../domain/errors/user-not-active-error.js';
 
 describe('PrismaUserRepository Integration (PostgreSQL real)', () => {
   const { getPrisma } = useTestDatabase();
@@ -271,6 +272,80 @@ describe('PrismaUserRepository Integration (PostgreSQL real)', () => {
 
     await expect(userRepo.saveActivation(activeUser)).rejects.toBeInstanceOf(
       UserNotPendingActivationError,
+    );
+  });
+
+  it('savePasswordReset updates an active user passwordHash and updatedAt (T-005-03, RS-005, RNF-017)', async () => {
+    const created = await prisma.user.create({
+      data: {
+        names: 'ActiveUser',
+        firstSurname: 'Reset',
+        email: 'save-reset-active@untrm.edu.pe',
+        status: 'ACTIVE',
+        passwordHash: '$argon2id$v=19$m=65536,t=3,p=4$oldPasswordHash',
+      },
+    });
+
+    const user = await userRepo.findById(created.id);
+    expect(user).not.toBeNull();
+
+    const newHash = '$argon2id$v=19$m=65536,t=3,p=4$newResetPasswordHash';
+    const now = new Date('2026-11-06T14:30:00.000Z');
+    user!.resetPassword(newHash, now);
+
+    await userRepo.savePasswordReset(user!);
+
+    const inDb = await prisma.user.findUniqueOrThrow({ where: { id: created.id } });
+    expect(inDb.status).toBe('ACTIVE');
+    expect(inDb.passwordHash).toBe(newHash);
+    expect(inDb.updatedAt).toEqual(now);
+  });
+
+  it('savePasswordReset rejects pending and inactive users with UserNotActiveError', async () => {
+    const pendingCreated = await prisma.user.create({
+      data: {
+        names: 'PendingUser',
+        firstSurname: 'Reset',
+        email: 'save-reset-pending@untrm.edu.pe',
+        status: 'PENDING_ACTIVATION',
+      },
+    });
+
+    const pendingUser = User.restore({
+      id: pendingCreated.id,
+      names: pendingCreated.names,
+      firstSurname: pendingCreated.firstSurname,
+      email: pendingCreated.email,
+      status: 'PENDING_ACTIVATION',
+      failedLoginAttempts: 0,
+      passwordHash: 'new-hash',
+    });
+
+    await expect(userRepo.savePasswordReset(pendingUser)).rejects.toBeInstanceOf(
+      UserNotActiveError,
+    );
+
+    const inactiveCreated = await prisma.user.create({
+      data: {
+        names: 'InactiveUser',
+        firstSurname: 'Reset',
+        email: 'save-reset-inactive@untrm.edu.pe',
+        status: 'INACTIVE',
+      },
+    });
+
+    const inactiveUser = User.restore({
+      id: inactiveCreated.id,
+      names: inactiveCreated.names,
+      firstSurname: inactiveCreated.firstSurname,
+      email: inactiveCreated.email,
+      status: 'INACTIVE',
+      failedLoginAttempts: 0,
+      passwordHash: 'new-hash',
+    });
+
+    await expect(userRepo.savePasswordReset(inactiveUser)).rejects.toBeInstanceOf(
+      UserNotActiveError,
     );
   });
 });

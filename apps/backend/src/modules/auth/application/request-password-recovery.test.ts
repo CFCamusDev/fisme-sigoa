@@ -64,6 +64,7 @@ describe('RequestPasswordRecoveryUseCase Unit Tests (T-005-13, RF-005, RS-002, R
       findByEmailForUpdate: vi.fn().mockResolvedValue(activeUser),
       save: vi.fn(),
       saveActivation: vi.fn(),
+      savePasswordReset: vi.fn(),
     };
 
     const mockTokenRepo: ActivationTokenRepository = {
@@ -156,6 +157,7 @@ describe('RequestPasswordRecoveryUseCase Unit Tests (T-005-13, RF-005, RS-002, R
       findByEmailForUpdate: vi.fn().mockResolvedValue(null),
       save: vi.fn(),
       saveActivation: vi.fn(),
+      savePasswordReset: vi.fn(),
     };
 
     const mockTokenRepo: ActivationTokenRepository = {
@@ -211,6 +213,7 @@ describe('RequestPasswordRecoveryUseCase Unit Tests (T-005-13, RF-005, RS-002, R
         findByEmailForUpdate: vi.fn().mockResolvedValue(nonActiveUser),
         save: vi.fn(),
         saveActivation: vi.fn(),
+        savePasswordReset: vi.fn(),
       };
 
       const mockTokenRepo: ActivationTokenRepository = {
@@ -269,6 +272,7 @@ describe('RequestPasswordRecoveryUseCase Unit Tests (T-005-13, RF-005, RS-002, R
       findByEmailForUpdate: vi.fn().mockResolvedValue(activeUser),
       save: vi.fn(),
       saveActivation: vi.fn(),
+      savePasswordReset: vi.fn(),
     };
 
     const mockTokenRepo: ActivationTokenRepository = {
@@ -327,6 +331,7 @@ describe('RequestPasswordRecoveryUseCase Unit Tests (T-005-13, RF-005, RS-002, R
       findByEmailForUpdate: vi.fn().mockResolvedValue(activeUser),
       save: vi.fn(),
       saveActivation: vi.fn(),
+      savePasswordReset: vi.fn(),
     };
 
     const mockTokenRepo: ActivationTokenRepository = {
@@ -384,6 +389,7 @@ describe('RequestPasswordRecoveryUseCase Unit Tests (T-005-13, RF-005, RS-002, R
       findByEmailForUpdate: vi.fn().mockResolvedValue(activeUser),
       save: vi.fn(),
       saveActivation: vi.fn(),
+      savePasswordReset: vi.fn(),
     };
 
     const mockTokenRepo: ActivationTokenRepository = {
