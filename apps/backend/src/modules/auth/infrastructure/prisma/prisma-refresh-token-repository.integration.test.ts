@@ -197,4 +197,85 @@ describe('PrismaRefreshTokenRepository Integration (PostgreSQL real)', () => {
 
     expect(tx2SawRevoked).toBe(true);
   }, 30_000);
+
+  it('revokeAllForUser revokes only active tokens of the user and returns count (T-005-03, RS-005, RS-020, RNF-030)', async () => {
+    const userA = await createTestUser('user-revoke-a@untrm.edu.pe');
+    const userB = await createTestUser('user-revoke-b@untrm.edu.pe');
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    // Tokens activos para userA
+    const tokenA1 = RefreshToken.create({
+      userId: userA.id,
+      tokenHash: 'hash-userA-1-active',
+      expiresAt,
+    });
+    const tokenA2 = RefreshToken.create({
+      userId: userA.id,
+      tokenHash: 'hash-userA-2-active',
+      expiresAt,
+    });
+    const tokenA3 = RefreshToken.create({
+      userId: userA.id,
+      tokenHash: 'hash-userA-3-active',
+      expiresAt,
+    });
+    await tokenRepo.add(tokenA1);
+    await tokenRepo.add(tokenA2);
+    await tokenRepo.add(tokenA3);
+
+    // Token ya revocado previamente para userA
+    const previousRevocation = new Date('2026-11-01T10:00:00.000Z');
+    const tokenA4AlreadyRevoked = RefreshToken.restore({
+      id: 'token-uuid-already-revoked',
+      userId: userA.id,
+      tokenHash: 'hash-userA-4-revoked',
+      expiresAt,
+      revokedAt: previousRevocation,
+      createdAt: new Date('2026-10-31T10:00:00.000Z'),
+      createdByIp: null,
+    });
+    await tokenRepo.add(tokenA4AlreadyRevoked);
+
+    // Tokens activos para userB
+    const tokenB1 = RefreshToken.create({
+      userId: userB.id,
+      tokenHash: 'hash-userB-1-active',
+      expiresAt,
+    });
+    const tokenB2 = RefreshToken.create({
+      userId: userB.id,
+      tokenHash: 'hash-userB-2-active',
+      expiresAt,
+    });
+    await tokenRepo.add(tokenB1);
+    await tokenRepo.add(tokenB2);
+
+    // Ejecutar revocación para userA
+    const revocationNow = new Date('2026-11-06T15:00:00.000Z');
+    const count = await tokenRepo.revokeAllForUser(userA.id, revocationNow);
+
+    // Debe revocar exactamente los 3 activos
+    expect(count).toBe(3);
+
+    // Verificar en BD que los 3 activos de userA tienen la nueva fecha
+    const updatedA1 = await tokenRepo.findByTokenHash('hash-userA-1-active');
+    expect(updatedA1?.revokedAt).toEqual(revocationNow);
+
+    const updatedA2 = await tokenRepo.findByTokenHash('hash-userA-2-active');
+    expect(updatedA2?.revokedAt).toEqual(revocationNow);
+
+    const updatedA3 = await tokenRepo.findByTokenHash('hash-userA-3-active');
+    expect(updatedA3?.revokedAt).toEqual(revocationNow);
+
+    // El token previamente revocado conserva su fecha original
+    const updatedA4 = await tokenRepo.findByTokenHash('hash-userA-4-revoked');
+    expect(updatedA4?.revokedAt).toEqual(previousRevocation);
+
+    // Los tokens de userB siguen activos (revokedAt = null)
+    const updatedB1 = await tokenRepo.findByTokenHash('hash-userB-1-active');
+    expect(updatedB1?.revokedAt).toBeNull();
+
+    const updatedB2 = await tokenRepo.findByTokenHash('hash-userB-2-active');
+    expect(updatedB2?.revokedAt).toBeNull();
+  });
 });
