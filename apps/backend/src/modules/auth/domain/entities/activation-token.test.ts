@@ -63,9 +63,7 @@ describe('ActivationToken Entity (Domain Rules, RS-007, RS-016)', () => {
     });
     const afterExpiration = new Date('2026-11-03T10:00:01.000Z'); // 48h + 1s
     expect(expiredToken.isUsable(afterExpiration)).toBe(false);
-    expect(() => expiredToken.consume(afterExpiration)).toThrow(
-      'El enlace de activación es inválido o ha expirado.',
-    );
+    expect(() => expiredToken.consume(afterExpiration)).toThrow('El enlace no es válido o venció.');
 
     // 2. Usado
     const usedToken = ActivationToken.create({
@@ -75,7 +73,7 @@ describe('ActivationToken Entity (Domain Rules, RS-007, RS-016)', () => {
     });
     usedToken.consume(new Date('2026-11-01T11:00:00.000Z'));
     expect(() => usedToken.consume(new Date('2026-11-01T12:00:00.000Z'))).toThrow(
-      'El enlace de activación es inválido o ha expirado.',
+      'El enlace no es válido o venció.',
     );
 
     // 3. Revocado
@@ -87,7 +85,7 @@ describe('ActivationToken Entity (Domain Rules, RS-007, RS-016)', () => {
     revokedToken.revoke(new Date('2026-11-01T11:00:00.000Z'));
     expect(revokedToken.isUsable(new Date('2026-11-01T11:01:00.000Z'))).toBe(false);
     expect(() => revokedToken.consume(new Date('2026-11-01T12:00:00.000Z'))).toThrow(
-      'El enlace de activación es inválido o ha expirado.',
+      'El enlace no es válido o venció.',
     );
   });
 

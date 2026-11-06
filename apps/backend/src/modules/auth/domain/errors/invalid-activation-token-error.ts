@@ -1,8 +1,8 @@
-import { ValidationError } from '../../../../shared/errors/app-error.js';
+import { AppError } from '../../../../shared/errors/app-error.js';
 
-export class InvalidActivationTokenError extends ValidationError {
-  constructor(message = 'El enlace de activación es inválido o ha expirado.') {
-    super(message);
+export class InvalidActivationTokenError extends AppError {
+  constructor(message = 'El enlace no es válido o venció.') {
+    super(message, 'INVALID_ACTIVATION_TOKEN', 400);
     this.name = 'InvalidActivationTokenError';
   }
 }
