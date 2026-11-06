@@ -27,7 +27,7 @@ describe('Authorization Schema Integration (PostgreSQL real, F1)', () => {
 
     const permission = await prisma.permission.create({
       data: {
-        code: `test.${suffix}.action`,
+        code: `test_${suffix}.action`,
         description: 'Permiso de prueba',
         module: 'M01 Seguridad',
       },
@@ -178,6 +178,59 @@ describe('Authorization Schema Integration (PostgreSQL real, F1)', () => {
       expect(updated.status).toBe('INACTIVE');
       expect(updated.deactivatedAt).toBeDefined();
       expect(updated.deactivatedAt?.getTime()).toBeCloseTo(now.getTime(), -2);
+    });
+  });
+
+  describe('Permission Code Format Database Check (T-006-04, RS-010)', () => {
+    it('rejects a permission code with uppercase letters, spaces or no dot', async () => {
+      const invalidCodes = [
+        'USUARIO.VER',
+        'usuario.VER',
+        'usuario ver',
+        'usuariover',
+        'usuario..ver',
+        'usuario_._ver',
+        '_usuario.ver',
+        'usuario._ver',
+        'usuario.ver_',
+        'usuario.ver123',
+      ];
+
+      for (const invalidCode of invalidCodes) {
+        await expect(
+          prisma.permission.create({
+            data: {
+              code: invalidCode,
+              description: 'Permiso inválido',
+              module: 'M01 Seguridad',
+            },
+          }),
+        ).rejects.toThrow(/permissions_code_format_check/);
+      }
+    });
+
+    it('accepts codes with underscores such as plan_assessment.ver and acta.enviar_revision', async () => {
+      const alphaSuffix =
+        Math.random()
+          .toString(36)
+          .replace(/[^a-z]/g, '')
+          .slice(0, 6) || 'abc';
+      const validCodes = [
+        `plan_assessment_${alphaSuffix}.ver`,
+        `acta_${alphaSuffix}.enviar_revision`,
+        `accion_mejora_${alphaSuffix}.avanzar`,
+      ];
+
+      for (const validCode of validCodes) {
+        const created = await prisma.permission.create({
+          data: {
+            code: validCode,
+            description: 'Permiso válido con guiones bajos',
+            module: 'M10 Evaluación',
+          },
+        });
+        expect(created.code).toBe(validCode);
+      }
     });
   });
 });
