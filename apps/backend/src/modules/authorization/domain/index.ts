@@ -3,6 +3,7 @@ export * from './catalog/default-role-matrix.js';
 export * from './catalog/predefined-roles.js';
 export * from './policies/effective-permissions.js';
 export * from './policies/derive-role-code.js';
+export * from './policies/protected-role-grants.js';
 export * from './entities/role.js';
 export * from './entities/permission.js';
 export * from './errors/index.js';
