@@ -15,3 +15,5 @@ export {
   readSessionHint,
 } from './lib/session-hint';
 export { getLoginErrorMessage } from './lib/login-error-message';
+export { activateAccount } from './api/activate-account';
+export { useActivateAccount } from './hooks/use-activate-account';
