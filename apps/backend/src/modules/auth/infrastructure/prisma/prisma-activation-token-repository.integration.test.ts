@@ -238,4 +238,62 @@ describe('PrismaActivationTokenRepository Integration (PostgreSQL real, F5, AGEN
 
     await expect(prisma.user.delete({ where: { id: user.id } })).rejects.toThrow();
   });
+
+  it('finds latest token createdAt for a user or returns null when none exists (T-005-02, RS-002, RNF-005)', async () => {
+    const userA = await createTestUser('user-latest-tokens-a@untrm.edu.pe');
+    const userB = await createTestUser('user-latest-tokens-b@untrm.edu.pe');
+
+    // Sin tokens aún
+    const noneLatest = await tokenRepo.findLatestCreatedAtByUserId(userA.id);
+    expect(noneLatest).toBeNull();
+
+    // Crear primer token para userA (más antiguo)
+    const olderDate = new Date('2026-11-06T10:00:00.000Z');
+    const token1 = ActivationToken.restore({
+      id: 'token-uuid-older',
+      userId: userA.id,
+      tokenHash: 'hash-older-token-123',
+      expiresAt: new Date('2026-11-08T10:00:00.000Z'),
+      usedAt: null,
+      revokedAt: null,
+      createdAt: olderDate,
+      createdBy: null,
+    });
+    await tokenRepo.add(token1);
+
+    // Crear token para userB (debe quedar aislado)
+    const userBDate = new Date('2026-11-06T12:00:00.000Z');
+    const tokenB = ActivationToken.restore({
+      id: 'token-uuid-userb',
+      userId: userB.id,
+      tokenHash: 'hash-userb-token-123',
+      expiresAt: new Date('2026-11-08T12:00:00.000Z'),
+      usedAt: null,
+      revokedAt: null,
+      createdAt: userBDate,
+      createdBy: null,
+    });
+    await tokenRepo.add(tokenB);
+
+    // Crear segundo token para userA (más reciente)
+    const newerDate = new Date('2026-11-06T11:00:00.000Z');
+    const token2 = ActivationToken.restore({
+      id: 'token-uuid-newer',
+      userId: userA.id,
+      tokenHash: 'hash-newer-token-123',
+      expiresAt: new Date('2026-11-08T11:00:00.000Z'),
+      usedAt: null,
+      revokedAt: null,
+      createdAt: newerDate,
+      createdBy: null,
+    });
+    await tokenRepo.add(token2);
+
+    const latestA = await tokenRepo.findLatestCreatedAtByUserId(userA.id);
+    expect(latestA).not.toBeNull();
+    expect(latestA?.getTime()).toBe(newerDate.getTime());
+
+    const latestB = await tokenRepo.findLatestCreatedAtByUserId(userB.id);
+    expect(latestB?.getTime()).toBe(userBDate.getTime());
+  });
 });

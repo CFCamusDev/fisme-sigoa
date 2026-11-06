@@ -42,6 +42,7 @@ export class PrismaActivationTokenRepository implements ActivationTokenRepositor
         usedAt: token.usedAt,
         revokedAt: token.revokedAt,
         createdBy: token.createdBy,
+        ...(token.createdAt ? { createdAt: token.createdAt } : {}),
       },
     });
   }
@@ -118,5 +119,17 @@ export class PrismaActivationTokenRepository implements ActivationTokenRepositor
         revokedAt,
       },
     });
+  }
+
+  async findLatestCreatedAtByUserId(userId: string): Promise<Date | null> {
+    const client = this.dbProvider.get();
+
+    const row = await client.activationToken.findFirst({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      select: { createdAt: true },
+    });
+
+    return row ? row.createdAt : null;
   }
 }

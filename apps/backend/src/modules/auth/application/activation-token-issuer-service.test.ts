@@ -19,6 +19,7 @@ describe('ActivationTokenIssuerService Unit Tests (F5, RS-016)', () => {
       revokePendingByUserId: vi.fn().mockImplementation(async (userId: string, now: Date) => {
         revokedUsers.push({ userId, now });
       }),
+      findLatestCreatedAtByUserId: vi.fn(),
     };
 
     const mockGenerator: ActivationTokenGenerator = {
