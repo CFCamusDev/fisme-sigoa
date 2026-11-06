@@ -3,9 +3,18 @@ import {
   loginRequestSchema,
   loginResponseSchema,
   refreshResponseSchema,
+  passwordSchema,
+  activateAccountRequestSchema,
+  activateAccountResponseSchema,
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_MAX_LENGTH,
+  ACTIVATION_TOKEN_MAX_LENGTH,
   type LoginRequest,
   type LoginResponse,
+  type ActivateAccountRequest,
+  type ActivateAccountResponse,
 } from './auth.js';
+import { errorCodeSchema } from './errors.js';
 
 describe('Auth Schemas (T-001-11, T-002-05, RS-016, RNF-003, RNF-004, RNF-008)', () => {
   describe('loginRequestSchema', () => {
@@ -125,6 +134,123 @@ describe('Auth Schemas (T-001-11, T-002-05, RS-016, RNF-003, RNF-004, RNF-008)',
       };
       const parsed = refreshResponseSchema.parse(payload);
       expect(parsed).toEqual(payload);
+    });
+  });
+
+  describe('passwordSchema (T-004-06, RF-004, RNF-003, CA3)', () => {
+    it('accepts a password that meets the policy', () => {
+      const valid = 'MiClaveSegura123!';
+      expect(passwordSchema.parse(valid)).toBe(valid);
+      expect(PASSWORD_MIN_LENGTH).toBe(10);
+      expect(PASSWORD_MAX_LENGTH).toBe(128);
+    });
+
+    it('rejects a password shorter than 10 characters with its detail', () => {
+      const result = passwordSchema.safeParse('Corto1');
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const messages = result.error.issues.map((i) => i.message);
+        expect(messages).toContain('La contraseña debe tener al menos 10 caracteres');
+      }
+    });
+
+    it('rejects a password without numbers', () => {
+      const result = passwordSchema.safeParse('SoloLetrasAqui');
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const messages = result.error.issues.map((i) => i.message);
+        expect(messages).toContain('La contraseña debe incluir al menos un número');
+      }
+    });
+
+    it('rejects a password without letters', () => {
+      const result = passwordSchema.safeParse('1234567890123');
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const messages = result.error.issues.map((i) => i.message);
+        expect(messages).toContain('La contraseña debe incluir al menos una letra');
+      }
+    });
+
+    it('rejects a password over 128 characters', () => {
+      const longPassword = 'A1' + 'a'.repeat(127);
+      const result = passwordSchema.safeParse(longPassword);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const messages = result.error.issues.map((i) => i.message);
+        expect(messages).toContain('La contraseña no puede exceder 128 caracteres');
+      }
+    });
+
+    it('reports every violated rule at once', () => {
+      const result = passwordSchema.safeParse('123');
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const messages = result.error.issues.map((i) => i.message);
+        expect(messages).toContain('La contraseña debe tener al menos 10 caracteres');
+        expect(messages).toContain('La contraseña debe incluir al menos una letra');
+      }
+    });
+  });
+
+  describe('activateAccountRequestSchema and activateAccountResponseSchema (T-004-06, RF-004, RNF-008)', () => {
+    it('accepts a valid activation request', () => {
+      const validPayload: ActivateAccountRequest = {
+        token: 'a'.repeat(43),
+        password: 'PasswordSegura2026',
+      };
+      const parsed = activateAccountRequestSchema.parse(validPayload);
+      expect(parsed).toEqual(validPayload);
+      expect(ACTIVATION_TOKEN_MAX_LENGTH).toBe(128);
+    });
+
+    it('rejects unknown fields in the activation request (strict)', () => {
+      const payloadWithUnknown = {
+        token: 'a'.repeat(43),
+        password: 'PasswordSegura2026',
+        extraField: 'not-allowed',
+      };
+      expect(() => activateAccountRequestSchema.parse(payloadWithUnknown)).toThrow();
+    });
+
+    it('rejects an empty or oversized token', () => {
+      expect(() =>
+        activateAccountRequestSchema.parse({
+          token: '',
+          password: 'PasswordSegura2026',
+        }),
+      ).toThrow();
+
+      expect(() =>
+        activateAccountRequestSchema.parse({
+          token: 'a'.repeat(129),
+          password: 'PasswordSegura2026',
+        }),
+      ).toThrow();
+    });
+
+    it('accepts the activation response only with status ACTIVE', () => {
+      const validResponse: ActivateAccountResponse = {
+        status: 'ACTIVE',
+      };
+      expect(activateAccountResponseSchema.parse(validResponse)).toEqual(validResponse);
+
+      expect(() =>
+        activateAccountResponseSchema.parse({
+          status: 'INACTIVE',
+        }),
+      ).toThrow();
+
+      expect(() =>
+        activateAccountResponseSchema.parse({
+          status: 'ACTIVE',
+          extra: true,
+        }),
+      ).toThrow();
+    });
+
+    it('errorCodeSchema includes INVALID_ACTIVATION_TOKEN', () => {
+      expect(errorCodeSchema.parse('INVALID_ACTIVATION_TOKEN')).toBe('INVALID_ACTIVATION_TOKEN');
     });
   });
 });
