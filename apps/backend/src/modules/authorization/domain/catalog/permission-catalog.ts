@@ -1,3 +1,5 @@
+import { PERMISSION_CODE_PATTERN } from '@sigoa/shared';
+
 export interface PermissionActionDefinition {
   readonly action: string;
   readonly description: string;
@@ -423,10 +425,8 @@ export const PERMISSION_CODES = CATALOG_PERMISSIONS.map((p) => p.code) as unknow
 
 export type PermissionCode = (typeof CATALOG_PERMISSIONS)[number]['code'];
 
-const PERMISSION_CODE_REGEX = /^[a-z]+(_[a-z]+)*\.[a-z]+(_[a-z]+)*$/;
-
 export function isValidPermissionCodeFormat(code: string): boolean {
-  return PERMISSION_CODE_REGEX.test(code);
+  return PERMISSION_CODE_PATTERN.test(code);
 }
 
 const PERMISSIONS_BY_CODE = new Map<string, PermissionDefinition>(
