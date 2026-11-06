@@ -607,6 +607,240 @@
         }
       }
     },
+    "/auth/forgot-password": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Solicitar enlace de recuperación de contraseña",
+        "description": "Inicia el flujo de recuperación de contraseña enviando un correo con un enlace seguro de un solo uso si la cuenta existe y está activa. Responde exactamente el mismo 202 sin revelar si el correo está registrado o activo (mitigación contra enumeración de cuentas, CA1).",
+        "operationId": "requestPasswordRecovery",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordRequest"
+              },
+              "example": {
+                "email": "carlos.docente@untrm.edu.pe"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Solicitud de recuperación aceptada para procesamiento.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva estricta anti-almacenamiento en caché para respuestas de autenticación."
+              },
+              "Pragma": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-cache"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForgotPasswordResponse"
+                },
+                "example": {
+                  "status": "RECEIVED"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida. El correo no cumple el formato esperado o el cuerpo contiene campos desconocidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "La solicitud contiene errores de validación.",
+                    "details": [
+                      {
+                        "path": "body.email",
+                        "message": "El correo institucional no es válido"
+                      }
+                    ],
+                    "requestId": "req_abc_123"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Límite de peticiones públicas excedido para la IP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "RATE_LIMITED",
+                    "message": "Has excedido el límite de solicitudes. Por favor, intenta nuevamente más tarde.",
+                    "requestId": "req_abc_123"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error inesperado no controlado en el servidor.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "INTERNAL_ERROR",
+                    "message": "Ha ocurrido un error inesperado en el servidor.",
+                    "requestId": "req_abc_123"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/reset-password": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Restablecer contraseña mediante enlace de recuperación",
+        "description": "Valida el token de recuperación de un solo uso, actualiza la contraseña del usuario, marca el token como consumido y revoca todas las sesiones activas en la misma transacción.",
+        "operationId": "resetPassword",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              },
+              "example": {
+                "token": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                "password": "NewStrongPassword2026*"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contraseña restablecida exitosamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva estricta anti-almacenamiento en caché para respuestas de autenticación."
+              },
+              "Pragma": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-cache"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResetPasswordResponse"
+                },
+                "example": {
+                  "status": "PASSWORD_RESET"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida. Puede deberse a un cuerpo mal formado, incumplimiento de la política de contraseñas, o un token de recuperación inválido, expirado o ya consumido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "validationError": {
+                    "summary": "Error de validación o contraseña débil",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "La solicitud contiene errores de validación.",
+                        "details": [
+                          {
+                            "path": "body.password",
+                            "message": "La contraseña debe tener al menos 10 caracteres y contener mayúsculas, minúsculas, números y un carácter especial."
+                          }
+                        ],
+                        "requestId": "req_abc_123"
+                      }
+                    }
+                  },
+                  "invalidTokenError": {
+                    "summary": "Enlace inválido, expirado, usado o cuenta no activa",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_PASSWORD_RESET_TOKEN",
+                        "message": "El enlace no es válido o venció.",
+                        "requestId": "req_abc_123"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Límite de peticiones públicas excedido para la IP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "RATE_LIMITED",
+                    "message": "Has excedido el límite de solicitudes. Por favor, intenta nuevamente más tarde.",
+                    "requestId": "req_abc_123"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error inesperado no controlado en el servidor.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "INTERNAL_ERROR",
+                    "message": "Ha ocurrido un error inesperado en el servidor.",
+                    "requestId": "req_abc_123"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/users": {
       "get": {
         "tags": ["Users"],
@@ -1451,6 +1685,58 @@
             "type": "string",
             "enum": ["ACTIVE"],
             "description": "Estado activo resultante tras la activación exitosa de la cuenta."
+          }
+        }
+      },
+      "ForgotPasswordRequest": {
+        "type": "object",
+        "required": ["email"],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254,
+            "description": "Correo institucional del usuario que solicita la recuperación de contraseña."
+          }
+        }
+      },
+      "ForgotPasswordResponse": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["RECEIVED"],
+            "description": "Indicador fijo de solicitud de recuperación recibida."
+          }
+        }
+      },
+      "ResetPasswordRequest": {
+        "type": "object",
+        "required": ["token", "password"],
+        "properties": {
+          "token": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "description": "Token criptográfico opaco recibido en el enlace de recuperación."
+          },
+          "password": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 128,
+            "description": "Nueva contraseña personal a definir (mínimo 10 caracteres, mayúsculas, minúsculas, números y caracteres especiales)."
+          }
+        }
+      },
+      "ResetPasswordResponse": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["PASSWORD_RESET"],
+            "description": "Estado resultante tras el restablecimiento exitoso de la contraseña."
           }
         }
       },
