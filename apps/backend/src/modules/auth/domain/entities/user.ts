@@ -4,6 +4,7 @@ import {
   AccountInactiveError,
   AccountPendingActivationError,
   UserNotPendingActivationError,
+  UserNotActiveError,
 } from '../errors/index.js';
 
 export type UserStatus = 'PENDING_ACTIVATION' | 'ACTIVE' | 'INACTIVE';
@@ -188,6 +189,20 @@ export class User {
     }
 
     this._status = 'ACTIVE';
+    this._passwordHash = passwordHash;
+    this._updatedAt = new Date(now.getTime());
+  }
+
+  /**
+   * Restablece la contraseña de un usuario activo con un nuevo hash.
+   * Solo es válido si el estado es ACTIVE; de lo contrario lanza UserNotActiveError.
+   * No altera los intentos fallidos de inicio de sesión ni el bloqueo temporal existente (D5).
+   */
+  public resetPassword(passwordHash: string, now: Date = new Date()): void {
+    if (this._status !== 'ACTIVE') {
+      throw new UserNotActiveError();
+    }
+
     this._passwordHash = passwordHash;
     this._updatedAt = new Date(now.getTime());
   }
