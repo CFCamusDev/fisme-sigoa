@@ -21,3 +21,7 @@ export { ActivationForm } from './components/activation-form';
 export { ActivationPage } from './components/activation-page';
 export { activationFormSchema, type ActivationFormData } from './schemas/activation-form-schema';
 export { getActivationErrorMessage } from './lib/get-activation-error-message';
+export { requestPasswordRecovery } from './api/request-password-recovery';
+export { resetPassword } from './api/reset-password';
+export { useRequestPasswordRecovery } from './hooks/use-request-password-recovery';
+export { useResetPassword } from './hooks/use-reset-password';
