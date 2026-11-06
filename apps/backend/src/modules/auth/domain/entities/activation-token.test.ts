@@ -124,4 +124,103 @@ describe('ActivationToken Entity (Domain Rules, RS-007, RS-016)', () => {
     expect(token.expiresAt).toEqual(rawProps.expiresAt);
     expect(token.isUsable(new Date('2026-11-04T00:00:00.000Z'))).toBe(true);
   });
+
+  describe('Boundary and edge cases (T-004-12, RF-004, RNF-005, CA2)', () => {
+    it('is not usable at the exact expiration instant', () => {
+      const now = new Date('2026-11-01T10:00:00.000Z');
+      const token = ActivationToken.create({
+        userId: dummyUserId,
+        tokenHash: dummyTokenHash,
+        now,
+      });
+
+      const exactExpiration = token.expiresAt;
+      expect(token.isUsable(exactExpiration)).toBe(false);
+      expect(() => token.consume(exactExpiration)).toThrow(InvalidActivationTokenError);
+    });
+
+    it('is usable one millisecond before expiring', () => {
+      const now = new Date('2026-11-01T10:00:00.000Z');
+      const token = ActivationToken.create({
+        userId: dummyUserId,
+        tokenHash: dummyTokenHash,
+        now,
+      });
+
+      const oneMsBefore = new Date(token.expiresAt.getTime() - 1);
+      expect(token.isUsable(oneMsBefore)).toBe(true);
+    });
+
+    it('does not change usedAt when consume fails', () => {
+      const now = new Date('2026-11-01T10:00:00.000Z');
+      const token = ActivationToken.create({
+        userId: dummyUserId,
+        tokenHash: dummyTokenHash,
+        now,
+      });
+
+      // Token revocado
+      token.revoke(new Date('2026-11-01T11:00:00.000Z'));
+      expect(token.usedAt).toBeNull();
+
+      expect(() => token.consume(new Date('2026-11-01T11:30:00.000Z'))).toThrow(
+        InvalidActivationTokenError,
+      );
+      expect(token.usedAt).toBeNull();
+    });
+
+    it('rejects consuming a token that is both used and revoked', () => {
+      const restored = ActivationToken.restore({
+        id: 'token-used-and-revoked',
+        userId: dummyUserId,
+        tokenHash: dummyTokenHash,
+        expiresAt: new Date('2026-11-05T00:00:00.000Z'),
+        usedAt: new Date('2026-11-02T10:00:00.000Z'),
+        revokedAt: new Date('2026-11-02T11:00:00.000Z'),
+      });
+
+      expect(restored.isUsable(new Date('2026-11-03T00:00:00.000Z'))).toBe(false);
+      expect(() => restored.consume(new Date('2026-11-03T00:00:00.000Z'))).toThrow(
+        'El enlace no es válido o venció.',
+      );
+    });
+
+    it('uses INVALID_ACTIVATION_TOKEN with status 400 and the CA2 message', () => {
+      const now = new Date('2026-11-01T10:00:00.000Z');
+      const token = ActivationToken.create({
+        userId: dummyUserId,
+        tokenHash: dummyTokenHash,
+        now,
+      });
+
+      try {
+        token.consume(new Date('2026-11-05T10:00:00.000Z'));
+        expect.fail('Debería haber lanzado InvalidActivationTokenError');
+      } catch (error) {
+        expect(error).toBeInstanceOf(InvalidActivationTokenError);
+        const tokenError = error as InvalidActivationTokenError;
+        expect(tokenError.code).toBe('INVALID_ACTIVATION_TOKEN');
+        expect(tokenError.httpStatus).toBe(400);
+        expect(tokenError.message).toBe('El enlace no es válido o venció.');
+      }
+    });
+
+    it('revoke after use keeps the original usedAt', () => {
+      const now = new Date('2026-11-01T10:00:00.000Z');
+      const token = ActivationToken.create({
+        userId: dummyUserId,
+        tokenHash: dummyTokenHash,
+        now,
+      });
+
+      const usedTime = new Date('2026-11-01T12:00:00.000Z');
+      token.consume(usedTime);
+      expect(token.usedAt).toEqual(usedTime);
+
+      const revokedTime = new Date('2026-11-01T13:00:00.000Z');
+      token.revoke(revokedTime);
+      expect(token.usedAt).toEqual(usedTime);
+      expect(token.revokedAt).toEqual(revokedTime);
+    });
+  });
 });
