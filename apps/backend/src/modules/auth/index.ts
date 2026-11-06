@@ -18,6 +18,7 @@ import { LoginUseCase } from './application/login.js';
 import { RefreshSessionUseCase } from './application/refresh-session.js';
 import { LogoutUseCase } from './application/logout.js';
 import { ActivationTokenIssuerService } from './application/activation-token-issuer-service.js';
+import { ActivateAccountUseCase } from './application/activate-account.js';
 import { createAuthenticate } from './infrastructure/http/authenticate.js';
 import { createRequireAllowedOrigin } from './infrastructure/http/require-allowed-origin.js';
 
@@ -138,8 +139,19 @@ export function createAuthModule(deps: AuthModuleDependencies): Router {
     clock: deps.clock,
   });
 
+  const activateAccountUseCase = new ActivateAccountUseCase({
+    userRepository: services.userRepository,
+    activationTokenRepository: services.activationTokenRepository,
+    activationTokenGenerator: services.activationTokenGenerator,
+    passwordHasher: services.passwordHasher,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+    clock: deps.clock,
+  });
+
   const loginRateLimiter = createRateLimiter('login', deps.env);
   const sessionRateLimiter = createRateLimiter('session', deps.env);
+  const publicRateLimiter = createRateLimiter('public', deps.env);
 
   const cookieSettings = {
     sameSite: deps.env.AUTH_COOKIE_SAMESITE,
@@ -151,8 +163,10 @@ export function createAuthModule(deps: AuthModuleDependencies): Router {
     loginUseCase,
     refreshSessionUseCase,
     logoutUseCase,
+    activateAccountUseCase,
     rateLimiter: loginRateLimiter,
     sessionRateLimiter,
+    publicRateLimiter,
     authenticate: services.authenticate,
     cookieSettings,
     requireAllowedOrigin,

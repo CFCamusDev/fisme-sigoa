@@ -5,6 +5,7 @@ import { createAuthRouter, type AuthRouterDependencies } from './auth.routes.js'
 import type { LoginUseCase } from '../../application/login.js';
 import type { RefreshSessionUseCase } from '../../application/refresh-session.js';
 import type { LogoutUseCase } from '../../application/logout.js';
+import type { ActivateAccountUseCase } from '../../application/activate-account.js';
 import { errorHandler } from '../../../../shared/middleware/error-handler.js';
 import {
   ForbiddenError,
@@ -16,6 +17,7 @@ import {
   AccountLockedError,
   AccountPendingActivationError,
   InvalidRefreshTokenError,
+  InvalidActivationTokenError,
 } from '../../domain/errors/index.js';
 
 describe('Auth Routes (POST /auth/login) (T-001-12, RS-002, RNF-007, RNF-008)', () => {
@@ -363,5 +365,122 @@ describe('Auth Routes (POST /auth/logout) (HU-002, T-002-07, RF-002, RS-016, RNF
     expect(response.status).toBe(403);
     expect(response.body.error.code).toBe('FORBIDDEN');
     expect(response.body.error.message).toContain('No tienes permiso');
+  });
+});
+
+describe('Auth Routes (POST /auth/activate) (T-004-07, RF-004, RS-002, RNF-007, RNF-008)', () => {
+  function setupActivateApp(
+    useCaseMock?: Partial<ActivateAccountUseCase>,
+    publicRateLimiter?: express.RequestHandler,
+    depsOverrides?: Partial<AuthRouterDependencies>,
+  ) {
+    const app = express();
+    app.use(express.json());
+
+    const router = createAuthRouter({
+      loginUseCase: {} as LoginUseCase,
+      activateAccountUseCase: useCaseMock as ActivateAccountUseCase | undefined,
+      publicRateLimiter,
+      ...depsOverrides,
+    });
+
+    app.use('/auth', router);
+    app.use(errorHandler);
+
+    return app;
+  }
+
+  const validPayload = {
+    token: 'valid-activation-token-32bytes-12345',
+    password: 'ValidPassword123*',
+  };
+
+  it('activate responds 200 with no-store headers and the parsed body', async () => {
+    const mockExecute = vi.fn().mockResolvedValue({ status: 'ACTIVE' });
+    const app = setupActivateApp({ execute: mockExecute });
+
+    const response = await request(app).post('/auth/activate').send(validPayload);
+
+    expect(response.status).toBe(200);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.headers.pragma).toBe('no-cache');
+    expect(response.body).toEqual({ status: 'ACTIVE' });
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+    expect(mockExecute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        token: validPayload.token,
+        password: validPayload.password,
+      }),
+    );
+  });
+
+  it('activate responds 400 with the policy details for a weak password', async () => {
+    const mockExecute = vi.fn();
+    const app = setupActivateApp({ execute: mockExecute });
+
+    const response = await request(app).post('/auth/activate').send({
+      token: 'valid-token',
+      password: 'weak',
+    });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe('VALIDATION_ERROR');
+    expect(response.body.error.details).toBeDefined();
+    expect(response.body.error.details.length).toBeGreaterThan(0);
+    expect(response.body.error.details[0].path).toBe('body.password');
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
+
+  it('activate maps InvalidActivationTokenError to 400 INVALID_ACTIVATION_TOKEN', async () => {
+    const mockExecute = vi.fn().mockRejectedValue(new InvalidActivationTokenError());
+    const app = setupActivateApp({ execute: mockExecute });
+
+    const response = await request(app).post('/auth/activate').send(validPayload);
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe('INVALID_ACTIVATION_TOKEN');
+    expect(response.body.error.message).toBe('El enlace no es válido o venció.');
+  });
+
+  it('activate applies the public rate limit before validation', async () => {
+    const rateLimiterMock: express.RequestHandler = (_req, _res, next) => {
+      next(new TooManyRequestsError('Demasiadas solicitudes.'));
+    };
+    const mockExecute = vi.fn();
+    const app = setupActivateApp({ execute: mockExecute }, rateLimiterMock);
+
+    // Enviar payload mal formado para demostrar que el rate limiter se evalúa antes de la validación
+    const response = await request(app).post('/auth/activate').send({});
+
+    expect(response.status).toBe(429);
+    expect(response.body.error.code).toBe('RATE_LIMITED');
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
+
+  it('activate does not register the route without the use case', async () => {
+    const app = setupActivateApp(undefined);
+
+    const response = await request(app).post('/auth/activate').send(validPayload);
+
+    expect(response.status).toBe(404);
+  });
+
+  it('activate passes the client ip to the use case', async () => {
+    const mockExecute = vi.fn().mockResolvedValue({ status: 'ACTIVE' });
+    const app = setupActivateApp({ execute: mockExecute });
+
+    const response = await request(app)
+      .post('/auth/activate')
+      .set('X-Forwarded-For', '203.0.113.195')
+      .send(validPayload);
+
+    expect(response.status).toBe(200);
+    expect(mockExecute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        token: validPayload.token,
+        password: validPayload.password,
+        ip: expect.any(String),
+      }),
+    );
   });
 });
