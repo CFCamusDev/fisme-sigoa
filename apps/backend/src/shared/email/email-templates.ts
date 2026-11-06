@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { EmailDeliveryError } from './email-delivery-error.js';
 import { accountActivationTemplate } from './templates/account-activation.js';
+import { passwordResetTemplate } from './templates/password-reset.js';
 import {
   escapeHtml,
   type EmailTemplateRenderer,
@@ -9,6 +10,8 @@ import {
 } from './template-types.js';
 
 export * from './template-types.js';
+export { accountActivationTemplate } from './templates/account-activation.js';
+export { passwordResetTemplate } from './templates/password-reset.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const TEMPLATE_REGISTRY = new Map<string, TemplateDefinition<any>>([
@@ -30,6 +33,7 @@ const TEMPLATE_REGISTRY = new Map<string, TemplateDefinition<any>>([
     },
   ],
   ['account-activation', accountActivationTemplate],
+  ['password-reset', passwordResetTemplate],
 ]);
 
 /**
