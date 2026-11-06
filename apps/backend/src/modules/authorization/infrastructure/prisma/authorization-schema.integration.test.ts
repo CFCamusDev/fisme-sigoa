@@ -271,9 +271,6 @@ describe('Authorization Schema Integration (PostgreSQL real, F1)', () => {
         },
       });
 
-      // Retardo breve para garantizar marca de tiempo diferenciada
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
       const updated = await prisma.rolePermission.update({
         where: { id: grant.id },
         data: {
