@@ -1,7 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { listRolesResponseSchema, roleSummarySchema, type RoleSummary } from './roles.js';
+import {
+  listRolesResponseSchema,
+  roleStatusSchema,
+  roleSummarySchema,
+  type RoleSummary,
+} from './roles.js';
 
 describe('Roles Shared Contracts (A1, HU-003, T-003-15)', () => {
+  it('validates role status enum values (T-006-03)', () => {
+    expect(roleStatusSchema.safeParse('ACTIVE').success).toBe(true);
+    expect(roleStatusSchema.safeParse('INACTIVE').success).toBe(true);
+    expect(roleStatusSchema.safeParse('OTHER').success).toBe(false);
+    expect(roleStatusSchema.safeParse('').success).toBe(false);
+  });
+
   const validRole: RoleSummary = {
     id: 'role-teacher-123',
     code: 'TEACHER',

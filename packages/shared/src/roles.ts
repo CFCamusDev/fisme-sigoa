@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+export const roleStatusSchema = z.enum(['ACTIVE', 'INACTIVE']);
+export type RoleStatus = z.infer<typeof roleStatusSchema>;
+
 export const roleSummarySchema = z
   .object({
     id: z.string().min(1, 'El identificador de rol es requerido'),

@@ -231,25 +231,33 @@ model ActivationToken {
 // MÓDULO DE AUTORIZACIÓN (HU-006, HU-007, HU-008, cimientos HU-003)
 // ==============================================================================
 
+enum RoleStatus {
+  ACTIVE
+  INACTIVE
+}
+
 enum PermissionScope {
   GLOBAL
   OWN
 }
 
 model Role {
-  id           String   @id @default(cuid())
-  code         String   @unique
-  name         String
-  description  String?
-  isPredefined Boolean  @default(false)
-  createdBy    String?
-  updatedBy    String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id            String      @id @default(cuid())
+  code          String      @unique
+  name          String
+  description   String?
+  status        RoleStatus  @default(ACTIVE)
+  deactivatedAt DateTime?
+  isPredefined  Boolean     @default(false)
+  createdBy     String?
+  updatedBy     String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 
   rolePermissions RolePermission[]
   userRoles       UserRole[]
 
+  @@index([status])
   @@map("roles")
 }
 
