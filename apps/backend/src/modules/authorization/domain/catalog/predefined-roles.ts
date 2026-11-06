@@ -1,4 +1,8 @@
-import type { PermissionCode } from './permission-catalog.js';
+import {
+  DEFAULT_ROLE_MATRIX,
+  expandDefaultGrants,
+  type DefaultRolePermissionGrant,
+} from './default-role-matrix.js';
 
 export interface PredefinedRoleDefinition {
   readonly code: string;
@@ -34,31 +38,5 @@ export const PREDEFINED_ROLES: readonly PredefinedRoleDefinition[] = [
   },
 ] as const;
 
-export interface DefaultRolePermissionGrant {
-  readonly roleCode: string;
-  readonly permissionCode: PermissionCode;
-  readonly scope: 'GLOBAL' | 'OWN';
-}
-
-export const DEFAULT_ROLE_PERMISSIONS: readonly DefaultRolePermissionGrant[] = [
-  {
-    roleCode: 'ADMINISTRATOR',
-    permissionCode: 'usuario.ver',
-    scope: 'GLOBAL',
-  },
-  {
-    roleCode: 'ADMINISTRATOR',
-    permissionCode: 'usuario.crear',
-    scope: 'GLOBAL',
-  },
-  {
-    roleCode: 'ADMINISTRATOR',
-    permissionCode: 'usuario.editar',
-    scope: 'GLOBAL',
-  },
-  {
-    roleCode: 'ADMINISTRATOR',
-    permissionCode: 'rol.ver',
-    scope: 'GLOBAL',
-  },
-] as const;
+export const DEFAULT_ROLE_PERMISSIONS: readonly DefaultRolePermissionGrant[] =
+  expandDefaultGrants(DEFAULT_ROLE_MATRIX);
