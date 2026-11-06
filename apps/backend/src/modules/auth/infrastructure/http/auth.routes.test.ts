@@ -6,6 +6,7 @@ import type { LoginUseCase } from '../../application/login.js';
 import type { RefreshSessionUseCase } from '../../application/refresh-session.js';
 import type { LogoutUseCase } from '../../application/logout.js';
 import type { ActivateAccountUseCase } from '../../application/activate-account.js';
+import type { RequestPasswordRecoveryUseCase } from '../../application/request-password-recovery.js';
 import { errorHandler } from '../../../../shared/middleware/error-handler.js';
 import {
   ForbiddenError,
@@ -479,6 +480,110 @@ describe('Auth Routes (POST /auth/activate) (T-004-07, RF-004, RS-002, RNF-007, 
       expect.objectContaining({
         token: validPayload.token,
         password: validPayload.password,
+        ip: expect.any(String),
+      }),
+    );
+  });
+});
+
+describe('Auth Routes (POST /auth/forgot-password) (T-005-06, RF-005, RS-002, RNF-007, RNF-008)', () => {
+  function setupForgotApp(
+    useCaseMock?: Partial<RequestPasswordRecoveryUseCase>,
+    publicRateLimiter?: express.RequestHandler,
+  ) {
+    const app = express();
+    app.use(express.json());
+
+    const router = createAuthRouter({
+      loginUseCase: {} as LoginUseCase,
+      requestPasswordRecoveryUseCase: useCaseMock as RequestPasswordRecoveryUseCase | undefined,
+      publicRateLimiter,
+    });
+
+    app.use('/auth', router);
+    app.use(errorHandler);
+
+    return app;
+  }
+
+  const validPayload = {
+    email: 'carlos.docente@untrm.edu.pe',
+  };
+
+  it('forgot-password responds 202 with no-store headers and the parsed body', async () => {
+    const mockExecute = vi.fn().mockResolvedValue({ status: 'RECEIVED' });
+    const app = setupForgotApp({ execute: mockExecute });
+
+    const response = await request(app).post('/auth/forgot-password').send(validPayload);
+
+    expect(response.status).toBe(202);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.headers['pragma']).toBe('no-cache');
+    expect(response.body).toEqual({ status: 'RECEIVED' });
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+  });
+
+  it('forgot-password responds 400 for an invalid body (invalid email, non-string, missing or unknown fields)', async () => {
+    const mockExecute = vi.fn();
+    const app = setupForgotApp({ execute: mockExecute });
+
+    // 1. Email inválido
+    const res1 = await request(app).post('/auth/forgot-password').send({ email: 'not-an-email' });
+    expect(res1.status).toBe(400);
+    expect(res1.body.error.code).toBe('VALIDATION_ERROR');
+
+    // 2. Email vacío o ausente
+    const res2 = await request(app).post('/auth/forgot-password').send({});
+    expect(res2.status).toBe(400);
+    expect(res2.body.error.code).toBe('VALIDATION_ERROR');
+
+    // 3. Campo desconocido (.strict())
+    const res3 = await request(app).post('/auth/forgot-password').send({
+      email: 'carlos.docente@untrm.edu.pe',
+      extraField: 'forbidden',
+    });
+    expect(res3.status).toBe(400);
+    expect(res3.body.error.code).toBe('VALIDATION_ERROR');
+
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
+
+  it('forgot-password applies the public rate limit before validation', async () => {
+    const rateLimiterMock: express.RequestHandler = (_req, _res, next) => {
+      next(new TooManyRequestsError('Demasiadas solicitudes.'));
+    };
+    const mockExecute = vi.fn();
+    const app = setupForgotApp({ execute: mockExecute }, rateLimiterMock);
+
+    // Enviar payload inválido: el rate limit se ejecuta antes de la validación
+    const response = await request(app).post('/auth/forgot-password').send({});
+
+    expect(response.status).toBe(429);
+    expect(response.body.error.code).toBe('RATE_LIMITED');
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
+
+  it('forgot-password does not register the route without the use case', async () => {
+    const app = setupForgotApp(undefined);
+
+    const response = await request(app).post('/auth/forgot-password').send(validPayload);
+
+    expect(response.status).toBe(404);
+  });
+
+  it('forgot-password passes the normalized email and client ip to the use case', async () => {
+    const mockExecute = vi.fn().mockResolvedValue({ status: 'RECEIVED' });
+    const app = setupForgotApp({ execute: mockExecute });
+
+    const response = await request(app)
+      .post('/auth/forgot-password')
+      .set('X-Forwarded-For', '190.237.10.15')
+      .send({ email: '  CARLOS.DOCENTE@UNTRM.EDU.PE  ' });
+
+    expect(response.status).toBe(202);
+    expect(mockExecute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: 'carlos.docente@untrm.edu.pe',
         ip: expect.any(String),
       }),
     );

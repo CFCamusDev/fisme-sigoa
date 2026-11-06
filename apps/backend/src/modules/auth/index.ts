@@ -19,6 +19,13 @@ import { RefreshSessionUseCase } from './application/refresh-session.js';
 import { LogoutUseCase } from './application/logout.js';
 import { ActivationTokenIssuerService } from './application/activation-token-issuer-service.js';
 import { ActivateAccountUseCase } from './application/activate-account.js';
+import { RequestPasswordRecoveryUseCase } from './application/request-password-recovery.js';
+import { ResetPasswordUseCase } from './application/reset-password.js';
+import type { PasswordResetEmailSender } from './domain/ports/password-reset-email-sender.js';
+import type {
+  DetachedTaskRunner,
+  DetachedTaskRunnerLogger,
+} from './application/detached-task-runner.js';
 import { createAuthenticate } from './infrastructure/http/authenticate.js';
 import { createRequireAllowedOrigin } from './infrastructure/http/require-allowed-origin.js';
 
@@ -28,6 +35,9 @@ export interface AuthModuleDependencies {
   dbProvider?: DbProvider;
   env?: Env;
   clock?: () => Date;
+  passwordResetEmailSender?: PasswordResetEmailSender;
+  detachedTaskRunner?: DetachedTaskRunner;
+  logger?: DetachedTaskRunnerLogger;
 }
 
 export interface AuthServicesDependencies {
@@ -149,6 +159,31 @@ export function createAuthModule(deps: AuthModuleDependencies): Router {
     clock: deps.clock,
   });
 
+  const requestPasswordRecoveryUseCase = deps.passwordResetEmailSender
+    ? new RequestPasswordRecoveryUseCase({
+        userRepository: services.userRepository,
+        activationTokenRepository: services.activationTokenRepository,
+        activationTokenIssuer: services.activationTokenIssuer,
+        passwordResetEmailSender: deps.passwordResetEmailSender,
+        unitOfWork: deps.unitOfWork,
+        auditLogger: deps.auditLogger,
+        detachedTaskRunner: deps.detachedTaskRunner,
+        clock: deps.clock,
+        logger: deps.logger,
+      })
+    : undefined;
+
+  const resetPasswordUseCase = new ResetPasswordUseCase({
+    userRepository: services.userRepository,
+    activationTokenRepository: services.activationTokenRepository,
+    refreshTokenRepository: services.refreshTokenRepository,
+    activationTokenGenerator: services.activationTokenGenerator,
+    passwordHasher: services.passwordHasher,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+    clock: deps.clock,
+  });
+
   const loginRateLimiter = createRateLimiter('login', deps.env);
   const sessionRateLimiter = createRateLimiter('session', deps.env);
   const publicRateLimiter = createRateLimiter('public', deps.env);
@@ -164,6 +199,8 @@ export function createAuthModule(deps: AuthModuleDependencies): Router {
     refreshSessionUseCase,
     logoutUseCase,
     activateAccountUseCase,
+    requestPasswordRecoveryUseCase,
+    resetPasswordUseCase,
     rateLimiter: loginRateLimiter,
     sessionRateLimiter,
     publicRateLimiter,
@@ -210,3 +247,4 @@ export * from './infrastructure/http/require-allowed-origin.js';
 export * from './infrastructure/prisma/prisma-user-repository.js';
 export * from './infrastructure/prisma/prisma-refresh-token-repository.js';
 export * from './infrastructure/prisma/prisma-activation-token-repository.js';
+export * from './infrastructure/email/email-password-reset-sender.js';

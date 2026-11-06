@@ -1,5 +1,9 @@
 import { Router, type RequestHandler } from 'express';
-import { loginRequestSchema, activateAccountRequestSchema } from '@sigoa/shared';
+import {
+  loginRequestSchema,
+  activateAccountRequestSchema,
+  forgotPasswordRequestSchema,
+} from '@sigoa/shared';
 import { validateRequest } from '../../../../shared/middleware/validate-request.js';
 import { AuthController } from './auth.controller.js';
 import type { RefreshCookieSettings } from './refresh-cookie.js';
@@ -7,12 +11,16 @@ import type { LoginUseCase } from '../../application/login.js';
 import type { RefreshSessionUseCase } from '../../application/refresh-session.js';
 import type { LogoutUseCase } from '../../application/logout.js';
 import type { ActivateAccountUseCase } from '../../application/activate-account.js';
+import type { RequestPasswordRecoveryUseCase } from '../../application/request-password-recovery.js';
+import type { ResetPasswordUseCase } from '../../application/reset-password.js';
 
 export interface AuthRouterDependencies {
   loginUseCase: LoginUseCase;
   refreshSessionUseCase?: RefreshSessionUseCase;
   logoutUseCase?: LogoutUseCase;
   activateAccountUseCase?: ActivateAccountUseCase;
+  requestPasswordRecoveryUseCase?: RequestPasswordRecoveryUseCase;
+  resetPasswordUseCase?: ResetPasswordUseCase;
   rateLimiter?: RequestHandler;
   sessionRateLimiter?: RequestHandler;
   publicRateLimiter?: RequestHandler;
@@ -82,6 +90,18 @@ export function createAuthRouter(deps?: AuthRouterDependencies): Router {
     activateMiddlewares.push(validateRequest({ body: activateAccountRequestSchema }));
     activateMiddlewares.push(controller.activateAccount);
     router.post('/activate', ...activateMiddlewares);
+  }
+
+  // POST /forgot-password (HU-005, T-005-06, RF-005, RS-002, RNF-007, RNF-008)
+  if (deps.requestPasswordRecoveryUseCase) {
+    const forgotMiddlewares: RequestHandler[] = [];
+    const forgotLimiter = deps.publicRateLimiter ?? deps.rateLimiter;
+    if (forgotLimiter) {
+      forgotMiddlewares.push(forgotLimiter);
+    }
+    forgotMiddlewares.push(validateRequest({ body: forgotPasswordRequestSchema }));
+    forgotMiddlewares.push(controller.forgotPassword);
+    router.post('/forgot-password', ...forgotMiddlewares);
   }
 
   return router;

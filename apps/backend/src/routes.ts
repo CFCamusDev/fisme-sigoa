@@ -10,7 +10,12 @@ import {
   type EmailSenderLogger,
 } from './shared/email/index.js';
 import { LogoUrlResolver } from './shared/branding/logo-url-resolver.js';
-import { createAuthModule, createAuthServices } from './modules/auth/index.js';
+import {
+  createAuthModule,
+  createAuthServices,
+  EmailPasswordResetSender,
+  type DetachedTaskRunner,
+} from './modules/auth/index.js';
 import { createAuthorizationServices, createRolesModule } from './modules/authorization/index.js';
 import { createUsersModule, EmailActivationSender } from './modules/users/index.js';
 
@@ -22,6 +27,7 @@ export interface AppRoutesDependencies {
   emailSender?: EmailSender;
   logger?: Logger;
   clock?: () => Date;
+  detachedTaskRunner?: DetachedTaskRunner;
 }
 
 export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void {
@@ -51,7 +57,20 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
     publicAppUrl,
   });
 
-  app.use('/auth', createAuthModule(deps));
+  const passwordResetEmailSender = new EmailPasswordResetSender({
+    emailSender,
+    logoUrlResolver,
+    publicAppUrl,
+  });
+
+  app.use(
+    '/auth',
+    createAuthModule({
+      ...deps,
+      passwordResetEmailSender,
+      detachedTaskRunner: deps.detachedTaskRunner,
+    }),
+  );
   app.use(
     '/roles',
     createRolesModule({

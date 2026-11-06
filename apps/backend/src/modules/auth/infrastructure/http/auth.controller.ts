@@ -3,8 +3,10 @@ import {
   loginResponseSchema,
   refreshResponseSchema,
   activateAccountResponseSchema,
+  forgotPasswordResponseSchema,
   type LoginRequest,
   type ActivateAccountRequest,
+  type ForgotPasswordRequest,
 } from '@sigoa/shared';
 import { getValidated } from '../../../../shared/middleware/validate-request.js';
 import { InvalidRefreshTokenError } from '../../domain/errors/index.js';
@@ -12,6 +14,7 @@ import type { LoginUseCase } from '../../application/login.js';
 import type { RefreshSessionUseCase } from '../../application/refresh-session.js';
 import type { LogoutUseCase } from '../../application/logout.js';
 import type { ActivateAccountUseCase } from '../../application/activate-account.js';
+import type { RequestPasswordRecoveryUseCase } from '../../application/request-password-recovery.js';
 import { resolveClientIp } from './client-ip.js';
 import { getAuthenticatedPrincipal } from './authenticate.js';
 import {
@@ -26,6 +29,7 @@ export interface AuthControllerDependencies {
   refreshSessionUseCase?: RefreshSessionUseCase;
   logoutUseCase?: LogoutUseCase;
   activateAccountUseCase?: ActivateAccountUseCase;
+  requestPasswordRecoveryUseCase?: RequestPasswordRecoveryUseCase;
   cookieSettings?: RefreshCookieSettings;
 }
 
@@ -34,6 +38,7 @@ export class AuthController {
   private readonly refreshSessionUseCase?: RefreshSessionUseCase;
   private readonly logoutUseCase?: LogoutUseCase;
   private readonly activateAccountUseCase?: ActivateAccountUseCase;
+  private readonly requestPasswordRecoveryUseCase?: RequestPasswordRecoveryUseCase;
   private readonly cookieSettings: RefreshCookieSettings;
 
   constructor(deps: LoginUseCase | AuthControllerDependencies) {
@@ -45,6 +50,7 @@ export class AuthController {
       this.refreshSessionUseCase = deps.refreshSessionUseCase;
       this.logoutUseCase = deps.logoutUseCase;
       this.activateAccountUseCase = deps.activateAccountUseCase;
+      this.requestPasswordRecoveryUseCase = deps.requestPasswordRecoveryUseCase;
       this.cookieSettings = deps.cookieSettings ?? { sameSite: 'strict', isProduction: false };
     }
   }
@@ -167,6 +173,31 @@ export class AuthController {
       res.setHeader('Cache-Control', 'no-store');
       res.setHeader('Pragma', 'no-cache');
       res.status(200).json(parsedResponse);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  forgotPassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!this.requestPasswordRecoveryUseCase) {
+        throw new Error('RequestPasswordRecoveryUseCase no configurado en AuthController');
+      }
+
+      const { body } = getValidated<ForgotPasswordRequest>(res);
+      const ip = resolveClientIp(req);
+
+      const result = await this.requestPasswordRecoveryUseCase.execute({
+        email: body.email,
+        ip,
+        userAgent: req.headers['user-agent'] ?? null,
+      });
+
+      const parsedResponse = forgotPasswordResponseSchema.parse(result);
+
+      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('Pragma', 'no-cache');
+      res.status(202).json(parsedResponse);
     } catch (error) {
       next(error);
     }
