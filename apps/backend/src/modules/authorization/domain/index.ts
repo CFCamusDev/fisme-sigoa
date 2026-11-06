@@ -7,3 +7,4 @@ export * from './entities/role.js';
 export * from './errors/index.js';
 export * from './ports/grant-reader.js';
 export * from './ports/role-reader.js';
+export * from './ports/role-repository.js';

@@ -16,6 +16,8 @@ export * from './infrastructure/http/roles.controller.js';
 export * from './infrastructure/http/roles.routes.js';
 export * from './infrastructure/prisma/prisma-grant-reader.js';
 export * from './infrastructure/prisma/prisma-role-reader.js';
+export * from './infrastructure/prisma/prisma-role-mapper.js';
+export * from './infrastructure/prisma/prisma-role-repository.js';
 export * from './infrastructure/prisma/prisma-user-role-gateway.js';
 
 export interface AuthorizationModuleServices {
