@@ -10,3 +10,4 @@ export * from './ports/grant-reader.js';
 export * from './ports/role-reader.js';
 export * from './ports/role-repository.js';
 export * from './ports/permission-repository.js';
+export * from './ports/role-permission-repository.js';
