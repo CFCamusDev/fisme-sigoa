@@ -18,6 +18,7 @@ import { Route as EncuestaTokenRouteImport } from './routes/encuesta/$token'
 import { Route as AppUsuariosIndexRouteImport } from './routes/_app/usuarios/index'
 import { Route as AppUsuariosNuevoRouteImport } from './routes/_app/usuarios/nuevo'
 import { Route as AuthActivarTokenRouteImport } from './routes/_auth/activar.$token'
+import { Route as AuthRestablecerTokenRouteImport } from './routes/_auth/restablecer.$token'
 import { Route as AppUsuariosUserIdEditarRouteImport } from './routes/_app/usuarios/$userId/editar'
 
 const AppRoute = AppRouteImport.update({
@@ -63,6 +64,11 @@ const AuthActivarTokenRoute = AuthActivarTokenRouteImport.update({
   path: '/activar/$token',
   getParentRoute: () => AuthRoute,
 } as any)
+const AuthRestablecerTokenRoute = AuthRestablecerTokenRouteImport.update({
+  id: '/restablecer/$token',
+  path: '/restablecer/$token',
+  getParentRoute: () => AuthRoute,
+} as any)
 const AppUsuariosUserIdEditarRoute = AppUsuariosUserIdEditarRouteImport.update({
   id: '/usuarios/$userId/editar',
   path: '/usuarios/$userId/editar',
@@ -76,6 +82,7 @@ export interface FileRoutesByFullPath {
   '/encuesta/$token': typeof EncuestaTokenRoute
   '/usuarios/nuevo': typeof AppUsuariosNuevoRoute
   '/activar/$token': typeof AuthActivarTokenRoute
+  '/restablecer/$token': typeof AuthRestablecerTokenRoute
   '/usuarios/': typeof AppUsuariosIndexRoute
   '/usuarios/$userId/editar': typeof AppUsuariosUserIdEditarRoute
 }
@@ -86,6 +93,7 @@ export interface FileRoutesByTo {
   '/encuesta/$token': typeof EncuestaTokenRoute
   '/usuarios/nuevo': typeof AppUsuariosNuevoRoute
   '/activar/$token': typeof AuthActivarTokenRoute
+  '/restablecer/$token': typeof AuthRestablecerTokenRoute
   '/usuarios': typeof AppUsuariosIndexRoute
   '/usuarios/$userId/editar': typeof AppUsuariosUserIdEditarRoute
 }
@@ -99,6 +107,7 @@ export interface FileRoutesById {
   '/_app/': typeof AppIndexRoute
   '/_app/usuarios/nuevo': typeof AppUsuariosNuevoRoute
   '/_auth/activar/$token': typeof AuthActivarTokenRoute
+  '/_auth/restablecer/$token': typeof AuthRestablecerTokenRoute
   '/_app/usuarios/': typeof AppUsuariosIndexRoute
   '/_app/usuarios/$userId/editar': typeof AppUsuariosUserIdEditarRoute
 }
@@ -111,6 +120,7 @@ export interface FileRouteTypes {
     | '/encuesta/$token'
     | '/usuarios/nuevo'
     | '/activar/$token'
+    | '/restablecer/$token'
     | '/usuarios/'
     | '/usuarios/$userId/editar'
   fileRoutesByTo: FileRoutesByTo
@@ -121,6 +131,7 @@ export interface FileRouteTypes {
     | '/encuesta/$token'
     | '/usuarios/nuevo'
     | '/activar/$token'
+    | '/restablecer/$token'
     | '/usuarios'
     | '/usuarios/$userId/editar'
   id:
@@ -133,6 +144,7 @@ export interface FileRouteTypes {
     | '/_app/'
     | '/_app/usuarios/nuevo'
     | '/_auth/activar/$token'
+    | '/_auth/restablecer/$token'
     | '/_app/usuarios/'
     | '/_app/usuarios/$userId/editar'
   fileRoutesById: FileRoutesById
@@ -208,6 +220,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthActivarTokenRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/_auth/restablecer/$token': {
+      id: '/_auth/restablecer/$token'
+      path: '/restablecer/$token'
+      fullPath: '/restablecer/$token'
+      preLoaderRoute: typeof AuthRestablecerTokenRouteImport
+      parentRoute: typeof AuthRoute
+    }
     '/_app/usuarios/$userId/editar': {
       id: '/_app/usuarios/$userId/editar'
       path: '/usuarios/$userId/editar'
@@ -238,12 +257,14 @@ interface AuthRouteChildren {
   AuthLoginRoute: typeof AuthLoginRoute
   AuthRecuperarContrasenaRoute: typeof AuthRecuperarContrasenaRoute
   AuthActivarTokenRoute: typeof AuthActivarTokenRoute
+  AuthRestablecerTokenRoute: typeof AuthRestablecerTokenRoute
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
   AuthLoginRoute: AuthLoginRoute,
   AuthRecuperarContrasenaRoute: AuthRecuperarContrasenaRoute,
   AuthActivarTokenRoute: AuthActivarTokenRoute,
+  AuthRestablecerTokenRoute: AuthRestablecerTokenRoute,
 }
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)

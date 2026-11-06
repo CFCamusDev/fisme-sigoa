@@ -33,3 +33,6 @@ export {
   passwordConfirmationSchema,
   type PasswordConfirmationFormData,
 } from './schemas/password-confirmation-schema';
+export { ResetPasswordForm, type ResetPasswordFormProps } from './components/reset-password-form';
+export { ResetPasswordPage, type ResetPasswordPageProps } from './components/reset-password-page';
+export { getResetPasswordErrorMessage } from './lib/get-reset-password-error-message';
