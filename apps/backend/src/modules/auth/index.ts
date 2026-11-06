@@ -195,6 +195,8 @@ export * from './application/activate-account.js';
 export * from './application/detached-task-runner.js';
 export * from './application/request-password-recovery.types.js';
 export * from './application/request-password-recovery.js';
+export * from './application/reset-password.types.js';
+export * from './application/reset-password.js';
 export * from './infrastructure/security/argon2-password-hasher.js';
 export * from './infrastructure/security/jose-access-token-signer.js';
 export * from './infrastructure/security/jose-access-token-verifier.js';
