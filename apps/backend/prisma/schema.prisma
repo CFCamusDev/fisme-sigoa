@@ -285,6 +285,8 @@ model RolePermission {
   scope        PermissionScope @default(GLOBAL)
   createdAt    DateTime        @default(now())
   createdBy    String?
+  updatedAt    DateTime        @default(now()) @updatedAt
+  updatedBy    String?
 
   @@unique([roleId, permissionId])
   @@index([roleId])

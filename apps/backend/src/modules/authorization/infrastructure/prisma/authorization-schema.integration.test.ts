@@ -233,4 +233,58 @@ describe('Authorization Schema Integration (PostgreSQL real, F1)', () => {
       }
     });
   });
+
+  describe('RolePermission Update Tracking (T-006-05, RS-013, RNF-022)', () => {
+    it('sets updatedAt and keeps updatedBy null on a new grant', async () => {
+      const suffix = `track_${Math.random()
+        .toString(36)
+        .replace(/[^a-z]/g, '')
+        .slice(0, 5)}`;
+      const { role, permission } = await createBaseEntities(suffix);
+
+      const grant = await prisma.rolePermission.create({
+        data: {
+          roleId: role.id,
+          permissionId: permission.id,
+          scope: 'GLOBAL',
+        },
+      });
+
+      expect(grant.createdAt).toBeInstanceOf(Date);
+      expect(grant.updatedAt).toBeInstanceOf(Date);
+      expect(grant.updatedBy).toBeNull();
+      expect(grant.updatedAt.getTime()).toBeCloseTo(grant.createdAt.getTime(), -2);
+    });
+
+    it('refreshes updatedAt and records updatedBy when grant scope is updated', async () => {
+      const suffix = `scope_${Math.random()
+        .toString(36)
+        .replace(/[^a-z]/g, '')
+        .slice(0, 5)}`;
+      const { role, permission } = await createBaseEntities(suffix);
+
+      const grant = await prisma.rolePermission.create({
+        data: {
+          roleId: role.id,
+          permissionId: permission.id,
+          scope: 'GLOBAL',
+        },
+      });
+
+      // Retardo breve para garantizar marca de tiempo diferenciada
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const updated = await prisma.rolePermission.update({
+        where: { id: grant.id },
+        data: {
+          scope: 'OWN',
+          updatedBy: 'admin-user-id',
+        },
+      });
+
+      expect(updated.scope).toBe('OWN');
+      expect(updated.updatedBy).toBe('admin-user-id');
+      expect(updated.updatedAt.getTime()).toBeGreaterThanOrEqual(grant.updatedAt.getTime());
+    });
+  });
 });
