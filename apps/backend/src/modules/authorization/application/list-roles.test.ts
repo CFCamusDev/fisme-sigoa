@@ -27,6 +27,8 @@ describe('ListRolesUseCase Unit Tests (A2.2, HU-003, T-003-15, RS-002, LS 3.2)',
   function setupMocks() {
     const roleReader: RoleReader = {
       listAll: vi.fn().mockResolvedValue(mockRoles),
+      listDetailed: vi.fn().mockResolvedValue([]),
+      findById: vi.fn().mockResolvedValue(null),
     };
 
     const authorizer = {
