@@ -16,6 +16,7 @@ import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as EncuestaTokenRouteImport } from './routes/encuesta/$token'
 import { Route as AppUsuariosIndexRouteImport } from './routes/_app/usuarios/index'
 import { Route as AppUsuariosNuevoRouteImport } from './routes/_app/usuarios/nuevo'
+import { Route as AuthActivarTokenRouteImport } from './routes/_auth/activar.$token'
 import { Route as AppUsuariosUserIdEditarRouteImport } from './routes/_app/usuarios/$userId/editar'
 
 const AppRoute = AppRouteImport.update({
@@ -51,6 +52,11 @@ const AppUsuariosNuevoRoute = AppUsuariosNuevoRouteImport.update({
   path: '/usuarios/nuevo',
   getParentRoute: () => AppRoute,
 } as any)
+const AuthActivarTokenRoute = AuthActivarTokenRouteImport.update({
+  id: '/activar/$token',
+  path: '/activar/$token',
+  getParentRoute: () => AuthRoute,
+} as any)
 const AppUsuariosUserIdEditarRoute = AppUsuariosUserIdEditarRouteImport.update({
   id: '/usuarios/$userId/editar',
   path: '/usuarios/$userId/editar',
@@ -62,6 +68,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof AuthLoginRoute
   '/encuesta/$token': typeof EncuestaTokenRoute
   '/usuarios/nuevo': typeof AppUsuariosNuevoRoute
+  '/activar/$token': typeof AuthActivarTokenRoute
   '/usuarios/': typeof AppUsuariosIndexRoute
   '/usuarios/$userId/editar': typeof AppUsuariosUserIdEditarRoute
 }
@@ -70,6 +77,7 @@ export interface FileRoutesByTo {
   '/login': typeof AuthLoginRoute
   '/encuesta/$token': typeof EncuestaTokenRoute
   '/usuarios/nuevo': typeof AppUsuariosNuevoRoute
+  '/activar/$token': typeof AuthActivarTokenRoute
   '/usuarios': typeof AppUsuariosIndexRoute
   '/usuarios/$userId/editar': typeof AppUsuariosUserIdEditarRoute
 }
@@ -81,6 +89,7 @@ export interface FileRoutesById {
   '/encuesta/$token': typeof EncuestaTokenRoute
   '/_app/': typeof AppIndexRoute
   '/_app/usuarios/nuevo': typeof AppUsuariosNuevoRoute
+  '/_auth/activar/$token': typeof AuthActivarTokenRoute
   '/_app/usuarios/': typeof AppUsuariosIndexRoute
   '/_app/usuarios/$userId/editar': typeof AppUsuariosUserIdEditarRoute
 }
@@ -91,6 +100,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/encuesta/$token'
     | '/usuarios/nuevo'
+    | '/activar/$token'
     | '/usuarios/'
     | '/usuarios/$userId/editar'
   fileRoutesByTo: FileRoutesByTo
@@ -99,6 +109,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/encuesta/$token'
     | '/usuarios/nuevo'
+    | '/activar/$token'
     | '/usuarios'
     | '/usuarios/$userId/editar'
   id:
@@ -109,6 +120,7 @@ export interface FileRouteTypes {
     | '/encuesta/$token'
     | '/_app/'
     | '/_app/usuarios/nuevo'
+    | '/_auth/activar/$token'
     | '/_app/usuarios/'
     | '/_app/usuarios/$userId/editar'
   fileRoutesById: FileRoutesById
@@ -170,6 +182,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppUsuariosNuevoRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_auth/activar/$token': {
+      id: '/_auth/activar/$token'
+      path: '/activar/$token'
+      fullPath: '/activar/$token'
+      preLoaderRoute: typeof AuthActivarTokenRouteImport
+      parentRoute: typeof AuthRoute
+    }
     '/_app/usuarios/$userId/editar': {
       id: '/_app/usuarios/$userId/editar'
       path: '/usuarios/$userId/editar'
@@ -198,10 +217,12 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 interface AuthRouteChildren {
   AuthLoginRoute: typeof AuthLoginRoute
+  AuthActivarTokenRoute: typeof AuthActivarTokenRoute
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
   AuthLoginRoute: AuthLoginRoute,
+  AuthActivarTokenRoute: AuthActivarTokenRoute,
 }
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)

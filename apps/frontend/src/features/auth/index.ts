@@ -17,3 +17,7 @@ export {
 export { getLoginErrorMessage } from './lib/login-error-message';
 export { activateAccount } from './api/activate-account';
 export { useActivateAccount } from './hooks/use-activate-account';
+export { ActivationForm } from './components/activation-form';
+export { ActivationPage } from './components/activation-page';
+export { activationFormSchema, type ActivationFormData } from './schemas/activation-form-schema';
+export { getActivationErrorMessage } from './lib/get-activation-error-message';
