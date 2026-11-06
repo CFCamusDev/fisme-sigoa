@@ -3,9 +3,9 @@ import path from 'node:path';
 import process from 'node:process';
 import { execSync } from 'node:child_process';
 
-function isSystem32Bash(filePath) {
+function isSystem32Bash(filePath, pathImpl = path) {
   if (!filePath) return false;
-  const normalized = path.normalize(filePath).toLowerCase();
+  const normalized = pathImpl.normalize(filePath).toLowerCase();
   return normalized.includes('system32\\bash.exe') || normalized.includes('system32/bash.exe');
 }
 
@@ -23,22 +23,22 @@ function defaultLocateGit() {
   }
 }
 
-function findBashFromGitPath(gitPath, existsSync) {
+function findBashFromGitPath(gitPath, existsSync, pathImpl = path) {
   if (!gitPath) return null;
-  let dir = path.dirname(path.normalize(gitPath));
+  let dir = pathImpl.dirname(pathImpl.normalize(gitPath));
 
   for (let i = 0; i < 3; i++) {
-    const cand1 = path.normalize(path.join(dir, 'bin', 'bash.exe'));
-    if (existsSync(cand1) && !isSystem32Bash(cand1)) {
+    const cand1 = pathImpl.normalize(pathImpl.join(dir, 'bin', 'bash.exe'));
+    if (existsSync(cand1) && !isSystem32Bash(cand1, pathImpl)) {
       return cand1;
     }
 
-    const cand2 = path.normalize(path.join(dir, 'usr', 'bin', 'bash.exe'));
-    if (existsSync(cand2) && !isSystem32Bash(cand2)) {
+    const cand2 = pathImpl.normalize(pathImpl.join(dir, 'usr', 'bin', 'bash.exe'));
+    if (existsSync(cand2) && !isSystem32Bash(cand2, pathImpl)) {
       return cand2;
     }
 
-    const parent = path.dirname(dir);
+    const parent = pathImpl.dirname(dir);
     if (parent === dir) break;
     dir = parent;
   }
@@ -61,14 +61,16 @@ export function resolveBashPath({
     return 'bash';
   }
 
+  const pathImpl = path.win32;
+
   if (env.GIT_BASH) {
-    const customBash = path.normalize(env.GIT_BASH);
+    const customBash = pathImpl.normalize(env.GIT_BASH);
     if (!existsSync(customBash)) {
       throw new Error(
         `La variable de entorno GIT_BASH está definida pero el archivo no existe: "${env.GIT_BASH}". Verifique la ruta a Git Bash.`,
       );
     }
-    if (isSystem32Bash(customBash)) {
+    if (isSystem32Bash(customBash, pathImpl)) {
       throw new Error(
         `La variable de entorno GIT_BASH apunta a "${env.GIT_BASH}" (puente WSL de System32). Se requiere el bash nativo de Git for Windows.`,
       );
@@ -83,8 +85,8 @@ export function resolveBashPath({
     gitExe = null;
   }
 
-  if (gitExe && !isSystem32Bash(gitExe)) {
-    const bashFromGit = findBashFromGitPath(gitExe, existsSync);
+  if (gitExe && !isSystem32Bash(gitExe, pathImpl)) {
+    const bashFromGit = findBashFromGitPath(gitExe, existsSync, pathImpl);
     if (bashFromGit) {
       return bashFromGit;
     }
@@ -93,14 +95,14 @@ export function resolveBashPath({
   const standardCandidates = [
     'C:\\Program Files\\Git\\bin\\bash.exe',
     'C:\\Program Files\\Git\\usr\\bin\\bash.exe',
-    env.LOCALAPPDATA ? path.join(env.LOCALAPPDATA, 'Programs', 'Git', 'bin', 'bash.exe') : null,
-    env.ProgramFiles ? path.join(env.ProgramFiles, 'Git', 'bin', 'bash.exe') : null,
-    env['ProgramFiles(x86)'] ? path.join(env['ProgramFiles(x86)'], 'Git', 'bin', 'bash.exe') : null,
+    env.LOCALAPPDATA ? pathImpl.join(env.LOCALAPPDATA, 'Programs', 'Git', 'bin', 'bash.exe') : null,
+    env.ProgramFiles ? pathImpl.join(env.ProgramFiles, 'Git', 'bin', 'bash.exe') : null,
+    env['ProgramFiles(x86)'] ? pathImpl.join(env['ProgramFiles(x86)'], 'Git', 'bin', 'bash.exe') : null,
   ].filter(Boolean);
 
   for (const candidate of standardCandidates) {
-    const normalized = path.normalize(candidate);
-    if (existsSync(normalized) && !isSystem32Bash(normalized)) {
+    const normalized = pathImpl.normalize(candidate);
+    if (existsSync(normalized) && !isSystem32Bash(normalized, pathImpl)) {
       return normalized;
     }
   }

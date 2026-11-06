@@ -32,12 +32,12 @@ describe('resolveBashPath (T-004-19, RNF-030)', () => {
 
   it('picks Git Bash from the Git root', () => {
     const gitExe = 'C:\\Program Files\\Git\\cmd\\git.exe';
-    const expectedBash = path.normalize('C:\\Program Files\\Git\\bin\\bash.exe');
+    const expectedBash = path.win32.normalize('C:\\Program Files\\Git\\bin\\bash.exe');
 
     const result = resolveBashPath({
       platform: 'win32',
       locateGit: () => gitExe,
-      existsSync: (p: string) => path.normalize(p) === expectedBash,
+      existsSync: (p: string) => path.win32.normalize(p) === expectedBash,
     });
 
     expect(result).toBe(expectedBash);
@@ -45,25 +45,25 @@ describe('resolveBashPath (T-004-19, RNF-030)', () => {
 
   it('picks Git Bash from usr/bin if bin/bash does not exist', () => {
     const gitExe = 'C:\\PortableGit\\cmd\\git.exe';
-    const usrBash = path.normalize('C:\\PortableGit\\usr\\bin\\bash.exe');
+    const usrBash = path.win32.normalize('C:\\PortableGit\\usr\\bin\\bash.exe');
 
     const result = resolveBashPath({
       platform: 'win32',
       locateGit: () => gitExe,
-      existsSync: (p: string) => path.normalize(p) === usrBash,
+      existsSync: (p: string) => path.win32.normalize(p) === usrBash,
     });
 
     expect(result).toBe(usrBash);
   });
 
   it('fails with an actionable message when only the WSL bash exists', () => {
-    const wslBash = path.normalize('C:\\Windows\\System32\\bash.exe');
+    const wslBash = path.win32.normalize('C:\\Windows\\System32\\bash.exe');
 
     expect(() =>
       resolveBashPath({
         platform: 'win32',
         locateGit: () => null,
-        existsSync: (p: string) => path.normalize(p) === wslBash,
+        existsSync: (p: string) => path.win32.normalize(p) === wslBash,
       }),
     ).toThrow(/Git for Windows.*GIT_BASH/i);
   });
