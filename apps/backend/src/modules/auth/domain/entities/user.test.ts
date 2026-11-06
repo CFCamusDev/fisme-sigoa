@@ -5,6 +5,7 @@ import {
   AccountLockedError,
   AccountInactiveError,
   AccountPendingActivationError,
+  UserNotPendingActivationError,
 } from '../errors/index.js';
 
 describe('User Entity', () => {
@@ -133,5 +134,44 @@ describe('User Entity', () => {
 
     const inactiveUser = createActiveUser({ status: 'INACTIVE' });
     expect(() => inactiveUser.assertCanAuthenticate(now)).toThrow(AccountInactiveError);
+  });
+
+  it('activates a pending user and stores the password hash (RS-015)', () => {
+    const user = createActiveUser({
+      status: 'PENDING_ACTIVATION',
+      passwordHash: null,
+    });
+    const now = new Date('2026-11-05T16:00:00.000Z');
+    const newHash = '$argon2id$v=19$m=65536,t=3,p=4$someSecretHash';
+
+    user.activate(newHash, now);
+
+    expect(user.status).toBe('ACTIVE');
+    expect(user.passwordHash).toBe(newHash);
+    expect(user.updatedAt).toEqual(now);
+  });
+
+  it('rejects activating an active or inactive user with UserNotPendingActivationError', () => {
+    const activeUser = createActiveUser({ status: 'ACTIVE' });
+    const inactiveUser = createActiveUser({ status: 'INACTIVE' });
+    const newHash = 'hash-xyz';
+
+    expect(() => activeUser.activate(newHash)).toThrow(UserNotPendingActivationError);
+    expect(() => inactiveUser.activate(newHash)).toThrow(UserNotPendingActivationError);
+  });
+
+  it('activation keeps failed attempts and lock untouched', () => {
+    const lockUntil = new Date('2026-11-05T16:15:00.000Z');
+    const user = createActiveUser({
+      status: 'PENDING_ACTIVATION',
+      failedLoginAttempts: 3,
+      lockedUntil: lockUntil,
+    });
+    const now = new Date('2026-11-05T16:00:00.000Z');
+
+    user.activate('new-password-hash', now);
+
+    expect(user.failedLoginAttempts).toBe(3);
+    expect(user.lockedUntil).toEqual(lockUntil);
   });
 });

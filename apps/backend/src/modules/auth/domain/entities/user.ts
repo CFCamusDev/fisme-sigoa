@@ -3,6 +3,7 @@ import {
   AccountLockedError,
   AccountInactiveError,
   AccountPendingActivationError,
+  UserNotPendingActivationError,
 } from '../errors/index.js';
 
 export type UserStatus = 'PENDING_ACTIVATION' | 'ACTIVE' | 'INACTIVE';
@@ -174,5 +175,20 @@ export class User {
     this._failedLoginAttempts = 0;
     this._lockedUntil = null;
     this._lastLoginAt = new Date(now.getTime());
+  }
+
+  /**
+   * Activa la cuenta del usuario estableciendo su contraseña y cambiando el estado a ACTIVE.
+   * Solo es válido si el usuario está en estado PENDING_ACTIVATION.
+   * No altera los intentos fallidos de inicio de sesión ni bloqueos temporales existentes.
+   */
+  public activate(passwordHash: string, now: Date = new Date()): void {
+    if (this._status !== 'PENDING_ACTIVATION') {
+      throw new UserNotPendingActivationError();
+    }
+
+    this._status = 'ACTIVE';
+    this._passwordHash = passwordHash;
+    this._updatedAt = new Date(now.getTime());
   }
 }

@@ -4,3 +4,4 @@ export * from './account-pending-activation-error.js';
 export * from './invalid-refresh-token-error.js';
 export * from './invalid-activation-token-error.js';
 export * from './weak-password-error.js';
+export * from './user-not-pending-activation-error.js';
