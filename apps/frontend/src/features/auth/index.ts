@@ -28,3 +28,8 @@ export { useResetPassword } from './hooks/use-reset-password';
 export { ForgotPasswordForm } from './components/forgot-password-form';
 export { ForgotPasswordPage } from './components/forgot-password-page';
 export { getPasswordRecoveryErrorMessage } from './lib/get-password-recovery-error-message';
+export { PasswordFields } from './components/password-fields';
+export {
+  passwordConfirmationSchema,
+  type PasswordConfirmationFormData,
+} from './schemas/password-confirmation-schema';
