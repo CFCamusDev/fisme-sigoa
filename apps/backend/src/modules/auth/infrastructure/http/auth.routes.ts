@@ -3,6 +3,7 @@ import {
   loginRequestSchema,
   activateAccountRequestSchema,
   forgotPasswordRequestSchema,
+  resetPasswordRequestSchema,
 } from '@sigoa/shared';
 import { validateRequest } from '../../../../shared/middleware/validate-request.js';
 import { AuthController } from './auth.controller.js';
@@ -102,6 +103,18 @@ export function createAuthRouter(deps?: AuthRouterDependencies): Router {
     forgotMiddlewares.push(validateRequest({ body: forgotPasswordRequestSchema }));
     forgotMiddlewares.push(controller.forgotPassword);
     router.post('/forgot-password', ...forgotMiddlewares);
+  }
+
+  // POST /reset-password (HU-005, T-005-07, RF-005, RS-002, RNF-007, RNF-008)
+  if (deps.resetPasswordUseCase) {
+    const resetMiddlewares: RequestHandler[] = [];
+    const resetLimiter = deps.publicRateLimiter ?? deps.rateLimiter;
+    if (resetLimiter) {
+      resetMiddlewares.push(resetLimiter);
+    }
+    resetMiddlewares.push(validateRequest({ body: resetPasswordRequestSchema }));
+    resetMiddlewares.push(controller.resetPassword);
+    router.post('/reset-password', ...resetMiddlewares);
   }
 
   return router;

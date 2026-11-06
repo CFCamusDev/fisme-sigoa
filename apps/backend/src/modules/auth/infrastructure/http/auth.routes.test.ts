@@ -7,6 +7,7 @@ import type { RefreshSessionUseCase } from '../../application/refresh-session.js
 import type { LogoutUseCase } from '../../application/logout.js';
 import type { ActivateAccountUseCase } from '../../application/activate-account.js';
 import type { RequestPasswordRecoveryUseCase } from '../../application/request-password-recovery.js';
+import type { ResetPasswordUseCase } from '../../application/reset-password.js';
 import { errorHandler } from '../../../../shared/middleware/error-handler.js';
 import {
   ForbiddenError,
@@ -19,6 +20,7 @@ import {
   AccountPendingActivationError,
   InvalidRefreshTokenError,
   InvalidActivationTokenError,
+  InvalidPasswordResetTokenError,
 } from '../../domain/errors/index.js';
 
 describe('Auth Routes (POST /auth/login) (T-001-12, RS-002, RNF-007, RNF-008)', () => {
@@ -584,6 +586,138 @@ describe('Auth Routes (POST /auth/forgot-password) (T-005-06, RF-005, RS-002, RN
     expect(mockExecute).toHaveBeenCalledWith(
       expect.objectContaining({
         email: 'carlos.docente@untrm.edu.pe',
+        ip: expect.any(String),
+      }),
+    );
+  });
+});
+
+describe('Auth Routes (POST /auth/reset-password) (T-005-07, RF-005, RS-002, RNF-007, RNF-008)', () => {
+  function setupResetApp(
+    useCaseMock?: Partial<ResetPasswordUseCase>,
+    publicRateLimiter?: express.RequestHandler,
+  ) {
+    const app = express();
+    app.use(express.json());
+
+    const router = createAuthRouter({
+      loginUseCase: { execute: vi.fn() } as unknown as LoginUseCase,
+      resetPasswordUseCase: useCaseMock as ResetPasswordUseCase | undefined,
+      publicRateLimiter,
+    });
+
+    app.use('/auth', router);
+    app.use(errorHandler);
+
+    return app;
+  }
+
+  const validToken = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+  const validPassword = 'NewValidPassword123!';
+  const expectedSuccessResponse = {
+    status: 'PASSWORD_RESET' as const,
+  };
+
+  it('reset-password responds 200 with no-store headers and the parsed body', async () => {
+    const mockExecute = vi.fn().mockResolvedValue(expectedSuccessResponse);
+    const app = setupResetApp({ execute: mockExecute });
+
+    const response = await request(app)
+      .post('/auth/reset-password')
+      .send({ token: validToken, password: validPassword });
+
+    expect(response.status).toBe(200);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.headers['pragma']).toBe('no-cache');
+    expect(response.body).toEqual(expectedSuccessResponse);
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+  });
+
+  it('reset-password responds 400 for an invalid body (malformed token, weak password, missing or extra fields)', async () => {
+    const mockExecute = vi.fn();
+    const app = setupResetApp({ execute: mockExecute });
+
+    // 1. Token vacío o excesivamente largo
+    const res1 = await request(app)
+      .post('/auth/reset-password')
+      .send({ token: '', password: validPassword });
+    expect(res1.status).toBe(400);
+    expect(res1.body.error.code).toBe('VALIDATION_ERROR');
+
+    // 2. Contraseña débil (< 12 caracteres o sin mayúscula/dígito/símbolo)
+    const res2 = await request(app)
+      .post('/auth/reset-password')
+      .send({ token: validToken, password: 'simple' });
+    expect(res2.status).toBe(400);
+    expect(res2.body.error.code).toBe('VALIDATION_ERROR');
+
+    // 3. Faltan campos
+    const res3 = await request(app).post('/auth/reset-password').send({});
+    expect(res3.status).toBe(400);
+    expect(res3.body.error.code).toBe('VALIDATION_ERROR');
+
+    // 4. Campos adicionales (.strict())
+    const res4 = await request(app)
+      .post('/auth/reset-password')
+      .send({ token: validToken, password: validPassword, extraField: 'not allowed' });
+    expect(res4.status).toBe(400);
+    expect(res4.body.error.code).toBe('VALIDATION_ERROR');
+
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
+
+  it('reset-password maps InvalidPasswordResetTokenError to 400 INVALID_PASSWORD_RESET_TOKEN', async () => {
+    const mockExecute = vi.fn().mockRejectedValue(new InvalidPasswordResetTokenError());
+    const app = setupResetApp({ execute: mockExecute });
+
+    const response = await request(app)
+      .post('/auth/reset-password')
+      .send({ token: validToken, password: validPassword });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe('INVALID_PASSWORD_RESET_TOKEN');
+    expect(response.body.error.message).toBe('El enlace no es válido o venció.');
+  });
+
+  it('reset-password applies the public rate limit before validation', async () => {
+    const rateLimiterMock: express.RequestHandler = (_req, _res, next) => {
+      next(new TooManyRequestsError('Demasiadas solicitudes.'));
+    };
+    const mockExecute = vi.fn();
+    const app = setupResetApp({ execute: mockExecute }, rateLimiterMock);
+
+    // Enviar payload inválido: el rate limit se ejecuta antes
+    const response = await request(app).post('/auth/reset-password').send({});
+
+    expect(response.status).toBe(429);
+    expect(response.body.error.code).toBe('RATE_LIMITED');
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
+
+  it('reset-password does not register the route without the use case', async () => {
+    const app = setupResetApp(undefined);
+
+    const response = await request(app)
+      .post('/auth/reset-password')
+      .send({ token: validToken, password: validPassword });
+
+    expect(response.status).toBe(404);
+  });
+
+  it('reset-password passes the token, password and client ip to the use case', async () => {
+    const mockExecute = vi.fn().mockResolvedValue(expectedSuccessResponse);
+    const app = setupResetApp({ execute: mockExecute });
+
+    const response = await request(app)
+      .post('/auth/reset-password')
+      .set('X-Forwarded-For', '200.48.100.5')
+      .send({ token: validToken, password: validPassword });
+
+    expect(response.status).toBe(200);
+    expect(mockExecute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        token: validToken,
+        password: validPassword,
         ip: expect.any(String),
       }),
     );
