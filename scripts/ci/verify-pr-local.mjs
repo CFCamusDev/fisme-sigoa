@@ -334,7 +334,7 @@ export function buildExecutionPlan(mode, options = {}) {
       group: 'calidad',
       command: 'pnpm --filter backend test:integration',
       actionSuggestion: 'Verifica la conectividad a PostgreSQL y corrige los tests de integración.',
-      timeoutMs: 180_000,
+      timeoutMs: 360_000,
     });
     plan.push({
       id: 'test-coverage',

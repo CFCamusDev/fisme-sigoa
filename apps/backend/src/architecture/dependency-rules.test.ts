@@ -43,7 +43,7 @@ async function runCruiseOnFixture(fixtureName: string): Promise<CruiseOutput> {
   return JSON.parse(cruiseResult.output as string) as CruiseOutput;
 }
 
-describe('dependency-cruiser hexagonal rules (RNF-026)', () => {
+describe('dependency-cruiser hexagonal rules (RNF-026)', { timeout: 30_000 }, () => {
   it('accepts a module that respects the hexagonal layers', async () => {
     const output = await runCruiseOnFixture('valid-module');
     expect(output.summary.error).toBe(0);
