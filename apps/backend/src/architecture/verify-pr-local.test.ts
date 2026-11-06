@@ -200,6 +200,25 @@ describe('verify-pr-local pure logic (T-002-22 / G1)', () => {
     expect(fullIds).toContain('docker-smoke');
   });
 
+  it('docker-smoke has no hardcoded Git Bash path and runs smoke-image.sh through script and args (T-004-20)', () => {
+    const fullPlan = buildExecutionPlan('full');
+    const dockerSmoke = fullPlan.find(
+      (c: { id: string; command?: string; script?: string; args?: string[] }) =>
+        c.id === 'docker-smoke',
+    );
+    expect(dockerSmoke).toBeDefined();
+    expect(dockerSmoke?.command).not.toContain('C:\\Program Files\\Git');
+    expect(dockerSmoke?.command).toBe('bash scripts/ci/smoke-image.sh');
+    expect(dockerSmoke?.script).toBe('scripts/ci/smoke-image.sh');
+    expect(dockerSmoke?.args).toEqual([]);
+  });
+
+  it('verify-pr-local.mjs has no hardcoded Git Bash path in source code (T-004-20)', () => {
+    const filePath = path.resolve(__dirname, '../../../../scripts/ci/verify-pr-local.mjs');
+    const source = fs.readFileSync(filePath, 'utf-8');
+    expect(source).not.toContain('C:\\Program Files\\Git\\bin\\bash.exe');
+  });
+
   it('reports failures with the command and the suggested action', () => {
     const plan = buildExecutionPlan('quick');
     const envParityCheck = plan.find((c: { id: string }) => c.id === 'env-parity');

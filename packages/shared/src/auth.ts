@@ -41,3 +41,34 @@ export type LoginResponse = z.infer<typeof loginResponseSchema>;
 export const refreshResponseSchema = loginResponseSchema;
 
 export type RefreshResponse = LoginResponse;
+
+export const PASSWORD_MIN_LENGTH = 10;
+export const PASSWORD_MAX_LENGTH = 128;
+export const ACTIVATION_TOKEN_MAX_LENGTH = 128;
+
+export const passwordSchema = z
+  .string()
+  .min(PASSWORD_MIN_LENGTH, 'La contraseña debe tener al menos 10 caracteres')
+  .max(PASSWORD_MAX_LENGTH, 'La contraseña no puede exceder 128 caracteres')
+  .regex(/\p{L}/u, 'La contraseña debe incluir al menos una letra')
+  .regex(/[0-9]/, 'La contraseña debe incluir al menos un número');
+
+export const activateAccountRequestSchema = z
+  .object({
+    token: z
+      .string()
+      .min(1, 'El token de activación es obligatorio')
+      .max(ACTIVATION_TOKEN_MAX_LENGTH, 'El token de activación no puede exceder 128 caracteres'),
+    password: passwordSchema,
+  })
+  .strict();
+
+export type ActivateAccountRequest = z.infer<typeof activateAccountRequestSchema>;
+
+export const activateAccountResponseSchema = z
+  .object({
+    status: z.literal('ACTIVE'),
+  })
+  .strict();
+
+export type ActivateAccountResponse = z.infer<typeof activateAccountResponseSchema>;

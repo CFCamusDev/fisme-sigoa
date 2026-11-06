@@ -3,9 +3,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
+  activateAccountRequestSchema,
+  activateAccountResponseSchema,
   apiErrorResponseSchema,
   changeUserStatusRequestSchema,
   createUserRequestSchema,
+  errorCodeSchema,
   listRolesResponseSchema,
   listUsersResponseSchema,
   loginRequestSchema,
@@ -15,6 +18,7 @@ import {
   updateUserRequestSchema,
   userDtoSchema,
 } from '@sigoa/shared';
+import { createAuthRouter } from '../src/modules/auth/infrastructure/http/auth.routes.js';
 import { createUsersRouter } from '../src/modules/users/infrastructure/http/users.routes.js';
 import type { UsersController } from '../src/modules/users/infrastructure/http/users.controller.js';
 import { createRolesRouter } from '../src/modules/authorization/infrastructure/http/roles.routes.js';
@@ -500,6 +504,133 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
           expect(
             matching,
             `OpenAPI has ${method.toUpperCase()} ${pathKey} which is not in rolesRouter`,
+          ).toBeDefined();
+        }
+      }
+    });
+  });
+
+  describe('OpenAPI Specification for Account Activation (HU-004, T-004-08, D6)', () => {
+    it('documents POST /auth/activate endpoint without security and with Auth tag', () => {
+      expect(spec.paths['/auth/activate']).toBeDefined();
+      expect(spec.paths['/auth/activate'].post).toBeDefined();
+
+      const op = spec.paths['/auth/activate'].post;
+      expect(op.tags).toContain('Auth');
+      expect(op.security).toEqual([]);
+      expect(op.operationId).toBe('activateAccount');
+      expect(op.description).toBeDefined();
+    });
+
+    it('documents ActivateAccountRequest and ActivateAccountResponse components', () => {
+      expect(spec.components.schemas.ActivateAccountRequest).toBeDefined();
+      expect(spec.components.schemas.ActivateAccountResponse).toBeDefined();
+
+      const req = spec.components.schemas.ActivateAccountRequest;
+      expect(req.properties.token).toBeDefined();
+      expect(req.properties.password).toBeDefined();
+      expect(req.required).toEqual(['token', 'password']);
+
+      const res = spec.components.schemas.ActivateAccountResponse;
+      expect(res.properties.status).toBeDefined();
+      expect(res.required).toEqual(['status']);
+    });
+
+    it('keeps POST /auth/activate request and response examples valid against the shared schemas', () => {
+      const op = spec.paths['/auth/activate'].post;
+      const reqExample = op.requestBody.content['application/json'].example;
+      expect(activateAccountRequestSchema.safeParse(reqExample).success).toBe(true);
+
+      const resExample = op.responses['200'].content['application/json'].example;
+      expect(activateAccountResponseSchema.safeParse(resExample).success).toBe(true);
+      expect(op.responses['200'].headers['Cache-Control']).toBeDefined();
+    });
+
+    it('documents 400 (validation & invalid token), 429, and 500 error responses with the shared error contract', () => {
+      const op = spec.paths['/auth/activate'].post;
+      expect(op.responses['400']).toBeDefined();
+      expect(op.responses['429']).toBeDefined();
+      expect(op.responses['500']).toBeDefined();
+
+      const err400Examples = op.responses['400'].content['application/json'].examples;
+      expect(err400Examples.validationError).toBeDefined();
+      expect(apiErrorResponseSchema.safeParse(err400Examples.validationError.value).success).toBe(
+        true,
+      );
+      expect(err400Examples.validationError.value.error.code).toBe('VALIDATION_ERROR');
+
+      expect(err400Examples.invalidTokenError).toBeDefined();
+      expect(apiErrorResponseSchema.safeParse(err400Examples.invalidTokenError.value).success).toBe(
+        true,
+      );
+      expect(err400Examples.invalidTokenError.value.error.code).toBe('INVALID_ACTIVATION_TOKEN');
+
+      const err429 = op.responses['429'].content['application/json'].example;
+      expect(apiErrorResponseSchema.safeParse(err429).success).toBe(true);
+      expect(err429.error.code).toBe('RATE_LIMITED');
+
+      const err500 = op.responses['500'].content['application/json'].example;
+      expect(apiErrorResponseSchema.safeParse(err500).success).toBe(true);
+      expect(err500.error.code).toBe('INTERNAL_ERROR');
+    });
+
+    it('keeps the ApiError code enum strictly identical to errorCodeSchema.options (drift guard)', () => {
+      const apiErrorCodeEnum =
+        spec.components.schemas.ApiError.properties.error.properties.code.enum;
+      const expectedCodes = errorCodeSchema.options;
+
+      expect(apiErrorCodeEnum).toEqual(expectedCodes);
+    });
+
+    it('documents every route of the auth router and nothing else (guard against drift, D6)', () => {
+      const dummyUseCase = {} as never;
+      const dummyAuth = () => {};
+
+      const router = createAuthRouter({
+        loginUseCase: dummyUseCase,
+        refreshSessionUseCase: dummyUseCase,
+        logoutUseCase: dummyUseCase,
+        activateAccountUseCase: dummyUseCase,
+        authenticate: dummyAuth as never,
+      });
+
+      const routerEndpoints: { method: string; path: string }[] = [];
+      for (const layer of router.stack) {
+        if (layer.route) {
+          const routePath = layer.route.path;
+          const methods = Object.keys(layer.route.methods);
+          for (const method of methods) {
+            const normalizedPath = ('/auth' + (routePath === '/' ? '' : routePath)).replace(
+              /:([a-zA-Z0-9_]+)/g,
+              '{$1}',
+            );
+            routerEndpoints.push({ method: method.toLowerCase(), path: normalizedPath });
+          }
+        }
+      }
+
+      // Debe haber exactamente 4 rutas: /auth/login, /auth/refresh, /auth/logout, /auth/activate
+      expect(routerEndpoints.length).toBe(4);
+
+      for (const endpoint of routerEndpoints) {
+        const specPath = spec.paths[endpoint.path];
+        expect(specPath, `Path ${endpoint.path} must exist in openapi.json`).toBeDefined();
+        expect(
+          specPath[endpoint.method],
+          `Method ${endpoint.method.toUpperCase()} ${endpoint.path} must exist in openapi.json`,
+        ).toBeDefined();
+      }
+
+      const authPathsInSpec = Object.keys(spec.paths).filter((p) => p.startsWith('/auth'));
+      for (const pathKey of authPathsInSpec) {
+        const specPath = spec.paths[pathKey];
+        for (const method of Object.keys(specPath)) {
+          const matching = routerEndpoints.find(
+            (ep) => ep.path === pathKey && ep.method === method.toLowerCase(),
+          );
+          expect(
+            matching,
+            `OpenAPI has ${method.toUpperCase()} ${pathKey} which is not in authRouter`,
           ).toBeDefined();
         }
       }

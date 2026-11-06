@@ -482,6 +482,131 @@
         }
       }
     },
+    "/auth/activate": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Activar cuenta y definir contraseña inicial",
+        "description": "Activa la cuenta institucional de un usuario en estado PENDING_ACTIVATION utilizando el token criptográfico emitido y define su contraseña personal cumpliendo con las políticas de seguridad institucionales (mínimo 10 caracteres, mayúsculas, minúsculas, números y caracteres especiales). El enlace es de un solo uso y cuenta con 48 horas de vigencia.",
+        "operationId": "activateAccount",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivateAccountRequest"
+              },
+              "example": {
+                "token": "d7a4f9b2c3e1456789abcdef0123456789abcdef0123456789abcdef01234567",
+                "password": "Password123*"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cuenta activada exitosamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva estricta anti-almacenamiento en caché para respuestas de autenticación."
+              },
+              "Pragma": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-cache"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivateAccountResponse"
+                },
+                "example": {
+                  "status": "ACTIVE"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida. Puede deberse a un cuerpo mal formado, incumplimiento de la política de contraseñas, o un token de activación inválido, expirado o ya consumido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "validationError": {
+                    "summary": "Error de validación o contraseña débil",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "La solicitud contiene errores de validación.",
+                        "details": [
+                          {
+                            "path": "body.password",
+                            "message": "La contraseña debe tener al menos 10 caracteres y contener mayúsculas, minúsculas, números y un carácter especial."
+                          }
+                        ],
+                        "requestId": "req_abc_123"
+                      }
+                    }
+                  },
+                  "invalidTokenError": {
+                    "summary": "Enlace inválido, expirado, usado o cuenta no pendiente",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_ACTIVATION_TOKEN",
+                        "message": "El enlace no es válido o venció.",
+                        "requestId": "req_abc_123"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Límite de peticiones públicas excedido para la IP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "RATE_LIMITED",
+                    "message": "Has excedido el límite de solicitudes. Por favor, intenta nuevamente más tarde.",
+                    "requestId": "req_abc_123"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error inesperado no controlado en el servidor.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "INTERNAL_ERROR",
+                    "message": "Ha ocurrido un error inesperado en el servidor.",
+                    "requestId": "req_abc_123"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/users": {
       "get": {
         "tags": ["Users"],
@@ -1300,6 +1425,35 @@
   },
   "components": {
     "schemas": {
+      "ActivateAccountRequest": {
+        "type": "object",
+        "required": ["token", "password"],
+        "properties": {
+          "token": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "description": "Token criptográfico opaco recibido en el enlace de activación."
+          },
+          "password": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 128,
+            "description": "Contraseña personal a definir (mínimo 10 caracteres, mayúsculas, minúsculas, números y caracteres especiales)."
+          }
+        }
+      },
+      "ActivateAccountResponse": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["ACTIVE"],
+            "description": "Estado activo resultante tras la activación exitosa de la cuenta."
+          }
+        }
+      },
       "LoginRequest": {
         "type": "object",
         "required": ["email", "password"],
@@ -1401,7 +1555,8 @@
                   "UNAUTHORIZED",
                   "ACCOUNT_LOCKED",
                   "ACCOUNT_INACTIVE",
-                  "ACCOUNT_PENDING_ACTIVATION"
+                  "ACCOUNT_PENDING_ACTIVATION",
+                  "INVALID_ACTIVATION_TOKEN"
                 ],
                 "description": "Código machine-readable del error estándar."
               },

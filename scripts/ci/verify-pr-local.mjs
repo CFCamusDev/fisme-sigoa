@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolveBashPath } from './resolve-bash-path.mjs';
 
 /**
  * Valida el nombre de la rama según convenciones institucionales (AGENTS §8.1).
@@ -346,12 +347,6 @@ export function buildExecutionPlan(mode, options = {}) {
 
   // 4. Pasos adicionales exclusivos para full
   if (mode === 'full') {
-    const gitBashPath = 'C:\\Program Files\\Git\\bin\\bash.exe';
-    const bashBinary =
-      process.platform === 'win32' && fs.existsSync(gitBashPath)
-        ? `"${gitBashPath}"`
-        : 'bash';
-
     plan.push({
       id: 'pdf-stability',
       name: 'Estabilidad de PDF con Chromium real (3 pasadas)',
@@ -373,7 +368,9 @@ export function buildExecutionPlan(mode, options = {}) {
       id: 'docker-smoke',
       name: 'Pruebas de humo de imágenes Docker y tipografía',
       group: 'imagenes',
-      command: `${bashBinary} scripts/ci/smoke-image.sh`,
+      command: 'bash scripts/ci/smoke-image.sh',
+      script: 'scripts/ci/smoke-image.sh',
+      args: [],
       actionSuggestion: 'Asegúrate de que el demonio de Docker esté corriendo y las imágenes compilen.',
       timeoutMs: 600_000,
     });
@@ -848,7 +845,7 @@ async function runCli() {
   const cacheDir = path.resolve('node_modules', '.cache', 'sigoa-verify');
   const reportPath = path.join(cacheDir, 'last-report.json');
 
-  const { execSync } = await import('node:child_process');
+  const { execSync, execFileSync } = await import('node:child_process');
 
   function getGit(cmd) {
     try {
@@ -1014,6 +1011,36 @@ async function runCli() {
           status: 'ok',
           durationMs,
           reason: syncRes.warning,
+        });
+      }
+      continue;
+    }
+
+    // Ejecución de script de shell (.sh) mediante bash resuelto
+    if (check.script) {
+      try {
+        const bashBinary = resolveBashPath();
+        execFileSync(bashBinary, [check.script, ...(check.args || [])], {
+          stdio: ['pipe', 'pipe', 'pipe'],
+          timeout: check.timeoutMs || 120_000,
+        });
+        const durationMs = Date.now() - checkStart;
+        console.log('✔');
+        executedChecks.push({
+          ...check,
+          status: 'ok',
+          durationMs,
+          finishedAt: new Date().toISOString(),
+        });
+      } catch (err) {
+        const durationMs = Date.now() - checkStart;
+        console.log('✖');
+        executedChecks.push({
+          ...check,
+          status: 'failed',
+          durationMs,
+          error: (err.stderr || err.message || '').toString().slice(0, 500),
+          finishedAt: new Date().toISOString(),
         });
       }
       continue;

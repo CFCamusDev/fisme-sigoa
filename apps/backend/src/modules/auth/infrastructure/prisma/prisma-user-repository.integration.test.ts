@@ -5,6 +5,7 @@ import { PrismaUserRepository } from './prisma-user-repository.js';
 import { User } from '../../domain/entities/user.js';
 import { LoginPolicy } from '../../domain/value-objects/login-policy.js';
 import { NotFoundError } from '../../../../shared/errors/app-error.js';
+import { UserNotPendingActivationError } from '../../domain/errors/user-not-pending-activation-error.js';
 
 describe('PrismaUserRepository Integration (PostgreSQL real)', () => {
   const { getPrisma } = useTestDatabase();
@@ -188,4 +189,88 @@ describe('PrismaUserRepository Integration (PostgreSQL real)', () => {
     const inDb = await prisma.user.findUniqueOrThrow({ where: { id: created.id } });
     expect(inDb.failedLoginAttempts).toBe(2);
   }, 30_000);
+
+  it('throws when findByIdForUpdate is called outside an active transaction', async () => {
+    await expect(userRepo.findByIdForUpdate('any-id-outside-tx')).rejects.toThrow(
+      /transacción activa/i,
+    );
+  });
+
+  it('returns null when findByIdForUpdate does not find the user inside a transaction', async () => {
+    await uow.run(async () => {
+      const found = await userRepo.findByIdForUpdate('non-existent-user-id-999');
+      expect(found).toBeNull();
+    });
+  });
+
+  it('finds and locks a user by id within a transaction using findByIdForUpdate', async () => {
+    const created = await prisma.user.create({
+      data: {
+        names: 'LockById',
+        firstSurname: 'Tester',
+        email: 'lockbyid@untrm.edu.pe',
+        status: 'PENDING_ACTIVATION',
+      },
+    });
+
+    await uow.run(async () => {
+      const found = await userRepo.findByIdForUpdate(created.id);
+      expect(found).not.toBeNull();
+      expect(found?.id).toBe(created.id);
+      expect(found?.status).toBe('PENDING_ACTIVATION');
+    });
+  });
+
+  it('saveActivation activates only a pending user and updates passwordHash and status', async () => {
+    const created = await prisma.user.create({
+      data: {
+        names: 'PendingUser',
+        firstSurname: 'Activation',
+        email: 'save-activation-pending@untrm.edu.pe',
+        status: 'PENDING_ACTIVATION',
+        passwordHash: null,
+      },
+    });
+
+    const user = await userRepo.findById(created.id);
+    expect(user).not.toBeNull();
+
+    const newHash = '$argon2id$v=19$m=65536,t=3,p=4$realTestHash123';
+    const now = new Date('2026-11-05T17:00:00.000Z');
+    user!.activate(newHash, now);
+
+    await userRepo.saveActivation(user!);
+
+    const inDb = await prisma.user.findUniqueOrThrow({ where: { id: created.id } });
+    expect(inDb.status).toBe('ACTIVE');
+    expect(inDb.passwordHash).toBe(newHash);
+    expect(inDb.updatedAt).toEqual(now);
+  });
+
+  it('saveActivation fails when the user is no longer pending (already active or inactive)', async () => {
+    const created = await prisma.user.create({
+      data: {
+        names: 'AlreadyActive',
+        firstSurname: 'User',
+        email: 'save-activation-already-active@untrm.edu.pe',
+        status: 'ACTIVE',
+        passwordHash: 'existing-hash',
+      },
+    });
+
+    // Simulamos un objeto User con status ACTIVE intentando persistirse vía saveActivation
+    const activeUser = User.restore({
+      id: created.id,
+      names: created.names,
+      firstSurname: created.firstSurname,
+      email: created.email,
+      status: 'ACTIVE',
+      failedLoginAttempts: 0,
+      passwordHash: 'new-hash-attempt',
+    });
+
+    await expect(userRepo.saveActivation(activeUser)).rejects.toBeInstanceOf(
+      UserNotPendingActivationError,
+    );
+  });
 });

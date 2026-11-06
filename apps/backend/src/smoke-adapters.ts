@@ -7,8 +7,6 @@ import { createFileStorage } from './shared/storage/create-file-storage.js';
 import { computeSha256 } from './shared/storage/file-hash.js';
 import { PuppeteerPdfGenerator } from './shared/pdf/puppeteer-pdf-generator.js';
 
-loadEnvFileIfPresent();
-
 export interface SmokeAdaptersOptions {
   email?: string;
   storage?: boolean;
@@ -119,6 +117,7 @@ const isDirectExecution =
     process.argv[1].endsWith('smoke-adapters.js'));
 
 if (isDirectExecution) {
+  loadEnvFileIfPresent();
   const options = parseArgs(process.argv.slice(2));
   runSmokeAdapters(options).catch((error: unknown) => {
     console.error('Error durante la prueba de humo de adaptadores:', (error as Error).message);

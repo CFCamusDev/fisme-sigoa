@@ -3,6 +3,7 @@ import { parseArgs, runSmokeAdapters } from './smoke-adapters.js';
 
 describe('smoke-adapters script (T-076-05, T-076-02)', () => {
   beforeEach(() => {
+    vi.stubEnv('DATABASE_URL', 'postgresql://user:secret@localhost:5432/test_db');
     vi.stubEnv('EMAIL_PROVIDER', 'memory');
     vi.stubEnv('FILE_STORAGE_PROVIDER', 'memory');
   });
@@ -16,6 +17,22 @@ describe('smoke-adapters script (T-076-05, T-076-02)', () => {
     expect(opts.email).toBe('test@unexample.edu.pe');
     expect(opts.storage).toBe(true);
     expect(opts.pdf).toBe(true);
+  });
+
+  it('does not load the env file when imported', async () => {
+    vi.resetModules();
+    let loadEnvFileCalled = false;
+    const originalLoadEnvFile = process.loadEnvFile;
+    process.loadEnvFile = (() => {
+      loadEnvFileCalled = true;
+    }) as typeof process.loadEnvFile;
+
+    try {
+      await import('./smoke-adapters.js');
+      expect(loadEnvFileCalled).toBe(false);
+    } finally {
+      process.loadEnvFile = originalLoadEnvFile;
+    }
   });
 
   it('runs without action when no arguments provided', async () => {

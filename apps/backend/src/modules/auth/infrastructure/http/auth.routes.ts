@@ -1,18 +1,21 @@
 import { Router, type RequestHandler } from 'express';
-import { loginRequestSchema } from '@sigoa/shared';
+import { loginRequestSchema, activateAccountRequestSchema } from '@sigoa/shared';
 import { validateRequest } from '../../../../shared/middleware/validate-request.js';
 import { AuthController } from './auth.controller.js';
 import type { RefreshCookieSettings } from './refresh-cookie.js';
 import type { LoginUseCase } from '../../application/login.js';
 import type { RefreshSessionUseCase } from '../../application/refresh-session.js';
 import type { LogoutUseCase } from '../../application/logout.js';
+import type { ActivateAccountUseCase } from '../../application/activate-account.js';
 
 export interface AuthRouterDependencies {
   loginUseCase: LoginUseCase;
   refreshSessionUseCase?: RefreshSessionUseCase;
   logoutUseCase?: LogoutUseCase;
+  activateAccountUseCase?: ActivateAccountUseCase;
   rateLimiter?: RequestHandler;
   sessionRateLimiter?: RequestHandler;
+  publicRateLimiter?: RequestHandler;
   authenticate?: RequestHandler;
   cookieSettings?: RefreshCookieSettings;
   requireAllowedOrigin?: RequestHandler;
@@ -67,6 +70,18 @@ export function createAuthRouter(deps?: AuthRouterDependencies): Router {
     }
     logoutMiddlewares.push(controller.logout);
     router.post('/logout', ...logoutMiddlewares);
+  }
+
+  // POST /activate (HU-004, T-004-07, RF-004, RS-002, RNF-007)
+  if (deps.activateAccountUseCase) {
+    const activateMiddlewares: RequestHandler[] = [];
+    const activateLimiter = deps.publicRateLimiter ?? deps.rateLimiter;
+    if (activateLimiter) {
+      activateMiddlewares.push(activateLimiter);
+    }
+    activateMiddlewares.push(validateRequest({ body: activateAccountRequestSchema }));
+    activateMiddlewares.push(controller.activateAccount);
+    router.post('/activate', ...activateMiddlewares);
   }
 
   return router;
