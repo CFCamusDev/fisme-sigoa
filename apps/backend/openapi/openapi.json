@@ -1556,7 +1556,8 @@
                   "ACCOUNT_LOCKED",
                   "ACCOUNT_INACTIVE",
                   "ACCOUNT_PENDING_ACTIVATION",
-                  "INVALID_ACTIVATION_TOKEN"
+                  "INVALID_ACTIVATION_TOKEN",
+                  "INVALID_PASSWORD_RESET_TOKEN"
                 ],
                 "description": "Código machine-readable del error estándar."
               },

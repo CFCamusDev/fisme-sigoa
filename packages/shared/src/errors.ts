@@ -12,6 +12,7 @@ export const errorCodeSchema = z.enum([
   'ACCOUNT_INACTIVE',
   'ACCOUNT_PENDING_ACTIVATION',
   'INVALID_ACTIVATION_TOKEN',
+  'INVALID_PASSWORD_RESET_TOKEN',
 ]);
 
 export type ErrorCode = z.infer<typeof errorCodeSchema>;
