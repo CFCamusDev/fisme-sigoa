@@ -354,4 +354,14 @@ describe('LoginForm component', () => {
 
     await waitFor(() => expect(formSubmitted).toBe(true));
   });
+
+  it('links to the password recovery page (HU-005, T-005-10, D4)', async () => {
+    renderWithProviders(<LoginForm />);
+
+    const forgotPasswordLink = await screen.findByRole('link', {
+      name: /¿olvidaste tu contraseña\?/i,
+    });
+    expect(forgotPasswordLink).toBeInTheDocument();
+    expect(forgotPasswordLink).toHaveAttribute('href', '/recuperar-contrasena');
+  });
 });

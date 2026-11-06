@@ -13,6 +13,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
+import { Route as AuthRecuperarContrasenaRouteImport } from './routes/_auth/recuperar-contrasena'
 import { Route as EncuestaTokenRouteImport } from './routes/encuesta/$token'
 import { Route as AppUsuariosIndexRouteImport } from './routes/_app/usuarios/index'
 import { Route as AppUsuariosNuevoRouteImport } from './routes/_app/usuarios/nuevo'
@@ -35,6 +36,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
 const AuthLoginRoute = AuthLoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthRecuperarContrasenaRoute = AuthRecuperarContrasenaRouteImport.update({
+  id: '/recuperar-contrasena',
+  path: '/recuperar-contrasena',
   getParentRoute: () => AuthRoute,
 } as any)
 const EncuestaTokenRoute = EncuestaTokenRouteImport.update({
@@ -66,6 +72,7 @@ const AppUsuariosUserIdEditarRoute = AppUsuariosUserIdEditarRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof AuthLoginRoute
+  '/recuperar-contrasena': typeof AuthRecuperarContrasenaRoute
   '/encuesta/$token': typeof EncuestaTokenRoute
   '/usuarios/nuevo': typeof AppUsuariosNuevoRoute
   '/activar/$token': typeof AuthActivarTokenRoute
@@ -75,6 +82,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
   '/login': typeof AuthLoginRoute
+  '/recuperar-contrasena': typeof AuthRecuperarContrasenaRoute
   '/encuesta/$token': typeof EncuestaTokenRoute
   '/usuarios/nuevo': typeof AppUsuariosNuevoRoute
   '/activar/$token': typeof AuthActivarTokenRoute
@@ -86,6 +94,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/_auth': typeof AuthRouteWithChildren
   '/_auth/login': typeof AuthLoginRoute
+  '/_auth/recuperar-contrasena': typeof AuthRecuperarContrasenaRoute
   '/encuesta/$token': typeof EncuestaTokenRoute
   '/_app/': typeof AppIndexRoute
   '/_app/usuarios/nuevo': typeof AppUsuariosNuevoRoute
@@ -98,6 +107,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/recuperar-contrasena'
     | '/encuesta/$token'
     | '/usuarios/nuevo'
     | '/activar/$token'
@@ -107,6 +117,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/recuperar-contrasena'
     | '/encuesta/$token'
     | '/usuarios/nuevo'
     | '/activar/$token'
@@ -117,6 +128,7 @@ export interface FileRouteTypes {
     | '/_app'
     | '/_auth'
     | '/_auth/login'
+    | '/_auth/recuperar-contrasena'
     | '/encuesta/$token'
     | '/_app/'
     | '/_app/usuarios/nuevo'
@@ -159,6 +171,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof AuthLoginRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/recuperar-contrasena': {
+      id: '/_auth/recuperar-contrasena'
+      path: '/recuperar-contrasena'
+      fullPath: '/recuperar-contrasena'
+      preLoaderRoute: typeof AuthRecuperarContrasenaRouteImport
       parentRoute: typeof AuthRoute
     }
     '/encuesta/$token': {
@@ -217,11 +236,13 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 interface AuthRouteChildren {
   AuthLoginRoute: typeof AuthLoginRoute
+  AuthRecuperarContrasenaRoute: typeof AuthRecuperarContrasenaRoute
   AuthActivarTokenRoute: typeof AuthActivarTokenRoute
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
   AuthLoginRoute: AuthLoginRoute,
+  AuthRecuperarContrasenaRoute: AuthRecuperarContrasenaRoute,
   AuthActivarTokenRoute: AuthActivarTokenRoute,
 }
 

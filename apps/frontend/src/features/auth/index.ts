@@ -25,3 +25,6 @@ export { requestPasswordRecovery } from './api/request-password-recovery';
 export { resetPassword } from './api/reset-password';
 export { useRequestPasswordRecovery } from './hooks/use-request-password-recovery';
 export { useResetPassword } from './hooks/use-reset-password';
+export { ForgotPasswordForm } from './components/forgot-password-form';
+export { ForgotPasswordPage } from './components/forgot-password-page';
+export { getPasswordRecoveryErrorMessage } from './lib/get-password-recovery-error-message';

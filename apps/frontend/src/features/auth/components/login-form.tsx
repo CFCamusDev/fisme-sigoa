@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate } from '@tanstack/react-router';
+import { useNavigate, Link } from '@tanstack/react-router';
 import { AlertCircle } from 'lucide-react';
 import { loginRequestSchema, type LoginRequest } from '@sigoa/shared';
 import { Button } from '@/components/ui/button';
@@ -109,6 +109,15 @@ export function LoginForm() {
             {errors.password.message}
           </p>
         )}
+      </div>
+
+      <div className="flex items-center justify-end">
+        <Link
+          to="/recuperar-contrasena"
+          className="text-body-sm font-medium text-primary hover:underline"
+        >
+          ¿Olvidaste tu contraseña?
+        </Link>
       </div>
 
       <Button type="submit" className="w-full" disabled={isPending}>
