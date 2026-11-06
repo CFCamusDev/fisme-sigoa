@@ -149,4 +149,93 @@ describe('PrismaActivationTokenRepository Integration (PostgreSQL real, F5, AGEN
     const finalState = await tokenRepo.findByTokenHash(tokenHash);
     expect(finalState?.usedAt).not.toBeNull();
   }, 30_000);
+
+  it('rejects a duplicated token hash due to the unique constraint', async () => {
+    const user1 = await createTestUser('dup-token-1@untrm.edu.pe');
+    const user2 = await createTestUser('dup-token-2@untrm.edu.pe');
+    const duplicateHash = 'duplicate-token-hash-unique-check-12345';
+
+    const token1 = ActivationToken.create({
+      userId: user1.id,
+      tokenHash: duplicateHash,
+    });
+    await tokenRepo.add(token1);
+
+    const token2 = ActivationToken.create({
+      userId: user2.id,
+      tokenHash: duplicateHash,
+    });
+
+    await expect(tokenRepo.add(token2)).rejects.toThrow();
+  });
+
+  it('persists consumption and revocation through save', async () => {
+    const user = await createTestUser('persist-save@untrm.edu.pe');
+    const tokenHash = 'persist-save-token-hash-12345';
+    const token = ActivationToken.create({
+      userId: user.id,
+      tokenHash,
+    });
+    await tokenRepo.add(token);
+
+    const consumedAt = new Date('2026-11-05T14:30:00.000Z');
+    token.consume(consumedAt);
+    await tokenRepo.save(token);
+
+    const reloaded = await tokenRepo.findByTokenHash(tokenHash);
+    expect(reloaded).not.toBeNull();
+    expect(reloaded?.usedAt).toEqual(consumedAt);
+    expect(reloaded?.revokedAt).toBeNull();
+  });
+
+  it('save fails when the token is no longer pending (used or revoked)', async () => {
+    const user = await createTestUser('save-non-pending@untrm.edu.pe');
+    const tokenHash = 'save-non-pending-token-hash-12345';
+    const token = ActivationToken.create({
+      userId: user.id,
+      tokenHash,
+    });
+    await tokenRepo.add(token);
+
+    // Primer guardado: pasa de pendiente a consumido
+    token.consume(new Date('2026-11-05T15:00:00.000Z'));
+    await tokenRepo.save(token);
+
+    // Segundo guardado concurrente o posterior: el registro ya no tiene usedAt = null
+    await expect(tokenRepo.save(token)).rejects.toBeInstanceOf(InvalidActivationTokenError);
+  });
+
+  it('finds an expired token by hash without hiding it', async () => {
+    const user = await createTestUser('expired-token@untrm.edu.pe');
+    const tokenHash = 'expired-token-hash-12345';
+    const pastExpiresAt = new Date(Date.now() - 3600_000);
+
+    const expiredToken = ActivationToken.restore({
+      id: 'expired-token-uuid-1',
+      userId: user.id,
+      tokenHash,
+      expiresAt: pastExpiresAt,
+      usedAt: null,
+      revokedAt: null,
+      createdAt: new Date(Date.now() - 7200_000),
+      createdBy: null,
+    });
+    await tokenRepo.add(expiredToken);
+
+    const found = await tokenRepo.findByTokenHash(tokenHash);
+    expect(found).not.toBeNull();
+    expect(found?.isUsable(new Date())).toBe(false);
+    expect(found?.expiresAt).toEqual(pastExpiresAt);
+  });
+
+  it('refuses to delete a user that has activation tokens (foreign key RESTRICT)', async () => {
+    const user = await createTestUser('fk-restrict-user@untrm.edu.pe');
+    const token = ActivationToken.create({
+      userId: user.id,
+      tokenHash: 'fk-restrict-token-hash-12345',
+    });
+    await tokenRepo.add(token);
+
+    await expect(prisma.user.delete({ where: { id: user.id } })).rejects.toThrow();
+  });
 });
