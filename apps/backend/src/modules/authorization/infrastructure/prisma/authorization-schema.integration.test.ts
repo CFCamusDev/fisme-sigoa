@@ -128,7 +128,7 @@ describe('Authorization Schema Integration (PostgreSQL real, F1)', () => {
       const role = await prisma.role.create({
         data: {
           code,
-          name: 'Rol con estado por defecto',
+          name: `Rol con estado por defecto ${Date.now()}`,
           isPredefined: false,
         },
       });
@@ -161,7 +161,7 @@ describe('Authorization Schema Integration (PostgreSQL real, F1)', () => {
       const role = await prisma.role.create({
         data: {
           code: `ROLE_DEACT_${Date.now()}`,
-          name: 'Rol para desactivar',
+          name: `Rol para desactivar ${Date.now()}`,
           isPredefined: false,
         },
       });

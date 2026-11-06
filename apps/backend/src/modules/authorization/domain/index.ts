@@ -2,5 +2,8 @@ export * from './catalog/permission-catalog.js';
 export * from './catalog/default-role-matrix.js';
 export * from './catalog/predefined-roles.js';
 export * from './policies/effective-permissions.js';
+export * from './policies/derive-role-code.js';
+export * from './entities/role.js';
+export * from './errors/index.js';
 export * from './ports/grant-reader.js';
 export * from './ports/role-reader.js';

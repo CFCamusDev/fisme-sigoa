@@ -26,7 +26,7 @@ describe('Authorization Persistence Integration (PostgreSQL real, F3)', () => {
     const role1 = await prisma.role.create({
       data: {
         code: `R1_${Date.now()}_${Math.random()}`,
-        name: 'Rol 1',
+        name: `Rol 1 ${Date.now()} ${Math.random()}`,
         isPredefined: false,
       },
     });
@@ -34,7 +34,7 @@ describe('Authorization Persistence Integration (PostgreSQL real, F3)', () => {
     const role2 = await prisma.role.create({
       data: {
         code: `R2_${Date.now()}_${Math.random()}`,
-        name: 'Rol 2',
+        name: `Rol 2 ${Date.now()} ${Math.random()}`,
         isPredefined: false,
       },
     });
