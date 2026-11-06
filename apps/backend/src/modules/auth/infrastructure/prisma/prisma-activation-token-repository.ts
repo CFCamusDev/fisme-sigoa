@@ -1,5 +1,6 @@
 import type { DbProvider } from '../../../../shared/prisma/prisma-unit-of-work.js';
 import { ActivationToken } from '../../domain/entities/activation-token.js';
+import { InvalidActivationTokenError } from '../../domain/errors/invalid-activation-token-error.js';
 import type { ActivationTokenRepository } from '../../domain/ports/activation-token-repository.js';
 
 interface PrismaActivationTokenRow {
@@ -87,13 +88,21 @@ export class PrismaActivationTokenRepository implements ActivationTokenRepositor
   async save(token: ActivationToken): Promise<void> {
     const client = this.dbProvider.get();
 
-    await client.activationToken.update({
-      where: { id: token.id },
+    const result = await client.activationToken.updateMany({
+      where: {
+        id: token.id,
+        usedAt: null,
+        revokedAt: null,
+      },
       data: {
         usedAt: token.usedAt,
         revokedAt: token.revokedAt,
       },
     });
+
+    if (result.count === 0) {
+      throw new InvalidActivationTokenError();
+    }
   }
 
   async revokePendingByUserId(userId: string, revokedAt: Date): Promise<void> {
