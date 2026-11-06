@@ -27,6 +27,7 @@
     "build": "pnpm build:shared && pnpm db:generate && pnpm -r --if-present build",
     "depcruise": "pnpm --filter backend --if-present depcruise",
     "check:env-parity": "node scripts/ci/check-env-parity.mjs",
+    "check:windows-paths": "node scripts/ci/check-windows-paths.mjs",
     "verify:pr": "node scripts/ci/verify-pr-local.mjs --mode standard",
     "verify:pr:quick": "node scripts/ci/verify-pr-local.mjs --mode quick",
     "verify:pr:full": "node scripts/ci/verify-pr-local.mjs --mode full",

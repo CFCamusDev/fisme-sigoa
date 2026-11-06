@@ -53,12 +53,14 @@ export const passwordSchema = z
   .regex(/\p{L}/u, 'La contraseña debe incluir al menos una letra')
   .regex(/[0-9]/, 'La contraseña debe incluir al menos un número');
 
+export const accountTokenSchema = z
+  .string()
+  .min(1, 'El token de activación es obligatorio')
+  .max(ACTIVATION_TOKEN_MAX_LENGTH, 'El token de activación no puede exceder 128 caracteres');
+
 export const activateAccountRequestSchema = z
   .object({
-    token: z
-      .string()
-      .min(1, 'El token de activación es obligatorio')
-      .max(ACTIVATION_TOKEN_MAX_LENGTH, 'El token de activación no puede exceder 128 caracteres'),
+    token: accountTokenSchema,
     password: passwordSchema,
   })
   .strict();
@@ -72,3 +74,42 @@ export const activateAccountResponseSchema = z
   .strict();
 
 export type ActivateAccountResponse = z.infer<typeof activateAccountResponseSchema>;
+
+export const forgotPasswordRequestSchema = z
+  .object({
+    email: z
+      .string()
+      .trim()
+      .min(1, 'El correo electrónico es obligatorio')
+      .max(254, 'El correo electrónico no puede exceder 254 caracteres')
+      .email('El formato del correo electrónico es inválido')
+      .transform((val) => val.toLowerCase()),
+  })
+  .strict();
+
+export type ForgotPasswordRequest = z.infer<typeof forgotPasswordRequestSchema>;
+
+export const forgotPasswordResponseSchema = z
+  .object({
+    status: z.literal('RECEIVED'),
+  })
+  .strict();
+
+export type ForgotPasswordResponse = z.infer<typeof forgotPasswordResponseSchema>;
+
+export const resetPasswordRequestSchema = z
+  .object({
+    token: accountTokenSchema,
+    password: passwordSchema,
+  })
+  .strict();
+
+export type ResetPasswordRequest = z.infer<typeof resetPasswordRequestSchema>;
+
+export const resetPasswordResponseSchema = z
+  .object({
+    status: z.literal('PASSWORD_RESET'),
+  })
+  .strict();
+
+export type ResetPasswordResponse = z.infer<typeof resetPasswordResponseSchema>;

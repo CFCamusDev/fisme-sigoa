@@ -6,3 +6,4 @@ export * from './access-token-verifier.js';
 export * from './refresh-token-generator.js';
 export * from './activation-token-generator.js';
 export * from './activation-token-repository.js';
+export * from './password-reset-email-sender.js';

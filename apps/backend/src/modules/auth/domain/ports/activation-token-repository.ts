@@ -12,4 +12,9 @@ export interface ActivationTokenRepository {
    */
   save(token: ActivationToken): Promise<void>;
   revokePendingByUserId(userId: string, revokedAt: Date): Promise<void>;
+  /**
+   * Obtiene la fecha de creación (`createdAt`) del último token emitido para el usuario,
+   * o `null` si el usuario no tiene tokens registrados (RS-002, RNF-005).
+   */
+  findLatestCreatedAtByUserId(userId: string): Promise<Date | null>;
 }

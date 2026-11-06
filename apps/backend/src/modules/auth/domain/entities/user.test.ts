@@ -6,6 +6,7 @@ import {
   AccountInactiveError,
   AccountPendingActivationError,
   UserNotPendingActivationError,
+  UserNotActiveError,
 } from '../errors/index.js';
 
 describe('User Entity', () => {
@@ -173,5 +174,57 @@ describe('User Entity', () => {
 
     expect(user.failedLoginAttempts).toBe(3);
     expect(user.lockedUntil).toEqual(lockUntil);
+  });
+
+  describe('resetPassword (T-005-01, T-005-12, RF-005, CA2, D5)', () => {
+    it('resetPassword changes the hash of an active user', () => {
+      const user = createActiveUser({
+        status: 'ACTIVE',
+        passwordHash: 'old-hash',
+      });
+      const now = new Date('2026-11-06T10:30:00.000Z');
+      const newHash = '$argon2id$v=19$m=65536,t=3,p=4$newPasswordHash';
+
+      user.resetPassword(newHash, now);
+
+      expect(user.passwordHash).toBe(newHash);
+      expect(user.status).toBe('ACTIVE');
+      expect(user.updatedAt).toEqual(now);
+    });
+
+    it('resetPassword rejects pending and inactive users and keeps the hash', () => {
+      const pendingUser = createActiveUser({
+        status: 'PENDING_ACTIVATION',
+        passwordHash: 'initial-hash',
+      });
+      const inactiveUser = createActiveUser({
+        status: 'INACTIVE',
+        passwordHash: 'initial-hash',
+      });
+      const newHash = 'should-not-be-applied';
+
+      expect(() => pendingUser.resetPassword(newHash)).toThrow(UserNotActiveError);
+      expect(pendingUser.passwordHash).toBe('initial-hash');
+
+      expect(() => inactiveUser.resetPassword(newHash)).toThrow(UserNotActiveError);
+      expect(inactiveUser.passwordHash).toBe('initial-hash');
+    });
+
+    it('resetPassword keeps failed attempts and the lock', () => {
+      const lockUntil = new Date('2026-11-06T10:45:00.000Z');
+      const user = createActiveUser({
+        status: 'ACTIVE',
+        passwordHash: 'old-hash',
+        failedLoginAttempts: 4,
+        lockedUntil: lockUntil,
+      });
+      const now = new Date('2026-11-06T10:30:00.000Z');
+
+      user.resetPassword('brand-new-hash', now);
+
+      expect(user.passwordHash).toBe('brand-new-hash');
+      expect(user.failedLoginAttempts).toBe(4);
+      expect(user.lockedUntil).toEqual(lockUntil);
+    });
   });
 });

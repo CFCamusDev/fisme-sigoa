@@ -1,27 +1,12 @@
 import type { LogoUrlResolver } from '../../../../shared/branding/logo-url-resolver.js';
 import type { EmailSender } from '../../../../shared/email/email-sender.js';
+import { formatEmailDateTime } from '../../../../shared/email/format-email-date.js';
 import type {
   ActivationEmailSender,
   SendActivationEmailParams,
 } from '../../domain/ports/activation-email-sender.js';
 
-export function formatActivationExpiry(date: Date): string {
-  const formatter = new Intl.DateTimeFormat('es-PE', {
-    timeZone: 'America/Lima',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
-  const parts = formatter.formatToParts(date);
-  const partMap: Record<string, string> = {};
-  for (const p of parts) {
-    partMap[p.type] = p.value;
-  }
-  return `${partMap['day']}/${partMap['month']}/${partMap['year']} ${partMap['hour']}:${partMap['minute']}`;
-}
+export const formatActivationExpiry = formatEmailDateTime;
 
 export interface EmailActivationSenderDependencies {
   emailSender: EmailSender;

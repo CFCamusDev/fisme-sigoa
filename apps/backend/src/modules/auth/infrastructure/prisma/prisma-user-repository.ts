@@ -3,6 +3,7 @@ import { User, type UserStatus } from '../../domain/entities/user.js';
 import type { UserRepository } from '../../domain/ports/user-repository.js';
 import { NotFoundError } from '../../../../shared/errors/app-error.js';
 import { UserNotPendingActivationError } from '../../domain/errors/user-not-pending-activation-error.js';
+import { UserNotActiveError } from '../../domain/errors/user-not-active-error.js';
 
 interface PrismaUserRow {
   id: string;
@@ -189,6 +190,26 @@ export class PrismaUserRepository implements UserRepository {
 
     if (result.count === 0) {
       throw new UserNotPendingActivationError();
+    }
+  }
+
+  async savePasswordReset(user: User): Promise<void> {
+    const client = this.dbProvider.get();
+
+    const result = await client.user.updateMany({
+      where: {
+        id: user.id,
+        status: 'ACTIVE',
+      },
+      data: {
+        passwordHash: user.passwordHash,
+        updatedAt: user.updatedAt ?? new Date(),
+        updatedBy: user.updatedBy ?? null,
+      },
+    });
+
+    if (result.count === 0) {
+      throw new UserNotActiveError();
     }
   }
 }

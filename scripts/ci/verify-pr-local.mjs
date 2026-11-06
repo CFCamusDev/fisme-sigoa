@@ -240,6 +240,15 @@ export function buildExecutionPlan(mode, options = {}) {
     timeoutMs: 30_000,
   });
   plan.push({
+    id: 'windows-paths',
+    name: 'Rutas de Windows en scripts y pruebas (AGENTS §9)',
+    group: 'calidad',
+    command: 'node scripts/ci/check-windows-paths.mjs',
+    actionSuggestion:
+      'Usa la API de Windows de node:path en lugar de las funciones por defecto en archivos que procesan rutas de Windows (AGENTS §9).',
+    timeoutMs: 30_000,
+  });
+  plan.push({
     id: 'audit',
     name: 'Auditoría de dependencias (pnpm audit high/critical)',
     group: 'seguridad',
@@ -810,6 +819,11 @@ export function checkWorkflowDrift(
       if (rawCommand.includes('for i in 1 2 3') && mc.includes('src/shared/pdf')) return true;
       if (rawCommand.includes('vitest run') && mc.includes('vitest run')) return true;
       if (rawCommand.includes('pnpm check:env-parity') && mc.includes('check:env-parity')) return true;
+      if (
+        (rawCommand.includes('check-windows-paths') || rawCommand.includes('check:windows-paths')) &&
+        mc.includes('check-windows-paths')
+      )
+        return true;
       if (rawCommand.includes('pnpm lint') && mc.includes('pnpm lint')) return true;
       if (rawCommand.includes('pnpm format:check') && mc.includes('pnpm format:check')) return true;
       if (rawCommand.includes('pnpm typecheck') && mc.includes('pnpm typecheck')) return true;

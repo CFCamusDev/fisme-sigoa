@@ -68,6 +68,7 @@ export default defineConfig({
         LOG_LEVEL: 'silent',
         RATE_LIMIT_LOGIN_MAX: '1000',
         RATE_LIMIT_SESSION_MAX: '1000',
+        RATE_LIMIT_PUBLIC_MAX: '1000',
         ALLOWED_ORIGINS: `http://localhost:${FRONTEND_PORT}`,
       },
     },

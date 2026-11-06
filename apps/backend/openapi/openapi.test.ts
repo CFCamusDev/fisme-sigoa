@@ -9,11 +9,15 @@ import {
   changeUserStatusRequestSchema,
   createUserRequestSchema,
   errorCodeSchema,
+  forgotPasswordRequestSchema,
+  forgotPasswordResponseSchema,
   listRolesResponseSchema,
   listUsersResponseSchema,
   loginRequestSchema,
   loginResponseSchema,
   refreshResponseSchema,
+  resetPasswordRequestSchema,
+  resetPasswordResponseSchema,
   roleSummarySchema,
   updateUserRequestSchema,
   userDtoSchema,
@@ -574,6 +578,91 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
       expect(err500.error.code).toBe('INTERNAL_ERROR');
     });
 
+    it('documents POST /auth/forgot-password without security and with the Auth tag (T-005-08)', () => {
+      const pathItem = spec.paths['/auth/forgot-password'];
+      expect(pathItem).toBeDefined();
+
+      const op = pathItem.post;
+      expect(op).toBeDefined();
+      expect(op.tags).toEqual(['Auth']);
+      expect(op.operationId).toBe('requestPasswordRecovery');
+      expect(op.security).toEqual([]);
+
+      // Valida esquema de request y su ejemplo contra Zod
+      const reqExample = op.requestBody.content['application/json'].example;
+      expect(forgotPasswordRequestSchema.safeParse(reqExample).success).toBe(true);
+
+      // Valida esquema de respuesta 202 y su ejemplo contra Zod
+      const res202 = op.responses['202'];
+      expect(res202).toBeDefined();
+      expect(res202.headers['Cache-Control'].example).toBe('no-store');
+      expect(res202.headers['Pragma'].example).toBe('no-cache');
+      const res202Example = res202.content['application/json'].example;
+      expect(forgotPasswordResponseSchema.safeParse(res202Example).success).toBe(true);
+      expect(res202Example.status).toBe('RECEIVED');
+
+      // Valida respuestas de error 400, 429 y 500 contra apiErrorResponseSchema
+      const err400 = op.responses['400'].content['application/json'].example;
+      expect(apiErrorResponseSchema.safeParse(err400).success).toBe(true);
+      expect(err400.error.code).toBe('VALIDATION_ERROR');
+
+      const err429 = op.responses['429'].content['application/json'].example;
+      expect(apiErrorResponseSchema.safeParse(err429).success).toBe(true);
+      expect(err429.error.code).toBe('RATE_LIMITED');
+
+      const err500 = op.responses['500'].content['application/json'].example;
+      expect(apiErrorResponseSchema.safeParse(err500).success).toBe(true);
+      expect(err500.error.code).toBe('INTERNAL_ERROR');
+    });
+
+    it('documents POST /auth/reset-password without security and with the Auth tag (T-005-08)', () => {
+      const pathItem = spec.paths['/auth/reset-password'];
+      expect(pathItem).toBeDefined();
+
+      const op = pathItem.post;
+      expect(op).toBeDefined();
+      expect(op.tags).toEqual(['Auth']);
+      expect(op.operationId).toBe('resetPassword');
+      expect(op.security).toEqual([]);
+
+      // Valida esquema de request y su ejemplo contra Zod
+      const reqExample = op.requestBody.content['application/json'].example;
+      expect(resetPasswordRequestSchema.safeParse(reqExample).success).toBe(true);
+
+      // Valida esquema de respuesta 200 y su ejemplo contra Zod
+      const res200 = op.responses['200'];
+      expect(res200).toBeDefined();
+      expect(res200.headers['Cache-Control'].example).toBe('no-store');
+      expect(res200.headers['Pragma'].example).toBe('no-cache');
+      const res200Example = res200.content['application/json'].example;
+      expect(resetPasswordResponseSchema.safeParse(res200Example).success).toBe(true);
+      expect(res200Example.status).toBe('PASSWORD_RESET');
+
+      // Valida respuestas de error 400 (validationError e invalidTokenError), 429 y 500
+      const err400Examples = op.responses['400'].content['application/json'].examples;
+      expect(err400Examples.validationError).toBeDefined();
+      expect(apiErrorResponseSchema.safeParse(err400Examples.validationError.value).success).toBe(
+        true,
+      );
+      expect(err400Examples.validationError.value.error.code).toBe('VALIDATION_ERROR');
+
+      expect(err400Examples.invalidTokenError).toBeDefined();
+      expect(apiErrorResponseSchema.safeParse(err400Examples.invalidTokenError.value).success).toBe(
+        true,
+      );
+      expect(err400Examples.invalidTokenError.value.error.code).toBe(
+        'INVALID_PASSWORD_RESET_TOKEN',
+      );
+
+      const err429 = op.responses['429'].content['application/json'].example;
+      expect(apiErrorResponseSchema.safeParse(err429).success).toBe(true);
+      expect(err429.error.code).toBe('RATE_LIMITED');
+
+      const err500 = op.responses['500'].content['application/json'].example;
+      expect(apiErrorResponseSchema.safeParse(err500).success).toBe(true);
+      expect(err500.error.code).toBe('INTERNAL_ERROR');
+    });
+
     it('keeps the ApiError code enum strictly identical to errorCodeSchema.options (drift guard)', () => {
       const apiErrorCodeEnum =
         spec.components.schemas.ApiError.properties.error.properties.code.enum;
@@ -591,6 +680,8 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
         refreshSessionUseCase: dummyUseCase,
         logoutUseCase: dummyUseCase,
         activateAccountUseCase: dummyUseCase,
+        requestPasswordRecoveryUseCase: dummyUseCase,
+        resetPasswordUseCase: dummyUseCase,
         authenticate: dummyAuth as never,
       });
 
@@ -609,8 +700,8 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
         }
       }
 
-      // Debe haber exactamente 4 rutas: /auth/login, /auth/refresh, /auth/logout, /auth/activate
-      expect(routerEndpoints.length).toBe(4);
+      // Debe haber exactamente 6 rutas: /auth/login, /auth/refresh, /auth/logout, /auth/activate, /auth/forgot-password, /auth/reset-password
+      expect(routerEndpoints.length).toBe(6);
 
       for (const endpoint of routerEndpoints) {
         const specPath = spec.paths[endpoint.path];
