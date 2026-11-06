@@ -174,6 +174,7 @@ describe('verify-pr-local pure logic (T-002-22 / G1)', () => {
     expect(quickIds).toContain('commit-messages');
     expect(quickIds).toContain('forbidden-files');
     expect(quickIds).toContain('env-parity');
+    expect(quickIds).toContain('windows-paths');
     expect(quickIds).toContain('audit');
     expect(quickIds).toContain('format');
     expect(quickIds).toContain('lint');

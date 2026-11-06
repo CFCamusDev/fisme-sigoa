@@ -100,6 +100,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Paridad de variables de entorno
         run: pnpm check:env-parity
+      - name: Verificación de rutas de Windows
+        run: pnpm check:windows-paths
       - name: Lint y formato
         run: pnpm lint && pnpm format:check
       - name: Typecheck (TypeScript estricto)
