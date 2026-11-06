@@ -67,6 +67,17 @@ describe('Roles HTTP Routes Integration (PostgreSQL real, HU-003, T-003-15, A2, 
       expect(predefinedCodes).toContain('PROGRAM_DIRECTOR');
       expect(predefinedCodes).toContain('TEACHER');
 
+      for (const item of items) {
+        expect(item.status).toBe('ACTIVE');
+        expect(typeof item.userCount).toBe('number');
+        expect(item.userCount).toBeGreaterThanOrEqual(0);
+        expect(item.permissions).toBeInstanceOf(Array);
+        expect(item.updatedAt).toBeDefined();
+      }
+
+      const adminRole = items.find((r) => r.code === 'ADMINISTRATOR');
+      expect(adminRole?.userCount).toBe(1);
+
       // Comprobar orden: predefinidos primero, luego por nombre
       for (let i = 0; i < items.length - 1; i++) {
         const curr = items[i];

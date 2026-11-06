@@ -56,15 +56,30 @@ describe('Roles Shared Contracts (A1, HU-003, T-003-15)', () => {
     expect(withExtra.success).toBe(false);
   });
 
+  const validRoleDto = {
+    id: 'role-teacher-123',
+    code: 'TEACHER',
+    name: 'Docente',
+    description: 'Docente responsable de cursos y mediciones',
+    isPredefined: true,
+    status: 'ACTIVE' as const,
+    deactivatedAt: null,
+    userCount: 0,
+    permissions: [],
+    updatedAt: '2026-11-06T15:00:00.000Z',
+  };
+
   it('list response wraps the roles in items', () => {
     const listPayload = {
-      items: [validRole],
+      items: [validRoleDto],
     };
     const parsed = listRolesResponseSchema.safeParse(listPayload);
     expect(parsed.success).toBe(true);
     if (parsed.success) {
       expect(parsed.data.items).toHaveLength(1);
       expect(parsed.data.items[0]?.code).toBe('TEACHER');
+      expect(parsed.data.items[0]?.status).toBe('ACTIVE');
+      expect(parsed.data.items[0]?.userCount).toBe(0);
     }
 
     const emptyList = listRolesResponseSchema.safeParse({ items: [] });
@@ -74,6 +89,27 @@ describe('Roles Shared Contracts (A1, HU-003, T-003-15)', () => {
       items: [{ id: 'bad-role' }],
     });
     expect(invalidList.success).toBe(false);
+  });
+
+  it('list response requires the full role dto', () => {
+    const partialRole = {
+      id: 'role-partial',
+      code: 'PARTIAL',
+      name: 'Parcial',
+      description: null,
+      isPredefined: false,
+    };
+    const parsed = listRolesResponseSchema.safeParse({ items: [partialRole] });
+    expect(parsed.success).toBe(false);
+  });
+
+  it('list response rejects a role without status', () => {
+    const roleWithoutStatus = {
+      ...validRoleDto,
+      status: undefined,
+    };
+    const parsed = listRolesResponseSchema.safeParse({ items: [roleWithoutStatus] });
+    expect(parsed.success).toBe(false);
   });
 });
 

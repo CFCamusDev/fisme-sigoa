@@ -2,12 +2,12 @@ import type { ReactNode } from 'react';
 import { DataTable, type DataTableColumn } from '@/components/common/data-table';
 import { StatusBadge } from '@/components/common/status-badge';
 import { formatDateTime } from '@/lib/date';
-import type { RoleSummary, UserDto } from '@sigoa/shared';
+import type { RoleDto, RoleSummary, UserDto } from '@sigoa/shared';
 import { UserRowActions } from './user-row-actions';
 
 export interface UsersTableProps {
   users: UserDto[];
-  roles: RoleSummary[];
+  roles: (RoleSummary | RoleDto)[];
   isLoading?: boolean;
   error?: Error | string | null;
   hasFiltersApplied?: boolean;

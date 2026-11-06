@@ -18,7 +18,7 @@ import {
   refreshResponseSchema,
   resetPasswordRequestSchema,
   resetPasswordResponseSchema,
-  roleSummarySchema,
+  roleDtoSchema,
   updateUserRequestSchema,
   userDtoSchema,
 } from '@sigoa/shared';
@@ -443,7 +443,7 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
       expect(spec.paths['/roles'].get.responses['200'].headers['Cache-Control']).toBeDefined();
 
       for (const item of getRolesRes.items) {
-        expect(roleSummarySchema.safeParse(item).success).toBe(true);
+        expect(roleDtoSchema.safeParse(item).success).toBe(true);
       }
     });
 

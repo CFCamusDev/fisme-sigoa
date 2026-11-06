@@ -4,6 +4,7 @@ export type {
   ListRolesResponse,
   ListUsersQuery,
   ListUsersResponse,
+  RoleDto,
   RoleSummary,
   UpdateUserRequest,
   UserDto,

@@ -13,7 +13,7 @@ describe('PrismaRoleReader Integration (PostgreSQL real, A2.1, RS-010, LS 3.2, H
   });
 
   it('lists the five predefined roles with their permissions and zero users', async () => {
-    const roles = await reader.listDetailed();
+    const roles = await reader.listAll();
 
     expect(roles.length).toBeGreaterThanOrEqual(5);
 
@@ -80,7 +80,7 @@ describe('PrismaRoleReader Integration (PostgreSQL real, A2.1, RS-010, LS 3.2, H
       },
     });
 
-    const roles = await reader.listDetailed();
+    const roles = await reader.listAll();
 
     expect(roles.length).toBeGreaterThanOrEqual(6);
 
@@ -140,7 +140,7 @@ describe('PrismaRoleReader Integration (PostgreSQL real, A2.1, RS-010, LS 3.2, H
     expect(found?.permissions).toEqual([]);
   }, 15_000);
 
-  it('keeps listAll returning summary fields for backwards compatibility', async () => {
+  it('lists all roles returning detailed fields', async () => {
     const roles = await reader.listAll();
     expect(roles.length).toBeGreaterThanOrEqual(5);
 
@@ -149,6 +149,10 @@ describe('PrismaRoleReader Integration (PostgreSQL real, A2.1, RS-010, LS 3.2, H
       expect(role.code).toBeDefined();
       expect(role.name).toBeDefined();
       expect(typeof role.isPredefined).toBe('boolean');
+      expect(role.status).toBe('ACTIVE');
+      expect(role.permissions).toBeInstanceOf(Array);
+      expect(typeof role.userCount).toBe('number');
+      expect(role.updatedAt).toBeDefined();
     }
   }, 15_000);
 });

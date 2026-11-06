@@ -40,6 +40,11 @@ const mockListRolesResponse: ListRolesResponse = {
       name: 'Administrador',
       description: 'Acceso total',
       isPredefined: true,
+      status: 'ACTIVE',
+      deactivatedAt: null,
+      userCount: 0,
+      permissions: [],
+      updatedAt: '2026-11-06T15:00:00.000Z',
     },
   ],
 };

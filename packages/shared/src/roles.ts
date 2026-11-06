@@ -26,14 +26,6 @@ export const roleSummarySchema = z
 
 export type RoleSummary = z.infer<typeof roleSummarySchema>;
 
-export const listRolesResponseSchema = z
-  .object({
-    items: z.array(roleSummarySchema),
-  })
-  .strict();
-
-export type ListRolesResponse = z.infer<typeof listRolesResponseSchema>;
-
 export const roleGrantSchema = z
   .object({
     permissionCode: z
@@ -124,6 +116,14 @@ export const roleDtoSchema = z
   .strict();
 
 export type RoleDto = z.infer<typeof roleDtoSchema>;
+
+export const listRolesResponseSchema = z
+  .object({
+    items: z.array(roleDtoSchema),
+  })
+  .strict();
+
+export type ListRolesResponse = z.infer<typeof listRolesResponseSchema>;
 
 export const permissionDtoSchema = z
   .object({

@@ -1605,14 +1605,38 @@
                       "code": "ADMINISTRATOR",
                       "name": "Administrador",
                       "description": "Acceso y administración general del sistema",
-                      "isPredefined": true
+                      "isPredefined": true,
+                      "status": "ACTIVE",
+                      "deactivatedAt": null,
+                      "userCount": 1,
+                      "permissions": [
+                        {
+                          "permissionCode": "usuario.ver",
+                          "scope": "GLOBAL"
+                        },
+                        {
+                          "permissionCode": "rol.ver",
+                          "scope": "GLOBAL"
+                        }
+                      ],
+                      "updatedAt": "2026-11-06T15:00:00.000Z"
                     },
                     {
                       "id": "role_teacher_cuid",
                       "code": "TEACHER",
                       "name": "Docente",
                       "description": "Docente de la Escuela Profesional de Ingeniería de Sistemas",
-                      "isPredefined": true
+                      "isPredefined": true,
+                      "status": "ACTIVE",
+                      "deactivatedAt": null,
+                      "userCount": 15,
+                      "permissions": [
+                        {
+                          "permissionCode": "usuario.ver",
+                          "scope": "GLOBAL"
+                        }
+                      ],
+                      "updatedAt": "2026-11-06T15:00:00.000Z"
                     }
                   ]
                 }
@@ -2053,7 +2077,18 @@
       },
       "RoleSummary": {
         "type": "object",
-        "required": ["id", "code", "name", "description", "isPredefined"],
+        "required": [
+          "id",
+          "code",
+          "name",
+          "description",
+          "isPredefined",
+          "status",
+          "deactivatedAt",
+          "userCount",
+          "permissions",
+          "updatedAt"
+        ],
         "properties": {
           "id": {
             "type": "string",
@@ -2074,6 +2109,45 @@
           "isPredefined": {
             "type": "boolean",
             "description": "Indica si es un rol base del sistema inmutable en código."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["ACTIVE", "INACTIVE"],
+            "description": "Estado operativo del rol."
+          },
+          "deactivatedAt": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "Fecha y hora de desactivación en formato ISO o null si está activo."
+          },
+          "userCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Cantidad de usuarios asignados al rol."
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["permissionCode", "scope"],
+              "properties": {
+                "permissionCode": {
+                  "type": "string",
+                  "description": "Código de permiso (recurso.accion)."
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": ["GLOBAL", "OWN"],
+                  "description": "Alcance de la concesión."
+                }
+              }
+            },
+            "description": "Lista de concesiones de permisos asignadas al rol."
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Fecha y hora de última actualización del rol en formato ISO."
           }
         }
       },

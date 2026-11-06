@@ -1,10 +1,10 @@
 import { Select } from '@/components/ui/select';
-import type { RoleSummary, UserStatus } from '@sigoa/shared';
+import type { RoleDto, RoleSummary, UserStatus } from '@sigoa/shared';
 
 export interface UsersFiltersProps {
   status?: UserStatus;
   roleId?: string;
-  roles: RoleSummary[];
+  roles: (RoleSummary | RoleDto)[];
   rolesLoading?: boolean;
   onStatusChange: (status: UserStatus | undefined) => void;
   onRoleIdChange: (roleId: string | undefined) => void;

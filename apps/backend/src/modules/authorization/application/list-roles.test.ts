@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { RoleDto } from '@sigoa/shared';
 import { ForbiddenError } from '../../../shared/errors/app-error.js';
 import type { RoleReader } from '../domain/ports/role-reader.js';
 import { ListRolesUseCase } from './list-roles.js';
@@ -7,13 +8,18 @@ import type { PermissionAuthorizer } from './permission-authorizer.js';
 describe('ListRolesUseCase Unit Tests (A2.2, HU-003, T-003-15, RS-002, LS 3.2)', () => {
   const adminActorId = 'admin-actor-uuid';
 
-  const mockRoles = [
+  const mockRoles: RoleDto[] = [
     {
       id: 'role-admin',
       code: 'ADMINISTRATOR',
       name: 'Administrador',
       description: 'Acceso total',
       isPredefined: true,
+      status: 'ACTIVE',
+      deactivatedAt: null,
+      userCount: 0,
+      permissions: [],
+      updatedAt: '2026-11-06T15:00:00.000Z',
     },
     {
       id: 'role-teacher',
@@ -21,13 +27,17 @@ describe('ListRolesUseCase Unit Tests (A2.2, HU-003, T-003-15, RS-002, LS 3.2)',
       name: 'Docente',
       description: null,
       isPredefined: true,
+      status: 'ACTIVE',
+      deactivatedAt: null,
+      userCount: 0,
+      permissions: [],
+      updatedAt: '2026-11-06T15:00:00.000Z',
     },
   ];
 
   function setupMocks() {
     const roleReader: RoleReader = {
       listAll: vi.fn().mockResolvedValue(mockRoles),
-      listDetailed: vi.fn().mockResolvedValue([]),
       findById: vi.fn().mockResolvedValue(null),
     };
 

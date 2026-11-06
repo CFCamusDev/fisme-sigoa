@@ -2,7 +2,7 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
-import type { RoleSummary, UserDto } from '@sigoa/shared';
+import type { RoleDto, UserDto } from '@sigoa/shared';
 import { server } from '@/test/msw/server';
 import { renderWithProviders } from '@/test/render';
 import { EditUserPage } from './edit-user-page';
@@ -21,13 +21,18 @@ const mockUser: UserDto = {
   updatedAt: '2026-10-01T00:00:00.000Z',
 };
 
-const mockRoles: RoleSummary[] = [
+const mockRoles: RoleDto[] = [
   {
     id: 'role-teacher',
     code: 'TEACHER',
     name: 'Docente',
     description: null,
     isPredefined: true,
+    status: 'ACTIVE',
+    deactivatedAt: null,
+    userCount: 0,
+    permissions: [],
+    updatedAt: '2026-11-06T15:00:00.000Z',
   },
 ];
 

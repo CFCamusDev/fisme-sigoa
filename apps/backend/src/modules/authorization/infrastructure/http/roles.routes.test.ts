@@ -20,6 +20,11 @@ describe('Roles Routes Unit Tests (A2.2, HU-003, T-003-15, RS-002, LS 3.2)', () 
         name: 'Administrador',
         description: 'Acceso total',
         isPredefined: true,
+        status: 'ACTIVE',
+        deactivatedAt: null,
+        userCount: 0,
+        permissions: [],
+        updatedAt: '2026-11-06T15:00:00.000Z',
       },
       {
         id: 'role-2',
@@ -27,6 +32,11 @@ describe('Roles Routes Unit Tests (A2.2, HU-003, T-003-15, RS-002, LS 3.2)', () 
         name: 'Docente',
         description: null,
         isPredefined: true,
+        status: 'ACTIVE',
+        deactivatedAt: null,
+        userCount: 0,
+        permissions: [],
+        updatedAt: '2026-11-06T15:00:00.000Z',
       },
     ],
   };
