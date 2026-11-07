@@ -184,6 +184,7 @@ model User {
   refreshTokens    RefreshToken[]
   userRoles        UserRole[]
   activationTokens ActivationToken[]
+  userPermissions  UserPermission[]
 
   // Auditoría técnica de autoría
   createdBy String?
@@ -272,6 +273,7 @@ model Permission {
   updatedAt   DateTime @updatedAt
 
   rolePermissions RolePermission[]
+  userPermissions UserPermission[]
 
   @@map("permissions")
 }
@@ -309,4 +311,22 @@ model UserRole {
   @@index([userId])
   @@index([roleId])
   @@map("user_roles")
+}
+
+model UserPermission {
+  id           String          @id @default(cuid())
+  userId       String
+  user         User            @relation(fields: [userId], references: [id], onDelete: Restrict)
+  permissionId String
+  permission   Permission      @relation(fields: [permissionId], references: [id], onDelete: Restrict)
+  scope        PermissionScope @default(GLOBAL)
+  createdAt    DateTime        @default(now())
+  createdBy    String?
+  updatedAt    DateTime        @default(now()) @updatedAt
+  updatedBy    String?
+
+  @@unique([userId, permissionId])
+  @@index([userId])
+  @@index([permissionId])
+  @@map("user_permissions")
 }
