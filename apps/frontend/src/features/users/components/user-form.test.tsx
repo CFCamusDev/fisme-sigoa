@@ -415,4 +415,32 @@ describe('UserForm component (T-003-27)', () => {
     expect(await screen.findByText('Docente')).toBeInTheDocument();
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
   });
+
+  it('offers only active roles when creating a user (U2b, CA3)', async () => {
+    const rolesWithInactive: RoleDto[] = [
+      ...mockRoles,
+      {
+        id: 'role-inactive-custom',
+        code: 'OLD_AUDITOR',
+        name: 'Auditor Antiguo Inactivo',
+        description: 'Rol en desuso',
+        isPredefined: false,
+        status: 'INACTIVE',
+        deactivatedAt: '2026-11-01T00:00:00.000Z',
+        userCount: 0,
+        permissions: [],
+        updatedAt: '2026-11-01T00:00:00.000Z',
+      },
+    ];
+    setupRolesMsw(rolesWithInactive);
+
+    renderWithProviders(<UserForm mode="create" />);
+
+    // El rol activo debe estar presente
+    expect(await screen.findByText('Administrador')).toBeInTheDocument();
+    expect(screen.getByText('Docente')).toBeInTheDocument();
+
+    // El rol inactivo no debe estar disponible para selección en modo creación
+    expect(screen.queryByText('Auditor Antiguo Inactivo')).not.toBeInTheDocument();
+  });
 });
