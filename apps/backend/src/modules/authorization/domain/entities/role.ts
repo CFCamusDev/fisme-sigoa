@@ -6,6 +6,7 @@ import {
   type RoleStatus,
 } from '@sigoa/shared';
 import { InvalidRoleDataError } from '../errors/invalid-role-data-error.js';
+import { InvalidRoleStatusTransitionError } from '../errors/invalid-role-status-transition-error.js';
 import { deriveRoleCode } from '../policies/derive-role-code.js';
 
 export interface RoleAuditSnapshot {
@@ -38,18 +39,82 @@ export interface RoleRestoreProps {
   readonly updatedAt: Date;
 }
 
+export interface RoleApplyChangesInput {
+  readonly name?: string;
+  readonly description?: string | null;
+}
+
+export interface RoleApplyChangesResult {
+  readonly before: RoleAuditSnapshot;
+  readonly after: RoleAuditSnapshot;
+  readonly hasChanges: boolean;
+}
+
+export interface RoleStateChangeResult {
+  readonly before: RoleAuditSnapshot;
+  readonly after: RoleAuditSnapshot;
+}
+
+export function normalizeRoleName(name: string): string {
+  if (!name || typeof name !== 'string') {
+    throw new InvalidRoleDataError('El nombre del rol es requerido', [
+      { path: 'name', message: 'El nombre es obligatorio' },
+    ]);
+  }
+
+  const normalizedName = name.trim().replace(/\s+/g, ' ');
+  if (
+    normalizedName.length < ROLE_NAME_MIN_LENGTH ||
+    normalizedName.length > ROLE_NAME_MAX_LENGTH
+  ) {
+    throw new InvalidRoleDataError(
+      `El nombre del rol debe tener entre ${ROLE_NAME_MIN_LENGTH} y ${ROLE_NAME_MAX_LENGTH} caracteres`,
+      [
+        {
+          path: 'name',
+          message: `El nombre debe tener entre ${ROLE_NAME_MIN_LENGTH} y ${ROLE_NAME_MAX_LENGTH} caracteres`,
+        },
+      ],
+    );
+  }
+
+  return normalizedName;
+}
+
+export function normalizeRoleDescription(description: string | null | undefined): string | null {
+  if (description === undefined || description === null) {
+    return null;
+  }
+  const trimmed = description.trim();
+  if (trimmed.length === 0) {
+    return null;
+  }
+  if (trimmed.length > ROLE_DESCRIPTION_MAX_LENGTH) {
+    throw new InvalidRoleDataError(
+      `La descripción no puede exceder ${ROLE_DESCRIPTION_MAX_LENGTH} caracteres`,
+      [
+        {
+          path: 'description',
+          message: `La descripción no puede exceder ${ROLE_DESCRIPTION_MAX_LENGTH} caracteres`,
+        },
+      ],
+    );
+  }
+  return trimmed;
+}
+
 export class Role {
   private readonly _id: string;
   private readonly _code: string;
-  private readonly _name: string;
-  private readonly _description: string | null;
-  private readonly _status: RoleStatus;
-  private readonly _deactivatedAt: Date | null;
+  private _name: string;
+  private _description: string | null;
+  private _status: RoleStatus;
+  private _deactivatedAt: Date | null;
   private readonly _isPredefined: boolean;
   private readonly _createdBy: string | null;
-  private readonly _updatedBy: string | null;
+  private _updatedBy: string | null;
   private readonly _createdAt: Date;
-  private readonly _updatedAt: Date;
+  private _updatedAt: Date;
 
   private constructor(props: RoleRestoreProps) {
     this._id = props.id;
@@ -80,46 +145,8 @@ export class Role {
       ]);
     }
 
-    if (!props.name || typeof props.name !== 'string') {
-      throw new InvalidRoleDataError('El nombre del rol es requerido', [
-        { path: 'name', message: 'El nombre es obligatorio' },
-      ]);
-    }
-
-    const normalizedName = props.name.trim().replace(/\s+/g, ' ');
-    if (
-      normalizedName.length < ROLE_NAME_MIN_LENGTH ||
-      normalizedName.length > ROLE_NAME_MAX_LENGTH
-    ) {
-      throw new InvalidRoleDataError(
-        `El nombre del rol debe tener entre ${ROLE_NAME_MIN_LENGTH} y ${ROLE_NAME_MAX_LENGTH} caracteres`,
-        [
-          {
-            path: 'name',
-            message: `El nombre debe tener entre ${ROLE_NAME_MIN_LENGTH} y ${ROLE_NAME_MAX_LENGTH} caracteres`,
-          },
-        ],
-      );
-    }
-
-    let normalizedDescription: string | null = null;
-    if (props.description !== undefined && props.description !== null) {
-      const trimmed = props.description.trim();
-      if (trimmed.length > 0) {
-        if (trimmed.length > ROLE_DESCRIPTION_MAX_LENGTH) {
-          throw new InvalidRoleDataError(
-            `La descripción no puede exceder ${ROLE_DESCRIPTION_MAX_LENGTH} caracteres`,
-            [
-              {
-                path: 'description',
-                message: `La descripción no puede exceder ${ROLE_DESCRIPTION_MAX_LENGTH} caracteres`,
-              },
-            ],
-          );
-        }
-        normalizedDescription = trimmed;
-      }
-    }
+    const normalizedName = normalizeRoleName(props.name);
+    const normalizedDescription = normalizeRoleDescription(props.description);
 
     const code = deriveRoleCode(normalizedName);
     const now = new Date();
@@ -185,6 +212,73 @@ export class Role {
 
   public get updatedAt(): Date {
     return this._updatedAt;
+  }
+
+  public applyChanges(
+    changes: RoleApplyChangesInput,
+    updatedBy: string | null,
+    now?: Date,
+  ): RoleApplyChangesResult {
+    const before = this.toAuditSnapshot();
+    let hasChanges = false;
+
+    if (changes.name !== undefined) {
+      const normalizedName = normalizeRoleName(changes.name);
+      if (normalizedName !== this._name) {
+        this._name = normalizedName;
+        hasChanges = true;
+      }
+    }
+
+    if (changes.description !== undefined) {
+      const normalizedDescription = normalizeRoleDescription(changes.description);
+      if (normalizedDescription !== this._description) {
+        this._description = normalizedDescription;
+        hasChanges = true;
+      }
+    }
+
+    if (hasChanges) {
+      this._updatedBy = updatedBy;
+      this._updatedAt = now ?? new Date();
+    }
+
+    const after = this.toAuditSnapshot();
+    return { before, after, hasChanges };
+  }
+
+  public deactivate(updatedBy: string | null, now?: Date): RoleStateChangeResult {
+    if (this._status === 'INACTIVE') {
+      throw new InvalidRoleStatusTransitionError('El rol ya se encuentra inactivo');
+    }
+
+    const before = this.toAuditSnapshot();
+    const timestamp = now ?? new Date();
+
+    this._status = 'INACTIVE';
+    this._deactivatedAt = timestamp;
+    this._updatedBy = updatedBy;
+    this._updatedAt = timestamp;
+
+    const after = this.toAuditSnapshot();
+    return { before, after };
+  }
+
+  public reactivate(updatedBy: string | null, now?: Date): RoleStateChangeResult {
+    if (this._status === 'ACTIVE') {
+      throw new InvalidRoleStatusTransitionError('El rol ya se encuentra activo');
+    }
+
+    const before = this.toAuditSnapshot();
+    const timestamp = now ?? new Date();
+
+    this._status = 'ACTIVE';
+    this._deactivatedAt = null;
+    this._updatedBy = updatedBy;
+    this._updatedAt = timestamp;
+
+    const after = this.toAuditSnapshot();
+    return { before, after };
   }
 
   public toAuditSnapshot(): RoleAuditSnapshot {
