@@ -27,3 +27,11 @@ export function getRoleErrorMessage(error: unknown): string {
 
   return 'Ha ocurrido un error inesperado. Por favor, intenta de nuevo.';
 }
+
+export function isRoleNameConflict(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  const apiErr = error as ApiError;
+  return apiErr.status === 409 || apiErr.code === 'CONFLICT';
+}
