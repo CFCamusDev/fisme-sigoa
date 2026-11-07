@@ -3,12 +3,11 @@ import { http, HttpResponse } from 'msw';
 import { server } from '@/test/msw/server';
 import type {
   CreateUserRequest,
-  ListRolesResponse,
   ListUsersResponse,
   UpdateUserRequest,
   UserDto,
 } from '@sigoa/shared';
-import { changeUserStatus, createUser, getUser, listRoles, listUsers, updateUser } from './index';
+import { changeUserStatus, createUser, getUser, listUsers, updateUser } from './index';
 
 const mockUserDto: UserDto = {
   id: 'usr-cuid-123',
@@ -32,19 +31,7 @@ const mockListUsersResponse: ListUsersResponse = {
   totalPages: 1,
 };
 
-const mockListRolesResponse: ListRolesResponse = {
-  items: [
-    {
-      id: 'role-admin-1',
-      code: 'ADMINISTRATOR',
-      name: 'Administrador',
-      description: 'Acceso total',
-      isPredefined: true,
-    },
-  ],
-};
-
-describe('Users & Roles API client functions (T-003-15)', () => {
+describe('Users API client functions (T-003-15)', () => {
   describe('listUsers', () => {
     it('requests users with query parameters and returns parsed data', async () => {
       let capturedUrl = '';
@@ -158,19 +145,6 @@ describe('Users & Roles API client functions (T-003-15)', () => {
 
       expect(capturedBody).toEqual({ status: 'INACTIVE' });
       expect(result.status).toBe('INACTIVE');
-    });
-  });
-
-  describe('listRoles', () => {
-    it('requests /roles and parses ListRolesResponse', async () => {
-      server.use(
-        http.get('http://localhost:3000/roles', () => {
-          return HttpResponse.json(mockListRolesResponse, { status: 200 });
-        }),
-      );
-
-      const result = await listRoles();
-      expect(result).toEqual(mockListRolesResponse);
     });
   });
 });

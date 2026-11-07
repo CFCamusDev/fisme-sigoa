@@ -2,18 +2,23 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { RoleSummary, UserDto } from '@sigoa/shared';
+import type { RoleDto, UserDto } from '@sigoa/shared';
 import { server } from '@/test/msw/server';
 import { renderWithProviders } from '@/test/render';
 import { UserForm } from './user-form';
 
-const mockRoles: RoleSummary[] = [
+const mockRoles: RoleDto[] = [
   {
     id: 'role-admin',
     code: 'ADMINISTRATOR',
     name: 'Administrador',
     description: 'Acceso total al sistema',
     isPredefined: true,
+    status: 'ACTIVE',
+    deactivatedAt: null,
+    userCount: 0,
+    permissions: [],
+    updatedAt: '2026-11-06T15:00:00.000Z',
   },
   {
     id: 'role-teacher',
@@ -21,6 +26,11 @@ const mockRoles: RoleSummary[] = [
     name: 'Docente',
     description: 'Profesor de asignaturas',
     isPredefined: true,
+    status: 'ACTIVE',
+    deactivatedAt: null,
+    userCount: 0,
+    permissions: [],
+    updatedAt: '2026-11-06T15:00:00.000Z',
   },
 ];
 
@@ -52,7 +62,7 @@ const mockInitialUserWithoutDni: UserDto = {
   updatedAt: '2026-11-01T00:00:00.000Z',
 };
 
-function setupRolesMsw(roles: RoleSummary[] = mockRoles) {
+function setupRolesMsw(roles: RoleDto[] = mockRoles) {
   server.use(
     http.get('http://localhost:3000/roles', () => {
       return HttpResponse.json({ items: roles }, { status: 200 });
@@ -404,5 +414,33 @@ describe('UserForm component (T-003-27)', () => {
     expect(await screen.findByText('Roles asignados (solo lectura)')).toBeInTheDocument();
     expect(await screen.findByText('Docente')).toBeInTheDocument();
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+  });
+
+  it('offers only active roles when creating a user (U2b, CA3)', async () => {
+    const rolesWithInactive: RoleDto[] = [
+      ...mockRoles,
+      {
+        id: 'role-inactive-custom',
+        code: 'OLD_AUDITOR',
+        name: 'Auditor Antiguo Inactivo',
+        description: 'Rol en desuso',
+        isPredefined: false,
+        status: 'INACTIVE',
+        deactivatedAt: '2026-11-01T00:00:00.000Z',
+        userCount: 0,
+        permissions: [],
+        updatedAt: '2026-11-01T00:00:00.000Z',
+      },
+    ];
+    setupRolesMsw(rolesWithInactive);
+
+    renderWithProviders(<UserForm mode="create" />);
+
+    // El rol activo debe estar presente
+    expect(await screen.findByText('Administrador')).toBeInTheDocument();
+    expect(screen.getByText('Docente')).toBeInTheDocument();
+
+    // El rol inactivo no debe estar disponible para selección en modo creación
+    expect(screen.queryByText('Auditor Antiguo Inactivo')).not.toBeInTheDocument();
   });
 });

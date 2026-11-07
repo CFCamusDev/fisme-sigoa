@@ -46,6 +46,7 @@ export function UserForm({ mode, initialUser, onSuccess }: UserFormProps) {
   const isCreate = mode === 'create';
   const rolesQuery = useRoles();
   const roles = rolesQuery.data?.items ?? [];
+  const activeRoles = roles.filter((role) => role.status === 'ACTIVE');
 
   const createMutation = useCreateUser();
   const updateMutation = useUpdateUser(initialUser?.id ?? '');
@@ -387,7 +388,7 @@ export function UserForm({ mode, initialUser, onSuccess }: UserFormProps) {
           </legend>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
-            {roles.map((role) => {
+            {activeRoles.map((role) => {
               const isChecked = selectedRoleIds.includes(role.id);
               return (
                 <label

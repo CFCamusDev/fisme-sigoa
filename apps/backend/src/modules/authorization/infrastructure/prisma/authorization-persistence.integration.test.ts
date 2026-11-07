@@ -26,7 +26,7 @@ describe('Authorization Persistence Integration (PostgreSQL real, F3)', () => {
     const role1 = await prisma.role.create({
       data: {
         code: `R1_${Date.now()}_${Math.random()}`,
-        name: 'Rol 1',
+        name: `Rol 1 ${Date.now()} ${Math.random()}`,
         isPredefined: false,
       },
     });
@@ -34,14 +34,25 @@ describe('Authorization Persistence Integration (PostgreSQL real, F3)', () => {
     const role2 = await prisma.role.create({
       data: {
         code: `R2_${Date.now()}_${Math.random()}`,
-        name: 'Rol 2',
+        name: `Rol 2 ${Date.now()} ${Math.random()}`,
         isPredefined: false,
       },
     });
 
+    const suffix1 =
+      Math.random()
+        .toString(36)
+        .replace(/[^a-z]/g, '')
+        .slice(0, 6) || 'abc';
+    const suffix2 =
+      Math.random()
+        .toString(36)
+        .replace(/[^a-z]/g, '')
+        .slice(0, 6) || 'def';
+
     const perm1 = await prisma.permission.create({
       data: {
-        code: `perm1.${Date.now()}.${Math.floor(Math.random() * 1000)}`,
+        code: `permiso_${suffix1}.ver`,
         description: 'Perm 1',
         module: 'M01 Seguridad',
       },
@@ -49,7 +60,7 @@ describe('Authorization Persistence Integration (PostgreSQL real, F3)', () => {
 
     const perm2 = await prisma.permission.create({
       data: {
-        code: `perm2.${Date.now()}.${Math.floor(Math.random() * 1000)}`,
+        code: `permiso_${suffix2}.editar`,
         description: 'Perm 2',
         module: 'M01 Seguridad',
       },

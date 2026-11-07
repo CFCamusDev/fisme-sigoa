@@ -99,4 +99,61 @@ test.describe('Keyboard Navigation and Focus Indicator (WCAG 2.1 AA)', () => {
     const heading = page.getByRole('heading', { name: 'Usuarios', exact: true });
     await expect(heading).toBeVisible();
   });
+
+  test('navigates to the roles page with the keyboard only', async ({ page }) => {
+    test.setTimeout(30_000);
+    await loginAsTestUser(page);
+
+    // Skip link (Tab 1), Logout button (Tab 2)
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
+
+    // Navegar con Tab a través de los enlaces de la barra lateral hasta llegar a «Roles»
+    const rolesLink = page
+      .getByRole('navigation', { name: 'Navegación principal' })
+      .getByRole('link', { name: /Roles/i });
+
+    let isFocused = await rolesLink.evaluate((el) => document.activeElement === el);
+    let attempts = 0;
+    while (!isFocused && attempts < 10) {
+      await page.keyboard.press('Tab');
+      isFocused = await rolesLink.evaluate((el) => document.activeElement === el);
+      attempts++;
+    }
+
+    await expect(rolesLink).toBeFocused();
+    await expectVisibleFocusIndicator(rolesLink);
+
+    await page.keyboard.press('Enter');
+
+    // Verificar transición a /roles, estado aria-current y encabezado
+    await expect(page).toHaveURL(/\/roles/);
+    await expect(rolesLink).toHaveAttribute('aria-current', 'page');
+    const heading = page.getByRole('heading', { name: 'Roles', exact: true });
+    await expect(heading).toBeVisible();
+  });
+
+  test('navigates role permission selects with keyboard and visible focus', async ({ page }) => {
+    test.setTimeout(30_000);
+    await loginAsTestUser(page, {
+      roles: ['ADMINISTRATOR'],
+    });
+
+    await page.goto('/roles');
+    await expect(page.getByRole('heading', { name: 'Roles', exact: true })).toBeVisible();
+
+    const permissionsLink = page.getByRole('link', { name: /permisos del rol/i }).first();
+    await expect(permissionsLink).toBeVisible();
+    await permissionsLink.click();
+
+    await expect(page.getByRole('heading', { level: 1, name: /permisos del rol:/i })).toBeVisible();
+
+    // Navegar con teclado hasta el primer select
+    const firstSelect = page.getByRole('combobox').first();
+    await expect(firstSelect).toBeVisible();
+
+    await firstSelect.focus();
+    await expect(firstSelect).toBeFocused();
+    await expectVisibleFocusIndicator(firstSelect);
+  });
 });

@@ -7,7 +7,3 @@ export const usersKeys = {
   details: () => [...usersKeys.all, 'detail'] as const,
   detail: (id: string) => [...usersKeys.details(), id] as const,
 };
-
-export const rolesKeys = {
-  all: ['roles'] as const,
-};

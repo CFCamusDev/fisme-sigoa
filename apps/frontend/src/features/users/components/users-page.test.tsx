@@ -2,19 +2,24 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { RoleSummary, UserDto } from '@sigoa/shared';
+import type { RoleDto, UserDto } from '@sigoa/shared';
 import { server } from '@/test/msw/server';
 import { renderWithProviders } from '@/test/render';
 import { useAuthStore } from '@/stores/auth.store';
 import { UsersPage } from './users-page';
 
-const mockRoles: RoleSummary[] = [
+const mockRoles: RoleDto[] = [
   {
     id: 'role-admin',
     code: 'ADMINISTRATOR',
     name: 'Administrador',
     description: 'Acceso total',
     isPredefined: true,
+    status: 'ACTIVE',
+    deactivatedAt: null,
+    userCount: 0,
+    permissions: [],
+    updatedAt: '2026-11-06T15:00:00.000Z',
   },
   {
     id: 'role-teacher',
@@ -22,6 +27,11 @@ const mockRoles: RoleSummary[] = [
     name: 'Docente',
     description: 'Profesor de cursos',
     isPredefined: true,
+    status: 'ACTIVE',
+    deactivatedAt: null,
+    userCount: 0,
+    permissions: [],
+    updatedAt: '2026-11-06T15:00:00.000Z',
   },
 ];
 

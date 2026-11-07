@@ -8,10 +8,11 @@ export class PrismaUserRoleGateway {
     const client = this.dbProvider.get();
 
     // 1. Validar en una sola consulta que todos los roles existan
+    let existingRoles: Array<{ id: string; status: 'ACTIVE' | 'INACTIVE' }> = [];
     if (roleIds.length > 0) {
-      const existingRoles = await client.role.findMany({
+      existingRoles = await client.role.findMany({
         where: { id: { in: roleIds } },
-        select: { id: true },
+        select: { id: true, status: true },
       });
 
       if (existingRoles.length !== roleIds.length) {
@@ -31,6 +32,16 @@ export class PrismaUserRoleGateway {
     // 3. Determinar roles a eliminar y roles a agregar
     const toDelete = [...currentRoleIds].filter((id) => !targetRoleIds.has(id));
     const toAdd = [...targetRoleIds].filter((id) => !currentRoleIds.has(id));
+
+    // Validar que los roles a agregar no estén inactivos (D4)
+    if (toAdd.length > 0) {
+      const inactiveToAdd = existingRoles.filter(
+        (role) => toAdd.includes(role.id) && role.status === 'INACTIVE',
+      );
+      if (inactiveToAdd.length > 0) {
+        throw new ValidationError('No se puede asignar un rol inactivo');
+      }
+    }
 
     // Si no hay cambios, la operación es idempotente y no escribe
     if (toDelete.length === 0 && toAdd.length === 0) {

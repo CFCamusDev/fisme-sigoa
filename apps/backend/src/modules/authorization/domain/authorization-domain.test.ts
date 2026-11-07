@@ -18,8 +18,11 @@ describe('Authorization Domain Unit Tests (F2, RS-010, RS-011, RS-012, LS 3.2, L
       expect(isValidPermissionCodeFormat('usuario.ver')).toBe(true);
       expect(isValidPermissionCodeFormat('usuario.crear')).toBe(true);
       expect(isValidPermissionCodeFormat('usuario.editar')).toBe(true);
-      expect(isValidPermissionCodeFormat('proceso.ejecucion.revisar')).toBe(true);
+      expect(isValidPermissionCodeFormat('plan_assessment.ver')).toBe(true);
+      expect(isValidPermissionCodeFormat('acta.enviar_revision')).toBe(true);
+      expect(isValidPermissionCodeFormat('proceso_ejecucion.revisar')).toBe(true);
 
+      expect(isValidPermissionCodeFormat('proceso.ejecucion.revisar')).toBe(false);
       expect(isValidPermissionCodeFormat('USUARIO.VER')).toBe(false);
       expect(isValidPermissionCodeFormat('usuariover')).toBe(false);
       expect(isValidPermissionCodeFormat('usuario.')).toBe(false);
@@ -127,13 +130,14 @@ describe('Authorization Domain Unit Tests (F2, RS-010, RS-011, RS-012, LS 3.2, L
 
       // El administrador tiene usuario.* y rol.* en GLOBAL
       const adminGrants = DEFAULT_ROLE_PERMISSIONS.filter((g) => g.roleCode === 'ADMINISTRATOR');
-      expect(adminGrants).toHaveLength(4);
-      expect(adminGrants.map((g) => g.permissionCode)).toEqual([
-        'usuario.ver',
-        'usuario.crear',
-        'usuario.editar',
-        'rol.ver',
-      ]);
+      expect(adminGrants).toHaveLength(35);
+      const adminCodes = adminGrants.map((g) => g.permissionCode);
+      expect(adminCodes).toContain('usuario.ver');
+      expect(adminCodes).toContain('usuario.crear');
+      expect(adminCodes).toContain('usuario.editar');
+      expect(adminCodes).toContain('rol.ver');
+      expect(adminCodes).toContain('rol.editar');
+      expect(adminCodes).toContain('permiso.asignar');
       expect(adminGrants.every((g) => g.scope === 'GLOBAL')).toBe(true);
     });
   });

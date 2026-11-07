@@ -1605,16 +1605,62 @@
                       "code": "ADMINISTRATOR",
                       "name": "Administrador",
                       "description": "Acceso y administración general del sistema",
-                      "isPredefined": true
+                      "isPredefined": true,
+                      "status": "ACTIVE",
+                      "deactivatedAt": null,
+                      "userCount": 1,
+                      "permissions": [
+                        {
+                          "permissionCode": "usuario.ver",
+                          "scope": "GLOBAL"
+                        },
+                        {
+                          "permissionCode": "rol.ver",
+                          "scope": "GLOBAL"
+                        }
+                      ],
+                      "updatedAt": "2026-11-06T15:00:00.000Z"
                     },
                     {
                       "id": "role_teacher_cuid",
                       "code": "TEACHER",
                       "name": "Docente",
                       "description": "Docente de la Escuela Profesional de Ingeniería de Sistemas",
-                      "isPredefined": true
+                      "isPredefined": true,
+                      "status": "ACTIVE",
+                      "deactivatedAt": null,
+                      "userCount": 15,
+                      "permissions": [
+                        {
+                          "permissionCode": "usuario.ver",
+                          "scope": "GLOBAL"
+                        }
+                      ],
+                      "updatedAt": "2026-11-06T15:00:00.000Z"
                     }
                   ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros de consulta no permitidos o inválidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "La solicitud contiene errores de validación",
+                    "details": [
+                      {
+                        "path": "query.invalidParam",
+                        "message": "Unrecognized key(s) in object: 'invalidParam'"
+                      }
+                    ]
+                  }
                 }
               }
             }
@@ -1647,6 +1693,850 @@
                   "error": {
                     "code": "FORBIDDEN",
                     "message": "No tienes permiso para ver los roles.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "INTERNAL_ERROR",
+                    "message": "Ha ocurrido un error inesperado en el servidor.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Roles"],
+        "summary": "Crear un nuevo rol personalizado",
+        "description": "Crea un nuevo rol en el sistema en estado ACTIVE y asigna sus permisos iniciales si se proveen. El código del rol se deriva automáticamente del nombre. Audita con acción CREATE. Requiere el permiso 'rol.editar' con alcance GLOBAL.",
+        "operationId": "createRole",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRoleRequest"
+              },
+              "example": {
+                "name": "Auditor de Calidad",
+                "description": "Responsable de auditar evidencias de los objetivos educacionales",
+                "permissions": [
+                  {
+                    "permissionCode": "rol.ver",
+                    "scope": "GLOBAL"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Rol creado exitosamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleDto"
+                },
+                "example": {
+                  "id": "role_auditor_cuid",
+                  "code": "AUDITOR_DE_CALIDAD",
+                  "name": "Auditor de Calidad",
+                  "description": "Responsable de auditar evidencias de los objetivos educacionales",
+                  "isPredefined": false,
+                  "status": "ACTIVE",
+                  "deactivatedAt": null,
+                  "userCount": 0,
+                  "permissions": [
+                    {
+                      "permissionCode": "rol.ver",
+                      "scope": "GLOBAL"
+                    }
+                  ],
+                  "updatedAt": "2026-11-06T19:00:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error de validación en los datos de entrada o código de permiso inválido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Los datos proporcionados no son válidos.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere 'rol.editar' con alcance GLOBAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para editar roles.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto por nombre o código de rol ya existente en el sistema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "Ya existe un rol con ese nombre.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "INTERNAL_ERROR",
+                    "message": "Ha ocurrido un error inesperado en el servidor.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/roles/{id}/permissions": {
+      "put": {
+        "tags": ["Roles"],
+        "summary": "Actualizar permisos de un rol",
+        "description": "Reemplaza el conjunto completo de permisos del rol especificado. Si el rol es ADMINISTRATOR, debe conservar rol.ver y rol.editar con alcance GLOBAL. Audita con acción PERMISSION_CHANGE. Requiere el permiso 'rol.editar' con alcance GLOBAL.",
+        "operationId": "updateRolePermissions",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Identificador único del rol (CUID).",
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRolePermissionsRequest"
+              },
+              "example": {
+                "permissions": [
+                  {
+                    "permissionCode": "usuario.ver",
+                    "scope": "GLOBAL"
+                  },
+                  {
+                    "permissionCode": "rol.ver",
+                    "scope": "GLOBAL"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Permisos del rol actualizados exitosamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleDto"
+                },
+                "example": {
+                  "id": "role_teacher_cuid",
+                  "code": "TEACHER",
+                  "name": "Docente",
+                  "description": "Docente de la Escuela Profesional de Ingeniería de Sistemas",
+                  "isPredefined": true,
+                  "status": "ACTIVE",
+                  "deactivatedAt": null,
+                  "userCount": 15,
+                  "permissions": [
+                    {
+                      "permissionCode": "usuario.ver",
+                      "scope": "GLOBAL"
+                    },
+                    {
+                      "permissionCode": "rol.ver",
+                      "scope": "GLOBAL"
+                    }
+                  ],
+                  "updatedAt": "2026-11-06T19:00:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error de validación en identificador o lista de permisos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Los datos proporcionados no son válidos.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere 'rol.editar' con alcance GLOBAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para editar roles.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rol no encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "El rol solicitado no existe.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto por violación de candado de rol protegido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "El rol Administrador debe conservar los permisos rol.ver y rol.editar con alcance Global.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "INTERNAL_ERROR",
+                    "message": "Ha ocurrido un error inesperado en el servidor.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/roles/{id}/status": {
+      "patch": {
+        "tags": ["Roles"],
+        "summary": "Cambiar estado de un rol",
+        "description": "Activa o desactiva un rol en el sistema. Si se desactiva un rol que tiene usuarios asignados, requiere 'confirmed: true'. El rol ADMINISTRATOR no puede desactivarse. Audita con acción STATE_CHANGE. Requiere el permiso 'rol.editar' con alcance GLOBAL.",
+        "operationId": "changeRoleStatus",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Identificador único del rol (CUID).",
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeRoleStatusRequest"
+              },
+              "example": {
+                "status": "INACTIVE",
+                "confirmed": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Estado del rol modificado exitosamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleDto"
+                },
+                "example": {
+                  "id": "role_teacher_cuid",
+                  "code": "TEACHER",
+                  "name": "Docente",
+                  "description": "Docente de la Escuela Profesional de Ingeniería de Sistemas",
+                  "isPredefined": true,
+                  "status": "INACTIVE",
+                  "deactivatedAt": "2026-11-06T20:30:00.000Z",
+                  "userCount": 15,
+                  "permissions": [
+                    {
+                      "permissionCode": "usuario.ver",
+                      "scope": "GLOBAL"
+                    }
+                  ],
+                  "updatedAt": "2026-11-06T20:30:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error de validación en identificador o cuerpo de la petición.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Los datos proporcionados no son válidos.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere 'rol.editar' con alcance GLOBAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para editar roles.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rol no encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "El rol solicitado no existe.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto por rol protegido, transición inválida o confirmación requerida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "El rol está asignado a 15 usuario(s). Confirma para desactivarlo.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "INTERNAL_ERROR",
+                    "message": "Ha ocurrido un error inesperado en el servidor.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/roles/{id}": {
+      "patch": {
+        "tags": ["Roles"],
+        "summary": "Actualizar información básica de un rol",
+        "description": "Actualiza el nombre y/o descripción de un rol existente. Audita con acción UPDATE. Requiere el permiso 'rol.editar' con alcance GLOBAL.",
+        "operationId": "updateRole",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Identificador único del rol (CUID).",
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRoleRequest"
+              },
+              "example": {
+                "name": "Auditor de Calidad Modificado",
+                "description": "Descripción actualizada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Rol actualizado exitosamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleDto"
+                },
+                "example": {
+                  "id": "role_auditor_cuid",
+                  "code": "AUDITOR_DE_CALIDAD",
+                  "name": "Auditor de Calidad Modificado",
+                  "description": "Descripción actualizada",
+                  "isPredefined": false,
+                  "status": "ACTIVE",
+                  "deactivatedAt": null,
+                  "userCount": 0,
+                  "permissions": [
+                    {
+                      "permissionCode": "rol.ver",
+                      "scope": "GLOBAL"
+                    }
+                  ],
+                  "updatedAt": "2026-11-06T20:30:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error de validación en identificador o cuerpo de la petición.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Los datos proporcionados no son válidos.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere 'rol.editar' con alcance GLOBAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para editar roles.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rol no encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "El rol solicitado no existe.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto por nombre de rol ya registrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "Ya existe un rol con ese nombre.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "INTERNAL_ERROR",
+                    "message": "Ha ocurrido un error inesperado en el servidor.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/permissions": {
+      "get": {
+        "tags": ["Roles"],
+        "summary": "Listar permisos del catálogo institucional",
+        "description": "Lista los 72 permisos del catálogo institucional ordenados por módulo y código. Requiere el permiso 'rol.ver' con alcance GLOBAL.",
+        "operationId": "listPermissions",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de permisos retornada exitosamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListPermissionsResponse"
+                },
+                "example": {
+                  "items": [
+                    {
+                      "code": "catalogo.ver",
+                      "description": "Ver versiones de catálogos de objetivos educacionales y atributos del graduado",
+                      "module": "CATALOGO"
+                    },
+                    {
+                      "code": "rol.editar",
+                      "description": "Crear roles personalizados y modificar concesiones de permisos",
+                      "module": "ROLES"
+                    },
+                    {
+                      "code": "rol.ver",
+                      "description": "Ver el catálogo de roles y la matriz de permisos",
+                      "module": "ROLES"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros de consulta no permitidos o inválidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "La solicitud contiene errores de validación",
+                    "details": [
+                      {
+                        "path": "query.invalidParam",
+                        "message": "Unrecognized key(s) in object: 'invalidParam'"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere 'rol.ver' con alcance GLOBAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para ver los roles.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "INTERNAL_ERROR",
+                    "message": "Ha ocurrido un error inesperado en el servidor.",
                     "requestId": "req_test_123"
                   }
                 }
@@ -1685,6 +2575,31 @@
             "type": "string",
             "enum": ["ACTIVE"],
             "description": "Estado activo resultante tras la activación exitosa de la cuenta."
+          }
+        }
+      },
+      "CreateRoleRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 80,
+            "description": "Nombre legible del rol en español."
+          },
+          "description": {
+            "type": ["string", "null"],
+            "maxLength": 255,
+            "description": "Descripción funcional opcional del rol."
+          },
+          "permissions": {
+            "type": "array",
+            "maxItems": 200,
+            "items": {
+              "$ref": "#/components/schemas/RoleGrant"
+            },
+            "description": "Lista de concesiones de permisos iniciales."
           }
         }
       },
@@ -2051,9 +2966,35 @@
           }
         }
       },
-      "RoleSummary": {
+      "RoleGrant": {
         "type": "object",
-        "required": ["id", "code", "name", "description", "isPredefined"],
+        "required": ["permissionCode", "scope"],
+        "properties": {
+          "permissionCode": {
+            "type": "string",
+            "description": "Código de permiso institucional (recurso.accion)."
+          },
+          "scope": {
+            "type": "string",
+            "enum": ["GLOBAL", "OWN"],
+            "description": "Alcance de la concesión del permiso."
+          }
+        }
+      },
+      "RoleDto": {
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "name",
+          "description",
+          "isPredefined",
+          "status",
+          "deactivatedAt",
+          "userCount",
+          "permissions",
+          "updatedAt"
+        ],
         "properties": {
           "id": {
             "type": "string",
@@ -2074,6 +3015,33 @@
           "isPredefined": {
             "type": "boolean",
             "description": "Indica si es un rol base del sistema inmutable en código."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["ACTIVE", "INACTIVE"],
+            "description": "Estado operativo del rol."
+          },
+          "deactivatedAt": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "Fecha y hora de desactivación en formato ISO o null si está activo."
+          },
+          "userCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Cantidad de usuarios asignados al rol."
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RoleGrant"
+            },
+            "description": "Lista de concesiones de permisos asignadas al rol."
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Fecha y hora de última actualización del rol en formato ISO."
           }
         }
       },
@@ -2084,9 +3052,89 @@
           "items": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/RoleSummary"
+              "$ref": "#/components/schemas/RoleDto"
             },
             "description": "Lista de roles del sistema."
+          }
+        }
+      },
+      "UpdateRolePermissionsRequest": {
+        "type": "object",
+        "required": ["permissions"],
+        "properties": {
+          "permissions": {
+            "type": "array",
+            "maxItems": 200,
+            "items": {
+              "$ref": "#/components/schemas/RoleGrant"
+            },
+            "description": "Lista de concesiones de permisos a asignar al rol."
+          }
+        }
+      },
+      "UpdateRoleRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 80,
+            "description": "Nombre formal del rol (3 a 80 caracteres)."
+          },
+          "description": {
+            "type": ["string", "null"],
+            "maxLength": 255,
+            "description": "Descripción del rol (máximo 255 caracteres o null para limpiar)."
+          }
+        },
+        "additionalProperties": false,
+        "description": "Datos para actualizar nombre o descripción de un rol."
+      },
+      "ChangeRoleStatusRequest": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["ACTIVE", "INACTIVE"],
+            "description": "Nuevo estado del rol."
+          },
+          "confirmed": {
+            "type": "boolean",
+            "description": "Confirmación obligatoria si el rol tiene usuarios asignados."
+          }
+        },
+        "additionalProperties": false,
+        "description": "Datos para activar o desactivar un rol."
+      },
+      "PermissionDto": {
+        "type": "object",
+        "required": ["code", "description", "module"],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Código formal del permiso institucional (ej. 'rol.ver')."
+          },
+          "description": {
+            "type": "string",
+            "description": "Descripción formal de la acción autorizada."
+          },
+          "module": {
+            "type": "string",
+            "description": "Módulo funcional al que pertenece el permiso (ej. 'ROLES')."
+          }
+        }
+      },
+      "ListPermissionsResponse": {
+        "type": "object",
+        "required": ["items"],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PermissionDto"
+            },
+            "description": "Lista de permisos del catálogo institucional."
           }
         }
       }

@@ -1,5 +1,6 @@
-import type { RoleSummary } from '@sigoa/shared';
+import type { RoleDto } from '@sigoa/shared';
 
 export interface RoleReader {
-  listAll(): Promise<RoleSummary[]>;
+  listAll(): Promise<RoleDto[]>;
+  findById(id: string): Promise<RoleDto | null>;
 }
