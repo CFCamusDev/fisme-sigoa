@@ -7,3 +7,5 @@ export * from './edit-role-permissions.types.js';
 export * from './list-permissions.js';
 export * from './edit-role.js';
 export * from './edit-role.types.js';
+export * from './change-role-status.js';
+export * from './change-role-status.types.js';
