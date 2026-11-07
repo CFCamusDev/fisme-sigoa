@@ -17,10 +17,7 @@ export function RolesPage() {
         title="Roles"
         description="Administra los grupos de permisos de FISME-SIGOA"
         actions={
-          <Link
-            to={'/roles/nuevo' as string}
-            className={cn(buttonVariants({ variant: 'default' }))}
-          >
+          <Link to="/roles/nuevo" className={cn(buttonVariants({ variant: 'default' }))}>
             Nuevo rol
           </Link>
         }

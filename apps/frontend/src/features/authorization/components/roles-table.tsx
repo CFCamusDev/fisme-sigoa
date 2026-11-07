@@ -64,8 +64,8 @@ export function RolesTable({ roles, isLoading = false, error = null, onRetry }: 
       className: 'text-right',
       render: (r) => (
         <Link
-          to={'/roles/$roleId/editar' as string}
-          params={{ roleId: r.id } as never}
+          to="/roles/$roleId/editar"
+          params={{ roleId: r.id }}
           className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }))}
           aria-label={`Editar rol ${r.name}`}
         >
@@ -87,7 +87,7 @@ export function RolesTable({ roles, isLoading = false, error = null, onRetry }: 
       emptyTitle="No hay roles registrados"
       emptyDescription="Aún no se han configurado roles en el sistema."
       emptyAction={
-        <Link to={'/roles/nuevo' as string} className={cn(buttonVariants({ variant: 'default' }))}>
+        <Link to="/roles/nuevo" className={cn(buttonVariants({ variant: 'default' }))}>
           Nuevo rol
         </Link>
       }

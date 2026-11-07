@@ -191,4 +191,65 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA)', () => {
     await expect(page.getByRole('heading', { level: 1, name: /editar usuario/i })).toBeVisible();
     await expectNoContrastViolations(page, { context: 'edit-user-form' });
   });
+
+  test('roles list has no contrast violations on desktop and mobile', async ({ page }) => {
+    const adminEmail = `contrast-admin-roles-${Date.now()}@example.test`;
+    await loginAsTestUser(page, {
+      email: adminEmail,
+      roles: ['ADMINISTRATOR'],
+    });
+
+    // 1. Escritorio (1280px)
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.goto('/roles');
+    await expect(page.getByRole('heading', { level: 1, name: 'Roles' })).toBeVisible();
+    await expectNoContrastViolations(page, { context: 'roles-list-desktop' });
+
+    // 2. Móvil (375px)
+    await page.setViewportSize({ width: 375, height: 812 });
+    await expectNoContrastViolations(page, { context: 'roles-list-mobile' });
+  });
+
+  test('create role form has no contrast violations (empty and with errors)', async ({ page }) => {
+    const adminEmail = `contrast-admin-create-role-${Date.now()}@example.test`;
+    await loginAsTestUser(page, {
+      email: adminEmail,
+      roles: ['ADMINISTRATOR'],
+    });
+
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.goto('/roles/nuevo');
+    await expect(page.getByRole('heading', { level: 1, name: 'Nuevo rol' })).toBeVisible();
+
+    // 1. Formulario vacío en escritorio
+    await expectNoContrastViolations(page, { context: 'create-role-empty-desktop' });
+
+    // 2. Formulario vacío en móvil
+    await page.setViewportSize({ width: 375, height: 812 });
+    await expectNoContrastViolations(page, { context: 'create-role-empty-mobile' });
+
+    // 3. Formulario con errores de validación
+    await page.getByRole('button', { name: /guardar/i }).click();
+    await expect(page.getByText('El nombre de rol debe tener al menos 3 caracteres')).toBeVisible();
+    await expectNoContrastViolations(page, { context: 'create-role-with-errors' });
+  });
+
+  test('edit role form has no contrast violations', async ({ page }) => {
+    const adminEmail = `contrast-admin-edit-role-${Date.now()}@example.test`;
+    await loginAsTestUser(page, {
+      email: adminEmail,
+      roles: ['ADMINISTRATOR'],
+    });
+
+    await page.goto('/roles');
+    await expect(page.getByRole('heading', { level: 1, name: 'Roles' })).toBeVisible();
+
+    // Clic en la primera acción de edición disponible
+    const firstEditButton = page.getByRole('link', { name: /editar rol/i }).first();
+    await expect(firstEditButton).toBeVisible();
+    await firstEditButton.click();
+
+    await expect(page.getByRole('heading', { level: 1, name: /editar rol:/i })).toBeVisible();
+    await expectNoContrastViolations(page, { context: 'edit-role-form' });
+  });
 });

@@ -16,10 +16,12 @@ import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as AuthRecuperarContrasenaRouteImport } from './routes/_auth/recuperar-contrasena'
 import { Route as EncuestaTokenRouteImport } from './routes/encuesta/$token'
 import { Route as AppRolesIndexRouteImport } from './routes/_app/roles/index'
+import { Route as AppRolesNuevoRouteImport } from './routes/_app/roles/nuevo'
 import { Route as AppUsuariosIndexRouteImport } from './routes/_app/usuarios/index'
 import { Route as AppUsuariosNuevoRouteImport } from './routes/_app/usuarios/nuevo'
 import { Route as AuthActivarTokenRouteImport } from './routes/_auth/activar.$token'
 import { Route as AuthRestablecerTokenRouteImport } from './routes/_auth/restablecer.$token'
+import { Route as AppRolesRoleIdEditarRouteImport } from './routes/_app/roles/$roleId/editar'
 import { Route as AppUsuariosUserIdEditarRouteImport } from './routes/_app/usuarios/$userId/editar'
 
 const AppRoute = AppRouteImport.update({
@@ -55,6 +57,11 @@ const AppRolesIndexRoute = AppRolesIndexRouteImport.update({
   path: '/roles/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppRolesNuevoRoute = AppRolesNuevoRouteImport.update({
+  id: '/roles/nuevo',
+  path: '/roles/nuevo',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppUsuariosIndexRoute = AppUsuariosIndexRouteImport.update({
   id: '/usuarios/',
   path: '/usuarios/',
@@ -75,6 +82,11 @@ const AuthRestablecerTokenRoute = AuthRestablecerTokenRouteImport.update({
   path: '/restablecer/$token',
   getParentRoute: () => AuthRoute,
 } as any)
+const AppRolesRoleIdEditarRoute = AppRolesRoleIdEditarRouteImport.update({
+  id: '/roles/$roleId/editar',
+  path: '/roles/$roleId/editar',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppUsuariosUserIdEditarRoute = AppUsuariosUserIdEditarRouteImport.update({
   id: '/usuarios/$userId/editar',
   path: '/usuarios/$userId/editar',
@@ -86,11 +98,13 @@ export interface FileRoutesByFullPath {
   '/login': typeof AuthLoginRoute
   '/recuperar-contrasena': typeof AuthRecuperarContrasenaRoute
   '/encuesta/$token': typeof EncuestaTokenRoute
+  '/roles/nuevo': typeof AppRolesNuevoRoute
   '/usuarios/nuevo': typeof AppUsuariosNuevoRoute
   '/activar/$token': typeof AuthActivarTokenRoute
   '/restablecer/$token': typeof AuthRestablecerTokenRoute
   '/roles/': typeof AppRolesIndexRoute
   '/usuarios/': typeof AppUsuariosIndexRoute
+  '/roles/$roleId/editar': typeof AppRolesRoleIdEditarRoute
   '/usuarios/$userId/editar': typeof AppUsuariosUserIdEditarRoute
 }
 export interface FileRoutesByTo {
@@ -98,11 +112,13 @@ export interface FileRoutesByTo {
   '/login': typeof AuthLoginRoute
   '/recuperar-contrasena': typeof AuthRecuperarContrasenaRoute
   '/encuesta/$token': typeof EncuestaTokenRoute
+  '/roles/nuevo': typeof AppRolesNuevoRoute
   '/usuarios/nuevo': typeof AppUsuariosNuevoRoute
   '/activar/$token': typeof AuthActivarTokenRoute
   '/restablecer/$token': typeof AuthRestablecerTokenRoute
   '/roles': typeof AppRolesIndexRoute
   '/usuarios': typeof AppUsuariosIndexRoute
+  '/roles/$roleId/editar': typeof AppRolesRoleIdEditarRoute
   '/usuarios/$userId/editar': typeof AppUsuariosUserIdEditarRoute
 }
 export interface FileRoutesById {
@@ -113,11 +129,13 @@ export interface FileRoutesById {
   '/_auth/recuperar-contrasena': typeof AuthRecuperarContrasenaRoute
   '/encuesta/$token': typeof EncuestaTokenRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/roles/nuevo': typeof AppRolesNuevoRoute
   '/_app/usuarios/nuevo': typeof AppUsuariosNuevoRoute
   '/_auth/activar/$token': typeof AuthActivarTokenRoute
   '/_auth/restablecer/$token': typeof AuthRestablecerTokenRoute
   '/_app/roles/': typeof AppRolesIndexRoute
   '/_app/usuarios/': typeof AppUsuariosIndexRoute
+  '/_app/roles/$roleId/editar': typeof AppRolesRoleIdEditarRoute
   '/_app/usuarios/$userId/editar': typeof AppUsuariosUserIdEditarRoute
 }
 export interface FileRouteTypes {
@@ -127,11 +145,13 @@ export interface FileRouteTypes {
     | '/login'
     | '/recuperar-contrasena'
     | '/encuesta/$token'
+    | '/roles/nuevo'
     | '/usuarios/nuevo'
     | '/activar/$token'
     | '/restablecer/$token'
     | '/roles/'
     | '/usuarios/'
+    | '/roles/$roleId/editar'
     | '/usuarios/$userId/editar'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -139,11 +159,13 @@ export interface FileRouteTypes {
     | '/login'
     | '/recuperar-contrasena'
     | '/encuesta/$token'
+    | '/roles/nuevo'
     | '/usuarios/nuevo'
     | '/activar/$token'
     | '/restablecer/$token'
     | '/roles'
     | '/usuarios'
+    | '/roles/$roleId/editar'
     | '/usuarios/$userId/editar'
   id:
     | '__root__'
@@ -153,11 +175,13 @@ export interface FileRouteTypes {
     | '/_auth/recuperar-contrasena'
     | '/encuesta/$token'
     | '/_app/'
+    | '/_app/roles/nuevo'
     | '/_app/usuarios/nuevo'
     | '/_auth/activar/$token'
     | '/_auth/restablecer/$token'
     | '/_app/roles/'
     | '/_app/usuarios/'
+    | '/_app/roles/$roleId/editar'
     | '/_app/usuarios/$userId/editar'
   fileRoutesById: FileRoutesById
 }
@@ -218,6 +242,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRolesIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/roles/nuevo': {
+      id: '/_app/roles/nuevo'
+      path: '/roles/nuevo'
+      fullPath: '/roles/nuevo'
+      preLoaderRoute: typeof AppRolesNuevoRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/usuarios/': {
       id: '/_app/usuarios/'
       path: '/usuarios'
@@ -246,6 +277,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRestablecerTokenRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/_app/roles/$roleId/editar': {
+      id: '/_app/roles/$roleId/editar'
+      path: '/roles/$roleId/editar'
+      fullPath: '/roles/$roleId/editar'
+      preLoaderRoute: typeof AppRolesRoleIdEditarRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/usuarios/$userId/editar': {
       id: '/_app/usuarios/$userId/editar'
       path: '/usuarios/$userId/editar'
@@ -258,17 +296,21 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
+  AppRolesNuevoRoute: typeof AppRolesNuevoRoute
   AppUsuariosNuevoRoute: typeof AppUsuariosNuevoRoute
   AppRolesIndexRoute: typeof AppRolesIndexRoute
   AppUsuariosIndexRoute: typeof AppUsuariosIndexRoute
+  AppRolesRoleIdEditarRoute: typeof AppRolesRoleIdEditarRoute
   AppUsuariosUserIdEditarRoute: typeof AppUsuariosUserIdEditarRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
+  AppRolesNuevoRoute: AppRolesNuevoRoute,
   AppUsuariosNuevoRoute: AppUsuariosNuevoRoute,
   AppRolesIndexRoute: AppRolesIndexRoute,
   AppUsuariosIndexRoute: AppUsuariosIndexRoute,
+  AppRolesRoleIdEditarRoute: AppRolesRoleIdEditarRoute,
   AppUsuariosUserIdEditarRoute: AppUsuariosUserIdEditarRoute,
 }
 
