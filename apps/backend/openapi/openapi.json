@@ -1698,13 +1698,30 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Error interno del servidor.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "INTERNAL_ERROR",
+                    "message": "Ha ocurrido un error inesperado en el servidor.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
           }
         }
       },
       "post": {
         "tags": ["Roles"],
         "summary": "Crear un nuevo rol personalizado",
-        "description": "Crea un nuevo rol en el sistema en estado ACTIVE y asigna sus permisos iniciales si se proveen. El código del rol se deriva automáticamente del nombre. Requiere el permiso 'rol.editar' con alcance GLOBAL.",
+        "description": "Crea un nuevo rol en el sistema en estado ACTIVE y asigna sus permisos iniciales si se proveen. El código del rol se deriva automáticamente del nombre. Audita con acción CREATE. Requiere el permiso 'rol.editar' con alcance GLOBAL.",
         "operationId": "createRole",
         "security": [
           {
@@ -1746,7 +1763,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RoleSummary"
+                  "$ref": "#/components/schemas/RoleDto"
                 },
                 "example": {
                   "id": "role_auditor_cuid",
@@ -1835,6 +1852,23 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Error interno del servidor.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "INTERNAL_ERROR",
+                    "message": "Ha ocurrido un error inesperado en el servidor.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -1843,7 +1877,7 @@
       "put": {
         "tags": ["Roles"],
         "summary": "Actualizar permisos de un rol",
-        "description": "Reemplaza el conjunto completo de permisos del rol especificado. Si el rol es ADMINISTRATOR, debe conservar rol.ver y rol.editar con alcance GLOBAL. Requiere el permiso 'rol.editar' con alcance GLOBAL.",
+        "description": "Reemplaza el conjunto completo de permisos del rol especificado. Si el rol es ADMINISTRATOR, debe conservar rol.ver y rol.editar con alcance GLOBAL. Audita con acción PERMISSION_CHANGE. Requiere el permiso 'rol.editar' con alcance GLOBAL.",
         "operationId": "updateRolePermissions",
         "security": [
           {
@@ -1899,7 +1933,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RoleSummary"
+                  "$ref": "#/components/schemas/RoleDto"
                 },
                 "example": {
                   "id": "role_teacher_cuid",
@@ -2009,6 +2043,23 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Error interno del servidor.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "INTERNAL_ERROR",
+                    "message": "Ha ocurrido un error inesperado en el servidor.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -2017,7 +2068,7 @@
       "patch": {
         "tags": ["Roles"],
         "summary": "Cambiar estado de un rol",
-        "description": "Activa o desactiva un rol en el sistema. Si se desactiva un rol que tiene usuarios asignados, requiere 'confirmed: true'. El rol ADMINISTRATOR no puede desactivarse. Requiere el permiso 'rol.editar' con alcance GLOBAL.",
+        "description": "Activa o desactiva un rol en el sistema. Si se desactiva un rol que tiene usuarios asignados, requiere 'confirmed: true'. El rol ADMINISTRATOR no puede desactivarse. Audita con acción STATE_CHANGE. Requiere el permiso 'rol.editar' con alcance GLOBAL.",
         "operationId": "changeRoleStatus",
         "security": [
           {
@@ -2064,7 +2115,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RoleSummary"
+                  "$ref": "#/components/schemas/RoleDto"
                 },
                 "example": {
                   "id": "role_teacher_cuid",
@@ -2170,6 +2221,23 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Error interno del servidor.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "INTERNAL_ERROR",
+                    "message": "Ha ocurrido un error inesperado en el servidor.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -2178,7 +2246,7 @@
       "patch": {
         "tags": ["Roles"],
         "summary": "Actualizar información básica de un rol",
-        "description": "Actualiza el nombre y/o descripción de un rol existente. Requiere el permiso 'rol.editar' con alcance GLOBAL.",
+        "description": "Actualiza el nombre y/o descripción de un rol existente. Audita con acción UPDATE. Requiere el permiso 'rol.editar' con alcance GLOBAL.",
         "operationId": "updateRole",
         "security": [
           {
@@ -2225,7 +2293,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RoleSummary"
+                  "$ref": "#/components/schemas/RoleDto"
                 },
                 "example": {
                   "id": "role_auditor_cuid",
@@ -2326,6 +2394,23 @@
                   "error": {
                     "code": "CONFLICT",
                     "message": "Ya existe un rol con ese nombre.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "INTERNAL_ERROR",
+                    "message": "Ha ocurrido un error inesperado en el servidor.",
                     "requestId": "req_test_123"
                   }
                 }
@@ -2440,6 +2525,23 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Error interno del servidor.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "INTERNAL_ERROR",
+                    "message": "Ha ocurrido un error inesperado en el servidor.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -2495,19 +2597,7 @@
             "type": "array",
             "maxItems": 200,
             "items": {
-              "type": "object",
-              "required": ["permissionCode", "scope"],
-              "properties": {
-                "permissionCode": {
-                  "type": "string",
-                  "description": "Código de permiso institucional (ej. usuario.ver)."
-                },
-                "scope": {
-                  "type": "string",
-                  "enum": ["GLOBAL", "OWN"],
-                  "description": "Alcance de la concesión del permiso."
-                }
-              }
+              "$ref": "#/components/schemas/RoleGrant"
             },
             "description": "Lista de concesiones de permisos iniciales."
           }
@@ -2876,7 +2966,22 @@
           }
         }
       },
-      "RoleSummary": {
+      "RoleGrant": {
+        "type": "object",
+        "required": ["permissionCode", "scope"],
+        "properties": {
+          "permissionCode": {
+            "type": "string",
+            "description": "Código de permiso institucional (recurso.accion)."
+          },
+          "scope": {
+            "type": "string",
+            "enum": ["GLOBAL", "OWN"],
+            "description": "Alcance de la concesión del permiso."
+          }
+        }
+      },
+      "RoleDto": {
         "type": "object",
         "required": [
           "id",
@@ -2929,19 +3034,7 @@
           "permissions": {
             "type": "array",
             "items": {
-              "type": "object",
-              "required": ["permissionCode", "scope"],
-              "properties": {
-                "permissionCode": {
-                  "type": "string",
-                  "description": "Código de permiso (recurso.accion)."
-                },
-                "scope": {
-                  "type": "string",
-                  "enum": ["GLOBAL", "OWN"],
-                  "description": "Alcance de la concesión."
-                }
-              }
+              "$ref": "#/components/schemas/RoleGrant"
             },
             "description": "Lista de concesiones de permisos asignadas al rol."
           },
@@ -2959,7 +3052,7 @@
           "items": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/RoleSummary"
+              "$ref": "#/components/schemas/RoleDto"
             },
             "description": "Lista de roles del sistema."
           }
@@ -2973,19 +3066,7 @@
             "type": "array",
             "maxItems": 200,
             "items": {
-              "type": "object",
-              "required": ["permissionCode", "scope"],
-              "properties": {
-                "permissionCode": {
-                  "type": "string",
-                  "description": "Código de permiso institucional."
-                },
-                "scope": {
-                  "type": "string",
-                  "enum": ["GLOBAL", "OWN"],
-                  "description": "Alcance de la concesión del permiso."
-                }
-              }
+              "$ref": "#/components/schemas/RoleGrant"
             },
             "description": "Lista de concesiones de permisos a asignar al rol."
           }
@@ -3026,7 +3107,7 @@
         "additionalProperties": false,
         "description": "Datos para activar o desactivar un rol."
       },
-      "PermissionSummary": {
+      "PermissionDto": {
         "type": "object",
         "required": ["code", "description", "module"],
         "properties": {
@@ -3051,7 +3132,7 @@
           "items": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/PermissionSummary"
+              "$ref": "#/components/schemas/PermissionDto"
             },
             "description": "Lista de permisos del catálogo institucional."
           }

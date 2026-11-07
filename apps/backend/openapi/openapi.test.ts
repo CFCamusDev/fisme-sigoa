@@ -22,6 +22,7 @@ import {
   resetPasswordRequestSchema,
   resetPasswordResponseSchema,
   roleDtoSchema,
+  roleGrantSchema,
   updateRolePermissionsRequestSchema,
   updateRoleRequestSchema,
   changeRoleStatusRequestSchema,
@@ -441,17 +442,17 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
       expect(op.description).toContain('rol.editar');
     });
 
-    it('documents RoleSummary, ListRolesResponse and CreateRoleRequest components', () => {
-      expect(spec.components.schemas.RoleSummary).toBeDefined();
+    it('documents RoleDto, ListRolesResponse and CreateRoleRequest components', () => {
+      expect(spec.components.schemas.RoleDto).toBeDefined();
       expect(spec.components.schemas.ListRolesResponse).toBeDefined();
       expect(spec.components.schemas.CreateRoleRequest).toBeDefined();
 
-      const roleSummary = spec.components.schemas.RoleSummary;
-      expect(roleSummary.properties.id).toBeDefined();
-      expect(roleSummary.properties.code).toBeDefined();
-      expect(roleSummary.properties.name).toBeDefined();
-      expect(roleSummary.properties.description).toBeDefined();
-      expect(roleSummary.properties.isPredefined).toBeDefined();
+      const roleDto = spec.components.schemas.RoleDto;
+      expect(roleDto.properties.id).toBeDefined();
+      expect(roleDto.properties.code).toBeDefined();
+      expect(roleDto.properties.name).toBeDefined();
+      expect(roleDto.properties.description).toBeDefined();
+      expect(roleDto.properties.isPredefined).toBeDefined();
 
       const createReq = spec.components.schemas.CreateRoleRequest;
       expect(createReq.properties.name).toBeDefined();
@@ -686,14 +687,14 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
       expect(op.description).toContain('rol.ver');
     });
 
-    it('documents PermissionSummary and ListPermissionsResponse components', () => {
-      expect(spec.components.schemas.PermissionSummary).toBeDefined();
+    it('documents PermissionDto and ListPermissionsResponse components', () => {
+      expect(spec.components.schemas.PermissionDto).toBeDefined();
       expect(spec.components.schemas.ListPermissionsResponse).toBeDefined();
 
-      const permSummary = spec.components.schemas.PermissionSummary;
-      expect(permSummary.properties.code).toBeDefined();
-      expect(permSummary.properties.description).toBeDefined();
-      expect(permSummary.properties.module).toBeDefined();
+      const permDto = spec.components.schemas.PermissionDto;
+      expect(permDto.properties.code).toBeDefined();
+      expect(permDto.properties.description).toBeDefined();
+      expect(permDto.properties.module).toBeDefined();
     });
 
     it('keeps GET /permissions response example valid against listPermissionsResponseSchema', () => {
@@ -999,6 +1000,230 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
           ).toBeDefined();
         }
       }
+    });
+  });
+
+  describe('OpenAPI Specification for Authorization & Drift Guard (HU-006, T-006-19, RNF-032)', () => {
+    function getZodRequiredKeys(schema: {
+      shape: Record<string, { isOptional?: () => boolean }>;
+    }): string[] {
+      const required: string[] = [];
+      for (const [key, prop] of Object.entries(schema.shape)) {
+        if (typeof prop.isOptional === 'function') {
+          if (!prop.isOptional()) {
+            required.push(key);
+          }
+        } else {
+          required.push(key);
+        }
+      }
+      return required.sort();
+    }
+
+    function compareComponentProperties(
+      schemaName: string,
+      zodSchema: { shape: Record<string, unknown> },
+    ): { missingInSpec: string[]; missingInZod: string[] } {
+      const specSchema = spec.components.schemas[schemaName];
+      if (!specSchema) {
+        throw new Error(`Schema ${schemaName} not found in openapi.json`);
+      }
+      const specProps = Object.keys(specSchema.properties || {}).sort();
+      const zodProps = Object.keys(zodSchema.shape).sort();
+
+      const missingInSpec = zodProps.filter((p) => !specProps.includes(p));
+      const missingInZod = specProps.filter((p) => !zodProps.includes(p));
+
+      return { missingInSpec, missingInZod };
+    }
+
+    it('role and permission components match the shared schemas property by property (T-006-19)', () => {
+      const componentsToTest = [
+        { name: 'RoleDto', schema: roleDtoSchema },
+        { name: 'RoleGrant', schema: roleGrantSchema },
+        { name: 'PermissionDto', schema: permissionDtoSchema },
+        { name: 'CreateRoleRequest', schema: createRoleRequestSchema },
+        { name: 'UpdateRoleRequest', schema: updateRoleRequestSchema },
+        { name: 'ChangeRoleStatusRequest', schema: changeRoleStatusRequestSchema },
+        { name: 'UpdateRolePermissionsRequest', schema: updateRolePermissionsRequestSchema },
+      ];
+
+      for (const { name, schema } of componentsToTest) {
+        const { missingInSpec, missingInZod } = compareComponentProperties(name, schema);
+        expect(
+          missingInSpec,
+          `Schema ${name} in openapi.json is missing properties defined in Zod: ${missingInSpec.join(', ')}`,
+        ).toEqual([]);
+        expect(
+          missingInZod,
+          `Schema ${name} in openapi.json has extra properties not in Zod: ${missingInZod.join(', ')}`,
+        ).toEqual([]);
+
+        // Validate required properties
+        const expectedRequired = getZodRequiredKeys(schema as never);
+        const actualRequired = [...(spec.components.schemas[name].required || [])].sort();
+        expect(
+          actualRequired,
+          `Schema ${name} in openapi.json required fields do not match Zod non-optional fields`,
+        ).toEqual(expectedRequired);
+      }
+
+      // Enums verification
+      expect(spec.components.schemas.RoleDto.properties.status.enum).toEqual(
+        roleDtoSchema.shape.status.options,
+      );
+      expect(spec.components.schemas.RoleGrant.properties.scope.enum).toEqual(
+        roleGrantSchema.shape.scope.options,
+      );
+      expect(spec.components.schemas.ChangeRoleStatusRequest.properties.status.enum).toEqual(
+        changeRoleStatusRequestSchema.shape.status.options,
+      );
+    });
+
+    interface OpenApiOperationDoc {
+      operationId: string;
+      description?: string;
+      security?: unknown[];
+      responses: Record<
+        string,
+        {
+          content?: Record<
+            string,
+            { example?: unknown; examples?: Record<string, { value: unknown }> }
+          >;
+        }
+      >;
+    }
+
+    it('every operation under /roles and /permissions has a unique operationId, bearer security and its error responses (T-006-19)', () => {
+      const operations: { method: string; path: string; op: OpenApiOperationDoc }[] = [
+        { method: 'get', path: '/roles', op: spec.paths['/roles'].get },
+        { method: 'post', path: '/roles', op: spec.paths['/roles'].post },
+        {
+          method: 'put',
+          path: '/roles/{id}/permissions',
+          op: spec.paths['/roles/{id}/permissions'].put,
+        },
+        { method: 'patch', path: '/roles/{id}', op: spec.paths['/roles/{id}'].patch },
+        { method: 'patch', path: '/roles/{id}/status', op: spec.paths['/roles/{id}/status'].patch },
+        { method: 'get', path: '/permissions', op: spec.paths['/permissions'].get },
+      ];
+
+      const operationIds = operations.map((o) => o.op.operationId);
+      const uniqueOperationIds = new Set(operationIds);
+      expect(uniqueOperationIds.size).toBe(operations.length);
+
+      for (const { method, path, op } of operations) {
+        expect(
+          op.security,
+          `${method.toUpperCase()} ${path} must declare bearerAuth security`,
+        ).toEqual([{ bearerAuth: [] }]);
+
+        // Error responses checks
+        expect(
+          op.responses['400'],
+          `${method.toUpperCase()} ${path} must declare 400 response`,
+        ).toBeDefined();
+        expect(
+          op.responses['401'],
+          `${method.toUpperCase()} ${path} must declare 401 response`,
+        ).toBeDefined();
+        expect(
+          op.responses['403'],
+          `${method.toUpperCase()} ${path} must declare 403 response`,
+        ).toBeDefined();
+        expect(
+          op.responses['500'],
+          `${method.toUpperCase()} ${path} must declare 500 response`,
+        ).toBeDefined();
+
+        if (['put', 'patch'].includes(method)) {
+          expect(
+            op.responses['404'],
+            `${method.toUpperCase()} ${path} must declare 404 response`,
+          ).toBeDefined();
+        }
+        if (
+          ['post', 'put'].includes(method) ||
+          path.includes('/status') ||
+          path === '/roles/{id}'
+        ) {
+          if (method !== 'get') {
+            expect(
+              op.responses['409'],
+              `${method.toUpperCase()} ${path} must declare 409 response`,
+            ).toBeDefined();
+          }
+        }
+      }
+    });
+
+    it('error examples validate against the shared error contract (T-006-19)', () => {
+      const operations = [
+        spec.paths['/roles'].get,
+        spec.paths['/roles'].post,
+        spec.paths['/roles/{id}/permissions'].put,
+        spec.paths['/roles/{id}'].patch,
+        spec.paths['/roles/{id}/status'].patch,
+        spec.paths['/permissions'].get,
+      ];
+
+      for (const op of operations) {
+        for (const statusCode of ['400', '401', '403', '404', '409', '500']) {
+          const res = op.responses[statusCode];
+          if (!res || !res.content || !res.content['application/json']) continue;
+
+          const content = res.content['application/json'];
+          if (content.example) {
+            const parsed = apiErrorResponseSchema.safeParse(content.example);
+            expect(
+              parsed.success,
+              `Example for ${statusCode} in ${op.operationId} must match apiErrorResponseSchema`,
+            ).toBe(true);
+          }
+          if (content.examples) {
+            for (const [key, ex] of Object.entries(
+              content.examples as Record<string, { value: unknown }>,
+            )) {
+              const parsed = apiErrorResponseSchema.safeParse(ex.value);
+              expect(
+                parsed.success,
+                `Named example ${key} for ${statusCode} in ${op.operationId} must match apiErrorResponseSchema`,
+              ).toBe(true);
+            }
+          }
+        }
+      }
+    });
+
+    it('descriptions name the required permission and the audit action (T-006-19)', () => {
+      // Descriptions must name required permissions
+      expect(spec.paths['/roles'].get.description).toContain('rol.ver');
+      expect(spec.paths['/permissions'].get.description).toContain('rol.ver');
+
+      expect(spec.paths['/roles'].post.description).toContain('rol.editar');
+      expect(spec.paths['/roles'].post.description).toContain('CREATE');
+
+      expect(spec.paths['/roles/{id}/permissions'].put.description).toContain('rol.editar');
+      expect(spec.paths['/roles/{id}/permissions'].put.description).toContain('PERMISSION_CHANGE');
+
+      expect(spec.paths['/roles/{id}'].patch.description).toContain('rol.editar');
+      expect(spec.paths['/roles/{id}'].patch.description).toContain('UPDATE');
+
+      expect(spec.paths['/roles/{id}/status'].patch.description).toContain('rol.editar');
+      expect(spec.paths['/roles/{id}/status'].patch.description).toContain('STATE_CHANGE');
+    });
+
+    it('fails when a zod field is not documented (negative test against drift) (T-006-19)', () => {
+      const mockZodSchemaWithExtra = {
+        shape: {
+          ...roleDtoSchema.shape,
+          undocumentedField: true,
+        },
+      };
+
+      const result = compareComponentProperties('RoleDto', mockZodSchemaWithExtra as never);
+      expect(result.missingInSpec).toContain('undocumentedField');
     });
   });
 });
