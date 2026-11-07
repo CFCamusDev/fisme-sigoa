@@ -38,6 +38,14 @@ export class PrismaGrantReader implements GrantReader {
       }
     }
 
+    const directGrants = await client.userPermission.findMany({
+      where: { userId },
+      include: { permission: true },
+    });
+    for (const grant of directGrants) {
+      grants.push({ permission: grant.permission.code, scope: grant.scope });
+    }
+
     return grants;
   }
 }
