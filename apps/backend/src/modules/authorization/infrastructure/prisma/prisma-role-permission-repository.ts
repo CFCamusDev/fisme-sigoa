@@ -1,5 +1,6 @@
 import type { PermissionScope } from '@sigoa/shared';
 import type { DbProvider } from '../../../../shared/prisma/prisma-unit-of-work.js';
+import { diffGrants } from '../../domain/policies/grant-diff.js';
 import type {
   DesiredRoleGrant,
   ReplaceRoleGrantsResult,
@@ -47,13 +48,7 @@ export class PrismaRolePermissionRepository implements RolePermissionRepository 
       );
     }
 
-    const seen = new Set<string>();
-    for (const item of desired) {
-      if (seen.has(item.permissionId)) {
-        throw new Error('El conjunto deseado contiene permisos duplicados');
-      }
-      seen.add(item.permissionId);
-    }
+    diffGrants([], desired);
 
     const client = this.dbProvider.get();
     const currentGrants = await client.rolePermission.findMany({
@@ -66,18 +61,9 @@ export class PrismaRolePermissionRepository implements RolePermissionRepository 
     });
 
     const currentByPermId = new Map(currentGrants.map((g) => [g.permissionId, g]));
-    const desiredByPermId = new Map(desired.map((d) => [d.permissionId, d]));
-
-    let added = 0;
-    let updated = 0;
-    let removed = 0;
-
-    const toDeleteIds: string[] = [];
-    for (const current of currentGrants) {
-      if (!desiredByPermId.has(current.permissionId)) {
-        toDeleteIds.push(current.id);
-      }
-    }
+    const { toRemove: toDeleteIds, toAdd, toUpdate } = diffGrants(currentGrants, desired);
+    const addedIds = new Set(toAdd.map((grant) => grant.permissionId));
+    const updatedIds = new Set(toUpdate.map((grant) => grant.id));
 
     if (toDeleteIds.length > 0) {
       await client.rolePermission.deleteMany({
@@ -85,12 +71,11 @@ export class PrismaRolePermissionRepository implements RolePermissionRepository 
           id: { in: toDeleteIds },
         },
       });
-      removed = toDeleteIds.length;
     }
 
     for (const item of desired) {
       const existing = currentByPermId.get(item.permissionId);
-      if (!existing) {
+      if (!existing && addedIds.has(item.permissionId)) {
         await client.rolePermission.create({
           data: {
             roleId,
@@ -100,8 +85,7 @@ export class PrismaRolePermissionRepository implements RolePermissionRepository 
             updatedBy: actorId,
           },
         });
-        added++;
-      } else if (existing.scope !== item.scope) {
+      } else if (existing && updatedIds.has(existing.id)) {
         await client.rolePermission.update({
           where: { id: existing.id },
           data: {
@@ -109,10 +93,9 @@ export class PrismaRolePermissionRepository implements RolePermissionRepository 
             updatedBy: actorId,
           },
         });
-        updated++;
       }
     }
 
-    return { added, updated, removed };
+    return { added: toAdd.length, updated: toUpdate.length, removed: toDeleteIds.length };
   }
 }
