@@ -10,7 +10,7 @@ describe('Authorization Schema Integration (PostgreSQL real, F1)', () => {
       data: {
         names: 'Test',
         firstSurname: 'User',
-        email: `auth.schema.${suffix}@untrm.edu.pe`,
+        email: `auth.schema.${suffix}@example.test`,
         dni: suffix.slice(0, 8),
         status: 'ACTIVE',
       },
@@ -176,8 +176,7 @@ describe('Authorization Schema Integration (PostgreSQL real, F1)', () => {
       });
 
       expect(updated.status).toBe('INACTIVE');
-      expect(updated.deactivatedAt).toBeDefined();
-      expect(updated.deactivatedAt?.getTime()).toBeCloseTo(now.getTime(), -2);
+      expect(updated.deactivatedAt).toEqual(now);
     });
   });
 
@@ -282,6 +281,37 @@ describe('Authorization Schema Integration (PostgreSQL real, F1)', () => {
       expect(updated.scope).toBe('OWN');
       expect(updated.updatedBy).toBe('admin-user-id');
       expect(updated.updatedAt.getTime()).toBeGreaterThanOrEqual(grant.updatedAt.getTime());
+    });
+  });
+
+  describe('UserRole tracking (T-007-01)', () => {
+    it('defaults tracking columns and persists the updating actor', async () => {
+      const { user, role } = await createBaseEntities('tracking');
+      const grant = await prisma.userRole.create({
+        data: { userId: user.id, roleId: role.id },
+      });
+      expect(grant.updatedAt).toBeInstanceOf(Date);
+      expect(grant.updatedBy).toBeNull();
+      const updated = await prisma.userRole.update({
+        where: { id: grant.id },
+        data: { updatedBy: 'test-actor' },
+      });
+      expect(updated.updatedBy).toBe('test-actor');
+      expect(updated.updatedAt.getTime()).toBeGreaterThanOrEqual(grant.updatedAt.getTime());
+    });
+
+    it('defines a non-null timestamp with a database default and nullable actor', async () => {
+      const columns = await prisma.$queryRaw<
+        Array<{ column_name: string; is_nullable: string; column_default: string | null }>
+      >`
+        SELECT column_name, is_nullable, column_default FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'user_roles'
+          AND column_name IN ('updatedAt', 'updatedBy') ORDER BY column_name
+      `;
+      expect(columns).toEqual([
+        { column_name: 'updatedAt', is_nullable: 'NO', column_default: 'CURRENT_TIMESTAMP' },
+        { column_name: 'updatedBy', is_nullable: 'YES', column_default: null },
+      ]);
     });
   });
 });
