@@ -15,6 +15,7 @@ import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as AuthRecuperarContrasenaRouteImport } from './routes/_auth/recuperar-contrasena'
 import { Route as EncuestaTokenRouteImport } from './routes/encuesta/$token'
+import { Route as AppRolesIndexRouteImport } from './routes/_app/roles/index'
 import { Route as AppUsuariosIndexRouteImport } from './routes/_app/usuarios/index'
 import { Route as AppUsuariosNuevoRouteImport } from './routes/_app/usuarios/nuevo'
 import { Route as AuthActivarTokenRouteImport } from './routes/_auth/activar.$token'
@@ -48,6 +49,11 @@ const EncuestaTokenRoute = EncuestaTokenRouteImport.update({
   id: '/encuesta/$token',
   path: '/encuesta/$token',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppRolesIndexRoute = AppRolesIndexRouteImport.update({
+  id: '/roles/',
+  path: '/roles/',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppUsuariosIndexRoute = AppUsuariosIndexRouteImport.update({
   id: '/usuarios/',
@@ -83,6 +89,7 @@ export interface FileRoutesByFullPath {
   '/usuarios/nuevo': typeof AppUsuariosNuevoRoute
   '/activar/$token': typeof AuthActivarTokenRoute
   '/restablecer/$token': typeof AuthRestablecerTokenRoute
+  '/roles/': typeof AppRolesIndexRoute
   '/usuarios/': typeof AppUsuariosIndexRoute
   '/usuarios/$userId/editar': typeof AppUsuariosUserIdEditarRoute
 }
@@ -94,6 +101,7 @@ export interface FileRoutesByTo {
   '/usuarios/nuevo': typeof AppUsuariosNuevoRoute
   '/activar/$token': typeof AuthActivarTokenRoute
   '/restablecer/$token': typeof AuthRestablecerTokenRoute
+  '/roles': typeof AppRolesIndexRoute
   '/usuarios': typeof AppUsuariosIndexRoute
   '/usuarios/$userId/editar': typeof AppUsuariosUserIdEditarRoute
 }
@@ -108,6 +116,7 @@ export interface FileRoutesById {
   '/_app/usuarios/nuevo': typeof AppUsuariosNuevoRoute
   '/_auth/activar/$token': typeof AuthActivarTokenRoute
   '/_auth/restablecer/$token': typeof AuthRestablecerTokenRoute
+  '/_app/roles/': typeof AppRolesIndexRoute
   '/_app/usuarios/': typeof AppUsuariosIndexRoute
   '/_app/usuarios/$userId/editar': typeof AppUsuariosUserIdEditarRoute
 }
@@ -121,6 +130,7 @@ export interface FileRouteTypes {
     | '/usuarios/nuevo'
     | '/activar/$token'
     | '/restablecer/$token'
+    | '/roles/'
     | '/usuarios/'
     | '/usuarios/$userId/editar'
   fileRoutesByTo: FileRoutesByTo
@@ -132,6 +142,7 @@ export interface FileRouteTypes {
     | '/usuarios/nuevo'
     | '/activar/$token'
     | '/restablecer/$token'
+    | '/roles'
     | '/usuarios'
     | '/usuarios/$userId/editar'
   id:
@@ -145,6 +156,7 @@ export interface FileRouteTypes {
     | '/_app/usuarios/nuevo'
     | '/_auth/activar/$token'
     | '/_auth/restablecer/$token'
+    | '/_app/roles/'
     | '/_app/usuarios/'
     | '/_app/usuarios/$userId/editar'
   fileRoutesById: FileRoutesById
@@ -199,6 +211,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EncuestaTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/roles/': {
+      id: '/_app/roles/'
+      path: '/roles'
+      fullPath: '/roles/'
+      preLoaderRoute: typeof AppRolesIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/usuarios/': {
       id: '/_app/usuarios/'
       path: '/usuarios'
@@ -240,6 +259,7 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
   AppUsuariosNuevoRoute: typeof AppUsuariosNuevoRoute
+  AppRolesIndexRoute: typeof AppRolesIndexRoute
   AppUsuariosIndexRoute: typeof AppUsuariosIndexRoute
   AppUsuariosUserIdEditarRoute: typeof AppUsuariosUserIdEditarRoute
 }
@@ -247,6 +267,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
   AppUsuariosNuevoRoute: AppUsuariosNuevoRoute,
+  AppRolesIndexRoute: AppRolesIndexRoute,
   AppUsuariosIndexRoute: AppUsuariosIndexRoute,
   AppUsuariosUserIdEditarRoute: AppUsuariosUserIdEditarRoute,
 }
