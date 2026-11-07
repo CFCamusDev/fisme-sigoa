@@ -60,6 +60,18 @@ describe('AppLayout Component', () => {
     expect(usersLink).toHaveAttribute('href', '/usuarios');
   });
 
+  it('renders navigation item "Roles" linking to /roles (HU-006, T-006-21)', async () => {
+    renderWithProviders(
+      <AppLayout>
+        <p>Dashboard</p>
+      </AppLayout>,
+    );
+
+    const rolesLink = await screen.findByRole('link', { name: /Roles/i });
+    expect(rolesLink).toBeInTheDocument();
+    expect(rolesLink).toHaveAttribute('href', '/roles');
+  });
+
   it('controls mobile sidebar visibility with accessible aria-expanded button', async () => {
     const user = userEvent.setup();
 
