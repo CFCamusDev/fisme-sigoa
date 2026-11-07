@@ -13,3 +13,5 @@ export * from './ports/role-reader.js';
 export * from './ports/role-repository.js';
 export * from './ports/permission-repository.js';
 export * from './ports/role-permission-repository.js';
+export * from './ports/user-role-repository.js';
+export * from './ports/user-access-subject-repository.js';

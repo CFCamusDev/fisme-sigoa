@@ -35,6 +35,8 @@ export * from './infrastructure/prisma/prisma-role-repository.js';
 export * from './infrastructure/prisma/prisma-permission-repository.js';
 export * from './infrastructure/prisma/prisma-role-permission-repository.js';
 export * from './infrastructure/prisma/prisma-user-role-gateway.js';
+export * from './infrastructure/prisma/prisma-user-role-repository.js';
+export * from './infrastructure/prisma/prisma-user-access-subject-repository.js';
 
 export interface AuthorizationModuleServices {
   readonly grantReader: PrismaGrantReader;

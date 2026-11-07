@@ -1,11 +1,20 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { RequestHandler } from 'express';
-import { createAuthorizationServices, createRolesModule } from './index.js';
+import {
+  createAuthorizationServices,
+  createRolesModule,
+  PrismaUserAccessSubjectRepository,
+  PrismaUserRoleRepository,
+} from './index.js';
 import type { DbProvider } from '../../shared/prisma/prisma-unit-of-work.js';
 import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
 import type { AuditLogger } from '../../shared/audit/audit-logger.js';
 
 describe('Authorization Module Entrypoint', () => {
+  it('exports the user access persistence adapters', () => {
+    expect(PrismaUserRoleRepository).toBeTypeOf('function');
+    expect(PrismaUserAccessSubjectRepository).toBeTypeOf('function');
+  });
   it('instantiates authorization services factory', () => {
     const dummyDbProvider: DbProvider = {
       get: () => ({}) as unknown as ReturnType<DbProvider['get']>,
