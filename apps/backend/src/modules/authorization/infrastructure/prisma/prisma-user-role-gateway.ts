@@ -1,11 +1,23 @@
 import { ValidationError } from '../../../../shared/errors/app-error.js';
-import type { DbProvider } from '../../../../shared/prisma/prisma-unit-of-work.js';
+import {
+  PrismaUnitOfWork,
+  type DbProvider,
+} from '../../../../shared/prisma/prisma-unit-of-work.js';
+import { PrismaUserRoleRepository } from './prisma-user-role-repository.js';
+import type { PrismaClient } from '../../../../shared/prisma/generated/client.js';
 
 export class PrismaUserRoleGateway {
   public constructor(private readonly dbProvider: DbProvider) {}
 
   public async replaceRoles(userId: string, roleIds: string[]): Promise<void> {
     const client = this.dbProvider.get();
+    if (!(this.dbProvider.isInTransaction?.() ?? false)) {
+      if (!('$transaction' in client)) throw new Error('Se requiere una transacción activa');
+      const unitOfWork = new PrismaUnitOfWork(client as PrismaClient);
+      return unitOfWork.run(() =>
+        new PrismaUserRoleGateway(unitOfWork).replaceRoles(userId, roleIds),
+      );
+    }
 
     // 1. Validar en una sola consulta que todos los roles existan
     let existingRoles: Array<{ id: string; status: 'ACTIVE' | 'INACTIVE' }> = [];
@@ -30,7 +42,6 @@ export class PrismaUserRoleGateway {
     const targetRoleIds = new Set(roleIds);
 
     // 3. Determinar roles a eliminar y roles a agregar
-    const toDelete = [...currentRoleIds].filter((id) => !targetRoleIds.has(id));
     const toAdd = [...targetRoleIds].filter((id) => !currentRoleIds.has(id));
 
     // Validar que los roles a agregar no estén inactivos (D4)
@@ -43,28 +54,7 @@ export class PrismaUserRoleGateway {
       }
     }
 
-    // Si no hay cambios, la operación es idempotente y no escribe
-    if (toDelete.length === 0 && toAdd.length === 0) {
-      return;
-    }
-
-    if (toDelete.length > 0) {
-      await client.userRole.deleteMany({
-        where: {
-          userId,
-          roleId: { in: toDelete },
-        },
-      });
-    }
-
-    if (toAdd.length > 0) {
-      await client.userRole.createMany({
-        data: toAdd.map((roleId) => ({
-          userId,
-          roleId,
-        })),
-      });
-    }
+    await new PrismaUserRoleRepository(this.dbProvider).replaceForUser(userId, roleIds, null);
   }
 
   public async getRoleIds(userIds: string[]): Promise<Map<string, string[]>> {
