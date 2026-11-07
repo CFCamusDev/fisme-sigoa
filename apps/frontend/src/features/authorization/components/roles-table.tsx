@@ -1,20 +1,30 @@
 import { Link } from '@tanstack/react-router';
-import { DataTable, type DataTableColumn } from '@/components/common/data-table';
-import { StatusBadge } from '@/components/common/status-badge';
-import { buttonVariants } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { DataTable, type DataTableColumn } from '@/components/common/data-table.js';
+import { StatusBadge } from '@/components/common/status-badge.js';
+import { buttonVariants } from '@/components/ui/button.js';
+import { cn } from '@/lib/utils.js';
 import type { RoleDto } from '@sigoa/shared';
+import { RoleRowActions } from './role-row-actions.js';
 
 export interface RolesTableProps {
   roles: RoleDto[];
   isLoading?: boolean;
   error?: Error | string | null;
   onRetry?: () => void;
+  onStatusChangeError?: (message: string) => void;
+  onStatusChangeSuccess?: (message: string) => void;
 }
 
 const countFormatter = new Intl.NumberFormat('es-PE');
 
-export function RolesTable({ roles, isLoading = false, error = null, onRetry }: RolesTableProps) {
+export function RolesTable({
+  roles,
+  isLoading = false,
+  error = null,
+  onRetry,
+  onStatusChangeError,
+  onStatusChangeSuccess,
+}: RolesTableProps) {
   const columns: DataTableColumn<RoleDto>[] = [
     {
       key: 'name',
@@ -63,24 +73,11 @@ export function RolesTable({ roles, isLoading = false, error = null, onRetry }: 
       headerClassName: 'text-right',
       className: 'text-right',
       render: (r) => (
-        <div className="flex items-center justify-end gap-1">
-          <Link
-            to="/roles/$roleId/permisos"
-            params={{ roleId: r.id }}
-            className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }))}
-            aria-label={`Permisos del rol ${r.name}`}
-          >
-            Permisos
-          </Link>
-          <Link
-            to="/roles/$roleId/editar"
-            params={{ roleId: r.id }}
-            className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }))}
-            aria-label={`Editar rol ${r.name}`}
-          >
-            Editar
-          </Link>
-        </div>
+        <RoleRowActions
+          role={r}
+          onStatusChangeError={onStatusChangeError}
+          onStatusChangeSuccess={onStatusChangeSuccess}
+        />
       ),
     },
   ];
