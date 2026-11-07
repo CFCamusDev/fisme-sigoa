@@ -8,7 +8,12 @@ export class PrismaGrantReader implements GrantReader {
     const client = this.dbProvider.get();
 
     const userRoles = await client.userRole.findMany({
-      where: { userId },
+      where: {
+        userId,
+        role: {
+          status: 'ACTIVE',
+        },
+      },
       include: {
         role: {
           include: {
