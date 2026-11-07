@@ -63,14 +63,24 @@ export function RolesTable({ roles, isLoading = false, error = null, onRetry }: 
       headerClassName: 'text-right',
       className: 'text-right',
       render: (r) => (
-        <Link
-          to="/roles/$roleId/editar"
-          params={{ roleId: r.id }}
-          className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }))}
-          aria-label={`Editar rol ${r.name}`}
-        >
-          Editar
-        </Link>
+        <div className="flex items-center justify-end gap-1">
+          <Link
+            to="/roles/$roleId/permisos"
+            params={{ roleId: r.id }}
+            className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }))}
+            aria-label={`Permisos del rol ${r.name}`}
+          >
+            Permisos
+          </Link>
+          <Link
+            to="/roles/$roleId/editar"
+            params={{ roleId: r.id }}
+            className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }))}
+            aria-label={`Editar rol ${r.name}`}
+          >
+            Editar
+          </Link>
+        </div>
       ),
     },
   ];
