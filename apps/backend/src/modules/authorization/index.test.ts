@@ -5,6 +5,7 @@ import {
   createRolesModule,
   PrismaUserAccessSubjectRepository,
   PrismaUserRoleRepository,
+  PrismaUserPermissionRepository,
 } from './index.js';
 import type { DbProvider } from '../../shared/prisma/prisma-unit-of-work.js';
 import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
@@ -14,6 +15,7 @@ describe('Authorization Module Entrypoint', () => {
   it('exports the user access persistence adapters', () => {
     expect(PrismaUserRoleRepository).toBeTypeOf('function');
     expect(PrismaUserAccessSubjectRepository).toBeTypeOf('function');
+    expect(PrismaUserPermissionRepository).toBeTypeOf('function');
   });
   it('instantiates authorization services factory', () => {
     const dummyDbProvider: DbProvider = {

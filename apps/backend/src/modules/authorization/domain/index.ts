@@ -15,3 +15,6 @@ export * from './ports/permission-repository.js';
 export * from './ports/role-permission-repository.js';
 export * from './ports/user-role-repository.js';
 export * from './ports/user-access-subject-repository.js';
+export * from './ports/grant-types.js';
+export * from './ports/user-permission-repository.js';
+export * from './policies/grant-diff.js';

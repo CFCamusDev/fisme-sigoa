@@ -1,21 +1,8 @@
-import type { PermissionScope } from '@sigoa/shared';
+import type { DesiredGrant, GrantRecord, ReplaceGrantsResult } from './grant-types.js';
 
-export interface RoleGrantRecord {
-  readonly permissionId: string;
-  readonly permissionCode: string;
-  readonly scope: PermissionScope;
-}
-
-export interface DesiredRoleGrant {
-  readonly permissionId: string;
-  readonly scope: PermissionScope;
-}
-
-export interface ReplaceRoleGrantsResult {
-  readonly added: number;
-  readonly updated: number;
-  readonly removed: number;
-}
+export type RoleGrantRecord = GrantRecord;
+export type DesiredRoleGrant = DesiredGrant;
+export type ReplaceRoleGrantsResult = ReplaceGrantsResult;
 
 export interface RolePermissionRepository {
   findByRoleId(roleId: string): Promise<RoleGrantRecord[]>;
