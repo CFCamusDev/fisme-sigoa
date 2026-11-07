@@ -2012,6 +2012,115 @@
           }
         }
       }
+    },
+    "/permissions": {
+      "get": {
+        "tags": ["Roles"],
+        "summary": "Listar permisos del catálogo institucional",
+        "description": "Lista los 72 permisos del catálogo institucional ordenados por módulo y código. Requiere el permiso 'rol.ver' con alcance GLOBAL.",
+        "operationId": "listPermissions",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de permisos retornada exitosamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListPermissionsResponse"
+                },
+                "example": {
+                  "items": [
+                    {
+                      "code": "catalogo.ver",
+                      "description": "Ver versiones de catálogos de objetivos educacionales y atributos del graduado",
+                      "module": "CATALOGO"
+                    },
+                    {
+                      "code": "rol.editar",
+                      "description": "Crear roles personalizados y modificar concesiones de permisos",
+                      "module": "ROLES"
+                    },
+                    {
+                      "code": "rol.ver",
+                      "description": "Ver el catálogo de roles y la matriz de permisos",
+                      "module": "ROLES"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros de consulta no permitidos o inválidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "La solicitud contiene errores de validación",
+                    "details": [
+                      {
+                        "path": "query.invalidParam",
+                        "message": "Unrecognized key(s) in object: 'invalidParam'"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere 'rol.ver' con alcance GLOBAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para ver los roles.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2557,6 +2666,37 @@
               }
             },
             "description": "Lista de concesiones de permisos a asignar al rol."
+          }
+        }
+      },
+      "PermissionSummary": {
+        "type": "object",
+        "required": ["code", "description", "module"],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Código formal del permiso institucional (ej. 'rol.ver')."
+          },
+          "description": {
+            "type": "string",
+            "description": "Descripción formal de la acción autorizada."
+          },
+          "module": {
+            "type": "string",
+            "description": "Módulo funcional al que pertenece el permiso (ej. 'ROLES')."
+          }
+        }
+      },
+      "ListPermissionsResponse": {
+        "type": "object",
+        "required": ["items"],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PermissionSummary"
+            },
+            "description": "Lista de permisos del catálogo institucional."
           }
         }
       }

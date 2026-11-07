@@ -12,10 +12,12 @@ import {
   errorCodeSchema,
   forgotPasswordRequestSchema,
   forgotPasswordResponseSchema,
+  listPermissionsResponseSchema,
   listRolesResponseSchema,
   listUsersResponseSchema,
   loginRequestSchema,
   loginResponseSchema,
+  permissionDtoSchema,
   refreshResponseSchema,
   resetPasswordRequestSchema,
   resetPasswordResponseSchema,
@@ -29,6 +31,8 @@ import { createUsersRouter } from '../src/modules/users/infrastructure/http/user
 import type { UsersController } from '../src/modules/users/infrastructure/http/users.controller.js';
 import { createRolesRouter } from '../src/modules/authorization/infrastructure/http/roles.routes.js';
 import type { RolesController } from '../src/modules/authorization/infrastructure/http/roles.controller.js';
+import { createPermissionsRouter } from '../src/modules/authorization/infrastructure/http/permissions.routes.js';
+import type { PermissionsController } from '../src/modules/authorization/infrastructure/http/permissions.controller.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -170,6 +174,7 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
     expect(operationIds).toContain('updateUser');
     expect(operationIds).toContain('changeUserStatus');
     expect(operationIds).toContain('listRoles');
+    expect(operationIds).toContain('listPermissions');
     expect(operationIds).toContain('getUser');
   });
 
@@ -616,6 +621,120 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
 
     it('fails when a route in roles router is missing from openapi spec (negative test against drift)', () => {
       const rogueRouterEndpoints = [{ method: 'delete', path: '/roles/rogue-endpoint' }];
+      const specPath = spec.paths[rogueRouterEndpoints[0].path];
+      expect(specPath).toBeUndefined();
+    });
+  });
+
+  describe('OpenAPI Specification for Permissions (HU-006, T-006-18, A4, D1, D3)', () => {
+    it('documents GET /permissions endpoint with bearer security and Roles tag', () => {
+      expect(spec.paths['/permissions']).toBeDefined();
+      expect(spec.paths['/permissions'].get).toBeDefined();
+
+      const op = spec.paths['/permissions'].get;
+      expect(op.tags).toContain('Roles');
+      expect(op.security).toEqual([{ bearerAuth: [] }]);
+      expect(op.operationId).toBe('listPermissions');
+      expect(op.description).toContain('rol.ver');
+    });
+
+    it('documents PermissionSummary and ListPermissionsResponse components', () => {
+      expect(spec.components.schemas.PermissionSummary).toBeDefined();
+      expect(spec.components.schemas.ListPermissionsResponse).toBeDefined();
+
+      const permSummary = spec.components.schemas.PermissionSummary;
+      expect(permSummary.properties.code).toBeDefined();
+      expect(permSummary.properties.description).toBeDefined();
+      expect(permSummary.properties.module).toBeDefined();
+    });
+
+    it('keeps GET /permissions response example valid against listPermissionsResponseSchema', () => {
+      const getPermsRes =
+        spec.paths['/permissions'].get.responses['200'].content['application/json'].example;
+      expect(listPermissionsResponseSchema.safeParse(getPermsRes).success).toBe(true);
+      expect(
+        spec.paths['/permissions'].get.responses['200'].headers['Cache-Control'],
+      ).toBeDefined();
+
+      for (const item of getPermsRes.items) {
+        expect(permissionDtoSchema.safeParse(item).success).toBe(true);
+      }
+    });
+
+    it('documents 400, 401 and 403 error responses for GET /permissions', () => {
+      const op = spec.paths['/permissions'].get;
+      expect(op.responses['400']).toBeDefined();
+      expect(op.responses['401']).toBeDefined();
+      expect(op.responses['403']).toBeDefined();
+
+      const err400 = op.responses['400'].content['application/json'].example;
+      expect(apiErrorResponseSchema.safeParse(err400).success).toBe(true);
+      expect(err400.error.code).toBe('VALIDATION_ERROR');
+
+      const err401 = op.responses['401'].content['application/json'].example;
+      expect(apiErrorResponseSchema.safeParse(err401).success).toBe(true);
+
+      const err403 = op.responses['403'].content['application/json'].example;
+      expect(apiErrorResponseSchema.safeParse(err403).success).toBe(true);
+    });
+
+    it('documents every route of the permissions router and nothing else (guard against drift, A4, generalized D1)', () => {
+      const dummyController = {
+        list: () => {},
+      } as unknown as PermissionsController;
+
+      const dummyAuth = () => {};
+      const dummyRequirePermission = () => () => {};
+
+      const router = createPermissionsRouter({
+        controller: dummyController,
+        authenticate: dummyAuth as never,
+        requirePermission: dummyRequirePermission as never,
+      });
+
+      const routerEndpoints: { method: string; path: string }[] = [];
+      for (const layer of router.stack) {
+        if (layer.route) {
+          const routePath = layer.route.path;
+          const methods = Object.keys(layer.route.methods);
+          for (const method of methods) {
+            const normalizedPath = ('/permissions' + (routePath === '/' ? '' : routePath)).replace(
+              /:([a-zA-Z0-9_]+)/g,
+              '{$1}',
+            );
+            routerEndpoints.push({ method: method.toLowerCase(), path: normalizedPath });
+          }
+        }
+      }
+
+      expect(routerEndpoints.length).toBeGreaterThan(0);
+
+      for (const endpoint of routerEndpoints) {
+        const specPath = spec.paths[endpoint.path];
+        expect(specPath, `Path ${endpoint.path} must exist in openapi.json`).toBeDefined();
+        expect(
+          specPath[endpoint.method],
+          `Method ${endpoint.method.toUpperCase()} ${endpoint.path} must exist in openapi.json`,
+        ).toBeDefined();
+      }
+
+      const permPathsInSpec = Object.keys(spec.paths).filter((p) => p.startsWith('/permissions'));
+      for (const pathKey of permPathsInSpec) {
+        const specPath = spec.paths[pathKey];
+        for (const method of Object.keys(specPath)) {
+          const matching = routerEndpoints.find(
+            (ep) => ep.path === pathKey && ep.method === method.toLowerCase(),
+          );
+          expect(
+            matching,
+            `OpenAPI has ${method.toUpperCase()} ${pathKey} which is not in permissionsRouter`,
+          ).toBeDefined();
+        }
+      }
+    });
+
+    it('fails when a route in permissions router is missing from openapi spec (negative test against drift)', () => {
+      const rogueRouterEndpoints = [{ method: 'delete', path: '/permissions/rogue-endpoint' }];
       const specPath = spec.paths[rogueRouterEndpoints[0].path];
       expect(specPath).toBeUndefined();
     });

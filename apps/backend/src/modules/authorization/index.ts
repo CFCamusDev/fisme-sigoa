@@ -4,11 +4,14 @@ import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
 import type { DbProvider } from '../../shared/prisma/prisma-unit-of-work.js';
 import { CreateRoleUseCase } from './application/create-role.js';
 import { EditRolePermissionsUseCase } from './application/edit-role-permissions.js';
+import { ListPermissionsUseCase } from './application/list-permissions.js';
 import { ListRolesUseCase } from './application/list-roles.js';
 import { PermissionAuthorizer } from './application/permission-authorizer.js';
 import { createRequirePermission } from './infrastructure/http/require-permission.js';
 import { RolesController } from './infrastructure/http/roles.controller.js';
 import { createRolesRouter } from './infrastructure/http/roles.routes.js';
+import { PermissionsController } from './infrastructure/http/permissions.controller.js';
+import { createPermissionsRouter } from './infrastructure/http/permissions.routes.js';
 import { PrismaGrantReader } from './infrastructure/prisma/prisma-grant-reader.js';
 import { PrismaRoleReader } from './infrastructure/prisma/prisma-role-reader.js';
 import { PrismaUserRoleGateway } from './infrastructure/prisma/prisma-user-role-gateway.js';
@@ -21,6 +24,8 @@ export * from './application/index.js';
 export * from './infrastructure/http/require-permission.js';
 export * from './infrastructure/http/roles.controller.js';
 export * from './infrastructure/http/roles.routes.js';
+export * from './infrastructure/http/permissions.controller.js';
+export * from './infrastructure/http/permissions.routes.js';
 export * from './infrastructure/prisma/prisma-grant-reader.js';
 export * from './infrastructure/prisma/prisma-role-reader.js';
 export * from './infrastructure/prisma/prisma-role-mapper.js';
@@ -105,6 +110,30 @@ export function createRolesModule(deps: RolesModuleDependencies): Router {
   });
 
   return createRolesRouter({
+    controller,
+    authenticate: deps.authenticate,
+    requirePermission: deps.services.requirePermission,
+  });
+}
+
+export interface PermissionsModuleDependencies {
+  readonly authenticate: RequestHandler;
+  readonly services: AuthorizationModuleServices;
+  readonly dbProvider: DbProvider;
+}
+
+export function createPermissionsModule(deps: PermissionsModuleDependencies): Router {
+  const permissionRepository = new PrismaPermissionRepository(deps.dbProvider);
+  const listPermissionsUseCase = new ListPermissionsUseCase({
+    permissionRepository,
+    authorizer: deps.services.authorizer,
+  });
+
+  const controller = new PermissionsController({
+    listPermissionsUseCase,
+  });
+
+  return createPermissionsRouter({
     controller,
     authenticate: deps.authenticate,
     requirePermission: deps.services.requirePermission,

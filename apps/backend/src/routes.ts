@@ -16,7 +16,11 @@ import {
   EmailPasswordResetSender,
   type DetachedTaskRunner,
 } from './modules/auth/index.js';
-import { createAuthorizationServices, createRolesModule } from './modules/authorization/index.js';
+import {
+  createAuthorizationServices,
+  createPermissionsModule,
+  createRolesModule,
+} from './modules/authorization/index.js';
 import { createUsersModule, EmailActivationSender } from './modules/users/index.js';
 
 export interface AppRoutesDependencies {
@@ -78,6 +82,14 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
       services: authorizationServices,
       unitOfWork: deps.unitOfWork,
       auditLogger: deps.auditLogger,
+      dbProvider: deps.dbProvider,
+    }),
+  );
+  app.use(
+    '/permissions',
+    createPermissionsModule({
+      authenticate: authServices.authenticate,
+      services: authorizationServices,
       dbProvider: deps.dbProvider,
     }),
   );
