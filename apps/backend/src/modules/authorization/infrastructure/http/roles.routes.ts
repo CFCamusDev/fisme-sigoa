@@ -1,5 +1,9 @@
 import { Router, type RequestHandler } from 'express';
-import { createRoleRequestSchema } from '@sigoa/shared';
+import {
+  createRoleRequestSchema,
+  roleIdParamSchema,
+  updateRolePermissionsRequestSchema,
+} from '@sigoa/shared';
 import { validateRequest } from '../../../../shared/middleware/validate-request.js';
 import type { RolesController } from './roles.controller.js';
 
@@ -27,6 +31,18 @@ export function createRolesRouter(deps: RolesRouterDependencies): Router {
     deps.requirePermission('rol.editar', 'GLOBAL'),
     validateRequest({ body: createRoleRequestSchema }),
     deps.controller.create,
+  );
+
+  // PUT /roles/:id/permissions (T-006-16, RF-006, RS-002, RS-020, RNF-007, RNF-008, RNF-009, RNF-017, D1, D4, D5, D8)
+  router.put(
+    '/:id/permissions',
+    deps.authenticate,
+    deps.requirePermission('rol.editar', 'GLOBAL'),
+    validateRequest({
+      params: roleIdParamSchema,
+      body: updateRolePermissionsRequestSchema,
+    }),
+    deps.controller.updatePermissions,
   );
 
   return router;

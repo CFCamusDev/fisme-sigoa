@@ -20,6 +20,7 @@ import {
   resetPasswordRequestSchema,
   resetPasswordResponseSchema,
   roleDtoSchema,
+  updateRolePermissionsRequestSchema,
   updateUserRequestSchema,
   userDtoSchema,
 } from '@sigoa/shared';
@@ -501,10 +502,61 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
       expect(apiErrorResponseSchema.safeParse(err403).success).toBe(true);
     });
 
+    it('documents PUT /roles/{id}/permissions endpoint with bearer security and Roles tag (T-006-16)', () => {
+      expect(spec.paths['/roles/{id}/permissions']).toBeDefined();
+      expect(spec.paths['/roles/{id}/permissions'].put).toBeDefined();
+
+      const op = spec.paths['/roles/{id}/permissions'].put;
+      expect(op.tags).toContain('Roles');
+      expect(op.security).toEqual([{ bearerAuth: [] }]);
+      expect(op.operationId).toBe('updateRolePermissions');
+      expect(op.description).toContain('rol.editar');
+    });
+
+    it('documents UpdateRolePermissionsRequest component (T-006-16)', () => {
+      expect(spec.components.schemas.UpdateRolePermissionsRequest).toBeDefined();
+      const updateReq = spec.components.schemas.UpdateRolePermissionsRequest;
+      expect(updateReq.properties.permissions).toBeDefined();
+      expect(updateReq.required).toContain('permissions');
+    });
+
+    it('keeps PUT /roles/{id}/permissions request and response examples valid against shared schemas (T-006-16)', () => {
+      const op = spec.paths['/roles/{id}/permissions'].put;
+      const reqExample = op.requestBody.content['application/json'].example;
+      expect(updateRolePermissionsRequestSchema.safeParse(reqExample).success).toBe(true);
+
+      const res200 = op.responses['200'];
+      expect(res200).toBeDefined();
+      expect(res200.headers['Cache-Control'].example).toBe('no-store');
+      const res200Example = res200.content['application/json'].example;
+      expect(roleDtoSchema.safeParse(res200Example).success).toBe(true);
+
+      const err400 = op.responses['400'].content['application/json'].example;
+      expect(apiErrorResponseSchema.safeParse(err400).success).toBe(true);
+      expect(err400.error.code).toBe('VALIDATION_ERROR');
+
+      const err401 = op.responses['401'].content['application/json'].example;
+      expect(apiErrorResponseSchema.safeParse(err401).success).toBe(true);
+      expect(err401.error.code).toBe('UNAUTHORIZED');
+
+      const err403 = op.responses['403'].content['application/json'].example;
+      expect(apiErrorResponseSchema.safeParse(err403).success).toBe(true);
+      expect(err403.error.code).toBe('FORBIDDEN');
+
+      const err404 = op.responses['404'].content['application/json'].example;
+      expect(apiErrorResponseSchema.safeParse(err404).success).toBe(true);
+      expect(err404.error.code).toBe('NOT_FOUND');
+
+      const err409 = op.responses['409'].content['application/json'].example;
+      expect(apiErrorResponseSchema.safeParse(err409).success).toBe(true);
+      expect(err409.error.code).toBe('CONFLICT');
+    });
+
     it('documents every route of the roles router and nothing else (guard against drift, A4, generalized D1)', () => {
       const dummyController = {
         list: () => {},
         create: () => {},
+        updatePermissions: () => {},
       } as unknown as RolesController;
 
       const dummyAuth = () => {};

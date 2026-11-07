@@ -3,6 +3,7 @@ import type { AuditLogger } from '../../shared/audit/audit-logger.js';
 import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
 import type { DbProvider } from '../../shared/prisma/prisma-unit-of-work.js';
 import { CreateRoleUseCase } from './application/create-role.js';
+import { EditRolePermissionsUseCase } from './application/edit-role-permissions.js';
 import { ListRolesUseCase } from './application/list-roles.js';
 import { PermissionAuthorizer } from './application/permission-authorizer.js';
 import { createRequirePermission } from './infrastructure/http/require-permission.js';
@@ -87,9 +88,20 @@ export function createRolesModule(deps: RolesModuleDependencies): Router {
     auditLogger: deps.auditLogger,
   });
 
+  const editRolePermissionsUseCase = new EditRolePermissionsUseCase({
+    roleRepository,
+    permissionRepository,
+    rolePermissionRepository,
+    roleReader: deps.services.roleReader,
+    authorizer: deps.services.authorizer,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+  });
+
   const controller = new RolesController({
     listRolesUseCase: deps.services.listRolesUseCase,
     createRoleUseCase,
+    editRolePermissionsUseCase,
   });
 
   return createRolesRouter({
