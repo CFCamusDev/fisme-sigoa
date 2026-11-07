@@ -1,3 +1,4 @@
+import { PROTECTED_ROLE_CODE } from '@sigoa/shared';
 import {
   DEFAULT_ROLE_MATRIX,
   expandDefaultGrants,
@@ -12,7 +13,7 @@ export interface PredefinedRoleDefinition {
 
 export const PREDEFINED_ROLES: readonly PredefinedRoleDefinition[] = [
   {
-    code: 'ADMINISTRATOR',
+    code: PROTECTED_ROLE_CODE,
     name: 'Administrador',
     description: 'Acceso y administración general del sistema',
   },

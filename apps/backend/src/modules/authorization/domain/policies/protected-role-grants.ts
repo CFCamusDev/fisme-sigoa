@@ -1,7 +1,12 @@
-import type { PermissionScope, RoleGrant } from '@sigoa/shared';
+import {
+  PROTECTED_ROLE_CODE,
+  PROTECTED_ROLE_REQUIRED_GRANTS,
+  type PermissionScope,
+  type RoleGrant,
+} from '@sigoa/shared';
 import { ProtectedRoleError } from '../errors/protected-role-error.js';
 
-export const PROTECTED_ROLE_CODE = 'ADMINISTRATOR';
+export { PROTECTED_ROLE_CODE, PROTECTED_ROLE_REQUIRED_GRANTS };
 
 export interface GrantLike {
   readonly permissionCode: string;
@@ -16,14 +21,14 @@ export function assertProtectedRoleKeepsRoleManagement(
     return;
   }
 
-  const hasGlobalRoleVer = desiredGrants.some(
-    (g) => g.permissionCode === 'rol.ver' && g.scope === 'GLOBAL',
-  );
-  const hasGlobalRoleEditar = desiredGrants.some(
-    (g) => g.permissionCode === 'rol.editar' && g.scope === 'GLOBAL',
+  const missingGrant = PROTECTED_ROLE_REQUIRED_GRANTS.some(
+    (required) =>
+      !desiredGrants.some(
+        (g) => g.permissionCode === required.permissionCode && g.scope === required.scope,
+      ),
   );
 
-  if (!hasGlobalRoleVer || !hasGlobalRoleEditar) {
+  if (missingGrant) {
     throw new ProtectedRoleError(
       'El rol Administrador debe conservar los permisos rol.ver y rol.editar con alcance Global.',
     );

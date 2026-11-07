@@ -45,6 +45,13 @@ export const roleGrantSchema = z
 
 export type RoleGrant = z.infer<typeof roleGrantSchema>;
 
+export const PROTECTED_ROLE_CODE = 'ADMINISTRATOR';
+
+export const PROTECTED_ROLE_REQUIRED_GRANTS: readonly RoleGrant[] = Object.freeze([
+  { permissionCode: 'rol.ver', scope: 'GLOBAL' },
+  { permissionCode: 'rol.editar', scope: 'GLOBAL' },
+]);
+
 const roleNameSchema = z
   .string()
   .transform((val) => val.trim().replace(/\s+/g, ' '))
