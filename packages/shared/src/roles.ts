@@ -157,3 +157,24 @@ export const roleIdParamSchema = z
   .strict();
 
 export type RoleIdParam = z.infer<typeof roleIdParamSchema>;
+
+export const updateRoleRequestSchema = z
+  .object({
+    name: roleNameSchema.optional(),
+    description: roleDescriptionSchema,
+  })
+  .strict()
+  .refine((data) => data.name !== undefined || data.description !== undefined, {
+    message: 'Se debe proporcionar al menos el nombre o la descripción para actualizar el rol',
+  });
+
+export type UpdateRoleRequest = z.infer<typeof updateRoleRequestSchema>;
+
+export const changeRoleStatusRequestSchema = z
+  .object({
+    status: roleStatusSchema,
+    confirmed: z.boolean().optional(),
+  })
+  .strict();
+
+export type ChangeRoleStatusRequest = z.infer<typeof changeRoleStatusRequestSchema>;

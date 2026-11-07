@@ -15,6 +15,8 @@ import {
   roleStatusSchema,
   roleSummarySchema,
   updateRolePermissionsRequestSchema,
+  updateRoleRequestSchema,
+  changeRoleStatusRequestSchema,
   type RoleSummary,
 } from './roles.js';
 
@@ -338,5 +340,100 @@ describe('Role Management Contracts (HU-006, T-006-14)', () => {
 
     const tooLong = roleIdParamSchema.safeParse({ id: 'a'.repeat(65) });
     expect(tooLong.success).toBe(false);
+  });
+
+  describe('updateRoleRequestSchema (HU-006, N1, T-006-14, CA3, RF-006)', () => {
+    it('accepts a name only', () => {
+      const result = updateRoleRequestSchema.safeParse({ name: 'Nuevo Nombre de Rol' });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.name).toBe('Nuevo Nombre de Rol');
+        expect(result.data.description).toBeUndefined();
+      }
+    });
+
+    it('accepts a description only', () => {
+      const result = updateRoleRequestSchema.safeParse({
+        description: 'Nueva descripción detallada',
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.name).toBeUndefined();
+        expect(result.data.description).toBe('Nueva descripción detallada');
+      }
+    });
+
+    it('clears the description with null', () => {
+      const result = updateRoleRequestSchema.safeParse({ description: null });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.description).toBeNull();
+      }
+    });
+
+    it('rejects an empty body', () => {
+      const result = updateRoleRequestSchema.safeParse({});
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects unknown keys such as code, isPredefined or deactivatedAt', () => {
+      expect(
+        updateRoleRequestSchema.safeParse({
+          name: 'Nombre Válido',
+          code: 'NUEVO_CODIGO',
+        }).success,
+      ).toBe(false);
+
+      expect(
+        updateRoleRequestSchema.safeParse({
+          name: 'Nombre Válido',
+          isPredefined: true,
+        }).success,
+      ).toBe(false);
+
+      expect(
+        updateRoleRequestSchema.safeParse({
+          name: 'Nombre Válido',
+          deactivatedAt: '2026-11-06T00:00:00.000Z',
+        }).success,
+      ).toBe(false);
+    });
+
+    it('rejects a name shorter than 3 or longer than 80 characters', () => {
+      expect(updateRoleRequestSchema.safeParse({ name: 'ab' }).success).toBe(false);
+      expect(updateRoleRequestSchema.safeParse({ name: 'a'.repeat(81) }).success).toBe(false);
+      expect(updateRoleRequestSchema.safeParse({ name: '   ab   ' }).success).toBe(false);
+      expect(updateRoleRequestSchema.safeParse({ name: 'abc' }).success).toBe(true);
+    });
+  });
+
+  describe('changeRoleStatusRequestSchema (HU-006, N1, T-006-14, CA3, RF-006)', () => {
+    it('status request accepts ACTIVE and INACTIVE only', () => {
+      expect(changeRoleStatusRequestSchema.safeParse({ status: 'ACTIVE' }).success).toBe(true);
+      expect(changeRoleStatusRequestSchema.safeParse({ status: 'INACTIVE' }).success).toBe(true);
+      expect(changeRoleStatusRequestSchema.safeParse({ status: 'DELETED' }).success).toBe(false);
+      expect(changeRoleStatusRequestSchema.safeParse({ status: '' }).success).toBe(false);
+    });
+
+    it('status request accepts a boolean confirmation and rejects a string', () => {
+      expect(
+        changeRoleStatusRequestSchema.safeParse({ status: 'INACTIVE', confirmed: true }).success,
+      ).toBe(true);
+      expect(
+        changeRoleStatusRequestSchema.safeParse({ status: 'INACTIVE', confirmed: false }).success,
+      ).toBe(true);
+      expect(
+        changeRoleStatusRequestSchema.safeParse({ status: 'INACTIVE', confirmed: 'true' as never })
+          .success,
+      ).toBe(false);
+      expect(
+        changeRoleStatusRequestSchema.safeParse({ status: 'INACTIVE', confirmed: 'false' as never })
+          .success,
+      ).toBe(false);
+      expect(
+        changeRoleStatusRequestSchema.safeParse({ status: 'INACTIVE', confirmed: 1 as never })
+          .success,
+      ).toBe(false);
+    });
   });
 });
