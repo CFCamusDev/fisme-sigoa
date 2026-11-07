@@ -4,3 +4,4 @@ export * from './logo-variants.js';
 export * from './auth.js';
 export * from './users.js';
 export * from './roles.js';
+export * from './user-access.js';
