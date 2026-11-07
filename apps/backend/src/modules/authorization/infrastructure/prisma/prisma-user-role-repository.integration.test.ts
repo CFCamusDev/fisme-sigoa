@@ -9,6 +9,20 @@ describe('PrismaUserRoleRepository concurrency', () => {
   const { getPrisma } = useTestDatabase();
   const prisma = getPrisma();
 
+  it('reads a user access subject without a transaction or row lock', async () => {
+    const user = await prisma.user.create({
+      data: {
+        names: 'Prueba',
+        firstSurname: 'Usuario',
+        email: 'subject@example.test',
+        status: 'INACTIVE',
+      },
+    });
+    const subject = new PrismaUserAccessSubjectRepository(new PrismaUnitOfWork(prisma));
+    expect(await subject.findById(user.id)).toEqual({ id: user.id, status: 'INACTIVE' });
+    expect(await subject.findById('missing')).toBeNull();
+  });
+
   it('serializes concurrent replacements of the same user', async () => {
     const user = await prisma.user.create({
       data: {

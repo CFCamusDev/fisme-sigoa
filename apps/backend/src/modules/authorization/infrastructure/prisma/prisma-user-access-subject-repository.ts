@@ -4,6 +4,14 @@ import type { UserAccessSubjectRepository } from '../../domain/ports/user-access
 export class PrismaUserAccessSubjectRepository implements UserAccessSubjectRepository {
   constructor(private readonly dbProvider: DbProvider) {}
 
+  async findById(
+    userId: string,
+  ): Promise<{ id: string; status: 'ACTIVE' | 'INACTIVE' | 'PENDING_ACTIVATION' } | null> {
+    return this.dbProvider
+      .get()
+      .user.findUnique({ where: { id: userId }, select: { id: true, status: true } });
+  }
+
   async lockForUpdate(
     userId: string,
   ): Promise<{ id: string; status: 'ACTIVE' | 'INACTIVE' | 'PENDING_ACTIVATION' } | null> {
