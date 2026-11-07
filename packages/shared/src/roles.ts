@@ -161,7 +161,7 @@ export type RoleIdParam = z.infer<typeof roleIdParamSchema>;
 export const updateRoleRequestSchema = z
   .object({
     name: roleNameSchema.optional(),
-    description: roleDescriptionSchema,
+    description: roleDescriptionSchema.optional(),
   })
   .strict()
   .refine((data) => data.name !== undefined || data.description !== undefined, {

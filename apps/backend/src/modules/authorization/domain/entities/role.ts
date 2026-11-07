@@ -10,6 +10,7 @@ import { InvalidRoleStatusTransitionError } from '../errors/invalid-role-status-
 import { deriveRoleCode } from '../policies/derive-role-code.js';
 
 export interface RoleAuditSnapshot {
+  readonly [key: string]: unknown;
   readonly id: string;
   readonly code: string;
   readonly name: string;
