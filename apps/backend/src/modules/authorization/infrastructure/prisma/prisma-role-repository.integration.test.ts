@@ -4,6 +4,7 @@ import { PrismaUnitOfWork } from '../../../../shared/prisma/prisma-unit-of-work.
 import { PrismaRoleRepository } from './prisma-role-repository.js';
 import { Role } from '../../domain/entities/role.js';
 import { RoleAlreadyExistsError } from '../../domain/errors/role-already-exists-error.js';
+import { RoleNotFoundError } from '../../domain/errors/role-not-found-error.js';
 
 describe('PrismaRoleRepository Integration (PostgreSQL real, authorization module, HU-006, T-006-27)', () => {
   const { getPrisma } = useTestDatabase();
@@ -210,4 +211,72 @@ describe('PrismaRoleRepository Integration (PostgreSQL real, authorization modul
       }
     }
   }, 20_000);
+
+  describe('save (HU-006, N2b, T-006-07, RF-006)', () => {
+    it('saves name, description and status', async () => {
+      const id = 'role-save-test-id';
+      const role = Role.create({
+        id,
+        name: 'Rol Inicial Para Guardar',
+        description: 'Descripción inicial',
+      });
+      await roleRepo.add(role);
+
+      const deactDate = new Date('2026-11-06T19:30:00.000Z');
+      role.applyChanges(
+        {
+          name: 'Rol Con Nombre Actualizado',
+          description: 'Descripción actualizada',
+        },
+        'admin-actor-uuid',
+      );
+      role.deactivate('admin-actor-uuid', deactDate);
+
+      await roleRepo.save(role);
+
+      const saved = await roleRepo.findById(id);
+      expect(saved).not.toBeNull();
+      expect(saved?.name).toBe('Rol Con Nombre Actualizado');
+      expect(saved?.description).toBe('Descripción actualizada');
+      expect(saved?.status).toBe('INACTIVE');
+      expect(saved?.deactivatedAt).toEqual(deactDate);
+      expect(saved?.updatedBy).toBe('admin-actor-uuid');
+    }, 15_000);
+
+    it('rejects a duplicated name with RoleAlreadyExistsError', async () => {
+      const roleA = Role.create({
+        id: 'role-save-dup-a',
+        name: 'Nombre Existente Para Choque',
+      });
+      await roleRepo.add(roleA);
+
+      const roleB = Role.create({
+        id: 'role-save-dup-b',
+        name: 'Nombre Secundario',
+      });
+      await roleRepo.add(roleB);
+
+      roleB.applyChanges({ name: 'Nombre Existente Para Choque' }, 'admin-actor-uuid');
+
+      await expect(roleRepo.save(roleB)).rejects.toThrow(RoleAlreadyExistsError);
+    }, 15_000);
+
+    it('fails with not found when the row disappeared', async () => {
+      const roleGhost = Role.restore({
+        id: 'role-ghost-id-404',
+        code: 'ROLE_GHOST',
+        name: 'Rol Fantasma',
+        description: null,
+        status: 'ACTIVE',
+        deactivatedAt: null,
+        isPredefined: false,
+        createdBy: null,
+        updatedBy: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      await expect(roleRepo.save(roleGhost)).rejects.toThrow(RoleNotFoundError);
+    }, 15_000);
+  });
 });

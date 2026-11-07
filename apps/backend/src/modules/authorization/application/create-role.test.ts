@@ -42,6 +42,7 @@ describe('CreateRoleUseCase Unit Tests (HU-006, T-006-24, RF-006, RS-002, RS-020
       findByCode: vi.fn().mockResolvedValue(null),
       findByName: vi.fn().mockResolvedValue(null),
       add: vi.fn().mockResolvedValue(undefined),
+      save: vi.fn().mockResolvedValue(undefined),
     };
 
     const permissionRepository: PermissionRepository = {

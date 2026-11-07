@@ -6,4 +6,5 @@ export interface RoleRepository {
   findByCode(code: string): Promise<Role | null>;
   findByName(name: string): Promise<Role | null>;
   add(role: Role): Promise<void>;
+  save(role: Role): Promise<void>;
 }

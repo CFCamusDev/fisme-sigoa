@@ -1,6 +1,7 @@
 import type { DbProvider } from '../../../../shared/prisma/prisma-unit-of-work.js';
 import type { Role } from '../../domain/entities/role.js';
 import { RoleAlreadyExistsError } from '../../domain/errors/role-already-exists-error.js';
+import { RoleNotFoundError } from '../../domain/errors/role-not-found-error.js';
 import type { RoleRepository } from '../../domain/ports/role-repository.js';
 import { mapPrismaRoleRowToDomain, type PrismaRoleRow } from './prisma-role-mapper.js';
 
@@ -108,6 +109,35 @@ export class PrismaRoleRepository implements RoleRepository {
       });
     } catch (error) {
       this.handleUniqueConstraintError(error);
+      throw error;
+    }
+  }
+
+  async save(role: Role): Promise<void> {
+    const client = this.dbProvider.get();
+
+    try {
+      await client.role.update({
+        where: { id: role.id },
+        data: {
+          name: role.name,
+          description: role.description,
+          status: role.status,
+          deactivatedAt: role.deactivatedAt,
+          updatedBy: role.updatedBy,
+          updatedAt: role.updatedAt,
+        },
+      });
+    } catch (error) {
+      this.handleUniqueConstraintError(error);
+      if (
+        error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        (error as { code: string }).code === 'P2025'
+      ) {
+        throw new RoleNotFoundError();
+      }
       throw error;
     }
   }

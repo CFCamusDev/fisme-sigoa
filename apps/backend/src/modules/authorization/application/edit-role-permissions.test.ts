@@ -57,6 +57,7 @@ describe('EditRolePermissionsUseCase Unit Tests (HU-006, T-006-25, RF-006, RS-00
       findByCode: vi.fn().mockResolvedValue(roleInstance),
       findByName: vi.fn().mockResolvedValue(roleInstance),
       add: vi.fn().mockResolvedValue(undefined),
+      save: vi.fn().mockResolvedValue(undefined),
     };
 
     const permissionRepository: PermissionRepository = {
