@@ -230,7 +230,7 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA)', () => {
 
     // 3. Formulario con errores de validación
     await page.getByRole('button', { name: /guardar/i }).click();
-    await expect(page.getByText('El nombre de rol debe tener al menos 3 caracteres')).toBeVisible();
+    await expect(page.getByText('El nombre de rol es requerido')).toBeVisible();
     await expectNoContrastViolations(page, { context: 'create-role-with-errors' });
   });
 

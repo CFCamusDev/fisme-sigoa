@@ -135,7 +135,9 @@ test.describe('Keyboard Navigation and Focus Indicator (WCAG 2.1 AA)', () => {
 
   test('navigates role permission selects with keyboard and visible focus', async ({ page }) => {
     test.setTimeout(30_000);
-    await loginAsTestUser(page);
+    await loginAsTestUser(page, {
+      roles: ['ADMINISTRATOR'],
+    });
 
     await page.goto('/roles');
     await expect(page.getByRole('heading', { name: 'Roles', exact: true })).toBeVisible();
