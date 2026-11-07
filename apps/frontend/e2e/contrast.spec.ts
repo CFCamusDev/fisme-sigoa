@@ -252,4 +252,86 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA)', () => {
     await expect(page.getByRole('heading', { level: 1, name: /editar rol:/i })).toBeVisible();
     await expectNoContrastViolations(page, { context: 'edit-role-form' });
   });
+
+  test('role permissions matrix has no contrast violations on desktop and mobile', async ({
+    page,
+  }) => {
+    const adminEmail = `contrast-admin-perm-matrix-${Date.now()}@example.test`;
+    await loginAsTestUser(page, {
+      email: adminEmail,
+      roles: ['ADMINISTRATOR'],
+    });
+
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.goto('/roles');
+    await expect(page.getByRole('heading', { level: 1, name: 'Roles' })).toBeVisible();
+
+    const permissionsLink = page.getByRole('link', { name: /permisos del rol/i }).first();
+    await expect(permissionsLink).toBeVisible();
+    await permissionsLink.click();
+
+    await expect(page.getByRole('heading', { level: 1, name: /permisos del rol:/i })).toBeVisible();
+
+    // 1. Escritorio (1280px)
+    await expectNoContrastViolations(page, { context: 'role-permissions-matrix-desktop' });
+
+    // 2. Móvil (375px)
+    await page.setViewportSize({ width: 375, height: 812 });
+    await expectNoContrastViolations(page, { context: 'role-permissions-matrix-mobile' });
+  });
+
+  test('role permissions matrix with unsaved changes has no contrast violations', async ({
+    page,
+  }) => {
+    const adminEmail = `contrast-admin-unsaved-matrix-${Date.now()}@example.test`;
+    await loginAsTestUser(page, {
+      email: adminEmail,
+      roles: ['ADMINISTRATOR'],
+    });
+
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.goto('/roles');
+    await expect(page.getByRole('heading', { level: 1, name: 'Roles' })).toBeVisible();
+
+    const permissionsLink = page.getByRole('link', { name: /permisos del rol/i }).first();
+    await expect(permissionsLink).toBeVisible();
+    await permissionsLink.click();
+
+    await expect(page.getByRole('heading', { level: 1, name: /permisos del rol:/i })).toBeVisible();
+
+    // Modificar el primer select interactivo disponible
+    const firstSelect = page.getByRole('combobox').first();
+    await expect(firstSelect).toBeVisible();
+
+    const currentValue = await firstSelect.inputValue();
+    const targetValue = currentValue === 'GLOBAL' ? 'NONE' : 'GLOBAL';
+    await firstSelect.selectOption(targetValue);
+
+    const unsavedNotice = page.getByText(/cambio sin guardar/i);
+    await expect(unsavedNotice).toBeVisible();
+
+    await expectNoContrastViolations(page, { context: 'role-permissions-unsaved-changes' });
+  });
+
+  test('roles list with deactivation confirmation alertdialog has no contrast violations', async ({
+    page,
+  }) => {
+    const adminEmail = `contrast-admin-role-deact-${Date.now()}@example.test`;
+    await loginAsTestUser(page, {
+      email: adminEmail,
+      roles: ['ADMINISTRATOR'],
+    });
+
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.goto('/roles');
+    await expect(page.getByRole('heading', { level: 1, name: 'Roles' })).toBeVisible();
+
+    const deactivateButton = page.getByRole('button', { name: /desactivar rol/i }).first();
+    if (await deactivateButton.isVisible()) {
+      await deactivateButton.click();
+      const alertDialog = page.getByRole('alertdialog');
+      await expect(alertDialog).toBeVisible();
+      await expectNoContrastViolations(page, { context: 'roles-deactivation-alertdialog' });
+    }
+  });
 });
