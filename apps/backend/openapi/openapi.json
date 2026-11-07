@@ -1643,6 +1643,28 @@
               }
             }
           },
+          "400": {
+            "description": "Parámetros de consulta no permitidos o inválidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "La solicitud contiene errores de validación",
+                    "details": [
+                      {
+                        "path": "query.invalidParam",
+                        "message": "Unrecognized key(s) in object: 'invalidParam'"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
           "401": {
             "description": "No autenticado.",
             "content": {

@@ -1,4 +1,5 @@
 import type { RequestHandler } from 'express';
+import { listRolesResponseSchema } from '@sigoa/shared';
 import { getRequestContext } from '../../../../shared/audit/request-context.js';
 import { UnauthorizedError } from '../../../../shared/errors/app-error.js';
 import type { CreateRoleUseCase } from '../../application/create-role.js';
@@ -32,9 +33,10 @@ export class RolesController {
       }
 
       const response = await this.listRolesUseCase.execute({ actorId });
+      const parsedResponse = listRolesResponseSchema.parse(response);
 
       res.setHeader('Cache-Control', 'no-store');
-      res.status(200).json(response);
+      res.status(200).json(parsedResponse);
     } catch (error) {
       next(error);
     }

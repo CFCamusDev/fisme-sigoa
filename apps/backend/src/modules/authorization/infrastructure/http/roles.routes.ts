@@ -6,6 +6,7 @@ import {
 } from '@sigoa/shared';
 import { validateRequest } from '../../../../shared/middleware/validate-request.js';
 import type { RolesController } from './roles.controller.js';
+import { noQuerySchema } from './roles.schema.js';
 
 export interface RolesRouterDependencies {
   readonly controller: RolesController;
@@ -16,11 +17,12 @@ export interface RolesRouterDependencies {
 export function createRolesRouter(deps: RolesRouterDependencies): Router {
   const router = Router();
 
-  // GET /roles (A2, HU-003, RS-002, LS 3.2, LS 3.3)
+  // GET /roles (A2, HU-003, T-006-17, RS-002, LS 3.2, LS 3.3, D6)
   router.get(
     '/',
     deps.authenticate,
     deps.requirePermission('rol.ver', 'GLOBAL'),
+    validateRequest({ query: noQuerySchema }),
     deps.controller.list,
   );
 

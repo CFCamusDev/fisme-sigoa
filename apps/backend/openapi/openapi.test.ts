@@ -490,10 +490,15 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
       expect(err409.error.code).toBe('CONFLICT');
     });
 
-    it('documents 401 and 403 error responses with the shared error contract', () => {
+    it('documents 400, 401 and 403 error responses with the shared error contract (T-006-17)', () => {
       const op = spec.paths['/roles'].get;
+      expect(op.responses['400']).toBeDefined();
       expect(op.responses['401']).toBeDefined();
       expect(op.responses['403']).toBeDefined();
+
+      const err400 = op.responses['400'].content['application/json'].example;
+      expect(apiErrorResponseSchema.safeParse(err400).success).toBe(true);
+      expect(err400.error.code).toBe('VALIDATION_ERROR');
 
       const err401 = op.responses['401'].content['application/json'].example;
       expect(apiErrorResponseSchema.safeParse(err401).success).toBe(true);

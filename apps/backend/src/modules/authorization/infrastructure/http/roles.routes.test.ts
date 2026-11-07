@@ -152,6 +152,16 @@ describe('Roles Routes Unit Tests (A2.2, HU-003, T-003-15, HU-006, T-006-15, T-0
     });
   });
 
+  it('returns 400 when query parameters are supplied in GET /roles (T-006-17, D6)', async () => {
+    const { app, listRolesUseCase } = setupTestApp({ permissionAllowed: true });
+
+    const response = await request(app).get('/roles?unexpected=parameter');
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe('VALIDATION_ERROR');
+    expect(listRolesUseCase.execute).not.toHaveBeenCalled();
+  });
+
   it('checks permission before validating body in POST /roles (D5, 403 on invalid body without permission)', async () => {
     const { app, createRoleUseCase } = setupTestApp({ permissionAllowed: false });
 
