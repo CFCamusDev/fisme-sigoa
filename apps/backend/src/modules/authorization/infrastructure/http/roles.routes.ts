@@ -1,4 +1,6 @@
 import { Router, type RequestHandler } from 'express';
+import { createRoleRequestSchema } from '@sigoa/shared';
+import { validateRequest } from '../../../../shared/middleware/validate-request.js';
 import type { RolesController } from './roles.controller.js';
 
 export interface RolesRouterDependencies {
@@ -16,6 +18,15 @@ export function createRolesRouter(deps: RolesRouterDependencies): Router {
     deps.authenticate,
     deps.requirePermission('rol.ver', 'GLOBAL'),
     deps.controller.list,
+  );
+
+  // POST /roles (T-006-15, RF-006, RS-002, RS-020, RNF-009, RNF-017, D1, D2, D4, D5)
+  router.post(
+    '/',
+    deps.authenticate,
+    deps.requirePermission('rol.editar', 'GLOBAL'),
+    validateRequest({ body: createRoleRequestSchema }),
+    deps.controller.create,
   );
 
   return router;

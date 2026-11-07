@@ -76,6 +76,9 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
     createRolesModule({
       authenticate: authServices.authenticate,
       services: authorizationServices,
+      unitOfWork: deps.unitOfWork,
+      auditLogger: deps.auditLogger,
+      dbProvider: deps.dbProvider,
     }),
   );
   app.use(

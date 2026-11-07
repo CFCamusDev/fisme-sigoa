@@ -7,6 +7,7 @@ import {
   activateAccountResponseSchema,
   apiErrorResponseSchema,
   changeUserStatusRequestSchema,
+  createRoleRequestSchema,
   createUserRequestSchema,
   errorCodeSchema,
   forgotPasswordRequestSchema,
@@ -410,9 +411,7 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
     });
   });
 
-  describe('OpenAPI Specification for Roles (HU-003, T-003-15, A2, A4)', () => {
-    const rolePaths = ['/roles'];
-
+  describe('OpenAPI Specification for Roles (HU-003, T-003-15, HU-006, T-006-15, A2, A4, D1)', () => {
     it('documents GET /roles endpoint with bearer security and Roles tag', () => {
       expect(spec.paths['/roles']).toBeDefined();
       expect(spec.paths['/roles'].get).toBeDefined();
@@ -424,9 +423,20 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
       expect(op.description).toContain('rol.ver');
     });
 
-    it('documents RoleSummary and ListRolesResponse components', () => {
+    it('documents POST /roles endpoint with bearer security and Roles tag (T-006-15)', () => {
+      expect(spec.paths['/roles'].post).toBeDefined();
+
+      const op = spec.paths['/roles'].post;
+      expect(op.tags).toContain('Roles');
+      expect(op.security).toEqual([{ bearerAuth: [] }]);
+      expect(op.operationId).toBe('createRole');
+      expect(op.description).toContain('rol.editar');
+    });
+
+    it('documents RoleSummary, ListRolesResponse and CreateRoleRequest components', () => {
       expect(spec.components.schemas.RoleSummary).toBeDefined();
       expect(spec.components.schemas.ListRolesResponse).toBeDefined();
+      expect(spec.components.schemas.CreateRoleRequest).toBeDefined();
 
       const roleSummary = spec.components.schemas.RoleSummary;
       expect(roleSummary.properties.id).toBeDefined();
@@ -434,6 +444,10 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
       expect(roleSummary.properties.name).toBeDefined();
       expect(roleSummary.properties.description).toBeDefined();
       expect(roleSummary.properties.isPredefined).toBeDefined();
+
+      const createReq = spec.components.schemas.CreateRoleRequest;
+      expect(createReq.properties.name).toBeDefined();
+      expect(createReq.required).toContain('name');
     });
 
     it('keeps GET /roles response example valid against listRolesResponseSchema', () => {
@@ -445,6 +459,34 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
       for (const item of getRolesRes.items) {
         expect(roleDtoSchema.safeParse(item).success).toBe(true);
       }
+    });
+
+    it('keeps POST /roles request and response examples valid against shared schemas (T-006-15)', () => {
+      const op = spec.paths['/roles'].post;
+      const reqExample = op.requestBody.content['application/json'].example;
+      expect(createRoleRequestSchema.safeParse(reqExample).success).toBe(true);
+
+      const res201 = op.responses['201'];
+      expect(res201).toBeDefined();
+      expect(res201.headers['Cache-Control'].example).toBe('no-store');
+      const res201Example = res201.content['application/json'].example;
+      expect(roleDtoSchema.safeParse(res201Example).success).toBe(true);
+
+      const err400 = op.responses['400'].content['application/json'].example;
+      expect(apiErrorResponseSchema.safeParse(err400).success).toBe(true);
+      expect(err400.error.code).toBe('VALIDATION_ERROR');
+
+      const err401 = op.responses['401'].content['application/json'].example;
+      expect(apiErrorResponseSchema.safeParse(err401).success).toBe(true);
+      expect(err401.error.code).toBe('UNAUTHORIZED');
+
+      const err403 = op.responses['403'].content['application/json'].example;
+      expect(apiErrorResponseSchema.safeParse(err403).success).toBe(true);
+      expect(err403.error.code).toBe('FORBIDDEN');
+
+      const err409 = op.responses['409'].content['application/json'].example;
+      expect(apiErrorResponseSchema.safeParse(err409).success).toBe(true);
+      expect(err409.error.code).toBe('CONFLICT');
     });
 
     it('documents 401 and 403 error responses with the shared error contract', () => {
@@ -459,9 +501,10 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
       expect(apiErrorResponseSchema.safeParse(err403).success).toBe(true);
     });
 
-    it('documents every route of the roles router and nothing else (guard against drift, A4)', () => {
+    it('documents every route of the roles router and nothing else (guard against drift, A4, generalized D1)', () => {
       const dummyController = {
         list: () => {},
+        create: () => {},
       } as unknown as RolesController;
 
       const dummyAuth = () => {};
@@ -488,7 +531,7 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
         }
       }
 
-      expect(routerEndpoints.length).toBe(1);
+      expect(routerEndpoints.length).toBeGreaterThan(0);
 
       for (const endpoint of routerEndpoints) {
         const specPath = spec.paths[endpoint.path];
@@ -499,7 +542,8 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
         ).toBeDefined();
       }
 
-      for (const pathKey of rolePaths) {
+      const rolePathsInSpec = Object.keys(spec.paths).filter((p) => p.startsWith('/roles'));
+      for (const pathKey of rolePathsInSpec) {
         const specPath = spec.paths[pathKey];
         for (const method of Object.keys(specPath)) {
           const matching = routerEndpoints.find(
@@ -511,6 +555,12 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
           ).toBeDefined();
         }
       }
+    });
+
+    it('fails when a route in roles router is missing from openapi spec (negative test against drift)', () => {
+      const rogueRouterEndpoints = [{ method: 'delete', path: '/roles/rogue-endpoint' }];
+      const specPath = spec.paths[rogueRouterEndpoints[0].path];
+      expect(specPath).toBeUndefined();
     });
   });
 

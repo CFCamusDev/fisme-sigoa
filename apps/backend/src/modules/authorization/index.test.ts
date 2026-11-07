@@ -1,7 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { RequestHandler } from 'express';
 import { createAuthorizationServices, createRolesModule } from './index.js';
 import type { DbProvider } from '../../shared/prisma/prisma-unit-of-work.js';
+import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
+import type { AuditLogger } from '../../shared/audit/audit-logger.js';
 
 describe('Authorization Module Entrypoint', () => {
   it('instantiates authorization services factory', () => {
@@ -22,12 +24,21 @@ describe('Authorization Module Entrypoint', () => {
     const dummyDbProvider: DbProvider = {
       get: () => ({}) as unknown as ReturnType<DbProvider['get']>,
     };
+    const dummyUnitOfWork: UnitOfWork = {
+      run: vi.fn(),
+    } as unknown as UnitOfWork;
+    const dummyAuditLogger: AuditLogger = {
+      log: vi.fn(),
+    } as unknown as AuditLogger;
     const services = createAuthorizationServices({ dbProvider: dummyDbProvider });
     const dummyAuth: RequestHandler = (_req, _res, next) => next();
 
     const router = createRolesModule({
       authenticate: dummyAuth,
       services,
+      unitOfWork: dummyUnitOfWork,
+      auditLogger: dummyAuditLogger,
+      dbProvider: dummyDbProvider,
     });
 
     expect(typeof router).toBe('function');

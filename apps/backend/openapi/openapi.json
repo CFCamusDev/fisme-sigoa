@@ -1678,6 +1678,143 @@
             }
           }
         }
+      },
+      "post": {
+        "tags": ["Roles"],
+        "summary": "Crear un nuevo rol personalizado",
+        "description": "Crea un nuevo rol en el sistema en estado ACTIVE y asigna sus permisos iniciales si se proveen. El código del rol se deriva automáticamente del nombre. Requiere el permiso 'rol.editar' con alcance GLOBAL.",
+        "operationId": "createRole",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRoleRequest"
+              },
+              "example": {
+                "name": "Auditor de Calidad",
+                "description": "Responsable de auditar evidencias de los objetivos educacionales",
+                "permissions": [
+                  {
+                    "permissionCode": "rol.ver",
+                    "scope": "GLOBAL"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Rol creado exitosamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleSummary"
+                },
+                "example": {
+                  "id": "role_auditor_cuid",
+                  "code": "AUDITOR_DE_CALIDAD",
+                  "name": "Auditor de Calidad",
+                  "description": "Responsable de auditar evidencias de los objetivos educacionales",
+                  "isPredefined": false,
+                  "status": "ACTIVE",
+                  "deactivatedAt": null,
+                  "userCount": 0,
+                  "permissions": [
+                    {
+                      "permissionCode": "rol.ver",
+                      "scope": "GLOBAL"
+                    }
+                  ],
+                  "updatedAt": "2026-11-06T19:00:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error de validación en los datos de entrada o código de permiso inválido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Los datos proporcionados no son válidos.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere 'rol.editar' con alcance GLOBAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para editar roles.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto por nombre o código de rol ya existente en el sistema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "Ya existe un rol con ese nombre.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     }
   },
@@ -1709,6 +1846,43 @@
             "type": "string",
             "enum": ["ACTIVE"],
             "description": "Estado activo resultante tras la activación exitosa de la cuenta."
+          }
+        }
+      },
+      "CreateRoleRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 80,
+            "description": "Nombre legible del rol en español."
+          },
+          "description": {
+            "type": ["string", "null"],
+            "maxLength": 255,
+            "description": "Descripción funcional opcional del rol."
+          },
+          "permissions": {
+            "type": "array",
+            "maxItems": 200,
+            "items": {
+              "type": "object",
+              "required": ["permissionCode", "scope"],
+              "properties": {
+                "permissionCode": {
+                  "type": "string",
+                  "description": "Código de permiso institucional (ej. usuario.ver)."
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": ["GLOBAL", "OWN"],
+                  "description": "Alcance de la concesión del permiso."
+                }
+              }
+            },
+            "description": "Lista de concesiones de permisos iniciales."
           }
         }
       },
