@@ -8,6 +8,8 @@ import { errorHandler } from '../../../../shared/middleware/error-handler.js';
 import type { CreateRoleUseCase } from '../../application/create-role.js';
 import type { EditRolePermissionsUseCase } from '../../application/edit-role-permissions.js';
 import type { ListRolesUseCase } from '../../application/list-roles.js';
+import type { EditRoleUseCase } from '../../application/edit-role.js';
+import type { ChangeRoleStatusUseCase } from '../../application/change-role-status.js';
 import { RolesController } from './roles.controller.js';
 import { createRolesRouter } from './roles.routes.js';
 
@@ -111,10 +113,20 @@ describe('Roles Routes Unit Tests (A2.2, HU-003, T-003-15, HU-006, T-006-15, T-0
       execute: vi.fn().mockResolvedValue(mockUpdatedRole),
     } as unknown as EditRolePermissionsUseCase;
 
+    const editRoleUseCase = {
+      execute: vi.fn().mockResolvedValue(mockUpdatedRole),
+    } as unknown as EditRoleUseCase;
+
+    const changeRoleStatusUseCase = {
+      execute: vi.fn().mockResolvedValue(mockUpdatedRole),
+    } as unknown as ChangeRoleStatusUseCase;
+
     const controller = new RolesController({
       listRolesUseCase,
       createRoleUseCase,
       editRolePermissionsUseCase,
+      editRoleUseCase,
+      changeRoleStatusUseCase,
     });
 
     const router = createRolesRouter({
@@ -126,7 +138,14 @@ describe('Roles Routes Unit Tests (A2.2, HU-003, T-003-15, HU-006, T-006-15, T-0
     app.use('/roles', router);
     app.use(errorHandler);
 
-    return { app, listRolesUseCase, createRoleUseCase, editRolePermissionsUseCase };
+    return {
+      app,
+      listRolesUseCase,
+      createRoleUseCase,
+      editRolePermissionsUseCase,
+      editRoleUseCase,
+      changeRoleStatusUseCase,
+    };
   }
 
   it('checks the permission before reading in GET /roles (403 without rol.ver)', async () => {
@@ -293,6 +312,49 @@ describe('Roles Routes Unit Tests (A2.2, HU-003, T-003-15, HU-006, T-006-15, T-0
     expect(response.headers['cache-control']).toBe('no-store');
     expect(response.body).toEqual(mockUpdatedRole);
     expect(editRolePermissionsUseCase.execute).toHaveBeenCalledWith({
+      actorId: dummyActorId,
+      ip: '127.0.0.1',
+      roleId,
+      input: payload,
+    });
+  });
+
+  it('checks the permission before updating in PATCH /roles/:id (403 without rol.editar)', async () => {
+    const { app, editRoleUseCase } = setupTestApp({ permissionAllowed: false });
+
+    const response = await request(app)
+      .patch('/roles/a0000000-0000-0000-0000-000000000001')
+      .send({ name: 'Nuevo Nombre' });
+
+    expect(response.status).toBe(403);
+    expect(response.body.error.code).toBe('FORBIDDEN');
+    expect(editRoleUseCase.execute).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when body is empty in PATCH /roles/:id', async () => {
+    const { app, editRoleUseCase } = setupTestApp({ permissionAllowed: true });
+
+    const response = await request(app)
+      .patch('/roles/a0000000-0000-0000-0000-000000000001')
+      .send({});
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe('VALIDATION_ERROR');
+    expect(editRoleUseCase.execute).not.toHaveBeenCalled();
+  });
+
+  it('responds 200 with Cache-Control: no-store and RoleDto on valid PATCH /roles/:id', async () => {
+    const { app, editRoleUseCase } = setupTestApp({ permissionAllowed: true });
+
+    const roleId = 'a0000000-0000-0000-0000-000000000001';
+    const payload = { name: 'Auditor de Calidad', description: 'Actualizado' };
+
+    const response = await request(app).patch(`/roles/${roleId}`).send(payload);
+
+    expect(response.status).toBe(200);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.body).toEqual(mockUpdatedRole);
+    expect(editRoleUseCase.execute).toHaveBeenCalledWith({
       actorId: dummyActorId,
       ip: '127.0.0.1',
       roleId,

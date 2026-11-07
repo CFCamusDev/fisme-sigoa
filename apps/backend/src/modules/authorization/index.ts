@@ -4,6 +4,8 @@ import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
 import type { DbProvider } from '../../shared/prisma/prisma-unit-of-work.js';
 import { CreateRoleUseCase } from './application/create-role.js';
 import { EditRolePermissionsUseCase } from './application/edit-role-permissions.js';
+import { EditRoleUseCase } from './application/edit-role.js';
+import { ChangeRoleStatusUseCase } from './application/change-role-status.js';
 import { ListPermissionsUseCase } from './application/list-permissions.js';
 import { ListRolesUseCase } from './application/list-roles.js';
 import { PermissionAuthorizer } from './application/permission-authorizer.js';
@@ -103,10 +105,28 @@ export function createRolesModule(deps: RolesModuleDependencies): Router {
     auditLogger: deps.auditLogger,
   });
 
+  const editRoleUseCase = new EditRoleUseCase({
+    roleRepository,
+    roleReader: deps.services.roleReader,
+    authorizer: deps.services.authorizer,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+  });
+
+  const changeRoleStatusUseCase = new ChangeRoleStatusUseCase({
+    roleRepository,
+    roleReader: deps.services.roleReader,
+    authorizer: deps.services.authorizer,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+  });
+
   const controller = new RolesController({
     listRolesUseCase: deps.services.listRolesUseCase,
     createRoleUseCase,
     editRolePermissionsUseCase,
+    editRoleUseCase,
+    changeRoleStatusUseCase,
   });
 
   return createRolesRouter({

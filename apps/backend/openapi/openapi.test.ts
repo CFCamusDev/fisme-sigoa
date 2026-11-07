@@ -23,6 +23,7 @@ import {
   resetPasswordResponseSchema,
   roleDtoSchema,
   updateRolePermissionsRequestSchema,
+  updateRoleRequestSchema,
   updateUserRequestSchema,
   userDtoSchema,
 } from '@sigoa/shared';
@@ -562,11 +563,33 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
       expect(err409.error.code).toBe('CONFLICT');
     });
 
+    it('documents PATCH /roles/{id} endpoint with bearer security and Roles tag (T-006-15)', () => {
+      expect(spec.paths['/roles/{id}']).toBeDefined();
+      expect(spec.paths['/roles/{id}'].patch).toBeDefined();
+
+      const op = spec.paths['/roles/{id}'].patch;
+      expect(op.tags).toContain('Roles');
+      expect(op.security).toEqual([{ bearerAuth: [] }]);
+      expect(op.operationId).toBe('updateRole');
+      expect(op.description).toContain('rol.editar');
+
+      const reqExample = op.requestBody.content['application/json'].example;
+      expect(updateRoleRequestSchema.safeParse(reqExample).success).toBe(true);
+
+      const res200 = op.responses['200'];
+      expect(res200.headers['Cache-Control'].example).toBe('no-store');
+      expect(roleDtoSchema.safeParse(res200.content['application/json'].example).success).toBe(
+        true,
+      );
+    });
+
     it('documents every route of the roles router and nothing else (guard against drift, A4, generalized D1)', () => {
       const dummyController = {
         list: () => {},
         create: () => {},
         updatePermissions: () => {},
+        update: () => {},
+        changeStatus: () => {},
       } as unknown as RolesController;
 
       const dummyAuth = () => {};

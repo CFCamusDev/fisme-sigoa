@@ -3,6 +3,7 @@ import {
   createRoleRequestSchema,
   roleIdParamSchema,
   updateRolePermissionsRequestSchema,
+  updateRoleRequestSchema,
 } from '@sigoa/shared';
 import { validateRequest } from '../../../../shared/middleware/validate-request.js';
 import type { RolesController } from './roles.controller.js';
@@ -45,6 +46,18 @@ export function createRolesRouter(deps: RolesRouterDependencies): Router {
       body: updateRolePermissionsRequestSchema,
     }),
     deps.controller.updatePermissions,
+  );
+
+  // PATCH /roles/:id (T-006-15, RF-006, RS-002, RS-020, RNF-017, D7, D10)
+  router.patch(
+    '/:id',
+    deps.authenticate,
+    deps.requirePermission('rol.editar', 'GLOBAL'),
+    validateRequest({
+      params: roleIdParamSchema,
+      body: updateRoleRequestSchema,
+    }),
+    deps.controller.update,
   );
 
   return router;

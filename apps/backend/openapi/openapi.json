@@ -2013,6 +2013,167 @@
         }
       }
     },
+    "/roles/{id}": {
+      "patch": {
+        "tags": ["Roles"],
+        "summary": "Actualizar información básica de un rol",
+        "description": "Actualiza el nombre y/o descripción de un rol existente. Requiere el permiso 'rol.editar' con alcance GLOBAL.",
+        "operationId": "updateRole",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Identificador único del rol (CUID).",
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRoleRequest"
+              },
+              "example": {
+                "name": "Auditor de Calidad Modificado",
+                "description": "Descripción actualizada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Rol actualizado exitosamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleSummary"
+                },
+                "example": {
+                  "id": "role_auditor_cuid",
+                  "code": "AUDITOR_DE_CALIDAD",
+                  "name": "Auditor de Calidad Modificado",
+                  "description": "Descripción actualizada",
+                  "isPredefined": false,
+                  "status": "ACTIVE",
+                  "deactivatedAt": null,
+                  "userCount": 0,
+                  "permissions": [
+                    {
+                      "permissionCode": "rol.ver",
+                      "scope": "GLOBAL"
+                    }
+                  ],
+                  "updatedAt": "2026-11-06T20:30:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error de validación en identificador o cuerpo de la petición.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Los datos proporcionados no son válidos.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere 'rol.editar' con alcance GLOBAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para editar roles.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rol no encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "El rol solicitado no existe.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto por nombre de rol ya registrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "Ya existe un rol con ese nombre.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/permissions": {
       "get": {
         "tags": ["Roles"],
@@ -2668,6 +2829,24 @@
             "description": "Lista de concesiones de permisos a asignar al rol."
           }
         }
+      },
+      "UpdateRoleRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 80,
+            "description": "Nombre formal del rol (3 a 80 caracteres)."
+          },
+          "description": {
+            "type": ["string", "null"],
+            "maxLength": 255,
+            "description": "Descripción del rol (máximo 255 caracteres o null para limpiar)."
+          }
+        },
+        "additionalProperties": false,
+        "description": "Datos para actualizar nombre o descripción de un rol."
       },
       "PermissionSummary": {
         "type": "object",
