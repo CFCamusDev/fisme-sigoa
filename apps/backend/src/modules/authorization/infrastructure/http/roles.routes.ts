@@ -1,5 +1,6 @@
 import { Router, type RequestHandler } from 'express';
 import {
+  changeRoleStatusRequestSchema,
   createRoleRequestSchema,
   roleIdParamSchema,
   updateRolePermissionsRequestSchema,
@@ -46,6 +47,18 @@ export function createRolesRouter(deps: RolesRouterDependencies): Router {
       body: updateRolePermissionsRequestSchema,
     }),
     deps.controller.updatePermissions,
+  );
+
+  // PATCH /roles/:id/status (T-006-16, CA3, RF-006, RS-002, RS-020, RNF-017, D1, D5, D6)
+  router.patch(
+    '/:id/status',
+    deps.authenticate,
+    deps.requirePermission('rol.editar', 'GLOBAL'),
+    validateRequest({
+      params: roleIdParamSchema,
+      body: changeRoleStatusRequestSchema,
+    }),
+    deps.controller.changeStatus,
   );
 
   // PATCH /roles/:id (T-006-15, RF-006, RS-002, RS-020, RNF-017, D7, D10)

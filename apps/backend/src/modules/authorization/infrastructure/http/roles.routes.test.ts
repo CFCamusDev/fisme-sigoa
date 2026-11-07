@@ -361,4 +361,47 @@ describe('Roles Routes Unit Tests (A2.2, HU-003, T-003-15, HU-006, T-006-15, T-0
       input: payload,
     });
   });
+
+  it('checks the permission before updating in PATCH /roles/:id/status (403 without rol.editar)', async () => {
+    const { app, changeRoleStatusUseCase } = setupTestApp({ permissionAllowed: false });
+
+    const response = await request(app)
+      .patch('/roles/a0000000-0000-0000-0000-000000000001/status')
+      .send({ status: 'INACTIVE' });
+
+    expect(response.status).toBe(403);
+    expect(response.body.error.code).toBe('FORBIDDEN');
+    expect(changeRoleStatusUseCase.execute).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when status is invalid or missing in PATCH /roles/:id/status', async () => {
+    const { app, changeRoleStatusUseCase } = setupTestApp({ permissionAllowed: true });
+
+    const response = await request(app)
+      .patch('/roles/a0000000-0000-0000-0000-000000000001/status')
+      .send({ status: 'INVALID_STATUS' });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe('VALIDATION_ERROR');
+    expect(changeRoleStatusUseCase.execute).not.toHaveBeenCalled();
+  });
+
+  it('responds 200 with Cache-Control: no-store and RoleDto on valid PATCH /roles/:id/status', async () => {
+    const { app, changeRoleStatusUseCase } = setupTestApp({ permissionAllowed: true });
+
+    const roleId = 'a0000000-0000-0000-0000-000000000001';
+    const payload = { status: 'INACTIVE' as const, confirmed: true };
+
+    const response = await request(app).patch(`/roles/${roleId}/status`).send(payload);
+
+    expect(response.status).toBe(200);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.body).toEqual(mockUpdatedRole);
+    expect(changeRoleStatusUseCase.execute).toHaveBeenCalledWith({
+      actorId: dummyActorId,
+      ip: '127.0.0.1',
+      roleId,
+      input: payload,
+    });
+  });
 });

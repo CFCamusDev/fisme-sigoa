@@ -24,6 +24,7 @@ import {
   roleDtoSchema,
   updateRolePermissionsRequestSchema,
   updateRoleRequestSchema,
+  changeRoleStatusRequestSchema,
   updateUserRequestSchema,
   userDtoSchema,
 } from '@sigoa/shared';
@@ -581,6 +582,30 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
       expect(roleDtoSchema.safeParse(res200.content['application/json'].example).success).toBe(
         true,
       );
+    });
+
+    it('documents PATCH /roles/{id}/status endpoint with bearer security and Roles tag (T-006-16, CA3)', () => {
+      expect(spec.paths['/roles/{id}/status']).toBeDefined();
+      expect(spec.paths['/roles/{id}/status'].patch).toBeDefined();
+
+      const op = spec.paths['/roles/{id}/status'].patch;
+      expect(op.tags).toContain('Roles');
+      expect(op.security).toEqual([{ bearerAuth: [] }]);
+      expect(op.operationId).toBe('changeRoleStatus');
+      expect(op.description).toContain('rol.editar');
+
+      const reqExample = op.requestBody.content['application/json'].example;
+      expect(changeRoleStatusRequestSchema.safeParse(reqExample).success).toBe(true);
+
+      const res200 = op.responses['200'];
+      expect(res200.headers['Cache-Control'].example).toBe('no-store');
+      expect(roleDtoSchema.safeParse(res200.content['application/json'].example).success).toBe(
+        true,
+      );
+
+      const err409 = op.responses['409'].content['application/json'].example;
+      expect(apiErrorResponseSchema.safeParse(err409).success).toBe(true);
+      expect(err409.error.code).toBe('CONFLICT');
     });
 
     it('documents every route of the roles router and nothing else (guard against drift, A4, generalized D1)', () => {

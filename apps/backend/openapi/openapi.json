@@ -2013,6 +2013,167 @@
         }
       }
     },
+    "/roles/{id}/status": {
+      "patch": {
+        "tags": ["Roles"],
+        "summary": "Cambiar estado de un rol",
+        "description": "Activa o desactiva un rol en el sistema. Si se desactiva un rol que tiene usuarios asignados, requiere 'confirmed: true'. El rol ADMINISTRATOR no puede desactivarse. Requiere el permiso 'rol.editar' con alcance GLOBAL.",
+        "operationId": "changeRoleStatus",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Identificador único del rol (CUID).",
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeRoleStatusRequest"
+              },
+              "example": {
+                "status": "INACTIVE",
+                "confirmed": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Estado del rol modificado exitosamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleSummary"
+                },
+                "example": {
+                  "id": "role_teacher_cuid",
+                  "code": "TEACHER",
+                  "name": "Docente",
+                  "description": "Docente de la Escuela Profesional de Ingeniería de Sistemas",
+                  "isPredefined": true,
+                  "status": "INACTIVE",
+                  "deactivatedAt": "2026-11-06T20:30:00.000Z",
+                  "userCount": 15,
+                  "permissions": [
+                    {
+                      "permissionCode": "usuario.ver",
+                      "scope": "GLOBAL"
+                    }
+                  ],
+                  "updatedAt": "2026-11-06T20:30:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error de validación en identificador o cuerpo de la petición.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Los datos proporcionados no son válidos.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere 'rol.editar' con alcance GLOBAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para editar roles.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rol no encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "El rol solicitado no existe.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto por rol protegido, transición inválida o confirmación requerida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "El rol está asignado a 15 usuario(s). Confirma para desactivarlo.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/roles/{id}": {
       "patch": {
         "tags": ["Roles"],
@@ -2847,6 +3008,23 @@
         },
         "additionalProperties": false,
         "description": "Datos para actualizar nombre o descripción de un rol."
+      },
+      "ChangeRoleStatusRequest": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["ACTIVE", "INACTIVE"],
+            "description": "Nuevo estado del rol."
+          },
+          "confirmed": {
+            "type": "boolean",
+            "description": "Confirmación obligatoria si el rol tiene usuarios asignados."
+          }
+        },
+        "additionalProperties": false,
+        "description": "Datos para activar o desactivar un rol."
       },
       "PermissionSummary": {
         "type": "object",
