@@ -79,6 +79,8 @@ describe('Roles Routes Unit Tests (A2.2, HU-003, T-003-15, HU-006, T-006-15, T-0
     listRolesUseCase: ListRolesUseCase;
     createRoleUseCase: CreateRoleUseCase;
     editRolePermissionsUseCase: EditRolePermissionsUseCase;
+    editRoleUseCase: EditRoleUseCase;
+    changeRoleStatusUseCase: ChangeRoleStatusUseCase;
   } {
     const app = express();
     app.use(express.json());
