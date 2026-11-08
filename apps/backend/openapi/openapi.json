@@ -1741,6 +1741,160 @@
         }
       }
     },
+    "/users/{id}/permissions": {
+      "put": {
+        "tags": ["Users"],
+        "summary": "Asignar permisos directos a un usuario",
+        "description": "Reemplaza el conjunto completo de permisos directos de un usuario (idempotente). Requiere el permiso 'permiso.asignar' con alcance GLOBAL.",
+        "operationId": "assignUserPermissions",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            },
+            "description": "Identificador único del usuario (CUID)."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignUserPermissionsRequest"
+              },
+              "example": {
+                "permissions": [
+                  {
+                    "permissionCode": "curso.editar",
+                    "scope": "GLOBAL"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Permisos directos del usuario actualizados exitosamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserAccess"
+                },
+                "example": {
+                  "userId": "usr_cuid_123",
+                  "roles": [],
+                  "directPermissions": [
+                    {
+                      "permissionCode": "curso.editar",
+                      "scope": "GLOBAL"
+                    }
+                  ],
+                  "effectivePermissions": [
+                    {
+                      "permissionCode": "curso.editar",
+                      "scope": "GLOBAL",
+                      "sources": [
+                        {
+                          "kind": "DIRECT",
+                          "scope": "GLOBAL"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos de entrada inválidos, permisos duplicados, código inexistente o más de 200 ítems.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Los datos proporcionados no son válidos.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere 'permiso.asignar' con alcance GLOBAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para realizar esta acción.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Usuario no encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "Usuario no encontrado.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/roles": {
       "get": {
         "tags": ["Roles"],
@@ -3324,6 +3478,21 @@
               "maxLength": 64
             },
             "description": "Lista de identificadores de roles a asignar (sin duplicados, máximo 10)."
+          }
+        }
+      },
+      "AssignUserPermissionsRequest": {
+        "type": "object",
+        "required": ["permissions"],
+        "additionalProperties": false,
+        "properties": {
+          "permissions": {
+            "type": "array",
+            "maxItems": 200,
+            "items": {
+              "$ref": "#/components/schemas/RoleGrant"
+            },
+            "description": "Lista de permisos directos a asignar al usuario (máximo 200, sin duplicados)."
           }
         }
       },

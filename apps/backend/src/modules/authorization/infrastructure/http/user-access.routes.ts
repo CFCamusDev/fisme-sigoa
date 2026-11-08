@@ -1,5 +1,9 @@
 import { Router, type RequestHandler } from 'express';
-import { assignUserRolesRequestSchema, userIdParamSchema } from '@sigoa/shared';
+import {
+  assignUserPermissionsRequestSchema,
+  assignUserRolesRequestSchema,
+  userIdParamSchema,
+} from '@sigoa/shared';
 import { validateRequest } from '../../../../shared/middleware/validate-request.js';
 import type { UserAccessController } from './user-access.controller.js';
 
@@ -22,6 +26,18 @@ export function createUserAccessRouter(deps: UserAccessRouterDependencies): Rout
       body: assignUserRolesRequestSchema,
     }),
     deps.controller.assignRoles,
+  );
+
+  // PUT /users/:id/permissions (T-007-12, RF-007, RS-002, RS-020, RNF-009, RNF-017, D1, D4, D5, D6)
+  router.put(
+    '/:id/permissions',
+    deps.authenticate,
+    deps.requirePermission('permiso.asignar', 'GLOBAL'),
+    validateRequest({
+      params: userIdParamSchema,
+      body: assignUserPermissionsRequestSchema,
+    }),
+    deps.controller.assignPermissions,
   );
 
   return router;

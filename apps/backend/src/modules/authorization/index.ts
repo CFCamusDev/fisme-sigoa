@@ -23,6 +23,7 @@ import { PrismaRolePermissionRepository } from './infrastructure/prisma/prisma-r
 import { CachingGrantReader } from './infrastructure/cache/caching-grant-reader.js';
 import type { PermissionCacheInvalidator } from './domain/ports/permission-cache-invalidator.js';
 import { AssignUserRolesUseCase } from './application/assign-user-roles.js';
+import { AssignUserPermissionsUseCase } from './application/assign-user-permissions.js';
 import { UserAccessAssembler } from './application/user-access-assembler.js';
 import { UserAccessController } from './infrastructure/http/user-access.controller.js';
 import { createUserAccessRouter } from './infrastructure/http/user-access.routes.js';
@@ -202,6 +203,7 @@ export function createUserAccessModule(deps: UserAccessModuleDependencies): Rout
   const direct = new PrismaUserPermissionRepository(deps.dbProvider);
   const rolePermissions = new PrismaRolePermissionRepository(deps.dbProvider);
   const roleRepository = new PrismaRoleRepository(deps.dbProvider);
+  const permissionRepository = new PrismaPermissionRepository(deps.dbProvider);
 
   const assembler = new UserAccessAssembler({
     roles,
@@ -220,8 +222,20 @@ export function createUserAccessModule(deps: UserAccessModuleDependencies): Rout
     permissionCache: deps.services.permissionCache,
   });
 
+  const assignUserPermissionsUseCase = new AssignUserPermissionsUseCase({
+    subject,
+    direct,
+    permissionRepository,
+    authorizer: deps.services.authorizer,
+    assembler,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+    permissionCache: deps.services.permissionCache,
+  });
+
   const controller = new UserAccessController({
     assignUserRolesUseCase,
+    assignUserPermissionsUseCase,
   });
 
   return createUserAccessRouter({

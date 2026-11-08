@@ -29,6 +29,7 @@ import {
   updateUserRequestSchema,
   userDtoSchema,
   assignUserRolesRequestSchema,
+  assignUserPermissionsRequestSchema,
   userAccessSchema,
 } from '@sigoa/shared';
 import { createAuthRouter } from '../src/modules/auth/infrastructure/http/auth.routes.js';
@@ -1273,9 +1274,50 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
       expect(op.responses['409']).toBeDefined();
     });
 
+    it('documents PUT /users/{id}/permissions endpoint with bearer security, 200, 400, 401, 403, 404 responses and valid examples', () => {
+      expect(spec.paths['/users/{id}/permissions']).toBeDefined();
+      expect(spec.paths['/users/{id}/permissions'].put).toBeDefined();
+
+      const op = spec.paths['/users/{id}/permissions'].put;
+      expect(op.operationId).toBe('assignUserPermissions');
+      expect(op.tags).toContain('Users');
+      expect(op.security).toEqual([{ bearerAuth: [] }]);
+
+      // Parámetros
+      const idParam = op.parameters?.find(
+        (p: { name: string; in: string }) => p.name === 'id' && p.in === 'path',
+      );
+      expect(idParam).toBeDefined();
+      expect(idParam.required).toBe(true);
+
+      // Request body
+      expect(op.requestBody).toBeDefined();
+      expect(op.requestBody.required).toBe(true);
+      const reqSchemaRef = op.requestBody.content['application/json'].schema.$ref;
+      expect(reqSchemaRef).toBe('#/components/schemas/AssignUserPermissionsRequest');
+
+      const reqExample = op.requestBody.content['application/json'].example;
+      expect(assignUserPermissionsRequestSchema.safeParse(reqExample).success).toBe(true);
+
+      // Responses
+      expect(op.responses['200']).toBeDefined();
+      expect(op.responses['200'].headers['Cache-Control']).toBeDefined();
+      const resSchemaRef = op.responses['200'].content['application/json'].schema.$ref;
+      expect(resSchemaRef).toBe('#/components/schemas/UserAccess');
+
+      const resExample = op.responses['200'].content['application/json'].example;
+      expect(userAccessSchema.safeParse(resExample).success).toBe(true);
+
+      expect(op.responses['400']).toBeDefined();
+      expect(op.responses['401']).toBeDefined();
+      expect(op.responses['403']).toBeDefined();
+      expect(op.responses['404']).toBeDefined();
+    });
+
     it('enforces bidirectional parity between user-access router and openapi spec (anti-drift guard)', () => {
       const mockController = {
         assignRoles: vi.fn(),
+        assignPermissions: vi.fn(),
       } as unknown as UserAccessController;
 
       const dummyAuth = vi.fn();
