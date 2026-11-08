@@ -29,6 +29,18 @@ describe('Authorization Module Entrypoint', () => {
     expect(services.authorizer).toBeDefined();
     expect(services.listRolesUseCase).toBeDefined();
     expect(services.requirePermission).toBeDefined();
+    expect(services.permissionCache).toBeDefined();
+  });
+
+  it('accepts permissionCache options when instantiating services', () => {
+    const dummyDbProvider: DbProvider = {
+      get: () => ({}) as unknown as ReturnType<DbProvider['get']>,
+    };
+    const services = createAuthorizationServices({
+      dbProvider: dummyDbProvider,
+      permissionCache: { ttlMs: 0 },
+    });
+    expect(services.permissionCache).toBeDefined();
   });
 
   it('creates the roles router with dependencies wired', () => {

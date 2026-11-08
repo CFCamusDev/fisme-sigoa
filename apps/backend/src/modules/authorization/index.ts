@@ -20,6 +20,8 @@ import { PrismaUserRoleGateway } from './infrastructure/prisma/prisma-user-role-
 import { PrismaRoleRepository } from './infrastructure/prisma/prisma-role-repository.js';
 import { PrismaPermissionRepository } from './infrastructure/prisma/prisma-permission-repository.js';
 import { PrismaRolePermissionRepository } from './infrastructure/prisma/prisma-role-permission-repository.js';
+import { CachingGrantReader } from './infrastructure/cache/caching-grant-reader.js';
+import type { PermissionCacheInvalidator } from './domain/ports/permission-cache-invalidator.js';
 
 export * from './domain/index.js';
 export * from './application/index.js';
@@ -47,19 +49,29 @@ export interface AuthorizationModuleServices {
   readonly authorizer: PermissionAuthorizer;
   readonly listRolesUseCase: ListRolesUseCase;
   readonly requirePermission: ReturnType<typeof createRequirePermission>;
+  readonly permissionCache: PermissionCacheInvalidator;
 }
 
 export interface AuthorizationModuleDependencies {
   readonly dbProvider: DbProvider;
+  readonly permissionCache?: {
+    ttlMs?: number;
+    maxEntries?: number;
+  };
 }
 
 export function createAuthorizationServices(
   deps: AuthorizationModuleDependencies,
 ): AuthorizationModuleServices {
   const grantReader = new PrismaGrantReader(deps.dbProvider);
+  const cachingGrantReader = new CachingGrantReader(
+    grantReader,
+    deps.dbProvider,
+    deps.permissionCache,
+  );
   const roleReader = new PrismaRoleReader(deps.dbProvider);
   const userRoleGateway = new PrismaUserRoleGateway(deps.dbProvider);
-  const authorizer = new PermissionAuthorizer(grantReader);
+  const authorizer = new PermissionAuthorizer(cachingGrantReader);
   const listRolesUseCase = new ListRolesUseCase({
     roleReader,
     authorizer,
@@ -73,6 +85,7 @@ export function createAuthorizationServices(
     authorizer,
     listRolesUseCase,
     requirePermission,
+    permissionCache: cachingGrantReader,
   };
 }
 

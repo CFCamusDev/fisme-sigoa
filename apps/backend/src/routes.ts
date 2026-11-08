@@ -32,6 +32,10 @@ export interface AppRoutesDependencies {
   logger?: Logger;
   clock?: () => Date;
   detachedTaskRunner?: DetachedTaskRunner;
+  permissionCache?: {
+    ttlMs?: number;
+    maxEntries?: number;
+  };
 }
 
 export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void {
@@ -48,6 +52,7 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
 
   const authorizationServices = createAuthorizationServices({
     dbProvider: deps.dbProvider,
+    permissionCache: deps.permissionCache,
   });
 
   const emailSender =
