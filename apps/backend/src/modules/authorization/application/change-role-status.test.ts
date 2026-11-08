@@ -10,6 +10,7 @@ import { RoleDeactivationRequiresConfirmationError } from '../domain/errors/role
 import { RoleNotFoundError } from '../domain/errors/role-not-found-error.js';
 import type { RoleReader } from '../domain/ports/role-reader.js';
 import type { RoleRepository } from '../domain/ports/role-repository.js';
+import type { PermissionCacheInvalidator } from '../domain/ports/permission-cache-invalidator.js';
 import { ChangeRoleStatusUseCase } from './change-role-status.js';
 import type { PermissionAuthorizer } from './permission-authorizer.js';
 
@@ -19,6 +20,7 @@ describe('ChangeRoleStatusUseCase Unit Tests (HU-006, T-006-11, CA3, RF-006, RS-
   let authorizer: PermissionAuthorizer;
   let unitOfWork: UnitOfWork;
   let auditLogger: AuditLogger;
+  let permissionCache: PermissionCacheInvalidator;
   let useCase: ChangeRoleStatusUseCase;
 
   const actorId = 'usr-admin-01';
@@ -67,12 +69,18 @@ describe('ChangeRoleStatusUseCase Unit Tests (HU-006, T-006-11, CA3, RF-006, RS-
       log: vi.fn().mockResolvedValue(undefined),
     };
 
+    permissionCache = {
+      invalidateUser: vi.fn(),
+      invalidateAll: vi.fn(),
+    };
+
     useCase = new ChangeRoleStatusUseCase({
       roleRepository,
       roleReader,
       authorizer,
       unitOfWork,
       auditLogger,
+      permissionCache,
     });
   });
 
@@ -330,5 +338,56 @@ describe('ChangeRoleStatusUseCase Unit Tests (HU-006, T-006-11, CA3, RF-006, RS-
     });
 
     expect(result).toEqual(expectedDto);
+  });
+
+  it('invalidates all permission cache entries after committing when status changes', async () => {
+    const role = Role.create({
+      id: roleId,
+      name: 'Evaluador',
+      createdBy: 'creator-id',
+    });
+    vi.mocked(roleRepository.findByIdForUpdate).mockResolvedValue(role);
+    const expectedDto = createRoleDto({ status: 'INACTIVE' });
+    vi.mocked(roleReader.findById).mockResolvedValue(expectedDto);
+
+    const callOrder: string[] = [];
+    vi.mocked(unitOfWork.run).mockImplementation(async (work) => {
+      callOrder.push('uow.run');
+      return work();
+    });
+    vi.mocked(permissionCache.invalidateAll).mockImplementation(() => {
+      callOrder.push('cache.invalidateAll');
+    });
+
+    await useCase.execute({
+      actorId,
+      ip: '127.0.0.1',
+      roleId,
+      input: { status: 'INACTIVE', confirmed: true },
+    });
+
+    expect(permissionCache.invalidateAll).toHaveBeenCalledTimes(1);
+    expect(callOrder).toEqual(['uow.run', 'cache.invalidateAll']);
+  });
+
+  it('does not invalidate the cache if status change transaction fails', async () => {
+    const role = Role.create({
+      id: roleId,
+      name: 'Evaluador',
+      createdBy: 'creator-id',
+    });
+    vi.mocked(roleRepository.findByIdForUpdate).mockResolvedValue(role);
+    vi.mocked(unitOfWork.run).mockRejectedValueOnce(new Error('DB failure'));
+
+    await expect(
+      useCase.execute({
+        actorId,
+        ip: '127.0.0.1',
+        roleId,
+        input: { status: 'INACTIVE', confirmed: true },
+      }),
+    ).rejects.toThrow('DB failure');
+
+    expect(permissionCache.invalidateAll).not.toHaveBeenCalled();
   });
 });

@@ -53,6 +53,10 @@ describe('ChangeRoleStatusUseCase Integration (PostgreSQL real, HU-006, T-006-11
       authorizer,
       unitOfWork: uow,
       auditLogger: customAuditLogger,
+      permissionCache: {
+        invalidateUser: () => {},
+        invalidateAll: () => {},
+      },
     });
   }
 
@@ -65,6 +69,10 @@ describe('ChangeRoleStatusUseCase Integration (PostgreSQL real, HU-006, T-006-11
       authorizer,
       unitOfWork: uow,
       auditLogger: auditServices.auditLogger,
+      permissionCache: {
+        invalidateUser: () => {},
+        invalidateAll: () => {},
+      },
     });
   }
 

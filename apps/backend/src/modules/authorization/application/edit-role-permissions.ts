@@ -48,7 +48,9 @@ export class EditRolePermissionsUseCase {
       }
     }
 
-    return await this.deps.unitOfWork.run(async () => {
+    let hasChanged = false;
+
+    const result = await this.deps.unitOfWork.run(async () => {
       const role = await this.deps.roleRepository.findByIdForUpdate(command.roleId);
       if (!role) {
         throw new RoleNotFoundError(`No se encontró el rol con identificador '${command.roleId}'.`);
@@ -76,6 +78,7 @@ export class EditRolePermissionsUseCase {
 
       // Idempotencia: solo auditar si hubo mutación efectiva
       if (replaceResult.added + replaceResult.updated + replaceResult.removed > 0) {
+        hasChanged = true;
         await this.deps.auditLogger.log({
           action: 'PERMISSION_CHANGE',
           entity: 'Role',
@@ -109,5 +112,11 @@ export class EditRolePermissionsUseCase {
 
       return roleDtoSchema.parse(updatedDto);
     });
+
+    if (hasChanged) {
+      this.deps.permissionCache.invalidateAll();
+    }
+
+    return result;
   }
 }

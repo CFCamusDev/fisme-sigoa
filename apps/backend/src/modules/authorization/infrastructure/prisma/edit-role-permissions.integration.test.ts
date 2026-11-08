@@ -61,6 +61,10 @@ describe('EditRolePermissionsUseCase Integration (PostgreSQL real, HU-006, T-006
       authorizer,
       unitOfWork: uow,
       auditLogger: customAuditLogger,
+      permissionCache: {
+        invalidateUser: () => {},
+        invalidateAll: () => {},
+      },
     });
   }
 

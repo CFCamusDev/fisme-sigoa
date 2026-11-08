@@ -120,6 +120,7 @@ export function createRolesModule(deps: RolesModuleDependencies): Router {
     authorizer: deps.services.authorizer,
     unitOfWork: deps.unitOfWork,
     auditLogger: deps.auditLogger,
+    permissionCache: deps.services.permissionCache,
   });
 
   const editRoleUseCase = new EditRoleUseCase({
@@ -136,6 +137,7 @@ export function createRolesModule(deps: RolesModuleDependencies): Router {
     authorizer: deps.services.authorizer,
     unitOfWork: deps.unitOfWork,
     auditLogger: deps.auditLogger,
+    permissionCache: deps.services.permissionCache,
   });
 
   const controller = new RolesController({
