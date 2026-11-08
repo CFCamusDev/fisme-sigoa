@@ -10,3 +10,4 @@ export * from './permission-scope-table.js';
 export * from './effective-permissions-view.js';
 export * from './user-roles-editor.js';
 export * from './user-direct-permissions-editor.js';
+export * from './user-access-panel.js';
