@@ -469,4 +469,253 @@ describe('UserAccessPanel component (T-007-16)', () => {
       ),
     ).toBeInTheDocument();
   });
+
+  describe('Full flows and CA acceptance criteria (T-007-27)', () => {
+    it('refreshes the effective view with the union after assigning two roles and a direct permission (CA1)', async () => {
+      let currentAccess: UserAccessDto = {
+        userId: 'usr-123',
+        roles: [
+          {
+            id: 'role-teacher',
+            code: 'TEACHER',
+            name: 'Docente',
+            status: 'ACTIVE',
+          },
+        ],
+        directPermissions: [],
+        effectivePermissions: [
+          {
+            permissionCode: 'catalogo.ver',
+            scope: 'OWN',
+            sources: [
+              {
+                kind: 'ROLE',
+                roleId: 'role-teacher',
+                roleCode: 'TEACHER',
+                roleName: 'Docente',
+                scope: 'OWN',
+              },
+            ],
+          },
+        ],
+      };
+
+      server.use(
+        http.get('http://localhost:3000/users/usr-123/effective-permissions', () => {
+          return HttpResponse.json(currentAccess);
+        }),
+        http.get('http://localhost:3000/roles', () => HttpResponse.json({ items: mockRoles })),
+        http.get('http://localhost:3000/permissions', () =>
+          HttpResponse.json({ items: mockCatalog }),
+        ),
+        http.put('http://localhost:3000/users/usr-123/roles', () => {
+          currentAccess = {
+            ...currentAccess,
+            roles: [
+              {
+                id: 'role-admin',
+                code: 'ADMINISTRATOR',
+                name: 'Administrador',
+                status: 'ACTIVE',
+              },
+              {
+                id: 'role-teacher',
+                code: 'TEACHER',
+                name: 'Docente',
+                status: 'ACTIVE',
+              },
+            ],
+            effectivePermissions: [
+              {
+                permissionCode: 'catalogo.ver',
+                scope: 'OWN',
+                sources: [
+                  {
+                    kind: 'ROLE',
+                    roleId: 'role-teacher',
+                    roleCode: 'TEACHER',
+                    roleName: 'Docente',
+                    scope: 'OWN',
+                  },
+                ],
+              },
+              {
+                permissionCode: 'usuario.ver',
+                scope: 'GLOBAL',
+                sources: [
+                  {
+                    kind: 'ROLE',
+                    roleId: 'role-admin',
+                    roleCode: 'ADMINISTRATOR',
+                    roleName: 'Administrador',
+                    scope: 'GLOBAL',
+                  },
+                ],
+              },
+            ],
+          };
+          return HttpResponse.json(currentAccess);
+        }),
+        http.put('http://localhost:3000/users/usr-123/permissions', () => {
+          currentAccess = {
+            ...currentAccess,
+            directPermissions: [
+              {
+                permissionCode: 'usuario.crear',
+                scope: 'GLOBAL',
+              },
+            ],
+            effectivePermissions: [
+              ...currentAccess.effectivePermissions,
+              {
+                permissionCode: 'usuario.crear',
+                scope: 'GLOBAL',
+                sources: [{ kind: 'DIRECT', scope: 'GLOBAL' }],
+              },
+            ],
+          };
+          return HttpResponse.json(currentAccess);
+        }),
+      );
+
+      const user = userEvent.setup();
+      renderWithProviders(<UserAccessPanel userId="usr-123" />);
+
+      await screen.findByRole('heading', { name: 'Roles asignados' });
+
+      // Asignar segundo rol: Administrador
+      const adminCheckbox = screen.getByLabelText(/Administrador/i);
+      await user.click(adminCheckbox);
+
+      const saveRolesBtn = screen.getByRole('button', { name: 'Guardar roles' });
+      await user.click(saveRolesBtn);
+
+      expect(await screen.findByText('Roles actualizados correctamente.')).toBeInTheDocument();
+
+      // Asignar permiso directo: usuario.crear -> GLOBAL
+      const select = screen.getByLabelText('Acceso a usuario.crear');
+      await user.selectOptions(select, 'GLOBAL');
+
+      const savePermsBtn = screen.getByRole('button', { name: 'Guardar permisos directos' });
+      await user.click(savePermsBtn);
+
+      expect(
+        await screen.findByText('Permisos directos actualizados correctamente.'),
+      ).toBeInTheDocument();
+
+      // Verificar que la vista de permisos efectivos refleja la unión
+      await waitFor(() => {
+        expect(screen.getAllByText('Crear usuarios').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getAllByText('Ver usuarios').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getAllByText('Ver catálogo OE/AG').length).toBeGreaterThanOrEqual(1);
+      });
+    });
+
+    it('shows a direct OWN permission as Propio in the effective view (CA2)', async () => {
+      let currentAccess: UserAccessDto = {
+        userId: 'usr-123',
+        roles: [
+          {
+            id: 'role-teacher',
+            code: 'TEACHER',
+            name: 'Docente',
+            status: 'ACTIVE',
+          },
+        ],
+        directPermissions: [],
+        effectivePermissions: [],
+      };
+
+      server.use(
+        http.get('http://localhost:3000/users/usr-123/effective-permissions', () => {
+          return HttpResponse.json(currentAccess);
+        }),
+        http.get('http://localhost:3000/roles', () => HttpResponse.json({ items: mockRoles })),
+        http.get('http://localhost:3000/permissions', () =>
+          HttpResponse.json({ items: mockCatalog }),
+        ),
+        http.put('http://localhost:3000/users/usr-123/permissions', () => {
+          currentAccess = {
+            ...currentAccess,
+            directPermissions: [
+              {
+                permissionCode: 'usuario.ver',
+                scope: 'OWN',
+              },
+            ],
+            effectivePermissions: [
+              {
+                permissionCode: 'usuario.ver',
+                scope: 'OWN',
+                sources: [{ kind: 'DIRECT', scope: 'OWN' }],
+              },
+            ],
+          };
+          return HttpResponse.json(currentAccess);
+        }),
+      );
+
+      const user = userEvent.setup();
+      renderWithProviders(<UserAccessPanel userId="usr-123" />);
+
+      await screen.findByRole('heading', { name: 'Permisos directos' });
+
+      const select = screen.getByLabelText('Acceso a usuario.ver');
+      await user.selectOptions(select, 'OWN');
+
+      const savePermsBtn = screen.getByRole('button', { name: 'Guardar permisos directos' });
+      await user.click(savePermsBtn);
+
+      expect(
+        await screen.findByText('Permisos directos actualizados correctamente.'),
+      ).toBeInTheDocument();
+
+      // En la vista efectiva debe aparecer con "Propio" y etiqueta de origen "Directo · Propio"
+      await waitFor(() => {
+        expect(screen.getAllByText('Propio').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getByText('Directo · Propio')).toBeInTheDocument();
+      });
+    });
+
+    it('keeps the draft and controls state when a save operation fails', async () => {
+      server.use(
+        http.get('http://localhost:3000/users/usr-123/effective-permissions', () =>
+          HttpResponse.json(mockUserAccess),
+        ),
+        http.get('http://localhost:3000/roles', () => HttpResponse.json({ items: mockRoles })),
+        http.get('http://localhost:3000/permissions', () =>
+          HttpResponse.json({ items: mockCatalog }),
+        ),
+        http.put('http://localhost:3000/users/usr-123/roles', () => {
+          return HttpResponse.json(
+            {
+              error: {
+                code: 'CONFLICT',
+                message: 'Conflicto al guardar roles.',
+              },
+            },
+            { status: 409 },
+          );
+        }),
+      );
+
+      const user = userEvent.setup();
+      renderWithProviders(<UserAccessPanel userId="usr-123" />);
+
+      await screen.findByRole('heading', { name: 'Roles asignados' });
+
+      const adminCheckbox = screen.getByLabelText(/Administrador/i);
+      await user.click(adminCheckbox);
+
+      expect(screen.getByText('1 cambio sin guardar')).toBeInTheDocument();
+
+      const saveRolesBtn = screen.getByRole('button', { name: 'Guardar roles' });
+      await user.click(saveRolesBtn);
+
+      // Muestra el mensaje de error y conserva la selección y el borrador sin descartarlo
+      expect(await screen.findByText('Conflicto al guardar roles.')).toBeInTheDocument();
+      expect(adminCheckbox).toBeChecked();
+      expect(screen.getByText('1 cambio sin guardar')).toBeInTheDocument();
+    });
+  });
 });
