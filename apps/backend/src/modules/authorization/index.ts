@@ -24,6 +24,7 @@ import { CachingGrantReader } from './infrastructure/cache/caching-grant-reader.
 import type { PermissionCacheInvalidator } from './domain/ports/permission-cache-invalidator.js';
 import { AssignUserRolesUseCase } from './application/assign-user-roles.js';
 import { AssignUserPermissionsUseCase } from './application/assign-user-permissions.js';
+import { GetUserEffectiveAccessUseCase } from './application/get-user-effective-access.js';
 import { UserAccessAssembler } from './application/user-access-assembler.js';
 import { UserAccessController } from './infrastructure/http/user-access.controller.js';
 import { createUserAccessRouter } from './infrastructure/http/user-access.routes.js';
@@ -233,9 +234,16 @@ export function createUserAccessModule(deps: UserAccessModuleDependencies): Rout
     permissionCache: deps.services.permissionCache,
   });
 
+  const getUserEffectiveAccessUseCase = new GetUserEffectiveAccessUseCase({
+    subject,
+    authorizer: deps.services.authorizer,
+    assembler,
+  });
+
   const controller = new UserAccessController({
     assignUserRolesUseCase,
     assignUserPermissionsUseCase,
+    getUserEffectiveAccessUseCase,
   });
 
   return createUserAccessRouter({

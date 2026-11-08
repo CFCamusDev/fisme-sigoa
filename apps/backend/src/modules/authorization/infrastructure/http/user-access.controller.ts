@@ -86,4 +86,33 @@ export class UserAccessController {
       next(error);
     }
   };
+
+  getEffectiveAccess: RequestHandler = async (req, res, next) => {
+    try {
+      const context = getRequestContext();
+      const actorId = context?.actor;
+
+      if (!actorId) {
+        throw new UnauthorizedError('No autenticado');
+      }
+
+      if (!this.getUserEffectiveAccessUseCase) {
+        throw new Error('GetUserEffectiveAccessUseCase no configurado');
+      }
+
+      const { id } = req.params as { id: string };
+
+      const result = await this.getUserEffectiveAccessUseCase.execute({
+        actorId,
+        userId: id,
+      });
+
+      const parsedResponse = userAccessSchema.parse(result);
+
+      res.setHeader('Cache-Control', 'no-store');
+      res.status(200).json(parsedResponse);
+    } catch (error) {
+      next(error);
+    }
+  };
 }

@@ -1314,10 +1314,42 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
       expect(op.responses['404']).toBeDefined();
     });
 
+    it('documents GET /users/{id}/effective-permissions endpoint with bearer security, 200, 400, 401, 403, 404 responses and valid examples', () => {
+      expect(spec.paths['/users/{id}/effective-permissions']).toBeDefined();
+      expect(spec.paths['/users/{id}/effective-permissions'].get).toBeDefined();
+
+      const op = spec.paths['/users/{id}/effective-permissions'].get;
+      expect(op.operationId).toBe('getUserEffectiveAccess');
+      expect(op.tags).toContain('Users');
+      expect(op.security).toEqual([{ bearerAuth: [] }]);
+
+      // Parámetros
+      const idParam = op.parameters?.find(
+        (p: { name: string; in: string }) => p.name === 'id' && p.in === 'path',
+      );
+      expect(idParam).toBeDefined();
+      expect(idParam.required).toBe(true);
+
+      // Responses
+      expect(op.responses['200']).toBeDefined();
+      expect(op.responses['200'].headers['Cache-Control']).toBeDefined();
+      const resSchemaRef = op.responses['200'].content['application/json'].schema.$ref;
+      expect(resSchemaRef).toBe('#/components/schemas/UserAccess');
+
+      const resExample = op.responses['200'].content['application/json'].example;
+      expect(userAccessSchema.safeParse(resExample).success).toBe(true);
+
+      expect(op.responses['400']).toBeDefined();
+      expect(op.responses['401']).toBeDefined();
+      expect(op.responses['403']).toBeDefined();
+      expect(op.responses['404']).toBeDefined();
+    });
+
     it('enforces bidirectional parity between user-access router and openapi spec (anti-drift guard)', () => {
       const mockController = {
         assignRoles: vi.fn(),
         assignPermissions: vi.fn(),
+        getEffectiveAccess: vi.fn(),
       } as unknown as UserAccessController;
 
       const dummyAuth = vi.fn();

@@ -7,6 +7,7 @@ import { ForbiddenError } from '../../../../shared/errors/app-error.js';
 import { errorHandler } from '../../../../shared/middleware/error-handler.js';
 import type { AssignUserRolesUseCase } from '../../application/assign-user-roles.js';
 import type { AssignUserPermissionsUseCase } from '../../application/assign-user-permissions.js';
+import type { GetUserEffectiveAccessUseCase } from '../../application/get-user-effective-access.js';
 import { UserAccessController } from './user-access.controller.js';
 import { createUserAccessRouter } from './user-access.routes.js';
 
@@ -45,6 +46,7 @@ describe('User Access Routes Unit Tests (HU-007, T-007-11, RF-007, RS-002, RS-02
     app: Express;
     assignUserRolesUseCase: AssignUserRolesUseCase;
     assignUserPermissionsUseCase: AssignUserPermissionsUseCase;
+    getUserEffectiveAccessUseCase: GetUserEffectiveAccessUseCase;
   } {
     const app = express();
     app.use(express.json());
@@ -75,9 +77,14 @@ describe('User Access Routes Unit Tests (HU-007, T-007-11, RF-007, RS-002, RS-02
       execute: vi.fn().mockResolvedValue(mockUserAccessResponse),
     } as unknown as AssignUserPermissionsUseCase;
 
+    const getUserEffectiveAccessUseCase = {
+      execute: vi.fn().mockResolvedValue(mockUserAccessResponse),
+    } as unknown as GetUserEffectiveAccessUseCase;
+
     const controller = new UserAccessController({
       assignUserRolesUseCase,
       assignUserPermissionsUseCase,
+      getUserEffectiveAccessUseCase,
     });
 
     const router = createUserAccessRouter({
@@ -89,7 +96,12 @@ describe('User Access Routes Unit Tests (HU-007, T-007-11, RF-007, RS-002, RS-02
     app.use('/users', router);
     app.use(errorHandler);
 
-    return { app, assignUserRolesUseCase, assignUserPermissionsUseCase };
+    return {
+      app,
+      assignUserRolesUseCase,
+      assignUserPermissionsUseCase,
+      getUserEffectiveAccessUseCase,
+    };
   }
 
   it('checks permission before calling use case in PUT /users/:id/roles (403 without usuario.editar)', async () => {
@@ -247,6 +259,55 @@ describe('User Access Routes Unit Tests (HU-007, T-007-11, RF-007, RS-002, RS-02
         userId: 'usr-123',
         ip: '127.0.0.1',
         input: { permissions: [{ permissionCode: 'curso.editar', scope: 'GLOBAL' }] },
+      });
+    });
+  });
+
+  describe('GET /users/:id/effective-permissions (HU-007, T-007-13, RS-002, RNF-009, RNF-017, D1, D6)', () => {
+    it('checks permission before calling use case (403 without usuario.ver)', async () => {
+      const { app, getUserEffectiveAccessUseCase } = setupTestApp({ permissionAllowed: false });
+
+      const response = await request(app).get('/users/usr-123/effective-permissions');
+
+      expect(response.status).toBe(403);
+      expect(response.body.error.code).toBe('FORBIDDEN');
+      expect(getUserEffectiveAccessUseCase.execute).not.toHaveBeenCalled();
+    });
+
+    it('returns 400 when user id in path exceeds 64 characters', async () => {
+      const { app, getUserEffectiveAccessUseCase } = setupTestApp({ permissionAllowed: true });
+
+      const longId = 'z'.repeat(65);
+      const response = await request(app).get(`/users/${longId}/effective-permissions`);
+
+      expect(response.status).toBe(400);
+      expect(response.body.error.code).toBe('VALIDATION_ERROR');
+      expect(getUserEffectiveAccessUseCase.execute).not.toHaveBeenCalled();
+    });
+
+    it('returns 400 when query params are provided (noQuerySchema violation)', async () => {
+      const { app, getUserEffectiveAccessUseCase } = setupTestApp({ permissionAllowed: true });
+
+      const response = await request(app).get(
+        '/users/usr-123/effective-permissions?unexpected=true',
+      );
+
+      expect(response.status).toBe(400);
+      expect(response.body.error.code).toBe('VALIDATION_ERROR');
+      expect(getUserEffectiveAccessUseCase.execute).not.toHaveBeenCalled();
+    });
+
+    it('responds 200 with Cache-Control: no-store and UserAccessDto', async () => {
+      const { app, getUserEffectiveAccessUseCase } = setupTestApp({ permissionAllowed: true });
+
+      const response = await request(app).get('/users/usr-123/effective-permissions');
+
+      expect(response.status).toBe(200);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.body).toEqual(mockUserAccessResponse);
+      expect(getUserEffectiveAccessUseCase.execute).toHaveBeenCalledWith({
+        actorId: dummyActorId,
+        userId: 'usr-123',
       });
     });
   });

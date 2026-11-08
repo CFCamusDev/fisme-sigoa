@@ -1895,6 +1895,162 @@
         }
       }
     },
+    "/users/{id}/effective-permissions": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Consultar permisos efectivos de un usuario",
+        "description": "Obtiene la ficha completa de acceso de un usuario: roles asignados, permisos directos y la consolidación de permisos efectivos con sus fuentes. Requiere el permiso 'usuario.ver' con alcance GLOBAL.",
+        "operationId": "getUserEffectiveAccess",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            },
+            "description": "Identificador único del usuario (CUID)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ficha de acceso efectivo del usuario obtenida exitosamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserAccess"
+                },
+                "example": {
+                  "userId": "usr_cuid_123",
+                  "roles": [
+                    {
+                      "id": "role_teacher_cuid",
+                      "code": "TEACHER",
+                      "name": "Docente",
+                      "status": "ACTIVE"
+                    }
+                  ],
+                  "directPermissions": [
+                    {
+                      "permissionCode": "academico.editar",
+                      "scope": "GLOBAL"
+                    }
+                  ],
+                  "effectivePermissions": [
+                    {
+                      "permissionCode": "academico.ver",
+                      "scope": "GLOBAL",
+                      "sources": [
+                        {
+                          "kind": "ROLE",
+                          "roleId": "role_teacher_cuid",
+                          "roleCode": "TEACHER",
+                          "roleName": "Docente",
+                          "scope": "GLOBAL"
+                        }
+                      ]
+                    },
+                    {
+                      "permissionCode": "academico.editar",
+                      "scope": "GLOBAL",
+                      "sources": [
+                        {
+                          "kind": "DIRECT",
+                          "scope": "GLOBAL"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Identificador de usuario inválido o parámetros de consulta inesperados.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Los datos proporcionados no son válidos.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere 'usuario.ver' con alcance GLOBAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para realizar esta acción.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Usuario no encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "Usuario no encontrado.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/roles": {
       "get": {
         "tags": ["Roles"],
