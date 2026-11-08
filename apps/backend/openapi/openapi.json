@@ -1574,7 +1574,7 @@
       "put": {
         "tags": ["Users"],
         "summary": "Asignar roles a un usuario",
-        "description": "Reemplaza el conjunto completo de roles de un usuario (idempotente). Requiere el permiso 'usuario.editar' con alcance GLOBAL.",
+        "description": "Reemplaza el conjunto completo de roles de un usuario (idempotente). El cambio rige desde la siguiente petición del usuario gracias a la invalidación automática de la caché. Requiere el permiso 'usuario.editar' con alcance GLOBAL.",
         "operationId": "assignUserRoles",
         "security": [
           {
@@ -1722,7 +1722,7 @@
             }
           },
           "409": {
-            "description": "Conflicto: no se puede remover el rol al último Administrador activo.",
+            "description": "Conflicto: no se puede remover el rol al último Administrador activo. La transacción se revierte y no se aplica ningún cambio.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1745,7 +1745,7 @@
       "put": {
         "tags": ["Users"],
         "summary": "Asignar permisos directos a un usuario",
-        "description": "Reemplaza el conjunto completo de permisos directos de un usuario (idempotente). Requiere el permiso 'permiso.asignar' con alcance GLOBAL.",
+        "description": "Reemplaza el conjunto completo de permisos directos de un usuario (idempotente). El cambio rige desde la siguiente petición del usuario gracias a la invalidación automática de la caché. Requiere el permiso 'permiso.asignar' con alcance GLOBAL.",
         "operationId": "assignUserPermissions",
         "security": [
           {

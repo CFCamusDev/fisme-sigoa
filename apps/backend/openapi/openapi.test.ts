@@ -1408,5 +1408,31 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
       const specPath = spec.paths[rogueRouterEndpoints[0].path];
       expect(specPath).toBeUndefined();
     });
+
+    it('documents that role and permission changes apply on the next request (T-007-14)', () => {
+      const rolesOp = spec.paths['/users/{id}/roles'].put;
+      expect(rolesOp.description).toContain('siguiente petición');
+      expect(rolesOp.description).toContain('invalidación');
+
+      const permsOp = spec.paths['/users/{id}/permissions'].put;
+      expect(permsOp.description).toContain('siguiente petición');
+      expect(permsOp.description).toContain('invalidación');
+
+      const conflictDesc = rolesOp.responses['409'].description;
+      expect(conflictDesc).toContain('revierte');
+    });
+
+    it('documents for each endpoint exactly the status codes its integration test exercises (T-007-14)', () => {
+      const rolesCodes = Object.keys(spec.paths['/users/{id}/roles'].put.responses).sort();
+      expect(rolesCodes).toEqual(['200', '400', '401', '403', '404', '409']);
+
+      const permsCodes = Object.keys(spec.paths['/users/{id}/permissions'].put.responses).sort();
+      expect(permsCodes).toEqual(['200', '400', '401', '403', '404']);
+
+      const effCodes = Object.keys(
+        spec.paths['/users/{id}/effective-permissions'].get.responses,
+      ).sort();
+      expect(effCodes).toEqual(['200', '400', '401', '403', '404']);
+    });
   });
 });
