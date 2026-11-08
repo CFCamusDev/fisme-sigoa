@@ -20,6 +20,7 @@ import {
   createAuthorizationServices,
   createPermissionsModule,
   createRolesModule,
+  createUserAccessModule,
 } from './modules/authorization/index.js';
 import { createUsersModule, EmailActivationSender } from './modules/users/index.js';
 
@@ -112,6 +113,16 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
       activationEmailSender,
       logger: deps.logger,
       clock: deps.clock,
+    }),
+  );
+  app.use(
+    '/users',
+    createUserAccessModule({
+      authenticate: authServices.authenticate,
+      services: authorizationServices,
+      unitOfWork: deps.unitOfWork,
+      auditLogger: deps.auditLogger,
+      dbProvider: deps.dbProvider,
     }),
   );
 }

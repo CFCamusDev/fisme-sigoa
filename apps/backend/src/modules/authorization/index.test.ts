@@ -3,6 +3,7 @@ import type { RequestHandler } from 'express';
 import {
   createAuthorizationServices,
   createRolesModule,
+  createUserAccessModule,
   PrismaUserAccessSubjectRepository,
   PrismaUserRoleRepository,
   PrismaUserPermissionRepository,
@@ -57,6 +58,33 @@ describe('Authorization Module Entrypoint', () => {
     const dummyAuth: RequestHandler = (_req, _res, next) => next();
 
     const router = createRolesModule({
+      authenticate: dummyAuth,
+      services,
+      unitOfWork: dummyUnitOfWork,
+      auditLogger: dummyAuditLogger,
+      dbProvider: dummyDbProvider,
+    });
+
+    expect(typeof router).toBe('function');
+    expect(router.stack).toBeDefined();
+    expect(Array.isArray(router.stack)).toBe(true);
+    expect(router.stack.length).toBeGreaterThan(0);
+  });
+
+  it('creates the user access router with dependencies wired', () => {
+    const dummyDbProvider: DbProvider = {
+      get: () => ({}) as unknown as ReturnType<DbProvider['get']>,
+    };
+    const dummyUnitOfWork: UnitOfWork = {
+      run: vi.fn(),
+    } as unknown as UnitOfWork;
+    const dummyAuditLogger: AuditLogger = {
+      log: vi.fn(),
+    } as unknown as AuditLogger;
+    const services = createAuthorizationServices({ dbProvider: dummyDbProvider });
+    const dummyAuth: RequestHandler = (_req, _res, next) => next();
+
+    const router = createUserAccessModule({
       authenticate: dummyAuth,
       services,
       unitOfWork: dummyUnitOfWork,
