@@ -9,3 +9,4 @@ export * from './role-row-actions.js';
 export * from './permission-scope-table.js';
 export * from './effective-permissions-view.js';
 export * from './user-roles-editor.js';
+export * from './user-direct-permissions-editor.js';
