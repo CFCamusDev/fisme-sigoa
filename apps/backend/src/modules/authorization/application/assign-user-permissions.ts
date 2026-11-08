@@ -6,6 +6,7 @@ import { UserAccessSubjectNotFoundError } from '../domain/errors/user-access-sub
 import type { PermissionRepository } from '../domain/ports/permission-repository.js';
 import type { UserPermissionRepository } from '../domain/ports/user-permission-repository.js';
 import type { UserAccessSubjectRepository } from '../domain/ports/user-access-subject-repository.js';
+import type { PermissionCacheInvalidator } from '../domain/ports/permission-cache-invalidator.js';
 import type { PermissionAuthorizer } from './permission-authorizer.js';
 import type { UserAccessAssembler } from './user-access-assembler.js';
 
@@ -17,6 +18,7 @@ export interface AssignUserPermissionsDependencies {
   readonly assembler: UserAccessAssembler;
   readonly unitOfWork: UnitOfWork;
   readonly auditLogger: AuditLogger;
+  readonly permissionCache: PermissionCacheInvalidator;
 }
 
 export class AssignUserPermissionsUseCase {
@@ -61,7 +63,9 @@ export class AssignUserPermissionsUseCase {
       return { permissionId, scope: grant.scope };
     });
 
-    return await this.deps.unitOfWork.run(async () => {
+    let hasChanged = false;
+
+    const result = await this.deps.unitOfWork.run(async () => {
       const subject = await this.deps.subject.lockForUpdate(command.userId);
       if (!subject) throw new UserAccessSubjectNotFoundError();
       const current = await this.deps.direct.findByUserId(command.userId);
@@ -71,6 +75,7 @@ export class AssignUserPermissionsUseCase {
         command.actorId,
       );
       if (changes.added + changes.updated + changes.removed > 0) {
+        hasChanged = true;
         const byCode = (a: { permissionCode: string }, b: { permissionCode: string }) =>
           a.permissionCode < b.permissionCode ? -1 : a.permissionCode > b.permissionCode ? 1 : 0;
         await this.deps.auditLogger.log({
@@ -93,5 +98,11 @@ export class AssignUserPermissionsUseCase {
       }
       return this.deps.assembler.build(command.userId);
     });
+
+    if (hasChanged) {
+      this.deps.permissionCache.invalidateUser(command.userId);
+    }
+
+    return result;
   }
 }

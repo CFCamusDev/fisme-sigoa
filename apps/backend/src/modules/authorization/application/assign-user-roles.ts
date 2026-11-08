@@ -13,6 +13,7 @@ import type { Role } from '../domain/entities/role.js';
 import type { RoleRepository } from '../domain/ports/role-repository.js';
 import type { UserRoleRepository } from '../domain/ports/user-role-repository.js';
 import type { UserAccessSubjectRepository } from '../domain/ports/user-access-subject-repository.js';
+import type { PermissionCacheInvalidator } from '../domain/ports/permission-cache-invalidator.js';
 import type { PermissionAuthorizer } from './permission-authorizer.js';
 import type { UserAccessAssembler } from './user-access-assembler.js';
 
@@ -24,6 +25,7 @@ export interface AssignUserRolesDependencies {
   readonly assembler: UserAccessAssembler;
   readonly unitOfWork: UnitOfWork;
   readonly auditLogger: AuditLogger;
+  readonly permissionCache: PermissionCacheInvalidator;
 }
 
 export class AssignUserRolesUseCase {
@@ -46,7 +48,9 @@ export class AssignUserRolesUseCase {
         { path: 'roleIds', message: 'No se permiten roles duplicados' },
       ]);
     }
-    return await this.deps.unitOfWork.run(async () => {
+    let hasChanged = false;
+
+    const result = await this.deps.unitOfWork.run(async () => {
       const administrator = await this.deps.roleRepository.findByCode(PROTECTED_ROLE_CODE);
       if (!administrator) throw new RoleNotFoundError('Rol Administrador no encontrado.');
       const lockedAdministrator = await this.deps.roleRepository.findByIdForUpdate(
@@ -86,6 +90,7 @@ export class AssignUserRolesUseCase {
         command.actorId,
       );
       if (changes.added.length || changes.removed.length) {
+        hasChanged = true;
         const byCode = (a: { code: string }, b: { code: string }) =>
           a.code < b.code ? -1 : a.code > b.code ? 1 : 0;
         await this.deps.auditLogger.log({
@@ -104,5 +109,11 @@ export class AssignUserRolesUseCase {
       }
       return this.deps.assembler.build(command.userId);
     });
+
+    if (hasChanged) {
+      this.deps.permissionCache.invalidateUser(command.userId);
+    }
+
+    return result;
   }
 }

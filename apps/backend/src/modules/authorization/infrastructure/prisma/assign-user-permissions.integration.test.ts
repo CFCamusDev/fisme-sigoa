@@ -59,6 +59,7 @@ describe('AssignUserPermissions transactions', () => {
         assembler,
         unitOfWork: uow,
         auditLogger: logger,
+        permissionCache: { invalidateUser: () => {}, invalidateAll: () => {} },
       });
     return { actor, user, direct, authorizer, create };
   }
@@ -196,6 +197,7 @@ describe('AssignUserPermissions transactions', () => {
       assembler,
       unitOfWork: uow,
       auditLogger: createPrismaAuditServices(uow).auditLogger,
+      permissionCache: { invalidateUser: () => {}, invalidateAll: () => {} },
     });
     const first = useCase.execute({
       actorId: 'actor',

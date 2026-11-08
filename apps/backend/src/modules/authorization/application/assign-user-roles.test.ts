@@ -1,8 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import type { RoleRepository } from '../domain/ports/role-repository.js';
 import type { UserRoleRepository } from '../domain/ports/user-role-repository.js';
 import type { UserAccessSubjectRepository } from '../domain/ports/user-access-subject-repository.js';
+import type { PermissionCacheInvalidator } from '../domain/ports/permission-cache-invalidator.js';
+import type { UnitOfWork } from '../../../shared/unit-of-work/unit-of-work.js';
 import type { AuditLogger } from '../../../shared/audit/audit-logger.js';
 import type { PermissionAuthorizer } from './permission-authorizer.js';
 import type { UserAccessAssembler } from './user-access-assembler.js';
@@ -37,7 +39,9 @@ describe('AssignUserRolesUseCase', () => {
     const authorizer = mock<PermissionAuthorizer>();
     const assembler = mock<UserAccessAssembler>();
     const auditLogger = mock<AuditLogger>();
-    const unitOfWork = { run: async <T>(work: () => Promise<T>) => work() };
+    const permissionCache = mock<PermissionCacheInvalidator>();
+    const runMock = vi.fn(async <T>(work: () => Promise<T>) => work());
+    const unitOfWork: UnitOfWork = { run: runMock as unknown as UnitOfWork['run'] };
     const admin = role('admin', 'ADMINISTRATOR');
     const active = role('active', 'TEACHER');
     const inactive = role('old', 'OLD', 'INACTIVE');
@@ -64,13 +68,26 @@ describe('AssignUserRolesUseCase', () => {
       assembler,
       unitOfWork,
       auditLogger,
+      permissionCache,
     });
     const command = (roleIds: string[]) => ({
       actorId: 'actor',
       userId: 'user',
       input: { roleIds },
     });
-    return { subject, roles, roleRepository, authorizer, assembler, auditLogger, useCase, command };
+    return {
+      subject,
+      roles,
+      roleRepository,
+      authorizer,
+      assembler,
+      auditLogger,
+      unitOfWork,
+      runMock,
+      permissionCache,
+      useCase,
+      command,
+    };
   }
 
   it('rejects duplicates before locking and rejects missing users and roles', async () => {
@@ -200,6 +217,7 @@ describe('AssignUserRolesUseCase', () => {
     const authorizer = mock<PermissionAuthorizer>();
     const assembler = mock<UserAccessAssembler>();
     const auditLogger = mock<AuditLogger>();
+    const permissionCache = mock<PermissionCacheInvalidator>();
     let started = false;
     const unitOfWork = {
       run: async <T>(work: () => Promise<T>) => {
@@ -216,6 +234,7 @@ describe('AssignUserRolesUseCase', () => {
       assembler,
       unitOfWork,
       auditLogger,
+      permissionCache,
     });
     await expect(
       useCase.execute({ actorId: 'actor', userId: 'user', input: { roleIds: ['role'] } }),
@@ -223,5 +242,41 @@ describe('AssignUserRolesUseCase', () => {
     expect(started).toBe(false);
     expect(subject.lockForUpdate).not.toHaveBeenCalled();
     expect(auditLogger.log).not.toHaveBeenCalled();
+  });
+
+  it('invalidates target user in permission cache after committing when roles change', async () => {
+    const { useCase, command, permissionCache, runMock } = setup();
+    const callOrder: string[] = [];
+
+    runMock.mockImplementation(async (work: () => Promise<unknown>) => {
+      callOrder.push('uow.run');
+      return work();
+    });
+    permissionCache.invalidateUser.mockImplementation(() => {
+      callOrder.push('cache.invalidateUser');
+    });
+
+    await useCase.execute(command(['active']));
+
+    expect(permissionCache.invalidateUser).toHaveBeenCalledWith('user');
+    expect(callOrder).toEqual(['uow.run', 'cache.invalidateUser']);
+  });
+
+  it('does not invalidate the cache when roles do not change', async () => {
+    const { useCase, command, roles, permissionCache } = setup();
+    roles.replaceForUser.mockResolvedValueOnce({ added: [], removed: [] });
+
+    await useCase.execute(command(['active']));
+
+    expect(permissionCache.invalidateUser).not.toHaveBeenCalled();
+  });
+
+  it('does not invalidate the cache if transaction fails', async () => {
+    const { useCase, command, runMock, permissionCache } = setup();
+    runMock.mockRejectedValueOnce(new Error('DB failure'));
+
+    await expect(useCase.execute(command(['active']))).rejects.toThrow('DB failure');
+
+    expect(permissionCache.invalidateUser).not.toHaveBeenCalled();
   });
 });

@@ -84,6 +84,7 @@ describe('AssignUserRoles concurrency', () => {
       assembler,
       unitOfWork: uow,
       auditLogger: createPrismaAuditServices(uow).auditLogger,
+      permissionCache: { invalidateUser: () => {}, invalidateAll: () => {} },
     });
     const firstTx = useCase.execute({
       actorId: first.id,
@@ -186,6 +187,7 @@ describe('AssignUserRoles concurrency', () => {
         assembler,
         unitOfWork: uow,
         auditLogger: logger,
+        permissionCache: { invalidateUser: () => {}, invalidateAll: () => {} },
       });
     return { actor, user, teacher, member, director, subject, roles, auditLogger, create };
   }
