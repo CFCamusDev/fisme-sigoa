@@ -9,6 +9,7 @@ export * from './entities/role.js';
 export * from './entities/permission.js';
 export * from './errors/index.js';
 export * from './ports/grant-reader.js';
+export * from './ports/permission-cache-invalidator.js';
 export * from './ports/role-reader.js';
 export * from './ports/role-repository.js';
 export * from './ports/permission-repository.js';
