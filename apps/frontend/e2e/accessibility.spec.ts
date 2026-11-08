@@ -1,5 +1,5 @@
 import { test, expect, type Locator } from '@playwright/test';
-import { loginAsTestUser } from './support/seed-user';
+import { loginAsTestUser, seedUser } from './support/seed-user';
 
 async function expectVisibleFocusIndicator(locator: Locator) {
   const hasFocusRing = await locator.evaluate((el) => {
@@ -155,5 +155,69 @@ test.describe('Keyboard Navigation and Focus Indicator (WCAG 2.1 AA)', () => {
     await firstSelect.focus();
     await expect(firstSelect).toBeFocused();
     await expectVisibleFocusIndicator(firstSelect);
+  });
+
+  test('edits user roles and direct permissions with keyboard only (HU-007, T-007-27)', async ({
+    page,
+  }) => {
+    test.setTimeout(30_000);
+    const timestamp = Date.now();
+    const adminEmail = `a11y-admin-access-${timestamp}@example.test`;
+    const targetEmail = `a11y-target-access-${timestamp}@example.test`;
+    const uniqueSurname = `Teclado${timestamp % 10000}`;
+
+    seedUser({
+      email: targetEmail,
+      names: 'Usuario',
+      firstSurname: uniqueSurname,
+      secondSurname: 'Accesibilidad',
+      dni: String(70000000 + (timestamp % 10000000)),
+      roles: ['TEACHER'],
+      status: 'ACTIVE',
+    });
+
+    await loginAsTestUser(page, {
+      email: adminEmail,
+      roles: ['ADMINISTRATOR'],
+    });
+
+    await page.goto('/usuarios');
+    await expect(page.getByText(`Usuario ${uniqueSurname} Accesibilidad`)).toBeVisible();
+
+    const [response] = await Promise.all([
+      page.waitForResponse(
+        (res) => res.url().includes('/effective-permissions') && res.status() === 200,
+      ),
+      page
+        .getByRole('link', {
+          name: new RegExp(`editar a usuario ${uniqueSurname}`, 'i'),
+        })
+        .click(),
+    ]);
+    expect(response.ok()).toBe(true);
+
+    await expect(page.getByRole('heading', { name: 'Roles asignados' })).toBeVisible();
+
+    // 1. Foco en el primer checkbox de rol no asignado y activación con Space
+    const uncheckedCheckbox = page.locator('input[type="checkbox"]:not(:checked)').first();
+    await uncheckedCheckbox.focus();
+    await expect(uncheckedCheckbox).toBeFocused();
+    await page.keyboard.press('Space');
+    await expect(uncheckedCheckbox).toBeChecked();
+
+    // 2. Foco en el botón Guardar roles con indicador visible
+    const saveRolesButton = page.getByRole('button', { name: 'Guardar roles' });
+    await saveRolesButton.focus();
+    await expect(saveRolesButton).toBeFocused();
+    await expectVisibleFocusIndicator(saveRolesButton);
+
+    // 3. Foco en el primer combobox de permisos directos y selección con teclado
+    const firstSelect = page.getByRole('combobox').first();
+    await firstSelect.focus();
+    await expect(firstSelect).toBeFocused();
+    await expectVisibleFocusIndicator(firstSelect);
+
+    await page.keyboard.press('ArrowDown');
+    await expect(page.getByRole('button', { name: 'Guardar permisos directos' })).toBeEnabled();
   });
 });
