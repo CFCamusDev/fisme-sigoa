@@ -4,3 +4,6 @@ export * from './create-role';
 export * from './update-role';
 export * from './change-role-status';
 export * from './update-role-permissions';
+export * from './get-user-access';
+export * from './assign-user-roles';
+export * from './assign-user-permissions';

@@ -8,6 +8,7 @@ import type {
   RoleDto,
   UpdateRolePermissionsRequest,
   UpdateRoleRequest,
+  UserAccessDto,
 } from '@sigoa/shared';
 import {
   changeRoleStatus,
@@ -16,6 +17,9 @@ import {
   listRoles,
   updateRole,
   updateRolePermissions,
+  getUserAccess,
+  assignUserRoles,
+  assignUserPermissions,
 } from './index';
 
 const mockRoleDto: RoleDto = {
@@ -183,6 +187,225 @@ describe('Authorization API client functions (HU-006, T-006-20)', () => {
       expect(result).toEqual(mockRoleDto);
       expect(capturedUrl).toContain('/roles/role-123/permissions');
       expect(capturedBody).toEqual(body);
+    });
+  });
+
+  describe('User Access API functions (HU-007, T-007-15)', () => {
+    const mockUserAccessDto: UserAccessDto = {
+      userId: 'usr-123',
+      roles: [
+        {
+          id: 'role-cuid-123',
+          code: 'AUDITOR_CALIDAD',
+          name: 'Auditor de Calidad',
+          status: 'ACTIVE',
+        },
+      ],
+      directPermissions: [
+        {
+          permissionCode: 'academico.editar',
+          scope: 'GLOBAL',
+        },
+      ],
+      effectivePermissions: [
+        {
+          permissionCode: 'academico.editar',
+          scope: 'GLOBAL',
+          sources: [{ kind: 'DIRECT', scope: 'GLOBAL' }],
+        },
+      ],
+    };
+
+    describe('getUserAccess', () => {
+      it('requests GET /users/:id/effective-permissions and returns parsed UserAccessDto', async () => {
+        let capturedUrl = '';
+        server.use(
+          http.get('http://localhost:3000/users/:id/effective-permissions', ({ request }) => {
+            capturedUrl = request.url;
+            return HttpResponse.json(mockUserAccessDto, { status: 200 });
+          }),
+        );
+
+        const result = await getUserAccess('usr-123');
+        expect(result).toEqual(mockUserAccessDto);
+        expect(capturedUrl).toContain('/users/usr-123/effective-permissions');
+      });
+
+      it('encodes the user id in the path', async () => {
+        let capturedUrl = '';
+        server.use(
+          http.get('http://localhost:3000/users/:id/effective-permissions', ({ request }) => {
+            capturedUrl = request.url;
+            return HttpResponse.json(mockUserAccessDto, { status: 200 });
+          }),
+        );
+
+        await getUserAccess('user/special+id');
+        expect(capturedUrl).toContain('/users/user%2Fspecial%2Bid/effective-permissions');
+      });
+
+      it('rejects when server response does not match userAccessSchema', async () => {
+        server.use(
+          http.get('http://localhost:3000/users/:id/effective-permissions', () => {
+            return HttpResponse.json({ userId: 123, invalidField: true }, { status: 200 });
+          }),
+        );
+
+        await expect(getUserAccess('usr-123')).rejects.toThrow();
+      });
+    });
+
+    describe('assignUserRoles', () => {
+      it('validates request before sending and calls PUT /users/:id/roles', async () => {
+        let capturedUrl = '';
+        let capturedBody: unknown = null;
+        server.use(
+          http.put('http://localhost:3000/users/:id/roles', async ({ request }) => {
+            capturedUrl = request.url;
+            capturedBody = await request.json();
+            return HttpResponse.json(mockUserAccessDto, { status: 200 });
+          }),
+        );
+
+        const result = await assignUserRoles({
+          userId: 'usr-123',
+          body: { roleIds: ['role-cuid-123'] },
+        });
+
+        expect(result).toEqual(mockUserAccessDto);
+        expect(capturedUrl).toContain('/users/usr-123/roles');
+        expect(capturedBody).toEqual({ roleIds: ['role-cuid-123'] });
+      });
+
+      it('encodes user id in assignUserRoles path', async () => {
+        let capturedUrl = '';
+        server.use(
+          http.put('http://localhost:3000/users/:id/roles', ({ request }) => {
+            capturedUrl = request.url;
+            return HttpResponse.json(mockUserAccessDto, { status: 200 });
+          }),
+        );
+
+        await assignUserRoles({
+          userId: 'user/special#1',
+          body: { roleIds: ['role-1'] },
+        });
+        expect(capturedUrl).toContain('/users/user%2Fspecial%231/roles');
+      });
+
+      it('rejects a body outside shared limits (e.g. empty roleIds) before network call', async () => {
+        let networkCalled = false;
+        server.use(
+          http.put('http://localhost:3000/users/:id/roles', () => {
+            networkCalled = true;
+            return HttpResponse.json(mockUserAccessDto, { status: 200 });
+          }),
+        );
+
+        await expect(
+          assignUserRoles({
+            userId: 'usr-123',
+            body: { roleIds: [] },
+          }),
+        ).rejects.toThrow();
+        expect(networkCalled).toBe(false);
+      });
+
+      it('rejects when server response does not match userAccessSchema', async () => {
+        server.use(
+          http.put('http://localhost:3000/users/:id/roles', () => {
+            return HttpResponse.json({ malformed: 'response' }, { status: 200 });
+          }),
+        );
+
+        await expect(
+          assignUserRoles({
+            userId: 'usr-123',
+            body: { roleIds: ['role-1'] },
+          }),
+        ).rejects.toThrow();
+      });
+    });
+
+    describe('assignUserPermissions', () => {
+      it('validates request before sending and calls PUT /users/:id/permissions', async () => {
+        let capturedUrl = '';
+        let capturedBody: unknown = null;
+        server.use(
+          http.put('http://localhost:3000/users/:id/permissions', async ({ request }) => {
+            capturedUrl = request.url;
+            capturedBody = await request.json();
+            return HttpResponse.json(mockUserAccessDto, { status: 200 });
+          }),
+        );
+
+        const body = {
+          permissions: [{ permissionCode: 'academico.editar', scope: 'GLOBAL' as const }],
+        };
+
+        const result = await assignUserPermissions({
+          userId: 'usr-123',
+          body,
+        });
+
+        expect(result).toEqual(mockUserAccessDto);
+        expect(capturedUrl).toContain('/users/usr-123/permissions');
+        expect(capturedBody).toEqual(body);
+      });
+
+      it('encodes user id in assignUserPermissions path', async () => {
+        let capturedUrl = '';
+        server.use(
+          http.put('http://localhost:3000/users/:id/permissions', ({ request }) => {
+            capturedUrl = request.url;
+            return HttpResponse.json(mockUserAccessDto, { status: 200 });
+          }),
+        );
+
+        await assignUserPermissions({
+          userId: 'user/special#2',
+          body: { permissions: [] },
+        });
+        expect(capturedUrl).toContain('/users/user%2Fspecial%232/permissions');
+      });
+
+      it('rejects duplicate permissions before network call', async () => {
+        let networkCalled = false;
+        server.use(
+          http.put('http://localhost:3000/users/:id/permissions', () => {
+            networkCalled = true;
+            return HttpResponse.json(mockUserAccessDto, { status: 200 });
+          }),
+        );
+
+        await expect(
+          assignUserPermissions({
+            userId: 'usr-123',
+            body: {
+              permissions: [
+                { permissionCode: 'academico.editar', scope: 'GLOBAL' },
+                { permissionCode: 'academico.editar', scope: 'OWN' },
+              ],
+            },
+          }),
+        ).rejects.toThrow();
+        expect(networkCalled).toBe(false);
+      });
+
+      it('rejects when server response does not match userAccessSchema', async () => {
+        server.use(
+          http.put('http://localhost:3000/users/:id/permissions', () => {
+            return HttpResponse.json({ not: 'valid' }, { status: 200 });
+          }),
+        );
+
+        await expect(
+          assignUserPermissions({
+            userId: 'usr-123',
+            body: { permissions: [] },
+          }),
+        ).rejects.toThrow();
+      });
     });
   });
 
