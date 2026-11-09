@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@fontsource-variable/open-sans": "^5.3.0",
-    "@hookform/resolvers": "^6.0.2",
+    "@hookform/resolvers": "^7.0.3",
     "@radix-ui/react-slot": "^1.5.0",
     "@sigoa/shared": "workspace:^",
     "@tailwindcss/vite": "^4.3.4",
