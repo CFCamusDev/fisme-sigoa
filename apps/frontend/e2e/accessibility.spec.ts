@@ -200,10 +200,13 @@ test.describe('Keyboard Navigation and Focus Indicator (WCAG 2.1 AA)', () => {
 
     // 1. Foco en el primer checkbox de rol no asignado y activación con Space
     const uncheckedCheckbox = page.locator('input[type="checkbox"]:not(:checked)').first();
-    await uncheckedCheckbox.focus();
-    await expect(uncheckedCheckbox).toBeFocused();
+    const checkboxId = await uncheckedCheckbox.getAttribute('id');
+    expect(checkboxId).toBeTruthy();
+    const targetCheckbox = page.locator(`#${checkboxId}`);
+    await targetCheckbox.focus();
+    await expect(targetCheckbox).toBeFocused();
     await page.keyboard.press('Space');
-    await expect(uncheckedCheckbox).toBeChecked();
+    await expect(targetCheckbox).toBeChecked();
 
     // 2. Foco en el botón Guardar roles con indicador visible
     const saveRolesButton = page.getByRole('button', { name: 'Guardar roles' });
