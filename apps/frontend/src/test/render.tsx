@@ -7,11 +7,15 @@ import {
   createRouter,
   RouterProvider,
 } from '@tanstack/react-router';
+import type { MyPermissionGrant } from '@sigoa/shared';
+import { selectIsAuthenticated, useAuthStore } from '@/stores/auth.store';
+import { DEFAULT_TEST_PERMISSIONS } from './msw/handlers';
 
 export interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
   queryClient?: QueryClient;
   initialEntries?: string[];
   withRouter?: boolean;
+  permissions?: readonly MyPermissionGrant[] | null;
 }
 
 export function createTestQueryClient(): QueryClient {
@@ -32,6 +36,33 @@ export function renderWithProviders(
   const queryClient = options.queryClient ?? createTestQueryClient();
   const withRouter = options.withRouter ?? true;
   const initialEntries = options.initialEntries ?? ['/'];
+
+  const currentAuth = useAuthStore.getState();
+  if (!selectIsAuthenticated(currentAuth) || !currentAuth.user) {
+    const fallbackUser = currentAuth.user ?? {
+      id: 'usr-test-default',
+      names: 'Admin',
+      firstSurname: 'Test',
+      secondSurname: null,
+      email: 'admin.test@untrm.edu.pe',
+    };
+    useAuthStore.setState({
+      accessToken: 'test-access-token',
+      accessTokenExpiresAt: new Date(Date.now() + 900_000).toISOString(),
+      refreshTokenExpiresAt: new Date(Date.now() + 86_400_000).toISOString(),
+      user: fallbackUser,
+    });
+  }
+
+  const activeUserId = useAuthStore.getState().user?.id;
+  if (activeUserId && options.permissions !== null) {
+    const existingData = queryClient.getQueryData(['me', 'permissions', activeUserId]);
+    if (!existingData) {
+      queryClient.setQueryData(['me', 'permissions', activeUserId], {
+        permissions: options.permissions ?? DEFAULT_TEST_PERMISSIONS,
+      });
+    }
+  }
 
   if (!withRouter) {
     const Wrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (

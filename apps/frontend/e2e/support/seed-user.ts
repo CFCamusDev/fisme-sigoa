@@ -50,6 +50,7 @@ export async function loginAsTestUser(
     password,
     names: 'Usuario',
     firstSurname: 'Prueba',
+    roles: ['ADMINISTRATOR'],
     status: 'ACTIVE',
     ...overrides,
   });

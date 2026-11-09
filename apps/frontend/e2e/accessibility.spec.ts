@@ -33,6 +33,7 @@ test.describe('Keyboard Navigation and Focus Indicator (WCAG 2.1 AA)', () => {
 
     // 3. Enlaces de navegación en el sidebar (recorrido dinámico)
     const mainNav = page.getByRole('navigation', { name: 'Navegación principal' });
+    await expect(mainNav.getByRole('link', { name: /Usuarios/i })).toBeVisible();
     const navLinks = mainNav.getByRole('link');
     const navCount = await navLinks.count();
     expect(navCount).toBeGreaterThan(0);
@@ -79,6 +80,7 @@ test.describe('Keyboard Navigation and Focus Indicator (WCAG 2.1 AA)', () => {
     const usersLink = page
       .getByRole('navigation', { name: 'Navegación principal' })
       .getByRole('link', { name: /Usuarios/i });
+    await expect(usersLink).toBeVisible();
 
     let isFocused = await usersLink.evaluate((el) => document.activeElement === el);
     let attempts = 0;
@@ -112,6 +114,7 @@ test.describe('Keyboard Navigation and Focus Indicator (WCAG 2.1 AA)', () => {
     const rolesLink = page
       .getByRole('navigation', { name: 'Navegación principal' })
       .getByRole('link', { name: /Roles/i });
+    await expect(rolesLink).toBeVisible();
 
     let isFocused = await rolesLink.evaluate((el) => document.activeElement === el);
     let attempts = 0;

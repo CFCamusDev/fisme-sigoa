@@ -1,12 +1,59 @@
 import { useEffect } from 'react';
 import { Link, useRouterState } from '@tanstack/react-router';
 import { X } from 'lucide-react';
+import { usePermission } from '@/hooks/use-permission';
 import { MAIN_NAV_ITEMS, type NavItem } from './nav-items';
 
 export interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
   items?: readonly NavItem[];
+}
+
+interface SidebarNavItemProps {
+  item: NavItem;
+  isActive: boolean;
+  onClose: () => void;
+}
+
+function SidebarNavItem({ item, isActive, onClose }: SidebarNavItemProps) {
+  const { allowed, isLoading } = usePermission(item.permission ?? '');
+  const Icon = item.icon;
+
+  if (item.permission) {
+    if (isLoading) {
+      return (
+        <li aria-hidden="true" data-testid={`sidebar-skeleton-${item.href}`}>
+          <div className="flex items-center gap-3 rounded-md px-3 py-2">
+            <div className="size-5 shrink-0 animate-pulse rounded bg-muted" />
+            <div className="h-4 w-28 animate-pulse rounded bg-muted" />
+          </div>
+        </li>
+      );
+    }
+
+    if (!allowed) {
+      return null;
+    }
+  }
+
+  return (
+    <li>
+      <Link
+        to={item.href}
+        onClick={onClose}
+        aria-current={isActive ? 'page' : undefined}
+        className={`relative flex items-center gap-3 rounded-md px-3 py-2 text-label font-medium transition-colors ${
+          isActive
+            ? 'bg-sidebar-active text-sidebar-active-foreground font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-r before:bg-brand-700'
+            : 'text-sidebar-foreground hover:bg-brand-50'
+        }`}
+      >
+        {Icon && <Icon className="size-5 shrink-0" aria-hidden="true" />}
+        <span>{item.title}</span>
+      </Link>
+    </li>
+  );
 }
 
 export function Sidebar({ isOpen, onClose, items = MAIN_NAV_ITEMS }: SidebarProps) {
@@ -69,27 +116,14 @@ export function Sidebar({ isOpen, onClose, items = MAIN_NAV_ITEMS }: SidebarProp
 
         <nav className="flex-1 overflow-y-auto p-4" aria-label="Navegación principal">
           <ul className="space-y-1">
-            {items.map((item) => {
-              const isActive = currentPath === item.href;
-              const Icon = item.icon;
-              return (
-                <li key={item.href}>
-                  <Link
-                    to={item.href}
-                    onClick={onClose}
-                    aria-current={isActive ? 'page' : undefined}
-                    className={`relative flex items-center gap-3 rounded-md px-3 py-2 text-label font-medium transition-colors ${
-                      isActive
-                        ? 'bg-sidebar-active text-sidebar-active-foreground font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-r before:bg-brand-700'
-                        : 'text-sidebar-foreground hover:bg-brand-50'
-                    }`}
-                  >
-                    {Icon && <Icon className="size-5 shrink-0" aria-hidden="true" />}
-                    <span>{item.title}</span>
-                  </Link>
-                </li>
-              );
-            })}
+            {items.map((item) => (
+              <SidebarNavItem
+                key={item.href}
+                item={item}
+                isActive={currentPath === item.href}
+                onClose={onClose}
+              />
+            ))}
           </ul>
         </nav>
 
