@@ -11,11 +11,11 @@ export interface ProgramProperties {
   updatedAt: Date;
 }
 
-export interface ProgramValuesSnapshot {
+export type ProgramValuesSnapshot = {
   readonly code: string;
   readonly name: string;
   readonly faculty: string;
-}
+};
 
 export interface ProgramChangesResult {
   readonly before: ProgramValuesSnapshot;
