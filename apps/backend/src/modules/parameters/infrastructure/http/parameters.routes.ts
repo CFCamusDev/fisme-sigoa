@@ -1,5 +1,5 @@
 import { Router, type RequestHandler } from 'express';
-import { getProgramQuerySchema } from '@sigoa/shared';
+import { getProgramQuerySchema, updateProgramRequestSchema } from '@sigoa/shared';
 import { validateRequest } from '../../../../shared/middleware/validate-request.js';
 import type { ParametersController } from './parameters.controller.js';
 
@@ -25,6 +25,16 @@ export function createParametersRouter(deps: ParametersRouterDependencies): Rout
     deps.requirePermission('parametro.ver', 'GLOBAL'),
     validateRequest({ query: getProgramQuerySchema }),
     deps.controller.getProgram,
+  );
+
+  // PATCH /program (HU-009, CA1, CA2, RF-009, RS-002, RS-020, RNF-008, RNF-009, D7, D10)
+  // Cadena obligatoria: authenticate -> requirePermission -> validateRequest -> controller
+  router.patch(
+    '/',
+    deps.authenticate,
+    deps.requirePermission('parametro.editar', 'GLOBAL'),
+    validateRequest({ query: getProgramQuerySchema, body: updateProgramRequestSchema }),
+    deps.controller.updateProgram,
   );
 
   return router;
