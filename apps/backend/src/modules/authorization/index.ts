@@ -32,9 +32,12 @@ import type { PermissionCacheInvalidator } from './domain/ports/permission-cache
 import { AssignUserRolesUseCase } from './application/assign-user-roles.js';
 import { AssignUserPermissionsUseCase } from './application/assign-user-permissions.js';
 import { GetUserEffectiveAccessUseCase } from './application/get-user-effective-access.js';
+import { GetMyPermissionsUseCase } from './application/get-my-permissions.js';
 import { UserAccessAssembler } from './application/user-access-assembler.js';
 import { UserAccessController } from './infrastructure/http/user-access.controller.js';
 import { createUserAccessRouter } from './infrastructure/http/user-access.routes.js';
+import { MePermissionsController } from './infrastructure/http/me-permissions.controller.js';
+import { createMePermissionsRouter } from './infrastructure/http/me-permissions.routes.js';
 import { PrismaUserAccessSubjectRepository } from './infrastructure/prisma/prisma-user-access-subject-repository.js';
 import { PrismaUserRoleRepository } from './infrastructure/prisma/prisma-user-role-repository.js';
 import { PrismaUserPermissionRepository } from './infrastructure/prisma/prisma-user-permission-repository.js';
@@ -48,6 +51,8 @@ export * from './infrastructure/http/permissions.controller.js';
 export * from './infrastructure/http/permissions.routes.js';
 export * from './infrastructure/http/user-access.controller.js';
 export * from './infrastructure/http/user-access.routes.js';
+export * from './infrastructure/http/me-permissions.controller.js';
+export * from './infrastructure/http/me-permissions.routes.js';
 export * from './infrastructure/prisma/prisma-grant-reader.js';
 export * from './infrastructure/prisma/prisma-role-reader.js';
 export * from './infrastructure/prisma/prisma-role-mapper.js';
@@ -66,6 +71,7 @@ export interface AuthorizationModuleServices {
   readonly userRoleGateway: PrismaUserRoleGateway;
   readonly authorizer: PermissionAuthorizer;
   readonly listRolesUseCase: ListRolesUseCase;
+  readonly getMyPermissionsUseCase: GetMyPermissionsUseCase;
   readonly requirePermission: ReturnType<typeof createRequirePermission>;
   readonly permissionCache: PermissionCacheInvalidator;
   readonly ownershipRegistry: ResourceOwnershipRegistry;
@@ -110,6 +116,9 @@ export function createAuthorizationServices(
     roleReader,
     authorizer,
   });
+  const getMyPermissionsUseCase = new GetMyPermissionsUseCase({
+    grantReader: cachingGrantReader,
+  });
   const requirePermission = createRequirePermission(authorizer);
 
   return {
@@ -118,6 +127,7 @@ export function createAuthorizationServices(
     userRoleGateway,
     authorizer,
     listRolesUseCase,
+    getMyPermissionsUseCase,
     requirePermission,
     permissionCache: cachingGrantReader,
     ownershipRegistry,
@@ -274,6 +284,22 @@ export function createUserAccessModule(deps: UserAccessModuleDependencies): Rout
     controller,
     authenticate: deps.authenticate,
     requirePermission: deps.services.requirePermission,
+  });
+}
+
+export interface MePermissionsModuleDependencies {
+  readonly authenticate: RequestHandler;
+  readonly services: AuthorizationModuleServices;
+}
+
+export function createMePermissionsModule(deps: MePermissionsModuleDependencies): Router {
+  const controller = new MePermissionsController({
+    getMyPermissionsUseCase: deps.services.getMyPermissionsUseCase,
+  });
+
+  return createMePermissionsRouter({
+    controller,
+    authenticate: deps.authenticate,
   });
 }
 

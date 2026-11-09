@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import {
+  PERMISSION_CODE_MAX_LENGTH,
+  PERMISSION_CODE_PATTERN,
   permissionScopeSchema,
   roleGrantSchema,
   roleGrantsListSchema,
@@ -68,3 +70,28 @@ export const userAccessSchema = z
   })
   .strict();
 export type UserAccessDto = z.infer<typeof userAccessSchema>;
+
+export const myPermissionGrantSchema = z
+  .object({
+    code: z
+      .string()
+      .trim()
+      .max(
+        PERMISSION_CODE_MAX_LENGTH,
+        `El código de permiso no puede exceder ${PERMISSION_CODE_MAX_LENGTH} caracteres`,
+      )
+      .regex(
+        PERMISSION_CODE_PATTERN,
+        'El código de permiso debe tener el formato recurso.accion en minúsculas',
+      ),
+    scope: permissionScopeSchema,
+  })
+  .strict();
+export type MyPermissionGrant = z.infer<typeof myPermissionGrantSchema>;
+
+export const myPermissionsResponseSchema = z
+  .object({
+    permissions: z.array(myPermissionGrantSchema),
+  })
+  .strict();
+export type MyPermissionsResponse = z.infer<typeof myPermissionsResponseSchema>;
