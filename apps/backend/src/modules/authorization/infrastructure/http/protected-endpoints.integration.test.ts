@@ -149,6 +149,21 @@ const PROTECTED_ENDPOINTS: readonly ProtectedEndpointSpec[] = [
     requestPath: '/permissions',
     requiredPermission: 'rol.ver',
   },
+  {
+    method: 'get',
+    openApiPath: '/program',
+    requestPath: '/program',
+    requiredPermission: 'parametro.ver',
+  },
+  {
+    method: 'patch',
+    openApiPath: '/program',
+    requestPath: '/program',
+    requiredPermission: 'parametro.editar',
+    sampleBody: {
+      name: 'Ingeniería de Sistemas',
+    },
+  },
 ];
 
 describe('Protected Endpoints 403 Coverage & OpenAPI Drift Guard (PostgreSQL real, HU-008, T-008-06, CA1, RF-008, RNF-009, D11)', () => {

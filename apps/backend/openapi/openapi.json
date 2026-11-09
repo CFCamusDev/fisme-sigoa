@@ -3108,6 +3108,259 @@
           }
         }
       }
+    },
+    "/program": {
+      "get": {
+        "tags": ["Parameters"],
+        "summary": "Consultar datos del programa",
+        "description": "Retorna los datos del programa institucional único (código, nombre, facultad, fecha de última actualización). Requiere permiso 'parametro.ver' (HU-009, RS-023, RF-014).",
+        "operationId": "getProgram",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Datos del programa institucional obtenidos exitosamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché HTTP para evitar servir datos desactualizados del programa."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramDto"
+                },
+                "example": {
+                  "id": "cm3programcuid1234567890",
+                  "code": "EPIS",
+                  "name": "Escuela Profesional de Ingeniería de Sistemas",
+                  "faculty": "Facultad de Ingeniería de Sistemas y Mecánica Eléctrica",
+                  "updatedAt": "2026-11-09T12:00:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros de consulta (query) desconocidos o no permitidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "La solicitud contiene errores de validación",
+                    "details": [
+                      {
+                        "path": "query",
+                        "message": "No se permiten parámetros adicionales"
+                      }
+                    ],
+                    "requestId": "req_prog_get_400"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o token de acceso inválido o expirado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado",
+                    "requestId": "req_prog_get_401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere el permiso 'parametro.ver'.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para consultar los datos del programa",
+                    "requestId": "req_prog_get_403"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No existe un programa configurado en el sistema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "No se encontró el programa institucional",
+                    "requestId": "req_prog_get_404"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Parameters"],
+        "summary": "Actualizar datos del programa",
+        "description": "Actualiza parcialmente los datos del programa institucional (código, nombre, facultad). Requiere permiso 'parametro.editar' con alcance GLOBAL. Registra evento de auditoría PARAMETER_CHANGE con valores previos y nuevos (HU-009, RS-020, RS-023, RF-014).",
+        "operationId": "updateProgram",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProgramRequest"
+              },
+              "example": {
+                "name": "Ingeniería de Sistemas",
+                "faculty": "Facultad de Ingeniería"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Programa actualizado exitosamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché HTTP."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramDto"
+                },
+                "example": {
+                  "id": "cm3programcuid1234567890",
+                  "code": "EPIS",
+                  "name": "Ingeniería de Sistemas",
+                  "faculty": "Facultad de Ingeniería",
+                  "updatedAt": "2026-11-09T14:30:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error de validación en el cuerpo o parámetros de consulta.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Los datos proporcionados no son válidos.",
+                    "requestId": "req_prog_patch_400"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado",
+                    "requestId": "req_prog_patch_401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere 'parametro.editar' con alcance GLOBAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para actualizar los datos del programa",
+                    "requestId": "req_prog_patch_403"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No existe un programa configurado en el sistema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "No se encontró el programa institucional",
+                    "requestId": "req_prog_patch_404"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto: el código del programa ya está en uso por otro registro.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "Ya existe otro programa con el código especificado",
+                    "requestId": "req_prog_patch_409"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3883,6 +4136,67 @@
               "$ref": "#/components/schemas/MyPermissionGrant"
             },
             "description": "Lista ordenada alfabéticamente de permisos efectivos del usuario autenticado."
+          }
+        }
+      },
+      "ProgramDto": {
+        "type": "object",
+        "required": ["id", "code", "name", "faculty", "updatedAt"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "Identificador único del programa (CUID)."
+          },
+          "code": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 10,
+            "description": "Código oficial del programa en mayúsculas (ej. EPIS)."
+          },
+          "name": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 150,
+            "description": "Nombre completo oficial del programa de estudios."
+          },
+          "faculty": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 150,
+            "description": "Nombre de la facultad a la que pertenece el programa."
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Fecha y hora de última actualización del registro (ISO 8601)."
+          }
+        }
+      },
+      "UpdateProgramRequest": {
+        "type": "object",
+        "minProperties": 1,
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 10,
+            "description": "Código oficial del programa en mayúsculas."
+          },
+          "name": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 150,
+            "description": "Nombre completo oficial del programa de estudios."
+          },
+          "faculty": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 150,
+            "description": "Nombre de la facultad a la que pertenece el programa."
           }
         }
       }

@@ -33,6 +33,8 @@ import {
   userAccessSchema,
   myPermissionGrantSchema,
   myPermissionsResponseSchema,
+  programDtoSchema,
+  updateProgramRequestSchema,
 } from '@sigoa/shared';
 import { createAuthRouter } from '../src/modules/auth/infrastructure/http/auth.routes.js';
 import { createUsersRouter } from '../src/modules/users/infrastructure/http/users.routes.js';
@@ -45,6 +47,8 @@ import { createUserAccessRouter } from '../src/modules/authorization/infrastruct
 import type { UserAccessController } from '../src/modules/authorization/infrastructure/http/user-access.controller.js';
 import { createMePermissionsRouter } from '../src/modules/authorization/infrastructure/http/me-permissions.routes.js';
 import type { MePermissionsController } from '../src/modules/authorization/infrastructure/http/me-permissions.controller.js';
+import { createParametersRouter } from '../src/modules/parameters/infrastructure/http/parameters.routes.js';
+import type { ParametersController } from '../src/modules/parameters/infrastructure/http/parameters.controller.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1486,6 +1490,97 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
       }
 
       expect(routerEndpoints).toEqual([{ method: 'get', path: '/me/permissions' }]);
+    });
+  });
+
+  describe('OpenAPI Specification for Parameters (HU-009, T-009-10, RF-014)', () => {
+    it('documents GET /program and PATCH /program with bearerAuth and proper status codes', () => {
+      expect(spec.paths['/program']).toBeDefined();
+      expect(spec.paths['/program'].get).toBeDefined();
+      expect(spec.paths['/program'].patch).toBeDefined();
+
+      const getOp = spec.paths['/program'].get;
+      expect(getOp.tags).toContain('Parameters');
+      expect(getOp.operationId).toBe('getProgram');
+      expect(getOp.security).toEqual([{ bearerAuth: [] }]);
+      expect(Object.keys(getOp.responses).sort()).toEqual(['200', '400', '401', '403', '404']);
+
+      const patchOp = spec.paths['/program'].patch;
+      expect(patchOp.tags).toContain('Parameters');
+      expect(patchOp.operationId).toBe('updateProgram');
+      expect(patchOp.security).toEqual([{ bearerAuth: [] }]);
+      expect(Object.keys(patchOp.responses).sort()).toEqual([
+        '200',
+        '400',
+        '401',
+        '403',
+        '404',
+        '409',
+      ]);
+    });
+
+    it('validates 200 responses and request bodies against schemas from @sigoa/shared', () => {
+      const getOp = spec.paths['/program'].get;
+      const res200Get = getOp.responses['200'];
+      expect(res200Get.headers['Cache-Control'].example).toBe('no-store');
+      expect(
+        programDtoSchema.safeParse(res200Get.content['application/json'].example).success,
+      ).toBe(true);
+
+      const patchOp = spec.paths['/program'].patch;
+      const res200Patch = patchOp.responses['200'];
+      expect(res200Patch.headers['Cache-Control'].example).toBe('no-store');
+      expect(
+        programDtoSchema.safeParse(res200Patch.content['application/json'].example).success,
+      ).toBe(true);
+
+      const reqBody = patchOp.requestBody;
+      expect(reqBody.required).toBe(true);
+      expect(
+        updateProgramRequestSchema.safeParse(reqBody.content['application/json'].example).success,
+      ).toBe(true);
+    });
+
+    it('matches components.schemas properties with Zod schemas shape', () => {
+      const programDtoComp = spec.components.schemas.ProgramDto;
+      expect(programDtoComp).toBeDefined();
+      expect(Object.keys(programDtoComp.properties).sort()).toEqual(
+        Object.keys(programDtoSchema.shape).sort(),
+      );
+
+      const updateReqComp = spec.components.schemas.UpdateProgramRequest;
+      expect(updateReqComp).toBeDefined();
+      expect(Object.keys(updateReqComp.properties).sort()).toEqual(
+        Object.keys(updateProgramRequestSchema.shape).sort(),
+      );
+    });
+
+    it('has bidirectional parity between openapi spec and createParametersRouter', () => {
+      const router = createParametersRouter({
+        controller: {
+          getProgram: vi.fn(),
+          updateProgram: vi.fn(),
+        } as unknown as ParametersController,
+        authenticate: vi.fn(),
+        requirePermission: vi.fn(() => vi.fn()),
+      });
+
+      const routerEndpoints: { method: string; path: string }[] = [];
+      for (const layer of router.stack) {
+        if (layer.route) {
+          const routePath = layer.route.path;
+          const methods = Object.keys(layer.route.methods);
+          for (const method of methods) {
+            const normalizedPath = '/program' + (routePath === '/' ? '' : routePath);
+            routerEndpoints.push({ method: method.toLowerCase(), path: normalizedPath });
+          }
+        }
+      }
+
+      expect(routerEndpoints.sort((a, b) => a.method.localeCompare(b.method))).toEqual([
+        { method: 'get', path: '/program' },
+        { method: 'patch', path: '/program' },
+      ]);
     });
   });
 });
