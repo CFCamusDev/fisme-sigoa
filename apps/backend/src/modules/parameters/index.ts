@@ -28,5 +28,7 @@ export * from './domain/errors/index.js';
 export * from './domain/ports/index.js';
 export * from './application/edit-program.js';
 export * from './application/edit-program.types.js';
+export * from './application/get-program.js';
+export * from './application/get-program.types.js';
 export * from './application/program-dto.js';
 export * from './infrastructure/prisma/prisma-program-repository.js';
