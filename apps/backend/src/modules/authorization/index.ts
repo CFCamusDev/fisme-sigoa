@@ -9,6 +9,11 @@ import { ChangeRoleStatusUseCase } from './application/change-role-status.js';
 import { ListPermissionsUseCase } from './application/list-permissions.js';
 import { ListRolesUseCase } from './application/list-roles.js';
 import { PermissionAuthorizer } from './application/permission-authorizer.js';
+import {
+  AuditAccessDenialRecorder,
+  type AccessDenialErrorLogger,
+} from './application/audit-access-denial-recorder.js';
+import type { AccessDenialRecorder } from './domain/ports/access-denial-recorder.js';
 import { createRequirePermission } from './infrastructure/http/require-permission.js';
 import { RolesController } from './infrastructure/http/roles.controller.js';
 import { createRolesRouter } from './infrastructure/http/roles.routes.js';
@@ -65,6 +70,10 @@ export interface AuthorizationModuleServices {
 
 export interface AuthorizationModuleDependencies {
   readonly dbProvider: DbProvider;
+  readonly unitOfWork?: UnitOfWork;
+  readonly auditLogger?: AuditLogger;
+  readonly logger?: AccessDenialErrorLogger;
+  readonly accessDenialRecorder?: AccessDenialRecorder;
   readonly permissionCache?: {
     ttlMs?: number;
     maxEntries?: number;
@@ -82,7 +91,16 @@ export function createAuthorizationServices(
   );
   const roleReader = new PrismaRoleReader(deps.dbProvider);
   const userRoleGateway = new PrismaUserRoleGateway(deps.dbProvider);
-  const authorizer = new PermissionAuthorizer(cachingGrantReader);
+  const recorder =
+    deps.accessDenialRecorder ??
+    (deps.unitOfWork && deps.auditLogger
+      ? new AuditAccessDenialRecorder({
+          unitOfWork: deps.unitOfWork,
+          auditLogger: deps.auditLogger,
+          logger: deps.logger,
+        })
+      : undefined);
+  const authorizer = new PermissionAuthorizer(cachingGrantReader, recorder);
   const listRolesUseCase = new ListRolesUseCase({
     roleReader,
     authorizer,

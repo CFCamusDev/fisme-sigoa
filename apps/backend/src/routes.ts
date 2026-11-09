@@ -53,6 +53,9 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
 
   const authorizationServices = createAuthorizationServices({
     dbProvider: deps.dbProvider,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+    logger: deps.logger,
     permissionCache: deps.permissionCache,
   });
 

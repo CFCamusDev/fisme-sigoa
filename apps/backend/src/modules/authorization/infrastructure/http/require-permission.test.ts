@@ -34,35 +34,55 @@ describe('requirePermission Middleware Unit Tests (F4, RS-002, RNF-009)', () => 
       res.status(200).json({ ok: true, data: 'probe-data' });
     });
 
+    app.patch(
+      '/probe/users/:id/roles',
+      requirePermission('usuario.editar', 'GLOBAL'),
+      (_req, res) => {
+        res.status(200).json({ ok: true });
+      },
+    );
+
     app.use(errorHandler);
     return app;
   }
 
-  it('responds 401 without an authenticated actor', async () => {
+  it('responds 401 without an authenticated actor and never calls the authorizer', async () => {
     const grantReader: GrantReader = { findGrantsByUserId: vi.fn() };
-    const authorizer = new PermissionAuthorizer(grantReader);
+    const recorder = { record: vi.fn() };
+    const authorizer = new PermissionAuthorizer(grantReader, recorder);
     const app = createApp(authorizer);
 
     const response = await request(app).get('/probe/users');
     expect(response.status).toBe(401);
     expect(response.body.error.message).toBe('No autenticado');
+    expect(recorder.record).not.toHaveBeenCalled();
   });
 
-  it('responds 403 without the permission', async () => {
+  it('responds 403 without the permission and passes the route template (never real URL or query) to the authorizer', async () => {
     const grantReader: GrantReader = {
       findGrantsByUserId: vi.fn().mockResolvedValue([]),
     };
-    const authorizer = new PermissionAuthorizer(grantReader);
+    const recorder = { record: vi.fn().mockResolvedValue(undefined) };
+    const authorizer = new PermissionAuthorizer(grantReader, recorder);
     const app = createApp(authorizer);
 
     const response = await request(app)
-      .get('/probe/users')
+      .patch('/probe/users/real-user-123/roles?secretToken=do-not-log')
       .set('x-test-actor', 'unprivileged-user-uuid');
 
     expect(response.status).toBe(403);
     expect(response.body.error.message).toBe('No tienes permiso para realizar esta acción.');
     // No debe revelar el código del permiso que falta
-    expect(JSON.stringify(response.body)).not.toContain('usuario.ver');
+    expect(JSON.stringify(response.body)).not.toContain('usuario.editar');
+    expect(recorder.record).toHaveBeenCalledWith({
+      actorId: 'unprivileged-user-uuid',
+      permission: 'usuario.editar',
+      requiredScope: 'GLOBAL',
+      grantedScope: null,
+      reason: 'MISSING_PERMISSION',
+      method: 'PATCH',
+      route: '/probe/users/:id/roles',
+    });
   });
 
   it('lets the request through with the permission', async () => {

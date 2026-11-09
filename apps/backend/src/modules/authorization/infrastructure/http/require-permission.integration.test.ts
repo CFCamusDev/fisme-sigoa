@@ -4,17 +4,21 @@ import { useTestDatabase } from '../../../../test/db/use-test-database.js';
 import { createTestEnv } from '../../../../test/test-env.js';
 import { createApp } from '../../../../app.js';
 import { getRequestContext } from '../../../../shared/audit/request-context.js';
+import { createPrismaAuditServices } from '../../../../shared/prisma/create-prisma-audit-services.js';
 import { PrismaUnitOfWork } from '../../../../shared/prisma/prisma-unit-of-work.js';
 import { createAuthorizationModule } from '../../index.js';
 import { seedAuthorization } from '../prisma/seed/authorization-seed.js';
 
-describe('requirePermission Integration (PostgreSQL real, RS-002, RS-011, RS-012, RNF-004)', () => {
+describe('requirePermission Integration (PostgreSQL real, RS-002, RS-011, RS-012, RF-008, RNF-004)', () => {
   const { getPrisma } = useTestDatabase();
   const prisma = getPrisma();
   const uow = new PrismaUnitOfWork(prisma);
+  const auditServices = createPrismaAuditServices(uow);
 
   const authzModule = createAuthorizationModule({
     dbProvider: uow,
+    unitOfWork: uow,
+    auditLogger: auditServices.auditLogger,
   });
 
   const env = createTestEnv({
@@ -39,6 +43,14 @@ describe('requirePermission Integration (PostgreSQL real, RS-002, RS-011, RS-012
       instance.post('/test/users', authzModule.requirePermission('usuario.crear'), (_req, res) => {
         res.status(200).json({ success: true });
       });
+
+      instance.patch(
+        '/test/users/:id/roles',
+        authzModule.requirePermission('usuario.editar'),
+        (_req, res) => {
+          res.status(200).json({ success: true });
+        },
+      );
     },
   });
 
@@ -70,9 +82,14 @@ describe('requirePermission Integration (PostgreSQL real, RS-002, RS-011, RS-012
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ success: true });
+
+    const denials = await prisma.auditLog.findMany({
+      where: { action: 'ACCESS_DENIED' },
+    });
+    expect(denials).toHaveLength(0);
   });
 
-  it('deniega con 403 cuando el usuario autenticado tiene un rol sin el permiso requerido', async () => {
+  it('returns 403 and writes an ACCESS_DENIED audit row when the actor lacks the permission', async () => {
     await seedAuthorization(prisma);
 
     const teacherRole = await prisma.role.findUniqueOrThrow({
@@ -83,8 +100,9 @@ describe('requirePermission Integration (PostgreSQL real, RS-002, RS-011, RS-012
     await authzModule.userRoleGateway.replaceRoles(teacherUser.id, [teacherRole.id]);
 
     const response = await request(app)
-      .post('/test/users')
+      .patch(`/test/users/${teacherUser.id}/roles?token=secret-not-logged`)
       .set('x-actor-id', teacherUser.id)
+      .set('x-forwarded-for', '190.119.10.25')
       .send();
 
     expect(response.status).toBe(403);
@@ -94,9 +112,31 @@ describe('requirePermission Integration (PostgreSQL real, RS-002, RS-011, RS-012
         message: 'No tienes permiso para realizar esta acción.',
       }),
     });
+
+    const auditRows = await prisma.auditLog.findMany({
+      where: { action: 'ACCESS_DENIED', actor: teacherUser.id },
+    });
+    expect(auditRows).toHaveLength(1);
+    const row = auditRows[0]!;
+    expect(row.entity).toBe('Permission');
+    expect(row.entityId).toBe('usuario.editar');
+    expect(row.after).toEqual({
+      reason: 'MISSING_PERMISSION',
+      requiredScope: 'GLOBAL',
+      grantedScope: null,
+      method: 'PATCH',
+      route: '/test/users/:id/roles',
+    });
+    // Garantiza que no se registran datos personales ni la URL real ni query params
+    const serialized = JSON.stringify(row.after);
+    expect(serialized).not.toContain(teacherUser.email);
+    expect(serialized).not.toContain(teacherUser.dni);
+    expect(serialized).not.toContain(teacherUser.names);
+    expect(serialized).not.toContain('secret-not-logged');
+    expect(serialized).not.toContain(teacherUser.id);
   });
 
-  it('deniega con 401 cuando no hay actor autenticado en el contexto', async () => {
+  it('deniega con 401 sin escribir fila de auditoría cuando no hay actor autenticado en el contexto', async () => {
     const response = await request(app).post('/test/users').send();
 
     expect(response.status).toBe(401);
@@ -105,5 +145,48 @@ describe('requirePermission Integration (PostgreSQL real, RS-002, RS-011, RS-012
         code: 'UNAUTHORIZED',
       }),
     });
+
+    const auditRows = await prisma.auditLog.findMany({
+      where: { action: 'ACCESS_DENIED' },
+    });
+    expect(auditRows).toHaveLength(0);
   });
+
+  it('keeps a valid audit chain after 20 simultaneous denied requests', async () => {
+    await seedAuthorization(prisma);
+
+    const teacherRole = await prisma.role.findUniqueOrThrow({
+      where: { code: 'TEACHER' },
+    });
+    const teacherUser = await createFixtureUser('0003');
+    await authzModule.userRoleGateway.replaceRoles(teacherUser.id, [teacherRole.id]);
+
+    const requests = Array.from({ length: 20 }, (_, idx) =>
+      request(app)
+        .post('/test/users')
+        .set('x-actor-id', teacherUser.id)
+        .set('x-forwarded-for', `10.10.0.${idx + 1}`)
+        .send(),
+    );
+
+    const responses = await Promise.all(requests);
+    for (const res of responses) {
+      expect(res.status).toBe(403);
+    }
+
+    const rows = await prisma.auditLog.findMany({
+      orderBy: { sequence: 'asc' },
+    });
+    expect(rows).toHaveLength(20);
+    for (let i = 0; i < rows.length; i++) {
+      expect(rows[i]!.sequence).toBe(BigInt(i + 1));
+      expect(rows[i]!.action).toBe('ACCESS_DENIED');
+    }
+
+    const verification = await auditServices.chainVerifier.verify();
+    expect(verification).toEqual({
+      valid: true,
+      checked: 20,
+    });
+  }, 15_000);
 });

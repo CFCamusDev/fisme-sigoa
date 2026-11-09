@@ -19,5 +19,6 @@ export * from './ports/user-access-subject-repository.js';
 export * from './ports/grant-types.js';
 export * from './ports/user-permission-repository.js';
 export * from './ports/resource-ownership-resolver.js';
+export * from './ports/access-denial-recorder.js';
 export * from './policies/grant-diff.js';
 export * from './policies/evaluate-resource-access.js';
