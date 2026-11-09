@@ -14,6 +14,7 @@ export const AUDIT_ACTIONS = [
   'PARAMETER_CHANGE',
   'DOWNLOAD',
   'PUBLIC_RESPONSE',
+  'ACCESS_DENIED',
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

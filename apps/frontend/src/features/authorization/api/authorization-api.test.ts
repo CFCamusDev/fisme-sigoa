@@ -20,6 +20,7 @@ import {
   getUserAccess,
   assignUserRoles,
   assignUserPermissions,
+  getMyPermissions,
 } from './index';
 
 const mockRoleDto: RoleDto = {
@@ -430,6 +431,47 @@ describe('Authorization API client functions (HU-006, T-006-20)', () => {
         status: 403,
         message: 'No tienes permiso para ver los roles.',
       });
+    });
+  });
+
+  describe('getMyPermissions (HU-008, T-008-04)', () => {
+    it('requests GET /me/permissions and validates response with myPermissionsResponseSchema', async () => {
+      server.use(
+        http.get('http://localhost:3000/me/permissions', () => {
+          return HttpResponse.json(
+            {
+              permissions: [
+                { code: 'medicion.ver', scope: 'OWN' },
+                { code: 'usuario.ver', scope: 'GLOBAL' },
+              ],
+            },
+            { status: 200 },
+          );
+        }),
+      );
+
+      const result = await getMyPermissions();
+      expect(result).toEqual({
+        permissions: [
+          { code: 'medicion.ver', scope: 'OWN' },
+          { code: 'usuario.ver', scope: 'GLOBAL' },
+        ],
+      });
+    });
+
+    it('rejects when GET /me/permissions returns unexpected fields', async () => {
+      server.use(
+        http.get('http://localhost:3000/me/permissions', () => {
+          return HttpResponse.json(
+            {
+              permissions: [{ code: 'usuario.ver', scope: 'GLOBAL', extra: true }],
+            },
+            { status: 200 },
+          );
+        }),
+      );
+
+      await expect(getMyPermissions()).rejects.toThrow();
     });
   });
 });

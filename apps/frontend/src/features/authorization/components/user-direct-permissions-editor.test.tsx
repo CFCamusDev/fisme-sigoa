@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { PermissionDto, RoleGrant } from '@sigoa/shared';
+import { renderWithProviders } from '@/test/render';
 import { UserDirectPermissionsEditor } from './user-direct-permissions-editor';
 
 const mockCatalog: PermissionDto[] = [
@@ -21,12 +22,13 @@ describe('UserDirectPermissionsEditor Component (HU-007, T-007-16)', () => {
   it('renders permission scope table with informational notice and initial grants', () => {
     const directPermissions: RoleGrant[] = [{ permissionCode: 'academico.ver', scope: 'GLOBAL' }];
 
-    render(
+    renderWithProviders(
       <UserDirectPermissionsEditor
         directPermissions={directPermissions}
         catalog={mockCatalog}
         onSave={vi.fn()}
       />,
+      { withRouter: false },
     );
 
     expect(
@@ -46,12 +48,13 @@ describe('UserDirectPermissionsEditor Component (HU-007, T-007-16)', () => {
     const handleSave = vi.fn();
     const directPermissions: RoleGrant[] = [];
 
-    render(
+    renderWithProviders(
       <UserDirectPermissionsEditor
         directPermissions={directPermissions}
         catalog={mockCatalog}
         onSave={handleSave}
       />,
+      { withRouter: false },
     );
 
     const editarSelect = screen.getByLabelText('Acceso a academico.editar');
@@ -72,13 +75,14 @@ describe('UserDirectPermissionsEditor Component (HU-007, T-007-16)', () => {
     const handleDiscard = vi.fn();
     const directPermissions: RoleGrant[] = [{ permissionCode: 'academico.ver', scope: 'GLOBAL' }];
 
-    render(
+    renderWithProviders(
       <UserDirectPermissionsEditor
         directPermissions={directPermissions}
         catalog={mockCatalog}
         onSave={vi.fn()}
         onDiscard={handleDiscard}
       />,
+      { withRouter: false },
     );
 
     const verSelect = screen.getByLabelText('Acceso a academico.ver');
@@ -95,13 +99,14 @@ describe('UserDirectPermissionsEditor Component (HU-007, T-007-16)', () => {
   });
 
   it('disables controls and displays loading text while isSaving is true', () => {
-    render(
+    renderWithProviders(
       <UserDirectPermissionsEditor
         directPermissions={[]}
         catalog={mockCatalog}
         onSave={vi.fn()}
         isSaving={true}
       />,
+      { withRouter: false },
     );
 
     expect(screen.getByText('Guardando…')).toBeInTheDocument();

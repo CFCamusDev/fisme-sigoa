@@ -291,4 +291,31 @@ describe('RolesPage (HU-006, T-006-21a, RF-006, CA1, CA3)', () => {
     expect(screen.getByRole('link', { name: 'Editar rol Administrador' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Editar rol Docente' })).toBeInTheDocument();
   });
+
+  it('hides new role and row edit/permissions/status actions when the user only has rol.ver (HU-008, T-008-08, CA3)', async () => {
+    server.use(
+      http.get('http://localhost:3000/roles', () => {
+        return HttpResponse.json<ListRolesResponse>({ items: predefinedRoles });
+      }),
+    );
+
+    renderWithProviders(<RolesPage />, {
+      permissions: [{ code: 'rol.ver', scope: 'GLOBAL' }],
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Administrador')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('link', { name: 'Nuevo rol' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Editar rol Administrador' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: /permisos del rol administrador/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /activar rol auditor de calidad/i }),
+    ).not.toBeInTheDocument();
+  });
 });

@@ -3026,6 +3026,88 @@
           }
         }
       }
+    },
+    "/me/permissions": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "Consultar permisos efectivos propios",
+        "description": "Retorna la lista de permisos efectivos consolidados del usuario autenticado (con el alcance más amplio entre sus roles activos y asignaciones directas), ordenada alfabéticamente por código y sin exponer nombres de roles ni orígenes (HU-008, T-008-04, RS-011, RS-012, D7).",
+        "operationId": "getMyPermissions",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Lista de permisos efectivos del usuario autenticado.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché HTTP para evitar retener permisos obsoletos."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyPermissionsResponse"
+                },
+                "example": {
+                  "permissions": [
+                    {
+                      "code": "medicion.ver",
+                      "scope": "OWN"
+                    },
+                    {
+                      "code": "usuario.ver",
+                      "scope": "GLOBAL"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros de consulta (query) desconocidos o no permitidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "La solicitud contiene errores de validación",
+                    "details": [
+                      {
+                        "path": "query",
+                        "message": "No se permiten parámetros adicionales"
+                      }
+                    ],
+                    "requestId": "req_me_perms_400"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o token de acceso inválido o expirado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado",
+                    "requestId": "req_me_perms_401"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3769,6 +3851,38 @@
               "$ref": "#/components/schemas/EffectiveAccessEntry"
             },
             "description": "Permisos consolidados efectivos con el alcance más amplio."
+          }
+        }
+      },
+      "MyPermissionGrant": {
+        "type": "object",
+        "required": ["code", "scope"],
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "Código del permiso efectivo (recurso.accion)."
+          },
+          "scope": {
+            "type": "string",
+            "enum": ["GLOBAL", "OWN"],
+            "description": "Alcance efectivo consolidado para el permiso."
+          }
+        }
+      },
+      "MyPermissionsResponse": {
+        "type": "object",
+        "required": ["permissions"],
+        "additionalProperties": false,
+        "properties": {
+          "permissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MyPermissionGrant"
+            },
+            "description": "Lista ordenada alfabéticamente de permisos efectivos del usuario autenticado."
           }
         }
       }

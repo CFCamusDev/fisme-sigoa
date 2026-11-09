@@ -63,4 +63,32 @@ describe('session configuration (T-002-10, CA3)', () => {
     expect(testQueryClient.getQueryData(['sensitive-data'])).toBeUndefined();
     expect(navigateToLogin).toHaveBeenCalledWith('session-expired');
   });
+
+  it('removes me/permissions queries when the user session is cleared', () => {
+    useAuthStore.getState().setAuthSession({
+      accessToken: 'valid-token',
+      accessTokenExpiresAt: new Date(Date.now() + 10000).toISOString(),
+      refreshTokenExpiresAt: new Date(Date.now() + 50000).toISOString(),
+      user: {
+        id: 'usr_1',
+        names: 'Test',
+        firstSurname: 'User',
+        secondSurname: null,
+        email: 'test@untrm.edu.pe',
+      },
+    });
+
+    testQueryClient.setQueryData(['me', 'permissions', 'usr_1'], {
+      permissions: [{ code: 'usuario.ver', scope: 'GLOBAL' }],
+    });
+
+    configureSession({
+      navigateToLogin: vi.fn(),
+      queryClientOverride: testQueryClient,
+    });
+
+    useAuthStore.getState().clearAuthSession();
+
+    expect(testQueryClient.getQueryData(['me', 'permissions', 'usr_1'])).toBeUndefined();
+  });
 });

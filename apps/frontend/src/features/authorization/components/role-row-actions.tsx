@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Link } from '@tanstack/react-router';
 import { PROTECTED_ROLE_CODE, type RoleDto } from '@sigoa/shared';
+import { Can } from '@/components/common/can.js';
 import { Button, buttonVariants } from '@/components/ui/button.js';
 import { cn } from '@/lib/utils.js';
 import { useChangeRoleStatus } from '../hooks/index.js';
@@ -100,96 +101,100 @@ export function RoleRowActions({
         : 'No tiene usuarios asignados.';
 
     return (
-      <div
-        role="alertdialog"
-        aria-modal="false"
-        aria-labelledby={`deactivate-title-${role.id}`}
-        aria-describedby={`deactivate-desc-${role.id}`}
-        className="flex flex-col items-end gap-1.5 p-2 rounded-md border border-border bg-card shadow-sm"
-      >
-        <span id={`deactivate-title-${role.id}`} className="sr-only">
-          Confirmar desactivación del rol
-        </span>
-        <span
-          id={`deactivate-desc-${role.id}`}
-          className="text-label font-medium text-destructive max-w-xs text-right"
+      <Can permission="rol.editar">
+        <div
+          role="alertdialog"
+          aria-modal="false"
+          aria-labelledby={`deactivate-title-${role.id}`}
+          aria-describedby={`deactivate-desc-${role.id}`}
+          className="flex flex-col items-end gap-1.5 p-2 rounded-md border border-border bg-card shadow-sm"
         >
-          ¿Desactivar el rol {role.name}? {userWarning}
-        </span>
-        <div className="flex items-center gap-2 pt-1">
-          <Button
-            ref={cancelBtnRef}
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setIsConfirmingDeactivation(false);
-            }}
-            disabled={isPending}
-            aria-label={`Cancelar desactivación del rol ${role.name}`}
+          <span id={`deactivate-title-${role.id}`} className="sr-only">
+            Confirmar desactivación del rol
+          </span>
+          <span
+            id={`deactivate-desc-${role.id}`}
+            className="text-label font-medium text-destructive max-w-xs text-right"
           >
-            Cancelar
-          </Button>
-          <Button
-            type="button"
-            variant="destructive"
-            size="sm"
-            onClick={handleDeactivate}
-            disabled={isPending}
-            aria-label={`Confirmar desactivación del rol ${role.name}`}
-          >
-            Confirmar desactivación
-          </Button>
+            ¿Desactivar el rol {role.name}? {userWarning}
+          </span>
+          <div className="flex items-center gap-2 pt-1">
+            <Button
+              ref={cancelBtnRef}
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setIsConfirmingDeactivation(false);
+              }}
+              disabled={isPending}
+              aria-label={`Cancelar desactivación del rol ${role.name}`}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              onClick={handleDeactivate}
+              disabled={isPending}
+              aria-label={`Confirmar desactivación del rol ${role.name}`}
+            >
+              Confirmar desactivación
+            </Button>
+          </div>
         </div>
-      </div>
+      </Can>
     );
   }
 
   return (
-    <div className="flex items-center justify-end gap-1">
-      <Link
-        to="/roles/$roleId/permisos"
-        params={{ roleId: role.id }}
-        className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }))}
-        aria-label={`Permisos del rol ${role.name}`}
-      >
-        Permisos
-      </Link>
-      <Link
-        to="/roles/$roleId/editar"
-        params={{ roleId: role.id }}
-        className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }))}
-        aria-label={`Editar rol ${role.name}`}
-      >
-        Editar
-      </Link>
-
-      {role.status === 'ACTIVE' && !isProtectedRole && (
-        <Button
-          ref={triggerBtnRef}
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => setIsConfirmingDeactivation(true)}
-          disabled={isPending}
-          aria-label={`Desactivar rol ${role.name}`}
+    <Can permission="rol.editar">
+      <div className="flex items-center justify-end gap-1">
+        <Link
+          to="/roles/$roleId/permisos"
+          params={{ roleId: role.id }}
+          className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }))}
+          aria-label={`Permisos del rol ${role.name}`}
         >
-          Desactivar
-        </Button>
-      )}
-
-      {role.status === 'INACTIVE' && (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={handleReactivate}
-          disabled={isPending}
-          aria-label={`Reactivar rol ${role.name}`}
+          Permisos
+        </Link>
+        <Link
+          to="/roles/$roleId/editar"
+          params={{ roleId: role.id }}
+          className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }))}
+          aria-label={`Editar rol ${role.name}`}
         >
-          Reactivar
-        </Button>
-      )}
-    </div>
+          Editar
+        </Link>
+
+        {role.status === 'ACTIVE' && !isProtectedRole && (
+          <Button
+            ref={triggerBtnRef}
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsConfirmingDeactivation(true)}
+            disabled={isPending}
+            aria-label={`Desactivar rol ${role.name}`}
+          >
+            Desactivar
+          </Button>
+        )}
+
+        {role.status === 'INACTIVE' && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={handleReactivate}
+            disabled={isPending}
+            aria-label={`Reactivar rol ${role.name}`}
+          >
+            Reactivar
+          </Button>
+        )}
+      </div>
+    </Can>
   );
 }

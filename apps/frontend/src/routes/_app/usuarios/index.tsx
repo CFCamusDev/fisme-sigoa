@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
 import { userStatusSchema } from '@sigoa/shared';
 import { UsersPage, type UsersSearchParams } from '@/features/users';
+import { guardPermission } from '@/lib/permission-guard';
 
 const usersSearchSchema = z.object({
   status: userStatusSchema.optional(),
@@ -11,6 +12,7 @@ const usersSearchSchema = z.object({
 });
 
 export const Route = createFileRoute('/_app/usuarios/')({
+  beforeLoad: () => guardPermission('usuario.ver'),
   validateSearch: (search: Record<string, unknown>): UsersSearchParams => {
     return usersSearchSchema.parse(search);
   },

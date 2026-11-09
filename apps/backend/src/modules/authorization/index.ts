@@ -9,6 +9,13 @@ import { ChangeRoleStatusUseCase } from './application/change-role-status.js';
 import { ListPermissionsUseCase } from './application/list-permissions.js';
 import { ListRolesUseCase } from './application/list-roles.js';
 import { PermissionAuthorizer } from './application/permission-authorizer.js';
+import {
+  AuditAccessDenialRecorder,
+  type AccessDenialErrorLogger,
+} from './application/audit-access-denial-recorder.js';
+import { ResourceOwnershipRegistry } from './application/resource-ownership-registry.js';
+import type { AccessDenialRecorder } from './domain/ports/access-denial-recorder.js';
+import type { ResourceOwnershipResolver } from './domain/ports/resource-ownership-resolver.js';
 import { createRequirePermission } from './infrastructure/http/require-permission.js';
 import { RolesController } from './infrastructure/http/roles.controller.js';
 import { createRolesRouter } from './infrastructure/http/roles.routes.js';
@@ -25,9 +32,12 @@ import type { PermissionCacheInvalidator } from './domain/ports/permission-cache
 import { AssignUserRolesUseCase } from './application/assign-user-roles.js';
 import { AssignUserPermissionsUseCase } from './application/assign-user-permissions.js';
 import { GetUserEffectiveAccessUseCase } from './application/get-user-effective-access.js';
+import { GetMyPermissionsUseCase } from './application/get-my-permissions.js';
 import { UserAccessAssembler } from './application/user-access-assembler.js';
 import { UserAccessController } from './infrastructure/http/user-access.controller.js';
 import { createUserAccessRouter } from './infrastructure/http/user-access.routes.js';
+import { MePermissionsController } from './infrastructure/http/me-permissions.controller.js';
+import { createMePermissionsRouter } from './infrastructure/http/me-permissions.routes.js';
 import { PrismaUserAccessSubjectRepository } from './infrastructure/prisma/prisma-user-access-subject-repository.js';
 import { PrismaUserRoleRepository } from './infrastructure/prisma/prisma-user-role-repository.js';
 import { PrismaUserPermissionRepository } from './infrastructure/prisma/prisma-user-permission-repository.js';
@@ -41,6 +51,8 @@ export * from './infrastructure/http/permissions.controller.js';
 export * from './infrastructure/http/permissions.routes.js';
 export * from './infrastructure/http/user-access.controller.js';
 export * from './infrastructure/http/user-access.routes.js';
+export * from './infrastructure/http/me-permissions.controller.js';
+export * from './infrastructure/http/me-permissions.routes.js';
 export * from './infrastructure/prisma/prisma-grant-reader.js';
 export * from './infrastructure/prisma/prisma-role-reader.js';
 export * from './infrastructure/prisma/prisma-role-mapper.js';
@@ -59,12 +71,19 @@ export interface AuthorizationModuleServices {
   readonly userRoleGateway: PrismaUserRoleGateway;
   readonly authorizer: PermissionAuthorizer;
   readonly listRolesUseCase: ListRolesUseCase;
+  readonly getMyPermissionsUseCase: GetMyPermissionsUseCase;
   readonly requirePermission: ReturnType<typeof createRequirePermission>;
   readonly permissionCache: PermissionCacheInvalidator;
+  readonly ownershipRegistry: ResourceOwnershipRegistry;
 }
 
 export interface AuthorizationModuleDependencies {
   readonly dbProvider: DbProvider;
+  readonly unitOfWork?: UnitOfWork;
+  readonly auditLogger?: AuditLogger;
+  readonly logger?: AccessDenialErrorLogger;
+  readonly accessDenialRecorder?: AccessDenialRecorder;
+  readonly ownershipResolvers?: readonly ResourceOwnershipResolver[];
   readonly permissionCache?: {
     ttlMs?: number;
     maxEntries?: number;
@@ -82,10 +101,23 @@ export function createAuthorizationServices(
   );
   const roleReader = new PrismaRoleReader(deps.dbProvider);
   const userRoleGateway = new PrismaUserRoleGateway(deps.dbProvider);
-  const authorizer = new PermissionAuthorizer(cachingGrantReader);
+  const recorder =
+    deps.accessDenialRecorder ??
+    (deps.unitOfWork && deps.auditLogger
+      ? new AuditAccessDenialRecorder({
+          unitOfWork: deps.unitOfWork,
+          auditLogger: deps.auditLogger,
+          logger: deps.logger,
+        })
+      : undefined);
+  const ownershipRegistry = new ResourceOwnershipRegistry(deps.ownershipResolvers);
+  const authorizer = new PermissionAuthorizer(cachingGrantReader, recorder, ownershipRegistry);
   const listRolesUseCase = new ListRolesUseCase({
     roleReader,
     authorizer,
+  });
+  const getMyPermissionsUseCase = new GetMyPermissionsUseCase({
+    grantReader: cachingGrantReader,
   });
   const requirePermission = createRequirePermission(authorizer);
 
@@ -95,8 +127,10 @@ export function createAuthorizationServices(
     userRoleGateway,
     authorizer,
     listRolesUseCase,
+    getMyPermissionsUseCase,
     requirePermission,
     permissionCache: cachingGrantReader,
+    ownershipRegistry,
   };
 }
 
@@ -250,6 +284,22 @@ export function createUserAccessModule(deps: UserAccessModuleDependencies): Rout
     controller,
     authenticate: deps.authenticate,
     requirePermission: deps.services.requirePermission,
+  });
+}
+
+export interface MePermissionsModuleDependencies {
+  readonly authenticate: RequestHandler;
+  readonly services: AuthorizationModuleServices;
+}
+
+export function createMePermissionsModule(deps: MePermissionsModuleDependencies): Router {
+  const controller = new MePermissionsController({
+    getMyPermissionsUseCase: deps.services.getMyPermissionsUseCase,
+  });
+
+  return createMePermissionsRouter({
+    controller,
+    authenticate: deps.authenticate,
   });
 }
 

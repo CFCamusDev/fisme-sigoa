@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { Logo } from './logo';
 import { Illustration } from './illustration';
 import { type IllustrationName } from '@/lib/illustrations';
@@ -21,6 +21,12 @@ export function ErrorPage({
   role = 'region',
   className,
 }: ErrorPageProps) {
+  const headingRef = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, []);
+
   return (
     <main
       role={role}
@@ -34,7 +40,13 @@ export function ErrorPage({
         <Logo variant="square" size={48} />
       </div>
       <Illustration name={illustration} size={200} />
-      <h1 className="mt-6 text-h2 font-bold tracking-tight text-foreground sm:text-h1">{title}</h1>
+      <h1
+        ref={headingRef}
+        tabIndex={-1}
+        className="mt-6 text-h2 font-bold tracking-tight text-foreground outline-none sm:text-h1"
+      >
+        {title}
+      </h1>
       <p className="mt-2 max-w-md text-body text-muted-foreground">{description}</p>
       <div className="mt-6 flex flex-wrap items-center justify-center gap-3">{action}</div>
     </main>

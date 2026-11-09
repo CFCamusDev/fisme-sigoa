@@ -18,6 +18,7 @@ import {
 } from './modules/auth/index.js';
 import {
   createAuthorizationServices,
+  createMePermissionsModule,
   createPermissionsModule,
   createRolesModule,
   createUserAccessModule,
@@ -53,6 +54,9 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
 
   const authorizationServices = createAuthorizationServices({
     dbProvider: deps.dbProvider,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+    logger: deps.logger,
     permissionCache: deps.permissionCache,
   });
 
@@ -97,6 +101,13 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
       authenticate: authServices.authenticate,
       services: authorizationServices,
       dbProvider: deps.dbProvider,
+    }),
+  );
+  app.use(
+    '/me',
+    createMePermissionsModule({
+      authenticate: authServices.authenticate,
+      services: authorizationServices,
     }),
   );
   app.use(

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { PageHeader } from '@/components/common/page-header';
 import { ErrorState } from '@/components/common/error-state';
+import { Can } from '@/components/common/can';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -83,9 +84,11 @@ export function UsersPage({
         title="Usuarios"
         description="Administra los usuarios del sistema, sus roles institucionales y sus estados de acceso."
         actions={
-          <Link to="/usuarios/nuevo" className={cn(buttonVariants({ variant: 'default' }))}>
-            Nuevo usuario
-          </Link>
+          <Can permission="usuario.crear">
+            <Link to="/usuarios/nuevo" className={cn(buttonVariants({ variant: 'default' }))}>
+              Nuevo usuario
+            </Link>
+          </Can>
         }
       />
 

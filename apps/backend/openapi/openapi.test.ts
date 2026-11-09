@@ -31,6 +31,8 @@ import {
   assignUserRolesRequestSchema,
   assignUserPermissionsRequestSchema,
   userAccessSchema,
+  myPermissionGrantSchema,
+  myPermissionsResponseSchema,
 } from '@sigoa/shared';
 import { createAuthRouter } from '../src/modules/auth/infrastructure/http/auth.routes.js';
 import { createUsersRouter } from '../src/modules/users/infrastructure/http/users.routes.js';
@@ -41,6 +43,8 @@ import { createPermissionsRouter } from '../src/modules/authorization/infrastruc
 import type { PermissionsController } from '../src/modules/authorization/infrastructure/http/permissions.controller.js';
 import { createUserAccessRouter } from '../src/modules/authorization/infrastructure/http/user-access.routes.js';
 import type { UserAccessController } from '../src/modules/authorization/infrastructure/http/user-access.controller.js';
+import { createMePermissionsRouter } from '../src/modules/authorization/infrastructure/http/me-permissions.routes.js';
+import type { MePermissionsController } from '../src/modules/authorization/infrastructure/http/me-permissions.controller.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1433,6 +1437,55 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
         spec.paths['/users/{id}/effective-permissions'].get.responses,
       ).sort();
       expect(effCodes).toEqual(['200', '400', '401', '403', '404']);
+    });
+
+    it('documents GET /me/permissions with bearerAuth, 200/400/401 responses and parity with mePermissionsRouter (HU-008, T-008-04)', () => {
+      expect(spec.paths['/me/permissions']).toBeDefined();
+      expect(spec.paths['/me/permissions'].get).toBeDefined();
+
+      const op = spec.paths['/me/permissions'].get;
+      expect(op.operationId).toBe('getMyPermissions');
+      expect(op.security).toEqual([{ bearerAuth: [] }]);
+
+      const res200 = op.responses['200'];
+      expect(res200.headers['Cache-Control'].example).toBe('no-store');
+      expect(
+        myPermissionsResponseSchema.safeParse(res200.content['application/json'].example).success,
+      ).toBe(true);
+
+      expect(
+        apiErrorResponseSchema.safeParse(op.responses['400'].content['application/json'].example)
+          .success,
+      ).toBe(true);
+      expect(
+        apiErrorResponseSchema.safeParse(op.responses['401'].content['application/json'].example)
+          .success,
+      ).toBe(true);
+
+      const grantComp = spec.components.schemas.MyPermissionGrant;
+      expect(grantComp).toBeDefined();
+      expect(Object.keys(grantComp.properties).sort()).toEqual(
+        Object.keys(myPermissionGrantSchema.shape).sort(),
+      );
+
+      const router = createMePermissionsRouter({
+        controller: { getMyPermissions: vi.fn() } as unknown as MePermissionsController,
+        authenticate: vi.fn(),
+      });
+
+      const routerEndpoints: { method: string; path: string }[] = [];
+      for (const layer of router.stack) {
+        if (layer.route) {
+          const routePath = layer.route.path;
+          const methods = Object.keys(layer.route.methods);
+          for (const method of methods) {
+            const normalizedPath = '/me' + (routePath === '/' ? '' : routePath);
+            routerEndpoints.push({ method: method.toLowerCase(), path: normalizedPath });
+          }
+        }
+      }
+
+      expect(routerEndpoints).toEqual([{ method: 'get', path: '/me/permissions' }]);
     });
   });
 });
