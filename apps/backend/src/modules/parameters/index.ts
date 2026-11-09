@@ -68,3 +68,4 @@ export * from './application/program-dto.js';
 export * from './infrastructure/http/parameters.controller.js';
 export * from './infrastructure/http/parameters.routes.js';
 export * from './infrastructure/prisma/prisma-program-repository.js';
+export * from './infrastructure/prisma/seed/program-seed.js';
