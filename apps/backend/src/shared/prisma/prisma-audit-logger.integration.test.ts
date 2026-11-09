@@ -392,4 +392,41 @@ describe('PrismaAuditLogger Integration (PostgreSQL real)', () => {
       expect(headAfter?.hash).toBe(headBefore?.hash);
     });
   });
+
+  it('persists an ACCESS_DENIED audit action record with its payload', async () => {
+    await uow.run(async () => {
+      await logger.log({
+        action: 'ACCESS_DENIED',
+        actor: 'user-denied-1',
+        ip: '192.168.1.50',
+        entity: 'Permission',
+        entityId: 'usuario.crear',
+        after: {
+          reason: 'MISSING_PERMISSION',
+          requiredScope: 'GLOBAL',
+          grantedScope: null,
+          method: 'POST',
+          route: '/users',
+        },
+      });
+    });
+
+    const row = await prisma.auditLog.findFirst({
+      where: {
+        actor: 'user-denied-1',
+        action: 'ACCESS_DENIED',
+      },
+    });
+
+    expect(row).not.toBeNull();
+    expect(row?.entity).toBe('Permission');
+    expect(row?.entityId).toBe('usuario.crear');
+    expect(row?.after).toEqual({
+      reason: 'MISSING_PERMISSION',
+      requiredScope: 'GLOBAL',
+      grantedScope: null,
+      method: 'POST',
+      route: '/users',
+    });
+  });
 });

@@ -15,6 +15,7 @@ describe('AuditLogger Port (RS-043, RNF-016)', () => {
       'PARAMETER_CHANGE',
       'DOWNLOAD',
       'PUBLIC_RESPONSE',
+      'ACCESS_DENIED',
     ];
 
     expect(AUDIT_ACTIONS).toEqual(expectedActions);

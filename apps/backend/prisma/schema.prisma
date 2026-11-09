@@ -107,6 +107,7 @@ enum AuditAction {
   PARAMETER_CHANGE
   DOWNLOAD
   PUBLIC_RESPONSE
+  ACCESS_DENIED
 }
 
 model AuditLog {
