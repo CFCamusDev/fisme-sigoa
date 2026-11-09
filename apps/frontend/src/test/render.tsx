@@ -33,9 +33,16 @@ export function renderWithProviders(
   ui: React.ReactElement,
   options: CustomRenderOptions = {},
 ): RenderResult & { queryClient: QueryClient } {
-  const queryClient = options.queryClient ?? createTestQueryClient();
-  const withRouter = options.withRouter ?? true;
-  const initialEntries = options.initialEntries ?? ['/'];
+  const {
+    queryClient: customQueryClient,
+    initialEntries: customInitialEntries,
+    withRouter: customWithRouter,
+    permissions,
+    ...rtlOptions
+  } = options;
+  const queryClient = customQueryClient ?? createTestQueryClient();
+  const withRouter = customWithRouter ?? true;
+  const initialEntries = customInitialEntries ?? ['/'];
 
   const currentAuth = useAuthStore.getState();
   if (!selectIsAuthenticated(currentAuth) || !currentAuth.user) {
@@ -55,11 +62,11 @@ export function renderWithProviders(
   }
 
   const activeUserId = useAuthStore.getState().user?.id;
-  if (activeUserId && options.permissions !== null) {
+  if (activeUserId && permissions !== null) {
     const existingData = queryClient.getQueryData(['me', 'permissions', activeUserId]);
     if (!existingData) {
       queryClient.setQueryData(['me', 'permissions', activeUserId], {
-        permissions: options.permissions ?? DEFAULT_TEST_PERMISSIONS,
+        permissions: permissions ?? DEFAULT_TEST_PERMISSIONS,
       });
     }
   }
@@ -69,7 +76,7 @@ export function renderWithProviders(
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     );
 
-    const result = render(ui, { wrapper: Wrapper, ...options });
+    const result = render(ui, { wrapper: Wrapper, ...rtlOptions });
     return { ...result, queryClient };
   }
 
@@ -88,7 +95,7 @@ export function renderWithProviders(
 
   let result!: RenderResult;
   act(() => {
-    result = render(<RouterProvider router={router} />, { wrapper: Wrapper, ...options });
+    result = render(<RouterProvider router={router} />, { wrapper: Wrapper, ...rtlOptions });
   });
 
   return {

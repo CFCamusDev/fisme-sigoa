@@ -578,4 +578,37 @@ describe('UsersPage component (T-003-27)', () => {
     expect(await screen.findByText('Error al cambiar estado')).toBeInTheDocument();
     expect(screen.getByText('María Vargas')).toBeInTheDocument();
   });
+
+  it('hides create, edit and status action buttons when the user only has usuario.ver permission (HU-008, T-008-08, CA3)', async () => {
+    server.use(
+      http.get('http://localhost:3000/roles', () => HttpResponse.json({ items: [] })),
+      http.get('http://localhost:3000/users', () =>
+        HttpResponse.json({
+          items: [mockUserActive, mockUserInactiveWithoutDni],
+          total: 2,
+          page: 1,
+          pageSize: 20,
+          totalPages: 1,
+        }),
+      ),
+    );
+
+    renderWithProviders(<UsersPage />, {
+      permissions: [{ code: 'usuario.ver', scope: 'GLOBAL' }],
+    });
+
+    expect(await screen.findByText('Carlos Mendoza Ruiz')).toBeInTheDocument();
+    expect(screen.getByText('María Vargas')).toBeInTheDocument();
+
+    expect(screen.queryByRole('link', { name: /nuevo usuario/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: /editar a carlos mendoza ruiz/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /inactivar a carlos mendoza ruiz/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /reactivar a maría vargas/i }),
+    ).not.toBeInTheDocument();
+  });
 });

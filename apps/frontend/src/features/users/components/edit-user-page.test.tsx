@@ -183,4 +183,25 @@ describe('EditUserPage component (T-003-27)', () => {
     expect(screen.getByRole('heading', { name: 'Permisos directos' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Permisos efectivos' })).toBeInTheDocument();
   });
+
+  it('hides UserAccessPanel when the user has usuario.editar but lacks permiso.asignar (HU-008, T-008-08, CA3)', async () => {
+    server.use(
+      http.get('http://localhost:3000/users/usr-123', () => HttpResponse.json(mockUser)),
+      http.get('http://localhost:3000/roles', () => HttpResponse.json({ items: mockRoles })),
+    );
+
+    renderWithProviders(<EditUserPage userId="usr-123" />, {
+      permissions: [
+        { code: 'usuario.ver', scope: 'GLOBAL' },
+        { code: 'usuario.editar', scope: 'GLOBAL' },
+      ],
+    });
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Editar usuario: Martha Quispe' }),
+    ).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /guardar cambios/i })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Roles asignados' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Permisos directos' })).not.toBeInTheDocument();
+  });
 });
