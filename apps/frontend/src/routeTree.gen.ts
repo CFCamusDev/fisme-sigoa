@@ -15,6 +15,7 @@ import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as AuthRecuperarContrasenaRouteImport } from './routes/_auth/recuperar-contrasena'
 import { Route as EncuestaTokenRouteImport } from './routes/encuesta/$token'
+import { Route as AppConfiguracionProgramaRouteImport } from './routes/_app/configuracion/programa'
 import { Route as AppRolesIndexRouteImport } from './routes/_app/roles/index'
 import { Route as AppRolesNuevoRouteImport } from './routes/_app/roles/nuevo'
 import { Route as AppUsuariosIndexRouteImport } from './routes/_app/usuarios/index'
@@ -53,6 +54,12 @@ const EncuestaTokenRoute = EncuestaTokenRouteImport.update({
   path: '/encuesta/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppConfiguracionProgramaRoute =
+  AppConfiguracionProgramaRouteImport.update({
+    id: '/configuracion/programa',
+    path: '/configuracion/programa',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppRolesIndexRoute = AppRolesIndexRouteImport.update({
   id: '/roles/',
   path: '/roles/',
@@ -104,6 +111,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof AuthLoginRoute
   '/recuperar-contrasena': typeof AuthRecuperarContrasenaRoute
   '/encuesta/$token': typeof EncuestaTokenRoute
+  '/configuracion/programa': typeof AppConfiguracionProgramaRoute
   '/roles/nuevo': typeof AppRolesNuevoRoute
   '/usuarios/nuevo': typeof AppUsuariosNuevoRoute
   '/activar/$token': typeof AuthActivarTokenRoute
@@ -119,6 +127,7 @@ export interface FileRoutesByTo {
   '/login': typeof AuthLoginRoute
   '/recuperar-contrasena': typeof AuthRecuperarContrasenaRoute
   '/encuesta/$token': typeof EncuestaTokenRoute
+  '/configuracion/programa': typeof AppConfiguracionProgramaRoute
   '/roles/nuevo': typeof AppRolesNuevoRoute
   '/usuarios/nuevo': typeof AppUsuariosNuevoRoute
   '/activar/$token': typeof AuthActivarTokenRoute
@@ -137,6 +146,7 @@ export interface FileRoutesById {
   '/_auth/recuperar-contrasena': typeof AuthRecuperarContrasenaRoute
   '/encuesta/$token': typeof EncuestaTokenRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/configuracion/programa': typeof AppConfiguracionProgramaRoute
   '/_app/roles/nuevo': typeof AppRolesNuevoRoute
   '/_app/usuarios/nuevo': typeof AppUsuariosNuevoRoute
   '/_auth/activar/$token': typeof AuthActivarTokenRoute
@@ -154,6 +164,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/recuperar-contrasena'
     | '/encuesta/$token'
+    | '/configuracion/programa'
     | '/roles/nuevo'
     | '/usuarios/nuevo'
     | '/activar/$token'
@@ -169,6 +180,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/recuperar-contrasena'
     | '/encuesta/$token'
+    | '/configuracion/programa'
     | '/roles/nuevo'
     | '/usuarios/nuevo'
     | '/activar/$token'
@@ -186,6 +198,7 @@ export interface FileRouteTypes {
     | '/_auth/recuperar-contrasena'
     | '/encuesta/$token'
     | '/_app/'
+    | '/_app/configuracion/programa'
     | '/_app/roles/nuevo'
     | '/_app/usuarios/nuevo'
     | '/_auth/activar/$token'
@@ -246,6 +259,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/encuesta/$token'
       preLoaderRoute: typeof EncuestaTokenRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_app/configuracion/programa': {
+      id: '/_app/configuracion/programa'
+      path: '/configuracion/programa'
+      fullPath: '/configuracion/programa'
+      preLoaderRoute: typeof AppConfiguracionProgramaRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/roles/': {
       id: '/_app/roles/'
@@ -315,6 +335,7 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
+  AppConfiguracionProgramaRoute: typeof AppConfiguracionProgramaRoute
   AppRolesNuevoRoute: typeof AppRolesNuevoRoute
   AppUsuariosNuevoRoute: typeof AppUsuariosNuevoRoute
   AppRolesIndexRoute: typeof AppRolesIndexRoute
@@ -326,6 +347,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
+  AppConfiguracionProgramaRoute: AppConfiguracionProgramaRoute,
   AppRolesNuevoRoute: AppRolesNuevoRoute,
   AppUsuariosNuevoRoute: AppUsuariosNuevoRoute,
   AppRolesIndexRoute: AppRolesIndexRoute,
