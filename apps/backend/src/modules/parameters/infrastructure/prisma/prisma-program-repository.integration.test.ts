@@ -75,7 +75,7 @@ describe('PrismaProgramRepository Integration (PostgreSQL real, parameters modul
 
       await tx2AttemptPromise;
       await new Promise<void>((resolve) => {
-        setTimeout(resolve, 50);
+        setImmediate(resolve);
       });
 
       p1!.applyChanges({ name: 'Nombre Tx1' }, 'admin-1');
