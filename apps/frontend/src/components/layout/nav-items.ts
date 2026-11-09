@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { LayoutDashboard, ShieldCheck, Users } from 'lucide-react';
+import { Building2, LayoutDashboard, ShieldCheck, Users } from 'lucide-react';
 
 export interface NavItem {
   title: string;
@@ -25,5 +25,11 @@ export const MAIN_NAV_ITEMS: readonly NavItem[] = [
     href: '/roles',
     icon: ShieldCheck,
     permission: 'rol.ver',
+  },
+  {
+    title: 'Programa',
+    href: '/configuracion/programa',
+    icon: Building2,
+    permission: 'parametro.ver',
   },
 ] as const;

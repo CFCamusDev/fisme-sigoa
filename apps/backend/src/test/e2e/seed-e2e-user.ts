@@ -3,6 +3,7 @@ import { createPrismaClient } from '../../shared/prisma/prisma-client.js';
 import { assertTestDatabase, getTestDatabaseUrl } from '../db/assert-test-database.js';
 import { Argon2PasswordHasher } from '../../modules/auth/infrastructure/security/argon2-password-hasher.js';
 import { seedAuthorization } from '../../modules/authorization/infrastructure/prisma/seed/authorization-seed.js';
+import { seedProgram } from '../../modules/parameters/infrastructure/prisma/seed/program-seed.js';
 
 export interface ActivationTokenSeedOptions {
   token: string;
@@ -92,6 +93,7 @@ export async function seedE2EUser(
 
     if (options.roles && options.roles.length > 0) {
       await seedAuthorization(prisma);
+      await seedProgram(prisma);
       const roles = await prisma.role.findMany({
         where: { code: { in: options.roles } },
       });

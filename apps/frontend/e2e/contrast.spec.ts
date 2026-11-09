@@ -436,4 +436,52 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA)', () => {
       await expectNoContrastViolations(page, { context: 'roles-deactivation-alertdialog' });
     }
   });
+
+  test('program configuration page has no contrast violations (editable and read-only) (HU-009, T-009-12)', async ({
+    page,
+  }) => {
+    // 1. Modo editable con Administrador
+    const adminEmail = `contrast-admin-prog-${Date.now()}@example.test`;
+    await loginAsTestUser(page, {
+      email: adminEmail,
+      roles: ['ADMINISTRATOR'],
+    });
+
+    await page.setViewportSize({ width: 1280, height: 720 });
+    const [progRes] = await Promise.all([
+      page.waitForResponse((res) => res.url().includes('/program') && res.status() === 200),
+      page.goto('/configuracion/programa'),
+    ]);
+    expect(progRes.ok()).toBe(true);
+
+    await expect(page.getByRole('heading', { level: 1, name: 'Programa' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /guardar cambios/i })).toBeVisible();
+
+    // 1.1 Escritorio
+    await expectNoContrastViolations(page, { context: 'program-config-editable-desktop' });
+
+    // 1.2 Móvil
+    await page.setViewportSize({ width: 375, height: 812 });
+    await expectNoContrastViolations(page, { context: 'program-config-editable-mobile' });
+    await page.setViewportSize({ width: 1280, height: 720 });
+
+    // 2. Modo solo lectura con Miembro del Comité (tiene parametro.ver, sin parametro.editar)
+    const committeeEmail = `contrast-committee-prog-${Date.now()}@example.test`;
+    await loginAsTestUser(page, {
+      email: committeeEmail,
+      roles: ['COMMITTEE_MEMBER'],
+    });
+
+    const [progResReadonly] = await Promise.all([
+      page.waitForResponse((res) => res.url().includes('/program') && res.status() === 200),
+      page.goto('/configuracion/programa'),
+    ]);
+    expect(progResReadonly.ok()).toBe(true);
+
+    await expect(page.getByRole('heading', { level: 1, name: 'Programa' })).toBeVisible();
+    await expect(page.getByText(/solo lectura: no tienes permiso para editar/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /guardar cambios/i })).toHaveCount(0);
+
+    await expectNoContrastViolations(page, { context: 'program-config-readonly-desktop' });
+  });
 });
