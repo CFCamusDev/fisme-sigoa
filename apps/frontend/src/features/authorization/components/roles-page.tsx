@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Link } from '@tanstack/react-router';
 import { PageHeader } from '@/components/common/page-header.js';
 import { ErrorState } from '@/components/common/error-state.js';
+import { Can } from '@/components/common/can.js';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
 import { Button, buttonVariants } from '@/components/ui/button.js';
 import { cn } from '@/lib/utils.js';
@@ -23,9 +24,11 @@ export function RolesPage() {
         title="Roles"
         description="Administra los grupos de permisos de FISME-SIGOA"
         actions={
-          <Link to="/roles/nuevo" className={cn(buttonVariants({ variant: 'default' }))}>
-            Nuevo rol
-          </Link>
+          <Can permission="rol.editar">
+            <Link to="/roles/nuevo" className={cn(buttonVariants({ variant: 'default' }))}>
+              Nuevo rol
+            </Link>
+          </Can>
         }
       />
 

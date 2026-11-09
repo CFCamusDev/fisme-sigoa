@@ -2,6 +2,7 @@ import * as React from 'react';
 import { PROTECTED_ROLE_CODE, type PermissionDto, type RoleDto } from '@sigoa/shared';
 import { Button } from '@/components/ui/button.js';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
+import { Can } from '@/components/common/can.js';
 import { useUpdateRolePermissions } from '../hooks/index.js';
 import {
   buildDraft,
@@ -106,29 +107,31 @@ export function PermissionMatrixEditor({
         headingLevel="h2"
       />
 
-      <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-border bg-card p-4 shadow-md">
-        <div aria-live="polite" className="text-label font-medium text-foreground">
-          {changesCount === 1 ? '1 cambio sin guardar' : `${changesCount} cambios sin guardar`}
+      <Can permission="rol.editar">
+        <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-border bg-card p-4 shadow-md">
+          <div aria-live="polite" className="text-label font-medium text-foreground">
+            {changesCount === 1 ? '1 cambio sin guardar' : `${changesCount} cambios sin guardar`}
+          </div>
+          <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleDiscard}
+              disabled={isPending || changesCount === 0}
+            >
+              Descartar
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSave}
+              disabled={isPending || changesCount === 0}
+              aria-busy={isPending}
+            >
+              {isPending ? 'Guardando…' : 'Guardar cambios'}
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleDiscard}
-            disabled={isPending || changesCount === 0}
-          >
-            Descartar
-          </Button>
-          <Button
-            type="button"
-            onClick={handleSave}
-            disabled={isPending || changesCount === 0}
-            aria-busy={isPending}
-          >
-            {isPending ? 'Guardando…' : 'Guardar cambios'}
-          </Button>
-        </div>
-      </div>
+      </Can>
     </div>
   );
 }

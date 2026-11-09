@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Can } from '@/components/common/can';
 import { cn } from '@/lib/utils';
 import { useCreateUser, useRoles, useUpdateUser } from '../hooks';
 import { extractUserConflictField, getUserErrorMessage } from '../lib/user-error-message';
@@ -421,9 +422,11 @@ export function UserForm({ mode, initialUser, onSuccess }: UserFormProps) {
 
         {/* Botones de acción */}
         <div className="flex items-center gap-4 pt-4 border-t border-border">
-          <Button type="submit" disabled={isPending || rolesQuery.isError}>
-            {isPending ? 'Creando usuario...' : 'Crear usuario'}
-          </Button>
+          <Can permission="usuario.crear">
+            <Button type="submit" disabled={isPending || rolesQuery.isError}>
+              {isPending ? 'Creando usuario...' : 'Crear usuario'}
+            </Button>
+          </Can>
           <Link to="/usuarios" className={cn(buttonVariants({ variant: 'outline' }))}>
             Cancelar
           </Link>
@@ -590,9 +593,11 @@ export function UserForm({ mode, initialUser, onSuccess }: UserFormProps) {
 
       {/* Botones de acción */}
       <div className="flex items-center gap-4 pt-4 border-t border-border">
-        <Button type="submit" disabled={isPending}>
-          {isPending ? 'Guardando cambios...' : 'Guardar cambios'}
-        </Button>
+        <Can permission="usuario.editar">
+          <Button type="submit" disabled={isPending}>
+            {isPending ? 'Guardando cambios...' : 'Guardar cambios'}
+          </Button>
+        </Can>
         <Link to="/usuarios" className={cn(buttonVariants({ variant: 'outline' }))}>
           Cancelar
         </Link>

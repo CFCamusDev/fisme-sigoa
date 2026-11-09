@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { RoleDto, UserAccessRole } from '@sigoa/shared';
+import { renderWithProviders } from '@/test/render';
 import { UserRolesEditor } from './user-roles-editor';
 
 const mockCatalogRoles: RoleDto[] = [
@@ -37,12 +38,13 @@ describe('UserRolesEditor Component (HU-007, T-007-16, D19, D20)', () => {
       { id: 'role-teacher', code: 'TEACHER', name: 'Docente', status: 'ACTIVE' },
     ];
 
-    render(
+    renderWithProviders(
       <UserRolesEditor
         assignedRoles={assignedRoles}
         catalogRoles={mockCatalogRoles}
         onSave={vi.fn()}
       />,
+      { withRouter: false },
     );
 
     const teacherCheckbox = screen.getByLabelText(/Docente/);
@@ -60,12 +62,13 @@ describe('UserRolesEditor Component (HU-007, T-007-16, D19, D20)', () => {
       { id: 'role-legacy', code: 'LEGACY_ROLE', name: 'Rol Antiguo', status: 'INACTIVE' },
     ];
 
-    render(
+    renderWithProviders(
       <UserRolesEditor
         assignedRoles={assignedRoles}
         catalogRoles={mockCatalogRoles}
         onSave={vi.fn()}
       />,
+      { withRouter: false },
     );
 
     // Debe mostrarse el rol inactivo con su badge
@@ -88,12 +91,13 @@ describe('UserRolesEditor Component (HU-007, T-007-16, D19, D20)', () => {
       { id: 'role-teacher', code: 'TEACHER', name: 'Docente', status: 'ACTIVE' },
     ];
 
-    render(
+    renderWithProviders(
       <UserRolesEditor
         assignedRoles={assignedRoles}
         catalogRoles={mockCatalogRoles}
         onSave={vi.fn()}
       />,
+      { withRouter: false },
     );
 
     const teacherCheckbox = screen.getByLabelText(/Docente/);
@@ -111,12 +115,13 @@ describe('UserRolesEditor Component (HU-007, T-007-16, D19, D20)', () => {
       { id: 'role-teacher', code: 'TEACHER', name: 'Docente', status: 'ACTIVE' },
     ];
 
-    render(
+    renderWithProviders(
       <UserRolesEditor
         assignedRoles={assignedRoles}
         catalogRoles={mockCatalogRoles}
         onSave={handleSave}
       />,
+      { withRouter: false },
     );
 
     const directorCheckbox = screen.getByLabelText(/Director de Programa/);
@@ -138,13 +143,14 @@ describe('UserRolesEditor Component (HU-007, T-007-16, D19, D20)', () => {
       { id: 'role-teacher', code: 'TEACHER', name: 'Docente', status: 'ACTIVE' },
     ];
 
-    render(
+    renderWithProviders(
       <UserRolesEditor
         assignedRoles={assignedRoles}
         catalogRoles={mockCatalogRoles}
         onSave={vi.fn()}
         onDiscard={handleDiscard}
       />,
+      { withRouter: false },
     );
 
     const directorCheckbox = screen.getByLabelText(/Director de Programa/);
@@ -164,13 +170,14 @@ describe('UserRolesEditor Component (HU-007, T-007-16, D19, D20)', () => {
       { id: 'role-teacher', code: 'TEACHER', name: 'Docente', status: 'ACTIVE' },
     ];
 
-    render(
+    renderWithProviders(
       <UserRolesEditor
         assignedRoles={assignedRoles}
         catalogRoles={mockCatalogRoles}
         onSave={vi.fn()}
         isSaving={true}
       />,
+      { withRouter: false },
     );
 
     expect(screen.getByText('Guardando…')).toBeInTheDocument();

@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import { DataTable, type DataTableColumn } from '@/components/common/data-table.js';
 import { StatusBadge } from '@/components/common/status-badge.js';
+import { Can } from '@/components/common/can.js';
 import { buttonVariants } from '@/components/ui/button.js';
 import { cn } from '@/lib/utils.js';
 import type { RoleDto } from '@sigoa/shared';
@@ -94,9 +95,11 @@ export function RolesTable({
       emptyTitle="No hay roles registrados"
       emptyDescription="Aún no se han configurado roles en el sistema."
       emptyAction={
-        <Link to="/roles/nuevo" className={cn(buttonVariants({ variant: 'default' }))}>
-          Nuevo rol
-        </Link>
+        <Can permission="rol.editar">
+          <Link to="/roles/nuevo" className={cn(buttonVariants({ variant: 'default' }))}>
+            Nuevo rol
+          </Link>
+        </Can>
       }
     />
   );

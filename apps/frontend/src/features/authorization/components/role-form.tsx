@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input.js';
 import { Textarea } from '@/components/ui/textarea.js';
 import { Label } from '@/components/ui/label.js';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
+import { Can } from '@/components/common/can.js';
 import { useCreateRole, useUpdateRole } from '../hooks/index.js';
 import { getRoleErrorMessage, isRoleNameConflict } from '../lib/role-error-message.js';
 
@@ -191,13 +192,15 @@ export function RoleForm({ mode, initialRole, onSuccess, onCancel }: RoleFormPro
       </div>
 
       <div className="flex items-center gap-3 pt-2">
-        <Button
-          type="submit"
-          disabled={isPending || isSubmitting}
-          aria-busy={isPending || isSubmitting}
-        >
-          {isPending ? 'Guardando…' : 'Guardar'}
-        </Button>
+        <Can permission="rol.editar">
+          <Button
+            type="submit"
+            disabled={isPending || isSubmitting}
+            aria-busy={isPending || isSubmitting}
+          >
+            {isPending ? 'Guardando…' : 'Guardar'}
+          </Button>
+        </Can>
         {onCancel && (
           <Button type="button" variant="outline" onClick={onCancel} disabled={isPending}>
             Cancelar

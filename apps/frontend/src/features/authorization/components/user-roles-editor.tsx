@@ -3,6 +3,7 @@ import type { RoleDto, UserAccessRole } from '@sigoa/shared';
 import { Button } from '@/components/ui/button.js';
 import { Checkbox } from '@/components/ui/checkbox.js';
 import { StatusBadge } from '@/components/common/status-badge.js';
+import { Can } from '@/components/common/can.js';
 import { cn } from '@/lib/utils.js';
 import {
   buildUserRolesDraft,
@@ -143,24 +144,26 @@ export function UserRolesEditor({
         </p>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-border bg-card p-4 shadow-xs">
-        <div aria-live="polite" className="text-xs font-medium text-foreground">
-          {changesCount === 1 ? '1 cambio sin guardar' : `${changesCount} cambios sin guardar`}
+      <Can permission="permiso.asignar">
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-border bg-card p-4 shadow-xs">
+          <div aria-live="polite" className="text-xs font-medium text-foreground">
+            {changesCount === 1 ? '1 cambio sin guardar' : `${changesCount} cambios sin guardar`}
+          </div>
+          <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleDiscard}
+              disabled={isSaving || changesCount === 0}
+            >
+              Descartar
+            </Button>
+            <Button type="button" onClick={handleSave} disabled={saveDisabled} aria-busy={isSaving}>
+              {isSaving ? 'Guardando…' : 'Guardar roles'}
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleDiscard}
-            disabled={isSaving || changesCount === 0}
-          >
-            Descartar
-          </Button>
-          <Button type="button" onClick={handleSave} disabled={saveDisabled} aria-busy={isSaving}>
-            {isSaving ? 'Guardando…' : 'Guardar roles'}
-          </Button>
-        </div>
-      </div>
+      </Can>
     </div>
   );
 }

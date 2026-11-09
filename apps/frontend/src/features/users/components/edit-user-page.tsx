@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/common/page-header';
 import { LoadingState } from '@/components/common/loading-state';
 import { ErrorState } from '@/components/common/error-state';
+import { Can } from '@/components/common/can';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { UserAccessPanel } from '@/features/authorization';
@@ -84,14 +85,16 @@ export function EditUserPage({ userId }: EditUserPageProps) {
         <UserForm mode="edit" initialUser={userQuery.data} />
       </section>
 
-      <section className="surface rounded-lg p-6">
-        <UserAccessPanel
-          userId={userId}
-          onUserAccessChanged={() => {
-            queryClient.invalidateQueries({ queryKey: usersKeys.all });
-          }}
-        />
-      </section>
+      <Can permission="permiso.asignar">
+        <section className="surface rounded-lg p-6">
+          <UserAccessPanel
+            userId={userId}
+            onUserAccessChanged={() => {
+              queryClient.invalidateQueries({ queryKey: usersKeys.all });
+            }}
+          />
+        </section>
+      </Can>
     </div>
   );
 }

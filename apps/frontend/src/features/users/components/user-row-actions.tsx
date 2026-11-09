@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from '@tanstack/react-router';
+import { Can } from '@/components/common/can';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/auth.store';
 import { cn } from '@/lib/utils';
@@ -126,40 +127,42 @@ export function UserRowActions({
   }
 
   return (
-    <div className="flex items-center justify-end gap-2">
-      <Link
-        to="/usuarios/$userId/editar"
-        params={{ userId: user.id }}
-        className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}
-        aria-label={`Editar a ${fullName}`}
-      >
-        Editar
-      </Link>
-
-      {user.status === 'ACTIVE' && !isSelf && (
-        <Button
-          ref={triggerBtnRef}
-          variant="outline"
-          size="sm"
-          onClick={() => setIsConfirmingDeactivation(true)}
-          disabled={isPending}
-          aria-label={`Inactivar a ${fullName}`}
+    <Can permission="usuario.editar">
+      <div className="flex items-center justify-end gap-2">
+        <Link
+          to="/usuarios/$userId/editar"
+          params={{ userId: user.id }}
+          className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}
+          aria-label={`Editar a ${fullName}`}
         >
-          Inactivar
-        </Button>
-      )}
+          Editar
+        </Link>
 
-      {user.status === 'INACTIVE' && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleReactivate}
-          disabled={isPending}
-          aria-label={`Reactivar a ${fullName}`}
-        >
-          Reactivar
-        </Button>
-      )}
-    </div>
+        {user.status === 'ACTIVE' && !isSelf && (
+          <Button
+            ref={triggerBtnRef}
+            variant="outline"
+            size="sm"
+            onClick={() => setIsConfirmingDeactivation(true)}
+            disabled={isPending}
+            aria-label={`Inactivar a ${fullName}`}
+          >
+            Inactivar
+          </Button>
+        )}
+
+        {user.status === 'INACTIVE' && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleReactivate}
+            disabled={isPending}
+            aria-label={`Reactivar a ${fullName}`}
+          >
+            Reactivar
+          </Button>
+        )}
+      </div>
+    </Can>
   );
 }
