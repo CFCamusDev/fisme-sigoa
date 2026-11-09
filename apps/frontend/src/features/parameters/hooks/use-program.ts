@@ -9,11 +9,11 @@ export function useProgram(): UseQueryResult<ProgramDto, ApiError> {
     queryKey: programKeys.all,
     queryFn: getProgram,
     staleTime: 30_000,
-    retry: (failureCount, error) => {
+    retry: (_failureCount, error) => {
       if (error instanceof ApiError && (error.status === 403 || error.status === 404)) {
         return false;
       }
-      return failureCount < 3;
+      return false;
     },
   });
 }
