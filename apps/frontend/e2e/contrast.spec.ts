@@ -437,10 +437,9 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA)', () => {
     }
   });
 
-  test('program configuration page has no contrast violations (editable and read-only) (HU-009, T-009-12)', async ({
+  test('program configuration page has no contrast violations in editable mode (HU-009, T-009-12)', async ({
     page,
   }) => {
-    // 1. Modo editable con Administrador
     const adminEmail = `contrast-admin-prog-${Date.now()}@example.test`;
     await loginAsTestUser(page, {
       email: adminEmail,
@@ -457,21 +456,24 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA)', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Programa' })).toBeVisible();
     await expect(page.getByRole('button', { name: /guardar cambios/i })).toBeVisible();
 
-    // 1.1 Escritorio
+    // 1. Escritorio
     await expectNoContrastViolations(page, { context: 'program-config-editable-desktop' });
 
-    // 1.2 Móvil
+    // 2. Móvil
     await page.setViewportSize({ width: 375, height: 812 });
     await expectNoContrastViolations(page, { context: 'program-config-editable-mobile' });
-    await page.setViewportSize({ width: 1280, height: 720 });
+  });
 
-    // 2. Modo solo lectura con Miembro del Comité (tiene parametro.ver, sin parametro.editar)
+  test('program configuration page has no contrast violations in read-only mode (HU-009, T-009-12)', async ({
+    page,
+  }) => {
     const committeeEmail = `contrast-committee-prog-${Date.now()}@example.test`;
     await loginAsTestUser(page, {
       email: committeeEmail,
       roles: ['COMMITTEE_MEMBER'],
     });
 
+    await page.setViewportSize({ width: 1280, height: 720 });
     const [progResReadonly] = await Promise.all([
       page.waitForResponse((res) => res.url().includes('/program') && res.status() === 200),
       page.goto('/configuracion/programa'),
