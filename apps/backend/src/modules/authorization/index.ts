@@ -13,7 +13,9 @@ import {
   AuditAccessDenialRecorder,
   type AccessDenialErrorLogger,
 } from './application/audit-access-denial-recorder.js';
+import { ResourceOwnershipRegistry } from './application/resource-ownership-registry.js';
 import type { AccessDenialRecorder } from './domain/ports/access-denial-recorder.js';
+import type { ResourceOwnershipResolver } from './domain/ports/resource-ownership-resolver.js';
 import { createRequirePermission } from './infrastructure/http/require-permission.js';
 import { RolesController } from './infrastructure/http/roles.controller.js';
 import { createRolesRouter } from './infrastructure/http/roles.routes.js';
@@ -66,6 +68,7 @@ export interface AuthorizationModuleServices {
   readonly listRolesUseCase: ListRolesUseCase;
   readonly requirePermission: ReturnType<typeof createRequirePermission>;
   readonly permissionCache: PermissionCacheInvalidator;
+  readonly ownershipRegistry: ResourceOwnershipRegistry;
 }
 
 export interface AuthorizationModuleDependencies {
@@ -74,6 +77,7 @@ export interface AuthorizationModuleDependencies {
   readonly auditLogger?: AuditLogger;
   readonly logger?: AccessDenialErrorLogger;
   readonly accessDenialRecorder?: AccessDenialRecorder;
+  readonly ownershipResolvers?: readonly ResourceOwnershipResolver[];
   readonly permissionCache?: {
     ttlMs?: number;
     maxEntries?: number;
@@ -100,7 +104,8 @@ export function createAuthorizationServices(
           logger: deps.logger,
         })
       : undefined);
-  const authorizer = new PermissionAuthorizer(cachingGrantReader, recorder);
+  const ownershipRegistry = new ResourceOwnershipRegistry(deps.ownershipResolvers);
+  const authorizer = new PermissionAuthorizer(cachingGrantReader, recorder, ownershipRegistry);
   const listRolesUseCase = new ListRolesUseCase({
     roleReader,
     authorizer,
@@ -115,6 +120,7 @@ export function createAuthorizationServices(
     listRolesUseCase,
     requirePermission,
     permissionCache: cachingGrantReader,
+    ownershipRegistry,
   };
 }
 

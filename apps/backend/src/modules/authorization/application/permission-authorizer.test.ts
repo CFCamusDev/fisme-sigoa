@@ -1,7 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ForbiddenError } from '../../../shared/errors/app-error.js';
-import type { AccessDenial, AccessDenialRecorder, GrantReader } from '../domain/index.js';
+import type {
+  AccessDenial,
+  AccessDenialRecorder,
+  GrantReader,
+  ResourceOwnershipResolver,
+} from '../domain/index.js';
 import { PermissionAuthorizer } from './permission-authorizer.js';
+import { ResourceOwnershipRegistry } from './resource-ownership-registry.js';
 
 describe('PermissionAuthorizer Unit Tests (F4, RS-002, RS-011, RS-012, RF-008)', () => {
   const actorId = 'actor-user-uuid';
@@ -187,5 +193,180 @@ describe('PermissionAuthorizer Unit Tests (F4, RS-002, RS-011, RS-012, RF-008)',
         scope: 'GLOBAL',
       }),
     ).rejects.toThrow('DB connection lost');
+  });
+
+  describe('assertAllowedOnResource (RS-011, RF-008, CA2)', () => {
+    function createResourceSetup(
+      grants: Array<{ permission: string; scope: 'GLOBAL' | 'OWN' }>,
+      resolvers: ResourceOwnershipResolver[] = [],
+    ) {
+      const recordedDenials: AccessDenial[] = [];
+      const grantReader: GrantReader = {
+        findGrantsByUserId: vi.fn().mockResolvedValue(grants),
+      };
+      const recorder: AccessDenialRecorder = {
+        record: vi.fn(async (denial: AccessDenial) => {
+          recordedDenials.push(denial);
+        }),
+      };
+      const registry = new ResourceOwnershipRegistry(resolvers);
+      const authorizer = new PermissionAuthorizer(grantReader, recorder, registry);
+      return { authorizer, grantReader, recorder, registry, recordedDenials };
+    }
+
+    it('allows a GLOBAL grant on a resource without calling the ownership resolver', async () => {
+      const resolver: ResourceOwnershipResolver = {
+        resourceType: 'CourseMeasurement',
+        resolveOwnership: vi.fn(),
+      };
+      const { authorizer, recordedDenials } = createResourceSetup(
+        [{ permission: 'medicion.ver', scope: 'GLOBAL' }],
+        [resolver],
+      );
+
+      await expect(
+        authorizer.assertAllowedOnResource({
+          actorId,
+          permission: 'medicion.ver',
+          resource: { type: 'CourseMeasurement', id: 'cm-1' },
+        }),
+      ).resolves.toBeUndefined();
+
+      expect(resolver.resolveOwnership).not.toHaveBeenCalled();
+      expect(recordedDenials).toHaveLength(0);
+    });
+
+    it('allows an OWN grant when the actor is the owner of the resource', async () => {
+      const resolver: ResourceOwnershipResolver = {
+        resourceType: 'CourseMeasurement',
+        resolveOwnership: vi.fn().mockResolvedValue('OWNER'),
+      };
+      const { authorizer, recordedDenials } = createResourceSetup(
+        [{ permission: 'medicion.ver', scope: 'OWN' }],
+        [resolver],
+      );
+
+      await expect(
+        authorizer.assertAllowedOnResource({
+          actorId,
+          permission: 'medicion.ver',
+          resource: { type: 'CourseMeasurement', id: 'cm-1' },
+        }),
+      ).resolves.toBeUndefined();
+
+      expect(resolver.resolveOwnership).toHaveBeenCalledWith(actorId, 'cm-1');
+      expect(recordedDenials).toHaveLength(0);
+    });
+
+    it('denies an OWN grant and records NOT_OWNER with resourceType and resourceId when the actor is not the owner', async () => {
+      const resolver: ResourceOwnershipResolver = {
+        resourceType: 'CourseMeasurement',
+        resolveOwnership: vi.fn().mockResolvedValue('NOT_OWNER'),
+      };
+      const { authorizer, recordedDenials } = createResourceSetup(
+        [{ permission: 'medicion.ver', scope: 'OWN' }],
+        [resolver],
+      );
+
+      await expect(
+        authorizer.assertAllowedOnResource({
+          actorId,
+          permission: 'medicion.ver',
+          resource: { type: 'CourseMeasurement', id: 'cm-foreign' },
+          meta: { method: 'GET', route: '/course-measurements/:id' },
+        }),
+      ).rejects.toThrow(ForbiddenError);
+
+      expect(recordedDenials).toEqual([
+        {
+          actorId,
+          permission: 'medicion.ver',
+          requiredScope: 'OWN',
+          grantedScope: 'OWN',
+          reason: 'NOT_OWNER',
+          method: 'GET',
+          route: '/course-measurements/:id',
+          resourceType: 'CourseMeasurement',
+          resourceId: 'cm-foreign',
+        },
+      ]);
+    });
+
+    it('denies an OWN grant with NOT_OWNER when the resource is NOT_FOUND (no enumeration)', async () => {
+      const resolver: ResourceOwnershipResolver = {
+        resourceType: 'CourseMeasurement',
+        resolveOwnership: vi.fn().mockResolvedValue('NOT_FOUND'),
+      };
+      const { authorizer, recordedDenials } = createResourceSetup(
+        [{ permission: 'medicion.ver', scope: 'OWN' }],
+        [resolver],
+      );
+
+      await expect(
+        authorizer.assertAllowedOnResource({
+          actorId,
+          permission: 'medicion.ver',
+          resource: { type: 'CourseMeasurement', id: 'cm-missing' },
+        }),
+      ).rejects.toThrow(ForbiddenError);
+
+      expect(recordedDenials[0]?.reason).toBe('NOT_OWNER');
+    });
+
+    it('denies an OWN grant with UNKNOWN_RESOURCE_TYPE when no resolver is registered', async () => {
+      const { authorizer, recordedDenials } = createResourceSetup([
+        { permission: 'medicion.ver', scope: 'OWN' },
+      ]);
+
+      await expect(
+        authorizer.assertAllowedOnResource({
+          actorId,
+          permission: 'medicion.ver',
+          resource: { type: 'UnregisteredResource', id: 'res-1' },
+        }),
+      ).rejects.toThrow(ForbiddenError);
+
+      expect(recordedDenials).toEqual([
+        {
+          actorId,
+          permission: 'medicion.ver',
+          requiredScope: 'OWN',
+          grantedScope: 'OWN',
+          reason: 'UNKNOWN_RESOURCE_TYPE',
+          resourceType: 'UnregisteredResource',
+          resourceId: 'res-1',
+        },
+      ]);
+    });
+
+    it('denies with MISSING_PERMISSION when the actor lacks the permission on the resource', async () => {
+      const { authorizer, recordedDenials } = createResourceSetup([]);
+
+      await expect(
+        authorizer.assertAllowedOnResource({
+          actorId,
+          permission: 'medicion.ver',
+          resource: { type: 'CourseMeasurement', id: 'cm-1' },
+        }),
+      ).rejects.toThrow(ForbiddenError);
+
+      expect(recordedDenials[0]?.reason).toBe('MISSING_PERMISSION');
+    });
+
+    it('denies with UNKNOWN_PERMISSION when the permission code is not in the catalog', async () => {
+      const { authorizer, recordedDenials } = createResourceSetup([
+        { permission: 'medicion.ver', scope: 'GLOBAL' },
+      ]);
+
+      await expect(
+        authorizer.assertAllowedOnResource({
+          actorId,
+          permission: 'inexistente.permiso',
+          resource: { type: 'CourseMeasurement', id: 'cm-1' },
+        }),
+      ).rejects.toThrow(ForbiddenError);
+
+      expect(recordedDenials[0]?.reason).toBe('UNKNOWN_PERMISSION');
+    });
   });
 });

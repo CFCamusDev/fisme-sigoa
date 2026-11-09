@@ -1,5 +1,6 @@
 export * from './permission-authorizer.js';
 export * from './audit-access-denial-recorder.js';
+export * from './resource-ownership-registry.js';
 export * from './list-roles.js';
 export * from './create-role.js';
 export * from './create-role.types.js';
