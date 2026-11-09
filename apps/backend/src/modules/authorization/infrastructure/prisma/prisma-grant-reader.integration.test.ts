@@ -8,6 +8,8 @@ import {
 } from '../../../../test/factories/authorization.js';
 import { createAuthenticatedActor } from '../../../../test/http/authenticated-actor.js';
 import { PrismaGrantReader } from './prisma-grant-reader.js';
+import { PermissionAuthorizer } from '../../application/permission-authorizer.js';
+import { ForbiddenError } from '../../../../shared/errors/app-error.js';
 
 describe('PrismaGrantReader Integration (PostgreSQL real, HU-006, T-006-11, CA3, RF-006, RS-002)', () => {
   const { getPrisma } = useTestDatabase();
@@ -88,5 +90,67 @@ describe('PrismaGrantReader Integration (PostgreSQL real, HU-006, T-006-11, CA3,
     // En la siguiente lectura las concesiones deben estar disponibles
     grants = await grantReader.findGrantsByUserId(userId);
     expect(grants).toContainEqual({ permission: 'catalogo.ver', scope: 'GLOBAL' });
+  });
+
+  it('applies a direct OWN grant and removes access on the next read after revocation', async () => {
+    const permission = await prisma.permission.findUniqueOrThrow({
+      where: { code: 'usuario.ver' },
+    });
+    const direct = await prisma.userPermission.create({
+      data: { userId, permissionId: permission.id, scope: 'OWN' },
+    });
+    const authorizer = new PermissionAuthorizer(grantReader);
+    await expect(
+      authorizer.assertAllowed({ actorId: userId, permission: permission.code, scope: 'OWN' }),
+    ).resolves.toBeUndefined();
+    await expect(
+      authorizer.assertAllowed({ actorId: userId, permission: permission.code, scope: 'GLOBAL' }),
+    ).rejects.toThrow(ForbiddenError);
+    await prisma.user.update({ where: { id: userId }, data: { status: 'INACTIVE' } });
+    expect(await grantReader.findGrantsByUserId(userId)).toContainEqual({
+      permission: permission.code,
+      scope: 'OWN',
+    });
+    await prisma.userPermission.delete({ where: { id: direct.id } });
+    await expect(
+      authorizer.assertAllowed({ actorId: userId, permission: permission.code, scope: 'OWN' }),
+    ).rejects.toThrow(ForbiddenError);
+  });
+
+  it('combines a direct GLOBAL grant with an active OWN role and ignores an inactive role', async () => {
+    const active = await createRoleWithGrants(prisma, {
+      name: 'Rol prueba propio',
+      grants: [{ permissionCode: 'usuario.ver', scope: 'OWN' }],
+    });
+    const inactive = await createRoleWithGrants(prisma, {
+      name: 'Rol prueba inactivo',
+      status: 'INACTIVE',
+      grants: [{ permissionCode: 'usuario.ver', scope: 'GLOBAL' }],
+    });
+    await grantRole(prisma, userId, active.code);
+    await grantRole(prisma, userId, inactive.code);
+    const permission = await prisma.permission.findUniqueOrThrow({
+      where: { code: 'usuario.ver' },
+    });
+    const authorizer = new PermissionAuthorizer(grantReader);
+    await expect(
+      authorizer.assertAllowed({ actorId: userId, permission: permission.code, scope: 'GLOBAL' }),
+    ).rejects.toThrow(ForbiddenError);
+    await prisma.userPermission.create({
+      data: { userId, permissionId: permission.id, scope: 'GLOBAL' },
+    });
+    expect(await grantReader.findGrantsByUserId(userId)).toEqual(
+      expect.arrayContaining([
+        { permission: permission.code, scope: 'OWN' },
+        { permission: permission.code, scope: 'GLOBAL' },
+      ]),
+    );
+    await expect(
+      authorizer.assertAllowed({ actorId: userId, permission: permission.code, scope: 'GLOBAL' }),
+    ).resolves.toBeUndefined();
+    await prisma.role.update({ where: { id: active.id }, data: { status: 'INACTIVE' } });
+    expect(await grantReader.findGrantsByUserId(userId)).toEqual([
+      { permission: permission.code, scope: 'GLOBAL' },
+    ]);
   });
 });

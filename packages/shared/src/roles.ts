@@ -79,7 +79,7 @@ const roleDescriptionSchema = z
   .optional()
   .transform((val) => (val === undefined ? undefined : val === null || val === '' ? null : val));
 
-const roleGrantsListSchema = z
+export const roleGrantsListSchema = z
   .array(roleGrantSchema)
   .max(ROLE_PERMISSIONS_MAX, `No se pueden asignar más de ${ROLE_PERMISSIONS_MAX} permisos al rol`)
   .refine((items) => new Set(items.map((i) => i.permissionCode)).size === items.length, {

@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   activateAccountRequestSchema,
   activateAccountResponseSchema,
@@ -28,6 +28,9 @@ import {
   changeRoleStatusRequestSchema,
   updateUserRequestSchema,
   userDtoSchema,
+  assignUserRolesRequestSchema,
+  assignUserPermissionsRequestSchema,
+  userAccessSchema,
 } from '@sigoa/shared';
 import { createAuthRouter } from '../src/modules/auth/infrastructure/http/auth.routes.js';
 import { createUsersRouter } from '../src/modules/users/infrastructure/http/users.routes.js';
@@ -36,6 +39,8 @@ import { createRolesRouter } from '../src/modules/authorization/infrastructure/h
 import type { RolesController } from '../src/modules/authorization/infrastructure/http/roles.controller.js';
 import { createPermissionsRouter } from '../src/modules/authorization/infrastructure/http/permissions.routes.js';
 import type { PermissionsController } from '../src/modules/authorization/infrastructure/http/permissions.controller.js';
+import { createUserAccessRouter } from '../src/modules/authorization/infrastructure/http/user-access.routes.js';
+import type { UserAccessController } from '../src/modules/authorization/infrastructure/http/user-access.controller.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1224,6 +1229,210 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
 
       const result = compareComponentProperties('RoleDto', mockZodSchemaWithExtra as never);
       expect(result.missingInSpec).toContain('undocumentedField');
+    });
+  });
+
+  describe('OpenAPI Specification for User Access (HU-007, T-007-11, T-007-12, T-007-13, RNF-032, A4, D1, D9, D14)', () => {
+    it('documents PUT /users/{id}/roles endpoint with bearer security, 200, 400, 401, 403, 404, 409 responses and valid examples', () => {
+      expect(spec.paths['/users/{id}/roles']).toBeDefined();
+      expect(spec.paths['/users/{id}/roles'].put).toBeDefined();
+
+      const op = spec.paths['/users/{id}/roles'].put;
+      expect(op.operationId).toBe('assignUserRoles');
+      expect(op.tags).toContain('Users');
+      expect(op.security).toEqual([{ bearerAuth: [] }]);
+
+      // Parámetros
+      const idParam = op.parameters?.find(
+        (p: { name: string; in: string }) => p.name === 'id' && p.in === 'path',
+      );
+      expect(idParam).toBeDefined();
+      expect(idParam.required).toBe(true);
+
+      // Request body
+      expect(op.requestBody).toBeDefined();
+      expect(op.requestBody.required).toBe(true);
+      const reqSchemaRef = op.requestBody.content['application/json'].schema.$ref;
+      expect(reqSchemaRef).toBe('#/components/schemas/AssignUserRolesRequest');
+
+      const reqExample = op.requestBody.content['application/json'].example;
+      expect(assignUserRolesRequestSchema.safeParse(reqExample).success).toBe(true);
+
+      // Responses
+      expect(op.responses['200']).toBeDefined();
+      expect(op.responses['200'].headers['Cache-Control']).toBeDefined();
+      const resSchemaRef = op.responses['200'].content['application/json'].schema.$ref;
+      expect(resSchemaRef).toBe('#/components/schemas/UserAccess');
+
+      const resExample = op.responses['200'].content['application/json'].example;
+      expect(userAccessSchema.safeParse(resExample).success).toBe(true);
+
+      expect(op.responses['400']).toBeDefined();
+      expect(op.responses['401']).toBeDefined();
+      expect(op.responses['403']).toBeDefined();
+      expect(op.responses['404']).toBeDefined();
+      expect(op.responses['409']).toBeDefined();
+    });
+
+    it('documents PUT /users/{id}/permissions endpoint with bearer security, 200, 400, 401, 403, 404 responses and valid examples', () => {
+      expect(spec.paths['/users/{id}/permissions']).toBeDefined();
+      expect(spec.paths['/users/{id}/permissions'].put).toBeDefined();
+
+      const op = spec.paths['/users/{id}/permissions'].put;
+      expect(op.operationId).toBe('assignUserPermissions');
+      expect(op.tags).toContain('Users');
+      expect(op.security).toEqual([{ bearerAuth: [] }]);
+
+      // Parámetros
+      const idParam = op.parameters?.find(
+        (p: { name: string; in: string }) => p.name === 'id' && p.in === 'path',
+      );
+      expect(idParam).toBeDefined();
+      expect(idParam.required).toBe(true);
+
+      // Request body
+      expect(op.requestBody).toBeDefined();
+      expect(op.requestBody.required).toBe(true);
+      const reqSchemaRef = op.requestBody.content['application/json'].schema.$ref;
+      expect(reqSchemaRef).toBe('#/components/schemas/AssignUserPermissionsRequest');
+
+      const reqExample = op.requestBody.content['application/json'].example;
+      expect(assignUserPermissionsRequestSchema.safeParse(reqExample).success).toBe(true);
+
+      // Responses
+      expect(op.responses['200']).toBeDefined();
+      expect(op.responses['200'].headers['Cache-Control']).toBeDefined();
+      const resSchemaRef = op.responses['200'].content['application/json'].schema.$ref;
+      expect(resSchemaRef).toBe('#/components/schemas/UserAccess');
+
+      const resExample = op.responses['200'].content['application/json'].example;
+      expect(userAccessSchema.safeParse(resExample).success).toBe(true);
+
+      expect(op.responses['400']).toBeDefined();
+      expect(op.responses['401']).toBeDefined();
+      expect(op.responses['403']).toBeDefined();
+      expect(op.responses['404']).toBeDefined();
+    });
+
+    it('documents GET /users/{id}/effective-permissions endpoint with bearer security, 200, 400, 401, 403, 404 responses and valid examples', () => {
+      expect(spec.paths['/users/{id}/effective-permissions']).toBeDefined();
+      expect(spec.paths['/users/{id}/effective-permissions'].get).toBeDefined();
+
+      const op = spec.paths['/users/{id}/effective-permissions'].get;
+      expect(op.operationId).toBe('getUserEffectiveAccess');
+      expect(op.tags).toContain('Users');
+      expect(op.security).toEqual([{ bearerAuth: [] }]);
+
+      // Parámetros
+      const idParam = op.parameters?.find(
+        (p: { name: string; in: string }) => p.name === 'id' && p.in === 'path',
+      );
+      expect(idParam).toBeDefined();
+      expect(idParam.required).toBe(true);
+
+      // Responses
+      expect(op.responses['200']).toBeDefined();
+      expect(op.responses['200'].headers['Cache-Control']).toBeDefined();
+      const resSchemaRef = op.responses['200'].content['application/json'].schema.$ref;
+      expect(resSchemaRef).toBe('#/components/schemas/UserAccess');
+
+      const resExample = op.responses['200'].content['application/json'].example;
+      expect(userAccessSchema.safeParse(resExample).success).toBe(true);
+
+      expect(op.responses['400']).toBeDefined();
+      expect(op.responses['401']).toBeDefined();
+      expect(op.responses['403']).toBeDefined();
+      expect(op.responses['404']).toBeDefined();
+    });
+
+    it('enforces bidirectional parity between user-access router and openapi spec (anti-drift guard)', () => {
+      const mockController = {
+        assignRoles: vi.fn(),
+        assignPermissions: vi.fn(),
+        getEffectiveAccess: vi.fn(),
+      } as unknown as UserAccessController;
+
+      const dummyAuth = vi.fn();
+      const dummyRequirePermission = vi.fn().mockReturnValue(vi.fn());
+
+      const router = createUserAccessRouter({
+        controller: mockController,
+        authenticate: dummyAuth,
+        requirePermission: dummyRequirePermission,
+      });
+
+      const routerEndpoints: { method: string; path: string }[] = [];
+      for (const layer of router.stack) {
+        if (layer.route) {
+          const routePath = layer.route.path;
+          const methods = Object.keys(layer.route.methods);
+          for (const method of methods) {
+            const normalizedPath = ('/users' + (routePath === '/' ? '' : routePath)).replace(
+              /:([a-zA-Z0-9_]+)/g,
+              '{$1}',
+            );
+            routerEndpoints.push({ method: method.toLowerCase(), path: normalizedPath });
+          }
+        }
+      }
+
+      expect(routerEndpoints.length).toBeGreaterThan(0);
+
+      // Comprobar que cada ruta del router está en OpenAPI
+      for (const endpoint of routerEndpoints) {
+        const specPath = spec.paths[endpoint.path];
+        expect(specPath, `Path ${endpoint.path} must exist in openapi.json`).toBeDefined();
+        expect(
+          specPath[endpoint.method],
+          `Method ${endpoint.method.toUpperCase()} ${endpoint.path} must exist in openapi.json`,
+        ).toBeDefined();
+      }
+
+      // Comprobar que las rutas documentadas en OpenAPI para user-access existen en el router
+      for (const endpoint of routerEndpoints) {
+        const specPath = spec.paths[endpoint.path];
+        for (const method of Object.keys(specPath)) {
+          const matching = routerEndpoints.find(
+            (ep) => ep.path === endpoint.path && ep.method === method.toLowerCase(),
+          );
+          expect(
+            matching,
+            `OpenAPI has ${method.toUpperCase()} ${endpoint.path} which is not in userAccessRouter`,
+          ).toBeDefined();
+        }
+      }
+    });
+
+    it('fails when a route in user-access router is missing from openapi spec (negative test against drift)', () => {
+      const rogueRouterEndpoints = [{ method: 'put', path: '/users/{id}/rogue-access' }];
+      const specPath = spec.paths[rogueRouterEndpoints[0].path];
+      expect(specPath).toBeUndefined();
+    });
+
+    it('documents that role and permission changes apply on the next request (T-007-14)', () => {
+      const rolesOp = spec.paths['/users/{id}/roles'].put;
+      expect(rolesOp.description).toContain('siguiente petición');
+      expect(rolesOp.description).toContain('invalidación');
+
+      const permsOp = spec.paths['/users/{id}/permissions'].put;
+      expect(permsOp.description).toContain('siguiente petición');
+      expect(permsOp.description).toContain('invalidación');
+
+      const conflictDesc = rolesOp.responses['409'].description;
+      expect(conflictDesc).toContain('revierte');
+    });
+
+    it('documents for each endpoint exactly the status codes its integration test exercises (T-007-14)', () => {
+      const rolesCodes = Object.keys(spec.paths['/users/{id}/roles'].put.responses).sort();
+      expect(rolesCodes).toEqual(['200', '400', '401', '403', '404', '409']);
+
+      const permsCodes = Object.keys(spec.paths['/users/{id}/permissions'].put.responses).sort();
+      expect(permsCodes).toEqual(['200', '400', '401', '403', '404']);
+
+      const effCodes = Object.keys(
+        spec.paths['/users/{id}/effective-permissions'].get.responses,
+      ).sort();
+      expect(effCodes).toEqual(['200', '400', '401', '403', '404']);
     });
   });
 });

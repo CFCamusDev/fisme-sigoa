@@ -10,7 +10,7 @@ describe('Authorization Schema Integration (PostgreSQL real, F1)', () => {
       data: {
         names: 'Test',
         firstSurname: 'User',
-        email: `auth.schema.${suffix}@untrm.edu.pe`,
+        email: `auth.schema.${suffix}@example.test`,
         dni: suffix.slice(0, 8),
         status: 'ACTIVE',
       },
@@ -176,8 +176,7 @@ describe('Authorization Schema Integration (PostgreSQL real, F1)', () => {
       });
 
       expect(updated.status).toBe('INACTIVE');
-      expect(updated.deactivatedAt).toBeDefined();
-      expect(updated.deactivatedAt?.getTime()).toBeCloseTo(now.getTime(), -2);
+      expect(updated.deactivatedAt).toEqual(now);
     });
   });
 
@@ -282,6 +281,105 @@ describe('Authorization Schema Integration (PostgreSQL real, F1)', () => {
       expect(updated.scope).toBe('OWN');
       expect(updated.updatedBy).toBe('admin-user-id');
       expect(updated.updatedAt.getTime()).toBeGreaterThanOrEqual(grant.updatedAt.getTime());
+    });
+  });
+
+  describe('UserPermission schema (T-007-02)', () => {
+    it('defaults scope and tracking columns and stores both relations', async () => {
+      const { user, permission } = await createBaseEntities('direct');
+      const grant = await prisma.userPermission.create({
+        data: { userId: user.id, permissionId: permission.id, createdBy: 'test-actor' },
+        include: { user: true, permission: true },
+      });
+      expect(grant.scope).toBe('GLOBAL');
+      expect(grant.createdAt).toBeInstanceOf(Date);
+      expect(grant.updatedAt).toBeInstanceOf(Date);
+      expect(grant.createdBy).toBe('test-actor');
+      expect(grant.updatedBy).toBeNull();
+      expect(grant.user.id).toBe(user.id);
+      expect(grant.permission.id).toBe(permission.id);
+      const updated = await prisma.userPermission.update({
+        where: { id: grant.id },
+        data: { scope: 'OWN', updatedBy: 'second-test-actor' },
+      });
+      expect(updated.scope).toBe('OWN');
+      expect(updated.updatedBy).toBe('second-test-actor');
+      expect(updated.updatedAt.getTime()).toBeGreaterThanOrEqual(grant.updatedAt.getTime());
+    });
+
+    it('rejects duplicate pairs and deletion of referenced users and permissions', async () => {
+      const { user, permission } = await createBaseEntities('restrict_direct');
+      const data = { userId: user.id, permissionId: permission.id };
+      await prisma.userPermission.create({ data });
+      await expect(prisma.userPermission.create({ data })).rejects.toMatchObject({ code: 'P2002' });
+      await expect(prisma.user.delete({ where: { id: user.id } })).rejects.toMatchObject({
+        code: 'P2003',
+      });
+      await expect(
+        prisma.permission.delete({ where: { id: permission.id } }),
+      ).rejects.toMatchObject({
+        code: 'P2003',
+      });
+    });
+
+    it('indexes both foreign keys and defines database defaults', async () => {
+      const indexes = await prisma.$queryRaw<Array<{ indexname: string }>>`
+        SELECT indexname FROM pg_indexes WHERE schemaname = 'public'
+          AND tablename = 'user_permissions' ORDER BY indexname
+      `;
+      expect(indexes.map(({ indexname }) => indexname)).toEqual([
+        'user_permissions_permissionId_idx',
+        'user_permissions_pkey',
+        'user_permissions_userId_idx',
+        'user_permissions_userId_permissionId_key',
+      ]);
+      const columns = await prisma.$queryRaw<
+        Array<{ column_name: string; is_nullable: string; column_default: string | null }>
+      >`
+        SELECT column_name, is_nullable, column_default FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'user_permissions'
+          AND column_name IN ('updatedAt', 'updatedBy', 'scope') ORDER BY column_name
+      `;
+      expect(columns).toEqual([
+        {
+          column_name: 'scope',
+          is_nullable: 'NO',
+          column_default: '\'GLOBAL\'::"PermissionScope"',
+        },
+        { column_name: 'updatedAt', is_nullable: 'NO', column_default: 'CURRENT_TIMESTAMP' },
+        { column_name: 'updatedBy', is_nullable: 'YES', column_default: null },
+      ]);
+    });
+  });
+
+  describe('UserRole tracking (T-007-01)', () => {
+    it('defaults tracking columns and persists the updating actor', async () => {
+      const { user, role } = await createBaseEntities('tracking');
+      const grant = await prisma.userRole.create({
+        data: { userId: user.id, roleId: role.id },
+      });
+      expect(grant.updatedAt).toBeInstanceOf(Date);
+      expect(grant.updatedBy).toBeNull();
+      const updated = await prisma.userRole.update({
+        where: { id: grant.id },
+        data: { updatedBy: 'test-actor' },
+      });
+      expect(updated.updatedBy).toBe('test-actor');
+      expect(updated.updatedAt.getTime()).toBeGreaterThanOrEqual(grant.updatedAt.getTime());
+    });
+
+    it('defines a non-null timestamp with a database default and nullable actor', async () => {
+      const columns = await prisma.$queryRaw<
+        Array<{ column_name: string; is_nullable: string; column_default: string | null }>
+      >`
+        SELECT column_name, is_nullable, column_default FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'user_roles'
+          AND column_name IN ('updatedAt', 'updatedBy') ORDER BY column_name
+      `;
+      expect(columns).toEqual([
+        { column_name: 'updatedAt', is_nullable: 'NO', column_default: 'CURRENT_TIMESTAMP' },
+        { column_name: 'updatedBy', is_nullable: 'YES', column_default: null },
+      ]);
     });
   });
 });

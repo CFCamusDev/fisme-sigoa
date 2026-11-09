@@ -20,6 +20,7 @@ import {
   createAuthorizationServices,
   createPermissionsModule,
   createRolesModule,
+  createUserAccessModule,
 } from './modules/authorization/index.js';
 import { createUsersModule, EmailActivationSender } from './modules/users/index.js';
 
@@ -32,6 +33,10 @@ export interface AppRoutesDependencies {
   logger?: Logger;
   clock?: () => Date;
   detachedTaskRunner?: DetachedTaskRunner;
+  permissionCache?: {
+    ttlMs?: number;
+    maxEntries?: number;
+  };
 }
 
 export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void {
@@ -48,6 +53,7 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
 
   const authorizationServices = createAuthorizationServices({
     dbProvider: deps.dbProvider,
+    permissionCache: deps.permissionCache,
   });
 
   const emailSender =
@@ -107,6 +113,16 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
       activationEmailSender,
       logger: deps.logger,
       clock: deps.clock,
+    }),
+  );
+  app.use(
+    '/users',
+    createUserAccessModule({
+      authenticate: authServices.authenticate,
+      services: authorizationServices,
+      unitOfWork: deps.unitOfWork,
+      auditLogger: deps.auditLogger,
+      dbProvider: deps.dbProvider,
     }),
   );
 }

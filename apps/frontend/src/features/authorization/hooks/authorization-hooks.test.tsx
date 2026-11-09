@@ -4,7 +4,12 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StrictMode, type ReactNode } from 'react';
 import { server } from '@/test/msw/server';
-import type { ListPermissionsResponse, ListRolesResponse, RoleDto } from '@sigoa/shared';
+import type {
+  ListPermissionsResponse,
+  ListRolesResponse,
+  RoleDto,
+  UserAccessDto,
+} from '@sigoa/shared';
 import {
   useChangeRoleStatus,
   useCreateRole,
@@ -12,6 +17,9 @@ import {
   useRoles,
   useUpdateRole,
   useUpdateRolePermissions,
+  useUserAccess,
+  useAssignUserRoles,
+  useAssignUserPermissions,
 } from './index';
 
 const mockRoleDto: RoleDto = {
@@ -208,6 +216,133 @@ describe('Authorization hooks (HU-006, T-006-20)', () => {
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
       expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['roles'] });
+    });
+  });
+
+  describe('User Access hooks (HU-007, T-007-15)', () => {
+    const mockUserAccessDto: UserAccessDto = {
+      userId: 'usr-123',
+      roles: [
+        {
+          id: 'role-cuid-123',
+          code: 'AUDITOR_CALIDAD',
+          name: 'Auditor de Calidad',
+          status: 'ACTIVE',
+        },
+      ],
+      directPermissions: [
+        {
+          permissionCode: 'academico.editar',
+          scope: 'GLOBAL',
+        },
+      ],
+      effectivePermissions: [
+        {
+          permissionCode: 'academico.editar',
+          scope: 'GLOBAL',
+          sources: [{ kind: 'DIRECT', scope: 'GLOBAL' }],
+        },
+      ],
+    };
+
+    describe('useUserAccess', () => {
+      it('fetches user access and caches data with staleTime: 0', async () => {
+        server.use(
+          http.get('http://localhost:3000/users/:id/effective-permissions', () => {
+            return HttpResponse.json(mockUserAccessDto, { status: 200 });
+          }),
+        );
+
+        const { result } = renderHook(() => useUserAccess('usr-123'), {
+          wrapper: createWrapper(),
+        });
+
+        await waitFor(() => expect(result.current.isSuccess).toBe(true));
+        expect(result.current.data).toEqual(mockUserAccessDto);
+      });
+
+      it('requests the user access once under StrictMode', async () => {
+        let requestCount = 0;
+        server.use(
+          http.get('http://localhost:3000/users/:id/effective-permissions', () => {
+            requestCount += 1;
+            return HttpResponse.json(mockUserAccessDto, { status: 200 });
+          }),
+        );
+
+        const queryClient = new QueryClient({
+          defaultOptions: { queries: { retry: false } },
+        });
+
+        function StrictModeWrapper({ children }: { children: ReactNode }) {
+          return (
+            <StrictMode>
+              <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+            </StrictMode>
+          );
+        }
+
+        const { result } = renderHook(() => useUserAccess('usr-strict-mode'), {
+          wrapper: StrictModeWrapper,
+        });
+
+        await waitFor(() => expect(result.current.isSuccess).toBe(true));
+        expect(requestCount).toBe(1);
+      });
+    });
+
+    describe('useAssignUserRoles', () => {
+      it('stores the returned access in the cache and invalidates roles query after saving roles', async () => {
+        server.use(
+          http.put('http://localhost:3000/users/:id/roles', () => {
+            return HttpResponse.json(mockUserAccessDto, { status: 200 });
+          }),
+        );
+
+        const queryClient = new QueryClient({
+          defaultOptions: { mutations: { retry: false } },
+        });
+        const setQueryDataSpy = vi.spyOn(queryClient, 'setQueryData');
+        const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+        const { result } = renderHook(() => useAssignUserRoles('usr-123'), {
+          wrapper: createWrapper(queryClient),
+        });
+
+        result.current.mutate({ roleIds: ['role-cuid-123'] });
+
+        await waitFor(() => expect(result.current.isSuccess).toBe(true));
+        expect(result.current.data).toEqual(mockUserAccessDto);
+        expect(setQueryDataSpy).toHaveBeenCalledWith(['userAccess', 'usr-123'], mockUserAccessDto);
+        expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['roles'] });
+      });
+    });
+
+    describe('useAssignUserPermissions', () => {
+      it('stores the returned access in the cache after saving permissions', async () => {
+        server.use(
+          http.put('http://localhost:3000/users/:id/permissions', () => {
+            return HttpResponse.json(mockUserAccessDto, { status: 200 });
+          }),
+        );
+
+        const queryClient = new QueryClient({
+          defaultOptions: { mutations: { retry: false } },
+        });
+        const setQueryDataSpy = vi.spyOn(queryClient, 'setQueryData');
+
+        const { result } = renderHook(() => useAssignUserPermissions('usr-123'), {
+          wrapper: createWrapper(queryClient),
+        });
+
+        result.current.mutate({
+          permissions: [{ permissionCode: 'academico.editar', scope: 'GLOBAL' }],
+        });
+
+        await waitFor(() => expect(result.current.isSuccess).toBe(true));
+        expect(result.current.data).toEqual(mockUserAccessDto);
+        expect(setQueryDataSpy).toHaveBeenCalledWith(['userAccess', 'usr-123'], mockUserAccessDto);
+      });
     });
   });
 });

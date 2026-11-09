@@ -51,6 +51,16 @@ describe('PermissionAuthorizer Unit Tests (F4, RS-002, RS-011, RS-012)', () => {
     ).rejects.toThrow(ForbiddenError);
   });
 
+  it('accepts a direct OWN grant for OWN scope and rejects it for GLOBAL scope', async () => {
+    const { authorizer } = createAuthorizer([{ permission: 'usuario.ver', scope: 'OWN' }]);
+    await expect(
+      authorizer.assertAllowed({ actorId, permission: 'usuario.ver', scope: 'OWN' }),
+    ).resolves.toBeUndefined();
+    await expect(
+      authorizer.assertAllowed({ actorId, permission: 'usuario.ver', scope: 'GLOBAL' }),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
   it('denies an unknown permission code without reading grants (fails closed)', async () => {
     const { authorizer, grantReader } = createAuthorizer([
       { permission: 'usuario.ver', scope: 'GLOBAL' },

@@ -1570,6 +1570,487 @@
         }
       }
     },
+    "/users/{id}/roles": {
+      "put": {
+        "tags": ["Users"],
+        "summary": "Asignar roles a un usuario",
+        "description": "Reemplaza el conjunto completo de roles de un usuario (idempotente). El cambio rige desde la siguiente petición del usuario gracias a la invalidación automática de la caché. Requiere el permiso 'usuario.editar' con alcance GLOBAL.",
+        "operationId": "assignUserRoles",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            },
+            "description": "Identificador único del usuario (CUID)."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignUserRolesRequest"
+              },
+              "example": {
+                "roleIds": ["role_teacher_cuid"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Roles del usuario actualizados exitosamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserAccess"
+                },
+                "example": {
+                  "userId": "usr_cuid_123",
+                  "roles": [
+                    {
+                      "id": "role_teacher_cuid",
+                      "code": "TEACHER",
+                      "name": "Docente",
+                      "status": "ACTIVE"
+                    }
+                  ],
+                  "directPermissions": [],
+                  "effectivePermissions": [
+                    {
+                      "permissionCode": "academico.ver",
+                      "scope": "GLOBAL",
+                      "sources": [
+                        {
+                          "kind": "ROLE",
+                          "roleId": "role_teacher_cuid",
+                          "roleCode": "TEACHER",
+                          "roleName": "Docente",
+                          "scope": "GLOBAL"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos de entrada inválidos, roles duplicados o rol inexistente/inactivo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Los datos proporcionados no son válidos.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere 'usuario.editar' con alcance GLOBAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para realizar esta acción.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Usuario no encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "Usuario no encontrado.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto: no se puede remover el rol al último Administrador activo. La transacción se revierte y no se aplica ningún cambio.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "Debe existir al menos un usuario activo con el rol Administrador.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/{id}/permissions": {
+      "put": {
+        "tags": ["Users"],
+        "summary": "Asignar permisos directos a un usuario",
+        "description": "Reemplaza el conjunto completo de permisos directos de un usuario (idempotente). El cambio rige desde la siguiente petición del usuario gracias a la invalidación automática de la caché. Requiere el permiso 'permiso.asignar' con alcance GLOBAL.",
+        "operationId": "assignUserPermissions",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            },
+            "description": "Identificador único del usuario (CUID)."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignUserPermissionsRequest"
+              },
+              "example": {
+                "permissions": [
+                  {
+                    "permissionCode": "curso.editar",
+                    "scope": "GLOBAL"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Permisos directos del usuario actualizados exitosamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserAccess"
+                },
+                "example": {
+                  "userId": "usr_cuid_123",
+                  "roles": [],
+                  "directPermissions": [
+                    {
+                      "permissionCode": "curso.editar",
+                      "scope": "GLOBAL"
+                    }
+                  ],
+                  "effectivePermissions": [
+                    {
+                      "permissionCode": "curso.editar",
+                      "scope": "GLOBAL",
+                      "sources": [
+                        {
+                          "kind": "DIRECT",
+                          "scope": "GLOBAL"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos de entrada inválidos, permisos duplicados, código inexistente o más de 200 ítems.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Los datos proporcionados no son válidos.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere 'permiso.asignar' con alcance GLOBAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para realizar esta acción.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Usuario no encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "Usuario no encontrado.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/{id}/effective-permissions": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Consultar permisos efectivos de un usuario",
+        "description": "Obtiene la ficha completa de acceso de un usuario: roles asignados, permisos directos y la consolidación de permisos efectivos con sus fuentes. Requiere el permiso 'usuario.ver' con alcance GLOBAL.",
+        "operationId": "getUserEffectiveAccess",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            },
+            "description": "Identificador único del usuario (CUID)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ficha de acceso efectivo del usuario obtenida exitosamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserAccess"
+                },
+                "example": {
+                  "userId": "usr_cuid_123",
+                  "roles": [
+                    {
+                      "id": "role_teacher_cuid",
+                      "code": "TEACHER",
+                      "name": "Docente",
+                      "status": "ACTIVE"
+                    }
+                  ],
+                  "directPermissions": [
+                    {
+                      "permissionCode": "academico.editar",
+                      "scope": "GLOBAL"
+                    }
+                  ],
+                  "effectivePermissions": [
+                    {
+                      "permissionCode": "academico.ver",
+                      "scope": "GLOBAL",
+                      "sources": [
+                        {
+                          "kind": "ROLE",
+                          "roleId": "role_teacher_cuid",
+                          "roleCode": "TEACHER",
+                          "roleName": "Docente",
+                          "scope": "GLOBAL"
+                        }
+                      ]
+                    },
+                    {
+                      "permissionCode": "academico.editar",
+                      "scope": "GLOBAL",
+                      "sources": [
+                        {
+                          "kind": "DIRECT",
+                          "scope": "GLOBAL"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Identificador de usuario inválido o parámetros de consulta inesperados.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Los datos proporcionados no son válidos.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere 'usuario.ver' con alcance GLOBAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para realizar esta acción.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Usuario no encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "Usuario no encontrado.",
+                    "requestId": "req_test_123"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/roles": {
       "get": {
         "tags": ["Roles"],
@@ -3135,6 +3616,159 @@
               "$ref": "#/components/schemas/PermissionDto"
             },
             "description": "Lista de permisos del catálogo institucional."
+          }
+        }
+      },
+      "AssignUserRolesRequest": {
+        "type": "object",
+        "required": ["roleIds"],
+        "additionalProperties": false,
+        "properties": {
+          "roleIds": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 10,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "description": "Lista de identificadores de roles a asignar (sin duplicados, máximo 10)."
+          }
+        }
+      },
+      "AssignUserPermissionsRequest": {
+        "type": "object",
+        "required": ["permissions"],
+        "additionalProperties": false,
+        "properties": {
+          "permissions": {
+            "type": "array",
+            "maxItems": 200,
+            "items": {
+              "$ref": "#/components/schemas/RoleGrant"
+            },
+            "description": "Lista de permisos directos a asignar al usuario (máximo 200, sin duplicados)."
+          }
+        }
+      },
+      "UserAccessRole": {
+        "type": "object",
+        "required": ["id", "code", "name", "status"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "Identificador único del rol."
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Código del rol."
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Nombre legible del rol."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["ACTIVE", "INACTIVE"],
+            "description": "Estado del rol."
+          }
+        }
+      },
+      "EffectiveAccessSource": {
+        "type": "object",
+        "required": ["kind", "scope"],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["ROLE", "DIRECT"],
+            "description": "Origen de la concesión: rol o asignación directa."
+          },
+          "roleId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "Identificador del rol (solo para kind ROLE)."
+          },
+          "roleCode": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Código del rol (solo para kind ROLE)."
+          },
+          "roleName": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Nombre del rol (solo para kind ROLE)."
+          },
+          "scope": {
+            "type": "string",
+            "enum": ["GLOBAL", "OWN"],
+            "description": "Alcance aportado por este origen."
+          }
+        }
+      },
+      "EffectiveAccessEntry": {
+        "type": "object",
+        "required": ["permissionCode", "scope", "sources"],
+        "additionalProperties": false,
+        "properties": {
+          "permissionCode": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "Código institucional del permiso (recurso.accion)."
+          },
+          "scope": {
+            "type": "string",
+            "enum": ["GLOBAL", "OWN"],
+            "description": "Alcance más amplio consolidado para este permiso."
+          },
+          "sources": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/EffectiveAccessSource"
+            },
+            "description": "Lista de fuentes que originan este permiso."
+          }
+        }
+      },
+      "UserAccess": {
+        "type": "object",
+        "required": ["userId", "roles", "directPermissions", "effectivePermissions"],
+        "additionalProperties": false,
+        "properties": {
+          "userId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "Identificador único del usuario."
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserAccessRole"
+            },
+            "description": "Roles asignados al usuario."
+          },
+          "directPermissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RoleGrant"
+            },
+            "description": "Permisos asignados directamente al usuario."
+          },
+          "effectivePermissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EffectiveAccessEntry"
+            },
+            "description": "Permisos consolidados efectivos con el alcance más amplio."
           }
         }
       }

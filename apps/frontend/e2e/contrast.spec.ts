@@ -192,6 +192,108 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA)', () => {
     await expectNoContrastViolations(page, { context: 'edit-user-form' });
   });
 
+  test('user access panel has no contrast violations on desktop and mobile (HU-007, T-007-27)', async ({
+    page,
+  }) => {
+    const timestamp = Date.now();
+    const adminEmail = `contrast-admin-access-${timestamp}@example.test`;
+    const targetEmail = `contrast-target-access-${timestamp}@example.test`;
+    const uniqueSurname = `Acceso${timestamp % 10000}`;
+
+    seedUser({
+      email: targetEmail,
+      names: 'Usuario',
+      firstSurname: uniqueSurname,
+      secondSurname: 'Permisos',
+      dni: String(50000000 + (timestamp % 10000000)),
+      roles: ['TEACHER'],
+      status: 'ACTIVE',
+    });
+
+    await loginAsTestUser(page, {
+      email: adminEmail,
+      roles: ['ADMINISTRATOR'],
+    });
+
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.goto('/usuarios');
+    await expect(page.getByText(`Usuario ${uniqueSurname} Permisos`)).toBeVisible();
+
+    const [response] = await Promise.all([
+      page.waitForResponse(
+        (res) => res.url().includes('/effective-permissions') && res.status() === 200,
+      ),
+      page
+        .getByRole('link', {
+          name: new RegExp(`editar a usuario ${uniqueSurname}`, 'i'),
+        })
+        .click(),
+    ]);
+    expect(response.ok()).toBe(true);
+
+    await expect(page.getByRole('heading', { name: 'Roles asignados' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Permisos directos' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Permisos efectivos' })).toBeVisible();
+
+    // 1. Escritorio (1280px)
+    await expectNoContrastViolations(page, { context: 'user-access-panel-desktop' });
+
+    // 2. Móvil (375px)
+    await page.setViewportSize({ width: 375, height: 812 });
+    await expectNoContrastViolations(page, { context: 'user-access-panel-mobile' });
+  });
+
+  test('user access panel with unsaved changes has no contrast violations (HU-007, T-007-27)', async ({
+    page,
+  }) => {
+    const timestamp = Date.now();
+    const adminEmail = `contrast-admin-access-unsaved-${timestamp}@example.test`;
+    const targetEmail = `contrast-target-access-unsaved-${timestamp}@example.test`;
+    const uniqueSurname = `Borrador${timestamp % 10000}`;
+
+    seedUser({
+      email: targetEmail,
+      names: 'Usuario',
+      firstSurname: uniqueSurname,
+      secondSurname: 'Borrador',
+      dni: String(60000000 + (timestamp % 10000000)),
+      roles: ['TEACHER'],
+      status: 'ACTIVE',
+    });
+
+    await loginAsTestUser(page, {
+      email: adminEmail,
+      roles: ['ADMINISTRATOR'],
+    });
+
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.goto('/usuarios');
+    await expect(page.getByText(`Usuario ${uniqueSurname} Borrador`)).toBeVisible();
+
+    const [response] = await Promise.all([
+      page.waitForResponse(
+        (res) => res.url().includes('/effective-permissions') && res.status() === 200,
+      ),
+      page
+        .getByRole('link', {
+          name: new RegExp(`editar a usuario ${uniqueSurname}`, 'i'),
+        })
+        .click(),
+    ]);
+    expect(response.ok()).toBe(true);
+
+    await expect(page.getByRole('heading', { name: 'Roles asignados' })).toBeVisible();
+
+    // Modificar un checkbox no seleccionado para crear un borrador
+    const uncheckedCheckbox = page.locator('input[type="checkbox"]:not(:checked)').first();
+    await uncheckedCheckbox.click();
+
+    const unsavedNotice = page.getByText(/cambio sin guardar/i).first();
+    await expect(unsavedNotice).toBeVisible();
+
+    await expectNoContrastViolations(page, { context: 'user-access-panel-unsaved-changes' });
+  });
+
   test('roles list has no contrast violations on desktop and mobile', async ({ page }) => {
     const adminEmail = `contrast-admin-roles-${Date.now()}@example.test`;
     await loginAsTestUser(page, {

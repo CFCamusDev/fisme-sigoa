@@ -7,6 +7,7 @@ import { RoleDeactivationRequiresConfirmationError } from '../domain/errors/role
 import { RoleNotFoundError } from '../domain/errors/role-not-found-error.js';
 import type { RoleReader } from '../domain/ports/role-reader.js';
 import type { RoleRepository } from '../domain/ports/role-repository.js';
+import type { PermissionCacheInvalidator } from '../domain/ports/permission-cache-invalidator.js';
 import type {
   ChangeRoleStatusCommand,
   ChangeRoleStatusResult,
@@ -19,6 +20,7 @@ export interface ChangeRoleStatusDependencies {
   readonly authorizer: PermissionAuthorizer;
   readonly unitOfWork: UnitOfWork;
   readonly auditLogger: AuditLogger;
+  readonly permissionCache: PermissionCacheInvalidator;
 }
 
 export class ChangeRoleStatusUseCase {
@@ -87,6 +89,8 @@ export class ChangeRoleStatusUseCase {
         });
       }
     });
+
+    this.deps.permissionCache.invalidateAll();
 
     const updatedRoleDto = await this.deps.roleReader.findById(command.roleId);
     if (!updatedRoleDto) {

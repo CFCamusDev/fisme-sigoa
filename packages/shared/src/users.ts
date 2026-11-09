@@ -28,8 +28,17 @@ const dniSchema = z
   .trim()
   .regex(DNI_PATTERN, 'El DNI debe contener exactamente 8 dígitos numéricos');
 
-const roleIdsSchema = z
-  .array(z.string().min(1, 'El identificador de rol no puede estar vacío'))
+export const roleIdsSchema = z
+  .array(
+    z
+      .string()
+      .trim()
+      .min(1, 'El identificador de rol no puede estar vacío')
+      .max(
+        USER_ROLE_ID_MAX_LENGTH,
+        `El identificador de rol no puede exceder ${USER_ROLE_ID_MAX_LENGTH} caracteres`,
+      ),
+  )
   .min(1, 'Debe asignar al menos un rol al usuario')
   .max(USER_ROLE_IDS_MAX, `No se pueden asignar más de ${USER_ROLE_IDS_MAX} roles al usuario`)
   .refine((items) => new Set(items).size === items.length, {

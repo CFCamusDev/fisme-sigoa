@@ -20,6 +20,17 @@ import { PrismaUserRoleGateway } from './infrastructure/prisma/prisma-user-role-
 import { PrismaRoleRepository } from './infrastructure/prisma/prisma-role-repository.js';
 import { PrismaPermissionRepository } from './infrastructure/prisma/prisma-permission-repository.js';
 import { PrismaRolePermissionRepository } from './infrastructure/prisma/prisma-role-permission-repository.js';
+import { CachingGrantReader } from './infrastructure/cache/caching-grant-reader.js';
+import type { PermissionCacheInvalidator } from './domain/ports/permission-cache-invalidator.js';
+import { AssignUserRolesUseCase } from './application/assign-user-roles.js';
+import { AssignUserPermissionsUseCase } from './application/assign-user-permissions.js';
+import { GetUserEffectiveAccessUseCase } from './application/get-user-effective-access.js';
+import { UserAccessAssembler } from './application/user-access-assembler.js';
+import { UserAccessController } from './infrastructure/http/user-access.controller.js';
+import { createUserAccessRouter } from './infrastructure/http/user-access.routes.js';
+import { PrismaUserAccessSubjectRepository } from './infrastructure/prisma/prisma-user-access-subject-repository.js';
+import { PrismaUserRoleRepository } from './infrastructure/prisma/prisma-user-role-repository.js';
+import { PrismaUserPermissionRepository } from './infrastructure/prisma/prisma-user-permission-repository.js';
 
 export * from './domain/index.js';
 export * from './application/index.js';
@@ -28,6 +39,8 @@ export * from './infrastructure/http/roles.controller.js';
 export * from './infrastructure/http/roles.routes.js';
 export * from './infrastructure/http/permissions.controller.js';
 export * from './infrastructure/http/permissions.routes.js';
+export * from './infrastructure/http/user-access.controller.js';
+export * from './infrastructure/http/user-access.routes.js';
 export * from './infrastructure/prisma/prisma-grant-reader.js';
 export * from './infrastructure/prisma/prisma-role-reader.js';
 export * from './infrastructure/prisma/prisma-role-mapper.js';
@@ -35,6 +48,10 @@ export * from './infrastructure/prisma/prisma-role-repository.js';
 export * from './infrastructure/prisma/prisma-permission-repository.js';
 export * from './infrastructure/prisma/prisma-role-permission-repository.js';
 export * from './infrastructure/prisma/prisma-user-role-gateway.js';
+export * from './infrastructure/prisma/prisma-user-role-repository.js';
+export * from './infrastructure/prisma/prisma-user-access-subject-repository.js';
+export * from './infrastructure/prisma/prisma-user-permission-repository.js';
+export * from './infrastructure/cache/caching-grant-reader.js';
 
 export interface AuthorizationModuleServices {
   readonly grantReader: PrismaGrantReader;
@@ -43,19 +60,29 @@ export interface AuthorizationModuleServices {
   readonly authorizer: PermissionAuthorizer;
   readonly listRolesUseCase: ListRolesUseCase;
   readonly requirePermission: ReturnType<typeof createRequirePermission>;
+  readonly permissionCache: PermissionCacheInvalidator;
 }
 
 export interface AuthorizationModuleDependencies {
   readonly dbProvider: DbProvider;
+  readonly permissionCache?: {
+    ttlMs?: number;
+    maxEntries?: number;
+  };
 }
 
 export function createAuthorizationServices(
   deps: AuthorizationModuleDependencies,
 ): AuthorizationModuleServices {
   const grantReader = new PrismaGrantReader(deps.dbProvider);
+  const cachingGrantReader = new CachingGrantReader(
+    grantReader,
+    deps.dbProvider,
+    deps.permissionCache,
+  );
   const roleReader = new PrismaRoleReader(deps.dbProvider);
   const userRoleGateway = new PrismaUserRoleGateway(deps.dbProvider);
-  const authorizer = new PermissionAuthorizer(grantReader);
+  const authorizer = new PermissionAuthorizer(cachingGrantReader);
   const listRolesUseCase = new ListRolesUseCase({
     roleReader,
     authorizer,
@@ -69,6 +96,7 @@ export function createAuthorizationServices(
     authorizer,
     listRolesUseCase,
     requirePermission,
+    permissionCache: cachingGrantReader,
   };
 }
 
@@ -103,6 +131,7 @@ export function createRolesModule(deps: RolesModuleDependencies): Router {
     authorizer: deps.services.authorizer,
     unitOfWork: deps.unitOfWork,
     auditLogger: deps.auditLogger,
+    permissionCache: deps.services.permissionCache,
   });
 
   const editRoleUseCase = new EditRoleUseCase({
@@ -119,6 +148,7 @@ export function createRolesModule(deps: RolesModuleDependencies): Router {
     authorizer: deps.services.authorizer,
     unitOfWork: deps.unitOfWork,
     auditLogger: deps.auditLogger,
+    permissionCache: deps.services.permissionCache,
   });
 
   const controller = new RolesController({
@@ -154,6 +184,69 @@ export function createPermissionsModule(deps: PermissionsModuleDependencies): Ro
   });
 
   return createPermissionsRouter({
+    controller,
+    authenticate: deps.authenticate,
+    requirePermission: deps.services.requirePermission,
+  });
+}
+
+export interface UserAccessModuleDependencies {
+  readonly authenticate: RequestHandler;
+  readonly services: AuthorizationModuleServices;
+  readonly unitOfWork: UnitOfWork;
+  readonly auditLogger: AuditLogger;
+  readonly dbProvider: DbProvider;
+}
+
+export function createUserAccessModule(deps: UserAccessModuleDependencies): Router {
+  const subject = new PrismaUserAccessSubjectRepository(deps.dbProvider);
+  const roles = new PrismaUserRoleRepository(deps.dbProvider);
+  const direct = new PrismaUserPermissionRepository(deps.dbProvider);
+  const rolePermissions = new PrismaRolePermissionRepository(deps.dbProvider);
+  const roleRepository = new PrismaRoleRepository(deps.dbProvider);
+  const permissionRepository = new PrismaPermissionRepository(deps.dbProvider);
+
+  const assembler = new UserAccessAssembler({
+    roles,
+    direct,
+    rolePermissions,
+  });
+
+  const assignUserRolesUseCase = new AssignUserRolesUseCase({
+    subject,
+    roles,
+    roleRepository,
+    authorizer: deps.services.authorizer,
+    assembler,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+    permissionCache: deps.services.permissionCache,
+  });
+
+  const assignUserPermissionsUseCase = new AssignUserPermissionsUseCase({
+    subject,
+    direct,
+    permissionRepository,
+    authorizer: deps.services.authorizer,
+    assembler,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+    permissionCache: deps.services.permissionCache,
+  });
+
+  const getUserEffectiveAccessUseCase = new GetUserEffectiveAccessUseCase({
+    subject,
+    authorizer: deps.services.authorizer,
+    assembler,
+  });
+
+  const controller = new UserAccessController({
+    assignUserRolesUseCase,
+    assignUserPermissionsUseCase,
+    getUserEffectiveAccessUseCase,
+  });
+
+  return createUserAccessRouter({
     controller,
     authenticate: deps.authenticate,
     requirePermission: deps.services.requirePermission,

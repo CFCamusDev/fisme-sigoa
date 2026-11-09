@@ -7,6 +7,10 @@ export interface Grant {
 
 export type EffectivePermissions = Map<string, PermissionScope>;
 
+export function widerScope(left: PermissionScope, right: PermissionScope): PermissionScope {
+  return left === 'GLOBAL' || right === 'GLOBAL' ? 'GLOBAL' : 'OWN';
+}
+
 /**
  * Calcula el mapa de permisos efectivos a partir de una lista de concesiones.
  * Regla de precedencia (RS-011, RS-012):
@@ -18,11 +22,7 @@ export function computeEffectivePermissions(grants: readonly Grant[]): Effective
 
   for (const grant of grants) {
     const existing = effective.get(grant.permission);
-    if (!existing) {
-      effective.set(grant.permission, grant.scope);
-    } else if (existing === 'OWN' && grant.scope === 'GLOBAL') {
-      effective.set(grant.permission, 'GLOBAL');
-    }
+    effective.set(grant.permission, existing ? widerScope(existing, grant.scope) : grant.scope);
   }
 
   return effective;

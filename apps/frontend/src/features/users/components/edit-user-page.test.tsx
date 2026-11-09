@@ -2,7 +2,7 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
-import type { RoleDto, UserDto } from '@sigoa/shared';
+import type { PermissionDto, RoleDto, UserAccessDto, UserDto } from '@sigoa/shared';
 import { server } from '@/test/msw/server';
 import { renderWithProviders } from '@/test/render';
 import { EditUserPage } from './edit-user-page';
@@ -33,6 +33,28 @@ const mockRoles: RoleDto[] = [
     userCount: 0,
     permissions: [],
     updatedAt: '2026-11-06T15:00:00.000Z',
+  },
+];
+
+const mockUserAccess: UserAccessDto = {
+  userId: 'usr-123',
+  roles: [
+    {
+      id: 'role-teacher',
+      code: 'TEACHER',
+      name: 'Docente',
+      status: 'ACTIVE',
+    },
+  ],
+  directPermissions: [],
+  effectivePermissions: [],
+};
+
+const mockPermissions: PermissionDto[] = [
+  {
+    code: 'usuario.ver',
+    description: 'Ver usuarios',
+    module: 'M01 Seguridad',
   },
 ];
 
@@ -103,6 +125,12 @@ describe('EditUserPage component (T-003-27)', () => {
       http.get('http://localhost:3000/roles', () => {
         return HttpResponse.json({ items: mockRoles });
       }),
+      http.get('http://localhost:3000/permissions', () => {
+        return HttpResponse.json({ items: mockPermissions });
+      }),
+      http.get('http://localhost:3000/users/usr-123/effective-permissions', () => {
+        return HttpResponse.json(mockUserAccess);
+      }),
       http.get('http://localhost:3000/users/usr-123', () => {
         callCount++;
         if (callCount === 1) {
@@ -131,6 +159,12 @@ describe('EditUserPage component (T-003-27)', () => {
       http.get('http://localhost:3000/roles', () => {
         return HttpResponse.json({ items: mockRoles });
       }),
+      http.get('http://localhost:3000/permissions', () => {
+        return HttpResponse.json({ items: mockPermissions });
+      }),
+      http.get('http://localhost:3000/users/usr-123/effective-permissions', () => {
+        return HttpResponse.json(mockUserAccess);
+      }),
     );
 
     renderWithProviders(<EditUserPage userId="usr-123" />);
@@ -144,6 +178,9 @@ describe('EditUserPage component (T-003-27)', () => {
     expect(screen.getByLabelText(/segundo apellido/i)).toHaveValue('Flores');
     expect(screen.getByLabelText(/correo electrónico/i)).toHaveValue('martha.quispe@unterm.edu.pe');
     expect(screen.getByLabelText(/dni/i)).toHaveValue('78901234');
-    expect(await screen.findByText('Docente')).toBeInTheDocument();
+    expect((await screen.findAllByText('Docente')).length).toBeGreaterThanOrEqual(1);
+    expect(await screen.findByRole('heading', { name: 'Roles asignados' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Permisos directos' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Permisos efectivos' })).toBeInTheDocument();
   });
 });

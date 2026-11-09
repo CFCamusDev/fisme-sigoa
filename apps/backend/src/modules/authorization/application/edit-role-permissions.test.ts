@@ -8,6 +8,7 @@ import type { PermissionRepository } from '../domain/ports/permission-repository
 import type { RolePermissionRepository } from '../domain/ports/role-permission-repository.js';
 import type { RoleReader } from '../domain/ports/role-reader.js';
 import type { PermissionAuthorizer } from './permission-authorizer.js';
+import type { PermissionCacheInvalidator } from '../domain/ports/permission-cache-invalidator.js';
 import { RoleNotFoundError } from '../domain/errors/role-not-found-error.js';
 import { InvalidRoleDataError } from '../domain/errors/invalid-role-data-error.js';
 import { ProtectedRoleError } from '../domain/errors/protected-role-error.js';
@@ -97,6 +98,11 @@ describe('EditRolePermissionsUseCase Unit Tests (HU-006, T-006-25, RF-006, RS-00
       }),
     };
 
+    const permissionCache: PermissionCacheInvalidator = {
+      invalidateUser: vi.fn(),
+      invalidateAll: vi.fn(),
+    };
+
     const useCase = new EditRolePermissionsUseCase({
       roleRepository,
       permissionRepository,
@@ -105,6 +111,7 @@ describe('EditRolePermissionsUseCase Unit Tests (HU-006, T-006-25, RF-006, RS-00
       authorizer,
       unitOfWork,
       auditLogger,
+      permissionCache,
     });
 
     return {
@@ -117,6 +124,7 @@ describe('EditRolePermissionsUseCase Unit Tests (HU-006, T-006-25, RF-006, RS-00
       unitOfWork,
       auditLogger,
       loggedEvents,
+      permissionCache,
     };
   }
 
@@ -386,5 +394,57 @@ describe('EditRolePermissionsUseCase Unit Tests (HU-006, T-006-25, RF-006, RS-00
 
     expect(roleReader.findById).toHaveBeenCalledWith(roleId);
     expect(result).toEqual(updatedRoleDto);
+  });
+
+  it('invalidates all permission cache entries after committing when grants effectively change', async () => {
+    const { useCase, permissionCache, unitOfWork } = setupMocks();
+    const callOrder: string[] = [];
+
+    vi.mocked(unitOfWork.run).mockImplementation(async (work) => {
+      callOrder.push('uow.run');
+      return work();
+    });
+    vi.mocked(permissionCache.invalidateAll).mockImplementation(() => {
+      callOrder.push('cache.invalidateAll');
+    });
+
+    const input: UpdateRolePermissionsRequest = {
+      permissions: [{ permissionCode: 'rol.ver', scope: 'GLOBAL' }],
+    };
+
+    await useCase.execute({ actorId, roleId, input });
+
+    expect(permissionCache.invalidateAll).toHaveBeenCalledTimes(1);
+    expect(callOrder).toEqual(['uow.run', 'cache.invalidateAll']);
+  });
+
+  it('does not invalidate the cache when replaceForRole reports no changes', async () => {
+    const { useCase, rolePermissionRepository, permissionCache } = setupMocks();
+    vi.mocked(rolePermissionRepository.replaceForRole).mockResolvedValueOnce({
+      added: 0,
+      updated: 0,
+      removed: 0,
+    });
+
+    const input: UpdateRolePermissionsRequest = {
+      permissions: [{ permissionCode: 'rol.ver', scope: 'GLOBAL' }],
+    };
+
+    await useCase.execute({ actorId, roleId, input });
+
+    expect(permissionCache.invalidateAll).not.toHaveBeenCalled();
+  });
+
+  it('does not invalidate the cache if the transaction fails', async () => {
+    const { useCase, unitOfWork, permissionCache } = setupMocks();
+    vi.mocked(unitOfWork.run).mockRejectedValueOnce(new Error('DB failure'));
+
+    const input: UpdateRolePermissionsRequest = {
+      permissions: [{ permissionCode: 'rol.ver', scope: 'GLOBAL' }],
+    };
+
+    await expect(useCase.execute({ actorId, roleId, input })).rejects.toThrow('DB failure');
+
+    expect(permissionCache.invalidateAll).not.toHaveBeenCalled();
   });
 });

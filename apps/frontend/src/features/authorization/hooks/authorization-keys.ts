@@ -5,4 +5,8 @@ export const authorizationKeys = {
   permissions: {
     all: ['permissions'] as const,
   },
+  userAccess: {
+    all: ['userAccess'] as const,
+    detail: (userId: string) => ['userAccess', userId] as const,
+  },
 };

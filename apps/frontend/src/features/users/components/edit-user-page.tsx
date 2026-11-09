@@ -1,10 +1,12 @@
 import { Link } from '@tanstack/react-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/common/page-header';
 import { LoadingState } from '@/components/common/loading-state';
 import { ErrorState } from '@/components/common/error-state';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { useUser } from '../hooks';
+import { UserAccessPanel } from '@/features/authorization';
+import { useUser, usersKeys } from '../hooks';
 import { UserForm } from './user-form';
 
 export interface EditUserPageProps {
@@ -12,6 +14,7 @@ export interface EditUserPageProps {
 }
 
 export function EditUserPage({ userId }: EditUserPageProps) {
+  const queryClient = useQueryClient();
   const userQuery = useUser(userId);
 
   if (userQuery.isLoading) {
@@ -74,11 +77,20 @@ export function EditUserPage({ userId }: EditUserPageProps) {
     <div className="space-y-6">
       <PageHeader
         title={`Editar usuario: ${fullName}`}
-        description="Actualiza la información personal del usuario. Los roles y el estado se gestionan de forma independiente."
+        description="Actualiza la información personal del usuario y gestiona sus roles y permisos."
       />
 
       <section className="surface rounded-lg p-6">
         <UserForm mode="edit" initialUser={userQuery.data} />
+      </section>
+
+      <section className="surface rounded-lg p-6">
+        <UserAccessPanel
+          userId={userId}
+          onUserAccessChanged={() => {
+            queryClient.invalidateQueries({ queryKey: usersKeys.all });
+          }}
+        />
       </section>
     </div>
   );

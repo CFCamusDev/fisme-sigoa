@@ -9,3 +9,7 @@ export * from './edit-role.js';
 export * from './edit-role.types.js';
 export * from './change-role-status.js';
 export * from './change-role-status.types.js';
+export * from './user-access-assembler.js';
+export * from './get-user-effective-access.js';
+export * from './assign-user-roles.js';
+export * from './assign-user-permissions.js';
