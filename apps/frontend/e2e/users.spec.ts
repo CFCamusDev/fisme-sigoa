@@ -83,7 +83,7 @@ test.describe('HU-003 — Gestión de usuarios E2E', () => {
     // Volver a la lista y verificar que aparece con estado «Pendiente de activación»
     await page.getByRole('link', { name: /volver a la lista/i }).click();
     await expect(page).toHaveURL(/\/usuarios/);
-    const anaRow = page.getByRole('row', { name: /ana valle/i });
+    const anaRow = page.getByRole('row', { name: new RegExp(newUserEmail, 'i') });
     await expect(anaRow).toBeVisible();
     await expect(anaRow.getByText('Pendiente de activación')).toBeVisible();
 
@@ -181,8 +181,11 @@ test.describe('HU-003 — Gestión de usuarios E2E', () => {
     // Abre /usuarios directamente
     await page.goto('/usuarios');
 
-    // Debe mostrar el mensaje de 403 del servidor sin reintento
-    await expect(page.getByText('Acceso restringido')).toBeVisible();
-    await expect(page.getByText('No tienes permiso para ver los usuarios.')).toBeVisible();
+    // La guarda de ruta por permiso (HU-008) renderiza ForbiddenPage sin cambiar la URL
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'No tienes acceso a esta sección' }),
+    ).toBeVisible();
+    await expect(page.getByText(/No cuentas con los permisos necesarios/i)).toBeVisible();
+    await expect(page).toHaveURL(/\/usuarios/);
   });
 });
