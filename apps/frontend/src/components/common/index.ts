@@ -10,3 +10,4 @@ export * from './error-page';
 export * from './not-found-page';
 export * from './forbidden-page';
 export * from './unexpected-error-page';
+export * from './can';

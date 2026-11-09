@@ -19,6 +19,7 @@ export function useLogout(): UseMutationResult<void, ApiError, void> {
     retry: false,
     onSettled: async () => {
       clearAuthSession();
+      queryClient.removeQueries({ queryKey: ['me', 'permissions'] });
       queryClient.clear();
       await navigate({ to: '/login', replace: true });
     },

@@ -28,11 +28,14 @@ export function configureSession(options: ConfigureSessionOptions): void {
 
   setSessionRefresher(refresher);
 
-  useAuthStore.subscribe((state) => {
+  useAuthStore.subscribe((state, prevState) => {
     if (state.refreshTokenExpiresAt) {
       setSessionHint(state.refreshTokenExpiresAt);
     } else {
       clearSessionHint();
+      if (prevState.user) {
+        activeQueryClient.removeQueries({ queryKey: ['me', 'permissions'] });
+      }
     }
   });
 }

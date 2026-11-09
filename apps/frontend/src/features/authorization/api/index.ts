@@ -7,3 +7,4 @@ export * from './update-role-permissions';
 export * from './get-user-access';
 export * from './assign-user-roles';
 export * from './assign-user-permissions';
+export * from './get-my-permissions';
