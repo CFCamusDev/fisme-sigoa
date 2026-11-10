@@ -1,4 +1,8 @@
 import { defineConfig } from 'vitest/config';
+import { resolveWorkerCount } from './src/test/db/worker-databases.ts';
+
+// Una base de datos por worker (HU-078): con 1 worker los archivos corren en serie como siempre.
+const integrationWorkers = resolveWorkerCount();
 
 export default defineConfig({
   test: {
@@ -39,7 +43,8 @@ export default defineConfig({
           globals: true,
           environment: 'node',
           include: ['src/**/*.integration.test.ts'],
-          fileParallelism: false,
+          fileParallelism: integrationWorkers > 1,
+          maxWorkers: integrationWorkers,
           globalSetup: ['src/test/db/global-setup.ts'],
           testTimeout: 30_000,
           hookTimeout: 60_000,
