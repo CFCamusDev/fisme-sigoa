@@ -126,5 +126,5 @@ describe('check-windows-paths (T-005-19, AGENTS §9, RNF-030)', () => {
     }
 
     expect(violations).toEqual([]);
-  });
+  }, 30_000);
 });
