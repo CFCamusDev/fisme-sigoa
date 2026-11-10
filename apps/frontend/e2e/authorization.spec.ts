@@ -81,12 +81,13 @@ test.describe('HU-008 — Autorización por permiso y alcance E2E', () => {
     await expect(page).toHaveURL('/');
     await expect(page.getByRole('heading', { name: 'FISME-SIGOA' })).toBeVisible();
 
-    // 2. El menú lateral del Docente muestra Panel y oculta Usuarios y Roles (CA3)
+    // 2. El menú lateral del Docente muestra Panel y oculta Usuarios, Roles, Programa y Semestres (CA3)
     const mainNav = page.getByRole('navigation', { name: 'Navegación principal' });
     await expect(mainNav.getByRole('link', { name: 'Panel' })).toBeVisible();
     await expect(mainNav.getByRole('link', { name: 'Usuarios' })).toHaveCount(0);
     await expect(mainNav.getByRole('link', { name: 'Roles' })).toHaveCount(0);
     await expect(mainNav.getByRole('link', { name: 'Programa' })).toHaveCount(0);
+    await expect(mainNav.getByRole('link', { name: 'Semestres' })).toHaveCount(0);
 
     // Verificar contraste WCAG 2.1 AA en el panel del Docente (escritorio y móvil)
     await expectNoContrastViolations(page, { screen: 'teacher-dashboard-desktop' });
@@ -158,6 +159,11 @@ test.describe('HU-008 — Autorización por permiso y alcance E2E', () => {
     await expect(mainNav.getByRole('link', { name: 'Usuarios' })).toBeVisible();
     await expect(mainNav.getByRole('link', { name: 'Roles' })).toBeVisible();
     await expect(mainNav.getByRole('link', { name: 'Programa' })).toBeVisible();
+    await expect(mainNav.getByRole('link', { name: 'Semestres' })).toBeVisible();
+
+    await mainNav.getByRole('link', { name: 'Semestres' }).click();
+    await expect(page).toHaveURL(/\/configuracion\/semestres/);
+    await expect(page.getByRole('heading', { level: 1, name: 'Semestres' })).toBeVisible();
 
     await mainNav.getByRole('link', { name: 'Programa' }).click();
     await expect(page).toHaveURL(/\/configuracion\/programa/);

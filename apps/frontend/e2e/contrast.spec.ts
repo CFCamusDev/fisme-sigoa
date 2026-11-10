@@ -486,4 +486,74 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA)', () => {
 
     await expectNoContrastViolations(page, { context: 'program-config-readonly-desktop' });
   });
+
+  test('semesters page has no contrast violations in editable mode with data (HU-010, T-010-11)', async ({
+    page,
+  }) => {
+    const adminEmail = `contrast-admin-sem-${Date.now()}@example.test`;
+    await loginAsTestUser(page, {
+      email: adminEmail,
+      roles: ['ADMINISTRATOR'],
+    });
+
+    await page.setViewportSize({ width: 1280, height: 720 });
+    const [semRes] = await Promise.all([
+      page.waitForResponse((res) => res.url().includes('/semesters') && res.status() === 200),
+      page.goto('/configuracion/semestres'),
+    ]);
+    expect(semRes.ok()).toBe(true);
+
+    await expect(page.getByRole('heading', { level: 1, name: 'Semestres' })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { level: 2, name: 'Registrar nuevo semestre' }),
+    ).toBeVisible();
+
+    // 1. Escritorio antes de registrar
+    await expectNoContrastViolations(page, { context: 'semesters-page-desktop' });
+
+    // 2. Móvil
+    await page.setViewportSize({ width: 375, height: 812 });
+    await expectNoContrastViolations(page, { context: 'semesters-page-mobile' });
+    await page.setViewportSize({ width: 1280, height: 720 });
+
+    // 3. Registrar un semestre con año único (D8) para probar tabla con datos
+    const uniqueYear = 3000 + (Date.now() % 6000);
+    await page.getByLabel(/código/i).fill(`${uniqueYear}-I`);
+    await page.getByLabel(/fecha de inicio/i).fill(`${uniqueYear}-03-15`);
+    await page.getByLabel(/fecha de fin/i).fill(`${uniqueYear}-07-15`);
+
+    const [createRes] = await Promise.all([
+      page.waitForResponse((res) => res.url().includes('/semesters') && res.status() === 201),
+      page.getByRole('button', { name: /registrar semestre/i }).click(),
+    ]);
+    expect(createRes.ok()).toBe(true);
+
+    await expect(page.getByText(`${uniqueYear}-I`)).toBeVisible();
+    await expectNoContrastViolations(page, { context: 'semesters-page-with-data-desktop' });
+  });
+
+  test('semesters page has no contrast violations in read-only mode (HU-010, T-010-11)', async ({
+    page,
+  }) => {
+    const committeeEmail = `contrast-committee-sem-${Date.now()}@example.test`;
+    await loginAsTestUser(page, {
+      email: committeeEmail,
+      roles: ['COMMITTEE_MEMBER'],
+    });
+
+    await page.setViewportSize({ width: 1280, height: 720 });
+    const [semResReadonly] = await Promise.all([
+      page.waitForResponse((res) => res.url().includes('/semesters') && res.status() === 200),
+      page.goto('/configuracion/semestres'),
+    ]);
+    expect(semResReadonly.ok()).toBe(true);
+
+    await expect(page.getByRole('heading', { level: 1, name: 'Semestres' })).toBeVisible();
+    await expect(
+      page.getByText(/solo lectura: no tienes permiso para registrar semestres/i),
+    ).toBeVisible();
+    await expect(page.getByRole('button', { name: /registrar semestre/i })).toHaveCount(0);
+
+    await expectNoContrastViolations(page, { context: 'semesters-page-readonly-desktop' });
+  });
 });

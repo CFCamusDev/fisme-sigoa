@@ -84,6 +84,18 @@ describe('AppLayout Component', () => {
     expect(programLink).toHaveAttribute('href', '/configuracion/programa');
   });
 
+  it('renders navigation item "Semestres" linking to /configuracion/semestres (HU-010, T-010-11)', async () => {
+    renderWithProviders(
+      <AppLayout>
+        <p>Dashboard</p>
+      </AppLayout>,
+    );
+
+    const semestersLink = await screen.findByRole('link', { name: /Semestres/i });
+    expect(semestersLink).toBeInTheDocument();
+    expect(semestersLink).toHaveAttribute('href', '/configuracion/semestres');
+  });
+
   it('controls mobile sidebar visibility with accessible aria-expanded button', async () => {
     const user = userEvent.setup();
 
