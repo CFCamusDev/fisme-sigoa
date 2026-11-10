@@ -80,6 +80,8 @@ describe('setupAppRoutes', () => {
 
     const response = await request(app).post('/parameters').send({});
     expect(response.status).toBe(401);
+    const listResponse = await request(app).get('/parameters');
+    expect(listResponse.status).toBe(401);
   });
 
   it('throws an error in production if APP_PUBLIC_URL is not configured', () => {

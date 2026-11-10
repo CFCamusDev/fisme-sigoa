@@ -1,5 +1,5 @@
 import { Router, type RequestHandler } from 'express';
-import { defineParametersRequestSchema } from '@sigoa/shared';
+import { defineParametersRequestSchema, listParametersQuerySchema } from '@sigoa/shared';
 import { z } from 'zod';
 import { validateRequest } from '../../../../shared/middleware/validate-request.js';
 import type { ParameterValuesController } from './parameter-values.controller.js';
@@ -19,6 +19,18 @@ export interface ParameterValuesRouterDependencies {
 
 export function createParameterValuesRouter(deps: ParameterValuesRouterDependencies): Router {
   const router = Router();
+
+  // GET /parameters (HU-011, T-011-10, CA1, CA2, RF-011, RS-002, RNF-008, RNF-009)
+  // Cadena obligatoria: authenticate -> requirePermission -> validateRequest -> controller
+  router.get(
+    '/',
+    deps.authenticate,
+    deps.requirePermission('parametro.ver', 'GLOBAL'),
+    validateRequest({
+      query: listParametersQuerySchema,
+    }),
+    deps.controller.listParameters,
+  );
 
   // POST /parameters (HU-011, T-011-09, CA2, CA3, RF-011, RS-002, RS-020, RNF-008, RNF-009)
   // Cadena obligatoria: authenticate -> requirePermission -> validateRequest -> controller

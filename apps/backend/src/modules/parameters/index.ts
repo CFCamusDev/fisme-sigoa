@@ -6,6 +6,7 @@ import { EditProgramUseCase } from './application/edit-program.js';
 import { GetProgramUseCase } from './application/get-program.js';
 import { CreateSemesterUseCase } from './application/create-semester.js';
 import { DefineParametersUseCase } from './application/define-parameters.js';
+import { ListEffectiveParametersUseCase } from './application/list-effective-parameters.js';
 import { ListSemestersUseCase } from './application/list-semesters.js';
 import type { ParametersPermissionChecker } from './domain/ports/parameters-permission-checker.js';
 import { ParametersController } from './infrastructure/http/parameters.controller.js';
@@ -113,7 +114,17 @@ export function createParameterValuesModule(deps?: ParametersModuleDependencies)
     auditLogger: deps.auditLogger,
   });
 
-  const controller = new ParameterValuesController({ defineParametersUseCase });
+  const listEffectiveParametersUseCase = new ListEffectiveParametersUseCase({
+    parameterReader: parameterRepository,
+    semesterReader: semesterRepository,
+    permissionChecker: deps.permissionChecker,
+    clock: deps.clock,
+  });
+
+  const controller = new ParameterValuesController({
+    defineParametersUseCase,
+    listEffectiveParametersUseCase,
+  });
 
   return createParameterValuesRouter({
     controller,
