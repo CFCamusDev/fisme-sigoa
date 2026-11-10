@@ -3361,6 +3361,237 @@
           }
         }
       }
+    },
+    "/semesters": {
+      "get": {
+        "tags": ["Parameters"],
+        "summary": "Listar semestres académicos",
+        "description": "Retorna la lista de todos los semestres registrados en el sistema, ordenados descendentemente por fecha de inicio. Requiere el permiso 'parametro.ver' con alcance GLOBAL (HU-010, RF-010, RS-002, RS-015, D1, D5, D6).",
+        "operationId": "listSemesters",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de semestres académicos obtenida exitosamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché HTTP."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListSemestersResponse"
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "cm3semcuid202720000000",
+                      "code": "2027-II",
+                      "startDate": "2027-08-01",
+                      "endDate": "2027-12-31",
+                      "updatedAt": "2026-11-09T14:00:00.000Z"
+                    },
+                    {
+                      "id": "cm3semcuid202710000000",
+                      "code": "2027-I",
+                      "startDate": "2027-03-01",
+                      "endDate": "2027-07-31",
+                      "updatedAt": "2026-11-09T10:00:00.000Z"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros de consulta (query) desconocidos o no permitidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "La solicitud contiene errores de validación",
+                    "details": [
+                      {
+                        "path": "query",
+                        "message": "No se permiten parámetros adicionales"
+                      }
+                    ],
+                    "requestId": "req_sem_get_400"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o token de acceso inválido o expirado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado",
+                    "requestId": "req_sem_get_401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere el permiso 'parametro.ver'.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para consultar los semestres",
+                    "requestId": "req_sem_get_403"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Parameters"],
+        "summary": "Registrar nuevo semestre académico",
+        "description": "Crea un nuevo semestre académico con su código de formato AAAA-I o AAAA-II y fechas de calendario no superpuestas. Requiere el permiso 'parametro.editar' con alcance GLOBAL (HU-010, RF-010, RS-002, RS-020, RNF-008, RNF-009, D1, D2).",
+        "operationId": "createSemester",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSemesterRequest"
+              },
+              "example": {
+                "code": "2027-I",
+                "startDate": "2027-03-01",
+                "endDate": "2027-07-31"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Semestre académico creado exitosamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché HTTP."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SemesterDto"
+                },
+                "example": {
+                  "id": "cm3semcuid202710000000",
+                  "code": "2027-I",
+                  "startDate": "2027-03-01",
+                  "endDate": "2027-07-31",
+                  "updatedAt": "2026-11-09T10:00:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error de validación en el código (fuera de AAAA-I/II) o fechas inválidas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "El código del semestre debe tener el formato AAAA-I o AAAA-II, por ejemplo 2027-I",
+                    "requestId": "req_sem_post_400"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado",
+                    "requestId": "req_sem_post_401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere 'parametro.editar' con alcance GLOBAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para registrar semestres",
+                    "requestId": "req_sem_post_403"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto: fechas superpuestas con otro semestre o código duplicado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "El rango de fechas se superpone con el semestre 2027-I (2027-03-01 a 2027-07-31).",
+                    "requestId": "req_sem_post_409"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4197,6 +4428,80 @@
             "minLength": 3,
             "maxLength": 150,
             "description": "Nombre de la facultad a la que pertenece el programa."
+          }
+        }
+      },
+      "SemesterDto": {
+        "type": "object",
+        "required": ["id", "code", "startDate", "endDate", "updatedAt"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "Identificador único del semestre (CUID)."
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^\\d{4}-(I|II)$",
+            "description": "Código oficial del semestre académico (ej. 2027-I o 2027-II)."
+          },
+          "startDate": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Fecha de inicio del semestre en formato AAAA-MM-DD."
+          },
+          "endDate": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Fecha de fin del semestre en formato AAAA-MM-DD."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Fecha y hora de creación del registro (ISO 8601)."
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Fecha y hora de última actualización del registro (ISO 8601)."
+          }
+        }
+      },
+      "CreateSemesterRequest": {
+        "type": "object",
+        "required": ["code", "startDate", "endDate"],
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^\\d{4}-(I|II)$",
+            "description": "Código oficial del semestre académico (AAAA-I o AAAA-II)."
+          },
+          "startDate": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Fecha de inicio del semestre (AAAA-MM-DD)."
+          },
+          "endDate": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Fecha de fin del semestre (AAAA-MM-DD)."
+          }
+        }
+      },
+      "ListSemestersResponse": {
+        "type": "object",
+        "required": ["items"],
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SemesterDto"
+            },
+            "description": "Lista de semestres registrados en orden cronológico descendente."
           }
         }
       }

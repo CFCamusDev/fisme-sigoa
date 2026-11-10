@@ -35,6 +35,9 @@ import {
   myPermissionsResponseSchema,
   programDtoSchema,
   updateProgramRequestSchema,
+  semesterDtoSchema,
+  createSemesterRequestSchema,
+  listSemestersResponseSchema,
 } from '@sigoa/shared';
 import { createAuthRouter } from '../src/modules/auth/infrastructure/http/auth.routes.js';
 import { createUsersRouter } from '../src/modules/users/infrastructure/http/users.routes.js';
@@ -49,6 +52,8 @@ import { createMePermissionsRouter } from '../src/modules/authorization/infrastr
 import type { MePermissionsController } from '../src/modules/authorization/infrastructure/http/me-permissions.controller.js';
 import { createParametersRouter } from '../src/modules/parameters/infrastructure/http/parameters.routes.js';
 import type { ParametersController } from '../src/modules/parameters/infrastructure/http/parameters.controller.js';
+import { createSemestersRouter } from '../src/modules/parameters/infrastructure/http/semesters.routes.js';
+import type { SemestersController } from '../src/modules/parameters/infrastructure/http/semesters.controller.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1580,6 +1585,97 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
       expect(routerEndpoints.sort((a, b) => a.method.localeCompare(b.method))).toEqual([
         { method: 'get', path: '/program' },
         { method: 'patch', path: '/program' },
+      ]);
+    });
+  });
+
+  describe('OpenAPI Specification for Semesters (HU-010, T-010-09, RF-010, RNF-032)', () => {
+    it('documents GET /semesters and POST /semesters with bearerAuth and proper status codes', () => {
+      expect(spec.paths['/semesters']).toBeDefined();
+      expect(spec.paths['/semesters'].get).toBeDefined();
+      expect(spec.paths['/semesters'].post).toBeDefined();
+
+      const getOp = spec.paths['/semesters'].get;
+      expect(getOp.tags).toContain('Parameters');
+      expect(getOp.operationId).toBe('listSemesters');
+      expect(getOp.security).toEqual([{ bearerAuth: [] }]);
+      expect(Object.keys(getOp.responses).sort()).toEqual(['200', '400', '401', '403']);
+
+      const postOp = spec.paths['/semesters'].post;
+      expect(postOp.tags).toContain('Parameters');
+      expect(postOp.operationId).toBe('createSemester');
+      expect(postOp.security).toEqual([{ bearerAuth: [] }]);
+      expect(Object.keys(postOp.responses).sort()).toEqual(['201', '400', '401', '403', '409']);
+    });
+
+    it('validates 200/201 responses and request bodies against schemas from @sigoa/shared', () => {
+      const getOp = spec.paths['/semesters'].get;
+      const res200Get = getOp.responses['200'];
+      expect(res200Get.headers['Cache-Control'].example).toBe('no-store');
+      expect(
+        listSemestersResponseSchema.safeParse(res200Get.content['application/json'].example)
+          .success,
+      ).toBe(true);
+
+      const postOp = spec.paths['/semesters'].post;
+      const res201Post = postOp.responses['201'];
+      expect(res201Post.headers['Cache-Control'].example).toBe('no-store');
+      expect(
+        semesterDtoSchema.safeParse(res201Post.content['application/json'].example).success,
+      ).toBe(true);
+
+      const reqBody = postOp.requestBody;
+      expect(reqBody.required).toBe(true);
+      expect(
+        createSemesterRequestSchema.safeParse(reqBody.content['application/json'].example).success,
+      ).toBe(true);
+    });
+
+    it('matches components.schemas properties with Zod schemas shape', () => {
+      const semesterDtoComp = spec.components.schemas.SemesterDto;
+      expect(semesterDtoComp).toBeDefined();
+      expect(Object.keys(semesterDtoComp.properties).sort()).toEqual(
+        Object.keys(semesterDtoSchema.shape).sort(),
+      );
+
+      const createReqComp = spec.components.schemas.CreateSemesterRequest;
+      expect(createReqComp).toBeDefined();
+      expect(Object.keys(createReqComp.properties).sort()).toEqual(
+        Object.keys(createSemesterRequestSchema.shape).sort(),
+      );
+
+      const listResComp = spec.components.schemas.ListSemestersResponse;
+      expect(listResComp).toBeDefined();
+      expect(Object.keys(listResComp.properties).sort()).toEqual(
+        Object.keys(listSemestersResponseSchema.shape).sort(),
+      );
+    });
+
+    it('has bidirectional parity between openapi spec and createSemestersRouter', () => {
+      const router = createSemestersRouter({
+        controller: {
+          createSemester: vi.fn(),
+          listSemesters: vi.fn(),
+        } as unknown as SemestersController,
+        authenticate: vi.fn(),
+        requirePermission: vi.fn(() => vi.fn()),
+      });
+
+      const routerEndpoints: { method: string; path: string }[] = [];
+      for (const layer of router.stack) {
+        if (layer.route) {
+          const routePath = layer.route.path;
+          const methods = Object.keys(layer.route.methods);
+          for (const method of methods) {
+            const normalizedPath = '/semesters' + (routePath === '/' ? '' : routePath);
+            routerEndpoints.push({ method: method.toLowerCase(), path: normalizedPath });
+          }
+        }
+      }
+
+      expect(routerEndpoints.sort((a, b) => a.method.localeCompare(b.method))).toEqual([
+        { method: 'get', path: '/semesters' },
+        { method: 'post', path: '/semesters' },
       ]);
     });
   });
