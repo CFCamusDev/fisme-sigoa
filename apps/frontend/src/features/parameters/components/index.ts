@@ -6,3 +6,4 @@ export { SemestersPage } from './semesters-page';
 export { ParametersTable, type ParametersTableProps } from './parameters-table';
 export { ParameterHistory, type ParameterHistoryProps } from './parameter-history';
 export { ParametersPage } from './parameters-page';
+export { ParametersForm, type ParametersFormProps } from './parameters-form';

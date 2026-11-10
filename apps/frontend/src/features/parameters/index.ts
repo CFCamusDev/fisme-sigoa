@@ -5,3 +5,5 @@ export * from './lib/program-error-message';
 export * from './lib/semester-error-message';
 export * from './lib/format-semester-date';
 export * from './lib/format-parameter-value';
+export * from './lib/parameter-error-message';
+export * from './lib/build-define-parameters-payload';

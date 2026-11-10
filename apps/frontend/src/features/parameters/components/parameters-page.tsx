@@ -6,6 +6,7 @@ import { Select } from '@/components/ui/select';
 import { useParameters } from '../hooks/use-parameters';
 import { useSemesters } from '../hooks/use-semesters';
 import { ParameterHistory } from './parameter-history';
+import { ParametersForm } from './parameters-form';
 import { ParametersTable } from './parameters-table';
 
 export function ParametersPage() {
@@ -68,6 +69,7 @@ export function ParametersPage() {
         <div className="space-y-6">
           <ParametersTable items={data.items} semesterCode={data.semesterCode} />
           <ParameterHistory items={data.items} />
+          <ParametersForm onSuccess={(code) => setSemesterCode(code)} />
         </div>
       )}
     </div>
