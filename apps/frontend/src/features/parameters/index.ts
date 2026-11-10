@@ -4,3 +4,4 @@ export * from './hooks';
 export * from './lib/program-error-message';
 export * from './lib/semester-error-message';
 export * from './lib/format-semester-date';
+export * from './lib/format-parameter-value';
