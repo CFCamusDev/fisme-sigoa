@@ -68,7 +68,10 @@ export * from './application/get-program.types.js';
 export * from './application/program-dto.js';
 export * from './application/create-semester.js';
 export * from './application/create-semester.types.js';
+export * from './application/list-semesters.js';
+export * from './application/list-semesters.types.js';
 export * from './application/semester-dto.js';
+
 export * from './infrastructure/http/parameters.controller.js';
 export * from './infrastructure/http/parameters.routes.js';
 export * from './infrastructure/prisma/prisma-program-repository.js';
