@@ -429,6 +429,83 @@ export function computeOverallStatus(checks, mode) {
 }
 
 /**
+ * Valida el contenido de perf-budget.json (HU-078, D7). Un archivo inválido produce una advertencia,
+ * nunca un error: los presupuestos son informativos.
+ * @param {string | null | undefined} jsonText
+ * @returns {{ budget: { groups: Record<string, number>, total: Record<string, number> } | null, warning?: string }}
+ */
+export function parsePerfBudget(jsonText) {
+  if (jsonText === null || jsonText === undefined) {
+    return { budget: null, warning: 'No se encontró scripts/ci/perf-budget.json; se omiten los presupuestos.' };
+  }
+  let data;
+  try {
+    data = JSON.parse(jsonText);
+  } catch {
+    return { budget: null, warning: 'scripts/ci/perf-budget.json no es JSON válido; se omiten los presupuestos.' };
+  }
+  const isPositive = (value) => typeof value === 'number' && Number.isFinite(value) && value > 0;
+  const isBudgetMap = (value) =>
+    value !== null &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    Object.keys(value).length > 0 &&
+    Object.values(value).every(isPositive);
+  if (!data || !isBudgetMap(data.groups) || !isBudgetMap(data.total)) {
+    return {
+      budget: null,
+      warning:
+        'scripts/ci/perf-budget.json tiene una forma inválida (groups y total deben ser mapas de segundos positivos); se omiten los presupuestos.',
+    };
+  }
+  return { budget: { groups: data.groups, total: data.total } };
+}
+
+/**
+ * Calcula los tiempos por grupo contra sus presupuestos. Solo informa: no cambia el estado global.
+ * Con --repeat-scope all el presupuesto de integración y E2E se multiplica por las pasadas.
+ * @param {Array<{ parallelGroup?: string, durationMs?: number }>} checks
+ * @param {{ groups: Record<string, number>, total: Record<string, number> } | null} budget
+ * @param {{ mode: string, repeat?: number, repeatScope?: string, totalDurationMs?: number }} options
+ */
+export function computeTimings(checks, budget, options) {
+  const repeat = options.repeat || 1;
+  const scaled = new Set(['integracion', 'e2e']);
+  const byGroup = new Map();
+  for (const check of checks) {
+    if (!check.parallelGroup) continue;
+    byGroup.set(check.parallelGroup, (byGroup.get(check.parallelGroup) || 0) + (check.durationMs || 0));
+  }
+
+  const warnings = [];
+  const groups = PARALLEL_GROUP_ORDER.filter((id) => byGroup.has(id)).map((id) => {
+    const durationMs = byGroup.get(id);
+    const seconds = budget?.groups[id];
+    const factor = options.repeatScope === 'all' && scaled.has(id) ? repeat : 1;
+    const budgetMs = seconds ? seconds * 1000 * factor : null;
+    const exceededBudget = budgetMs !== null && durationMs > budgetMs;
+    if (exceededBudget) {
+      warnings.push(
+        `El grupo '${id}' tardó ${(durationMs / 1000).toFixed(1)}s y su presupuesto es ${(budgetMs / 1000).toFixed(0)}s.`,
+      );
+    }
+    return { id, durationMs, budgetMs, exceededBudget };
+  });
+
+  const totalSeconds = budget?.total[options.mode];
+  const totalBudgetMs = totalSeconds ? totalSeconds * 1000 : null;
+  const totalDurationMs = options.totalDurationMs ?? null;
+  const exceededTotal =
+    totalBudgetMs !== null && totalDurationMs !== null && totalDurationMs > totalBudgetMs;
+  if (exceededTotal) {
+    warnings.push(
+      `El modo '${options.mode}' tardó ${(totalDurationMs / 1000).toFixed(1)}s y su presupuesto es ${(totalBudgetMs / 1000).toFixed(0)}s.`,
+    );
+  }
+  return { groups, totalBudgetMs, totalDurationMs, exceededTotal, warnings };
+}
+
+/**
  * Construye el objeto JSON para last-report.json.
  * @param {Object} data
  * @returns {Object}
@@ -447,6 +524,8 @@ export function createReportJson(data) {
     parallel: (data.jobs || 1) > 1,
     repeatScope: data.repeatScope || 'all',
     repeatedTests: data.repeatedTests || [],
+    timings: data.timings || null,
+    timeWarnings: data.timings?.warnings || [],
     cleanWorkingTree: Boolean(data.cleanWorkingTree),
     startedAt: data.startedAt,
     completedAt: data.completedAt,
@@ -484,6 +563,15 @@ export function formatReportTable(report) {
     }
     if (check.actionSuggestion && check.status === 'failed') {
       lines.push(`     👉 Acción sugerida: ${check.actionSuggestion}`);
+    }
+  }
+
+  const timeWarnings = report.timeWarnings || [];
+  if (timeWarnings.length > 0) {
+    lines.push('----------------------------------------------------------------------');
+    lines.push(' Advertencias de tiempo (no afectan el resultado)');
+    for (const warning of timeWarnings) {
+      lines.push(`  ⚠ ${warning}`);
     }
   }
 
@@ -1715,7 +1803,27 @@ async function runCli() {
   }
 
   const completedAt = new Date().toISOString();
+  let budgetText = null;
+  try {
+    budgetText = fs.readFileSync(
+      path.join(path.dirname(fileURLToPath(import.meta.url)), 'perf-budget.json'),
+      'utf-8',
+    );
+  } catch {
+    budgetText = null;
+  }
+  const parsedBudget = parsePerfBudget(budgetText);
+  if (parsedBudget.warning) console.warn(`Advertencia: ${parsedBudget.warning}`);
+  const timings = computeTimings(executedChecks, parsedBudget.budget, {
+    mode,
+    repeat,
+    repeatScope,
+    totalDurationMs: new Date(completedAt).getTime() - new Date(startedAt).getTime(),
+  });
+  if (parsedBudget.warning) timings.warnings.unshift(parsedBudget.warning);
+
   const reportObj = createReportJson({
+    timings,
     jobs,
     branch: currentBranch,
     headSha: currentHeadSha,

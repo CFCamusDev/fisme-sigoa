@@ -1347,3 +1347,170 @@ describe('verify-pr-local scope skips (T-078-16)', () => {
     });
   });
 });
+
+describe('verify-pr-local time budgets (T-078-17)', () => {
+  const { parsePerfBudget, computeTimings, formatReportTable, PARALLEL_GROUP_ORDER } = verifyPr;
+  const repoRootDir = path.resolve(__dirname, '../../../../');
+  const budget = {
+    groups: { estaticas: 100, integracion: 120, e2e: 150 },
+    total: { quick: 60, full: 480 },
+  };
+
+  it('reads the budget file of the repository and covers every group and mode', () => {
+    const text = fs.readFileSync(
+      path.join(repoRootDir, 'scripts', 'ci', 'perf-budget.json'),
+      'utf-8',
+    );
+    const parsed = parsePerfBudget(text);
+
+    expect(parsed.warning).toBeUndefined();
+    expect(Object.keys(parsed.budget.groups).sort()).toEqual([...PARALLEL_GROUP_ORDER].sort());
+    expect(Object.keys(parsed.budget.total).sort()).toEqual(['full', 'quick', 'standard']);
+  });
+
+  it('warns without failing when a group exceeds its budget', () => {
+    const checks = [
+      { id: 'lint', parallelGroup: 'estaticas', status: 'ok', durationMs: 90_000 },
+      { id: 'typecheck', parallelGroup: 'estaticas', status: 'ok', durationMs: 30_000 },
+      { id: 'integration-tests', parallelGroup: 'integracion', status: 'ok', durationMs: 60_000 },
+    ];
+    const timings = computeTimings(checks, budget, { mode: 'full', totalDurationMs: 200_000 });
+
+    const estaticas = timings.groups.find((group: { id: string }) => group.id === 'estaticas');
+    expect(estaticas).toEqual({
+      id: 'estaticas',
+      durationMs: 120_000,
+      budgetMs: 100_000,
+      exceededBudget: true,
+    });
+    expect(
+      timings.groups.find((group: { id: string }) => group.id === 'integracion').exceededBudget,
+    ).toBe(false);
+    expect(timings.warnings).toHaveLength(1);
+    expect(timings.warnings[0]).toMatch(/estaticas.*120\.0s.*100s/);
+
+    const report = createReportJson({ mode: 'full', jobs: 3, checks, timings });
+    expect(report.overallStatus).toBe('ok');
+    expect(report.exitCode).toBe(0);
+    expect(
+      report.timings.groups.find((group: { id: string }) => group.id === 'estaticas')
+        .exceededBudget,
+    ).toBe(true);
+    expect(report.timeWarnings).toHaveLength(1);
+  });
+
+  it('shows the time warnings in the report table', () => {
+    const timings = computeTimings(
+      [{ id: 'lint', parallelGroup: 'estaticas', status: 'ok', durationMs: 200_000 }],
+      budget,
+      { mode: 'full', totalDurationMs: 600_000 },
+    );
+    const report = createReportJson({
+      mode: 'full',
+      branch: 'feature/HU-078-x',
+      headSha: 'abc',
+      jobs: 3,
+      checks: [{ id: 'lint', name: 'Lint', parallelGroup: 'estaticas', status: 'ok' }],
+      timings,
+    });
+
+    const table = formatReportTable(report);
+    expect(table).toContain('Advertencias de tiempo');
+    expect(table).toMatch(/estaticas/);
+    expect(table).toMatch(/modo 'full'/);
+    expect(table).toContain('Resultado global: OK (Código: 0)');
+  });
+
+  it('prints no warning section when everything is within budget', () => {
+    const timings = computeTimings(
+      [{ id: 'lint', parallelGroup: 'estaticas', status: 'ok', durationMs: 1000 }],
+      budget,
+      { mode: 'full', totalDurationMs: 5000 },
+    );
+    const report = createReportJson({
+      mode: 'full',
+      branch: 'b',
+      headSha: 'abc',
+      jobs: 3,
+      checks: [{ id: 'lint', name: 'Lint', status: 'ok' }],
+      timings,
+    });
+    expect(timings.warnings).toEqual([]);
+    expect(formatReportTable(report)).not.toContain('Advertencias de tiempo');
+  });
+
+  it('flags the total of the mode when it exceeds its budget, still as a warning', () => {
+    const timings = computeTimings([], budget, { mode: 'quick', totalDurationMs: 61_000 });
+    expect(timings.exceededTotal).toBe(true);
+    expect(timings.totalBudgetMs).toBe(60_000);
+    expect(timings.warnings[0]).toMatch(/quick/);
+  });
+
+  it('multiplies the integration and e2e budgets by the passes with scope all only', () => {
+    const checks = [
+      { id: 'integration-tests', parallelGroup: 'integracion', status: 'ok', durationMs: 300_000 },
+    ];
+    const all = computeTimings(checks, budget, { mode: 'full', repeat: 3, repeatScope: 'all' });
+    expect(all.groups[0].budgetMs).toBe(360_000);
+    expect(all.groups[0].exceededBudget).toBe(false);
+
+    const changed = computeTimings(checks, budget, {
+      mode: 'full',
+      repeat: 3,
+      repeatScope: 'changed',
+    });
+    expect(changed.groups[0].budgetMs).toBe(120_000);
+    expect(changed.groups[0].exceededBudget).toBe(true);
+  });
+
+  it('reports durations without budget when the budget could not be read', () => {
+    const timings = computeTimings(
+      [{ id: 'lint', parallelGroup: 'estaticas', status: 'ok', durationMs: 5000 }],
+      null,
+      { mode: 'full', totalDurationMs: 9000 },
+    );
+    expect(timings.groups[0]).toEqual({
+      id: 'estaticas',
+      durationMs: 5000,
+      budgetMs: null,
+      exceededBudget: false,
+    });
+    expect(timings.totalBudgetMs).toBeNull();
+    expect(timings.warnings).toEqual([]);
+  });
+
+  describe('parsePerfBudget with a missing or invalid file', () => {
+    it('warns and continues when the file is missing', () => {
+      const parsed = parsePerfBudget(null);
+      expect(parsed.budget).toBeNull();
+      expect(parsed.warning).toMatch(/No se encontró/);
+    });
+
+    it('warns and continues when the file is not JSON', () => {
+      const parsed = parsePerfBudget('{ not json');
+      expect(parsed.budget).toBeNull();
+      expect(parsed.warning).toMatch(/JSON válido/);
+    });
+
+    it.each([
+      ['no groups', '{"total":{"full":1}}'],
+      ['no total', '{"groups":{"e2e":1}}'],
+      ['zero seconds', '{"groups":{"e2e":0},"total":{"full":1}}'],
+      ['negative seconds', '{"groups":{"e2e":-5},"total":{"full":1}}'],
+      ['text seconds', '{"groups":{"e2e":"150"},"total":{"full":1}}'],
+      ['empty groups', '{"groups":{},"total":{"full":1}}'],
+      ['array groups', '{"groups":[1],"total":{"full":1}}'],
+      ['null', 'null'],
+    ])('rejects %s with a warning', (_name, text) => {
+      const parsed = parsePerfBudget(text);
+      expect(parsed.budget).toBeNull();
+      expect(parsed.warning).toMatch(/forma inválida|JSON válido/);
+    });
+
+    it('accepts a valid budget without a warning', () => {
+      const parsed = parsePerfBudget('{"groups":{"e2e":150},"total":{"full":480}}');
+      expect(parsed.warning).toBeUndefined();
+      expect(parsed.budget.groups.e2e).toBe(150);
+    });
+  });
+});
