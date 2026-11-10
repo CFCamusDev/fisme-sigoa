@@ -22,6 +22,8 @@
     "format:check": "pnpm -r --if-present format:check",
     "typecheck": "pnpm build:shared && pnpm db:generate && pnpm -r --if-present typecheck",
     "test": "pnpm build:shared && pnpm db:generate && pnpm -r --if-present test",
+    "test:fast": "pnpm build:shared && pnpm db:generate && pnpm --filter backend test:unit && pnpm --filter frontend test && pnpm --filter @sigoa/shared test",
+    "test:affected": "pnpm build:shared && pnpm db:generate && node scripts/perf/test-affected.mjs",
     "test:coverage": "pnpm build:shared && pnpm db:generate && pnpm -r --if-present test:coverage",
     "test:e2e": "pnpm build:shared && pnpm db:generate && pnpm --filter frontend test:e2e",
     "build": "pnpm build:shared && pnpm db:generate && pnpm -r --if-present build",
