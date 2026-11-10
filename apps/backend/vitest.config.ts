@@ -30,7 +30,7 @@ export default defineConfig({
           globals: true,
           environment: 'node',
           include: ['src/**/*.test.ts', 'openapi/**/*.test.ts'],
-          exclude: ['src/**/*.integration.test.ts', 'src/test/db/**'],
+          exclude: ['src/**/*.integration.test.ts'],
         },
       },
       {

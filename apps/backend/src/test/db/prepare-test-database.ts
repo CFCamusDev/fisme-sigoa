@@ -1,48 +1,51 @@
 import pg from 'pg';
 import { execSync } from 'node:child_process';
-import { getTestDatabaseUrl } from './assert-test-database.js';
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { assertTestDatabase, getTestDatabaseUrl } from './assert-test-database.js';
+import {
+  databaseNameOf,
+  resolveWorkerCount,
+  templateDatabaseName,
+  withDatabaseName,
+  workerDatabaseName,
+} from './worker-databases.js';
 
-export async function prepareTestDatabase(): Promise<string> {
-  let testUrl: string;
+const DEFAULT_TEST_URL = 'postgresql://postgres:postgres@localhost:5432/sigoa_test?schema=public';
+const MIGRATIONS_HASH_MARKER = 'sigoa-migrations-sha256:';
+const MIGRATIONS_DIR = fileURLToPath(new URL('../../../prisma/migrations', import.meta.url));
+
+function resolveBaseTestUrl(): string {
   try {
-    testUrl = getTestDatabaseUrl();
+    return getTestDatabaseUrl();
   } catch {
-    const defaultTestUrl = 'postgresql://postgres:postgres@localhost:5432/sigoa_test?schema=public';
-    process.env['TEST_DATABASE_URL'] = defaultTestUrl;
-    testUrl = defaultTestUrl;
+    process.env['TEST_DATABASE_URL'] = DEFAULT_TEST_URL;
+    return DEFAULT_TEST_URL;
   }
+}
 
-  const parsed = new URL(testUrl);
-  const dbName = parsed.pathname.replace(/^\//, '');
-
+function adminUrlOf(testUrl: string): string {
   const adminUrl = new URL(testUrl);
   adminUrl.pathname = '/postgres';
+  return adminUrl.toString();
+}
 
-  const client = new pg.Client({
-    connectionString: adminUrl.toString(),
-    connectionTimeoutMillis: 10_000,
-  });
-  try {
-    await client.connect();
-    const res = await client.query('SELECT 1 FROM pg_database WHERE datname = $1', [dbName]);
-    if (res.rowCount === 0) {
-      await client.query(`CREATE DATABASE "${dbName}"`);
-    }
-  } catch (error) {
-    throw new Error(
-      `No se pudo conectar a PostgreSQL para preparar la base de pruebas (${testUrl}). ` +
-        `Asegúrate de que el contenedor Docker esté iniciado (docker run --name fisme-postgres ...). Detalle: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      { cause: error },
-    );
-  } finally {
-    await client.end();
-  }
+function connectionError(testUrl: string, error: unknown): Error {
+  return new Error(
+    `No se pudo conectar a PostgreSQL para preparar la base de pruebas (${testUrl}). ` +
+      `Asegúrate de que el contenedor Docker esté iniciado (docker run --name fisme-postgres ...). Detalle: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    { cause: error },
+  );
+}
 
+function migrateDeploy(databaseUrl: string): void {
   try {
     execSync('pnpm exec prisma migrate deploy', {
-      env: { ...process.env, DATABASE_URL: testUrl },
+      env: { ...process.env, DATABASE_URL: databaseUrl },
       stdio: 'pipe',
       timeout: 120_000,
     });
@@ -54,8 +57,162 @@ export async function prepareTestDatabase(): Promise<string> {
       { cause: error },
     );
   }
+}
+
+/** Nombre de base apto para interpolar como identificador SQL (solo letras minúsculas, dígitos y `_`). */
+function quoteDatabaseName(name: string): string {
+  if (!/^[a-z0-9_]+$/.test(name)) {
+    throw new Error(`Nombre de base de pruebas no permitido: '${name}'.`);
+  }
+  return `"${name}"`;
+}
+
+export async function prepareTestDatabase(): Promise<string> {
+  const testUrl = resolveBaseTestUrl();
+  const dbName = databaseNameOf(testUrl);
+
+  const client = new pg.Client({
+    connectionString: adminUrlOf(testUrl),
+    connectionTimeoutMillis: 10_000,
+  });
+  try {
+    await client.connect();
+    const res = await client.query('SELECT 1 FROM pg_database WHERE datname = $1', [dbName]);
+    if (res.rowCount === 0) {
+      await client.query(`CREATE DATABASE "${dbName}"`);
+    }
+  } catch (error) {
+    throw connectionError(testUrl, error);
+  } finally {
+    await client.end();
+  }
+
+  migrateDeploy(testUrl);
 
   return testUrl;
+}
+
+/**
+ * SHA-256 del contenido de `prisma/migrations/**` (rutas relativas y bytes, en orden estable).
+ * Sirve para saltar `migrate deploy` cuando la plantilla ya tiene las mismas migraciones.
+ */
+export function hashMigrations(directory: string = MIGRATIONS_DIR): string {
+  const hash = crypto.createHash('sha256');
+  const walk = (current: string): void => {
+    const entries = fs.readdirSync(current, { withFileTypes: true });
+    entries.sort((a, b) => a.name.localeCompare(b.name));
+    for (const entry of entries) {
+      const full = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+      } else {
+        hash.update(path.relative(directory, full).replace(/\\/g, '/'));
+        hash.update('\0');
+        hash.update(fs.readFileSync(full));
+        hash.update('\0');
+      }
+    }
+  };
+  walk(directory);
+  return hash.digest('hex');
+}
+
+async function terminateConnections(client: pg.Client, databaseName: string): Promise<void> {
+  await client.query(
+    'SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()',
+    [databaseName],
+  );
+}
+
+async function prepareTemplate(client: pg.Client, baseUrl: string): Promise<string> {
+  const templateName = templateDatabaseName(databaseNameOf(baseUrl));
+  const templateUrl = assertTestDatabase(withDatabaseName(baseUrl, templateName));
+
+  const exists = await client.query('SELECT 1 FROM pg_database WHERE datname = $1', [templateName]);
+  if (exists.rowCount === 0) {
+    await client.query(`CREATE DATABASE ${quoteDatabaseName(templateName)}`);
+  }
+
+  const expected = `${MIGRATIONS_HASH_MARKER}${hashMigrations()}`;
+  const current = await client.query<{ comment: string | null }>(
+    "SELECT shobj_description(oid, 'pg_database') AS comment FROM pg_database WHERE datname = $1",
+    [templateName],
+  );
+  if (current.rows[0]?.comment !== expected) {
+    migrateDeploy(templateUrl);
+    await client.query(
+      `COMMENT ON DATABASE ${quoteDatabaseName(templateName)} IS '${expected.replace(/'/g, "''")}'`,
+    );
+  }
+
+  await terminateConnections(client, templateName);
+  return templateName;
+}
+
+/**
+ * Prepara una base por worker clonada de una plantilla migrada (HU-078, D4).
+ * Con un solo worker usa la base de siempre. Cada ejecución recrea los clones.
+ * Devuelve las URL de las bases que usarán los workers.
+ */
+export async function prepareWorkerDatabases(
+  workerCount: number = resolveWorkerCount(),
+): Promise<string[]> {
+  if (workerCount <= 1) {
+    return [await prepareTestDatabase()];
+  }
+
+  const baseUrl = resolveBaseTestUrl();
+  const baseName = databaseNameOf(baseUrl);
+  const client = new pg.Client({
+    connectionString: adminUrlOf(baseUrl),
+    connectionTimeoutMillis: 10_000,
+  });
+  const urls: string[] = [];
+  try {
+    try {
+      await client.connect();
+    } catch (error) {
+      throw connectionError(baseUrl, error);
+    }
+    const templateName = await prepareTemplate(client, baseUrl);
+
+    for (let index = 1; index <= workerCount; index += 1) {
+      const name = workerDatabaseName(baseName, index);
+      const url = assertTestDatabase(withDatabaseName(baseUrl, name));
+      await terminateConnections(client, name);
+      await client.query(`DROP DATABASE IF EXISTS ${quoteDatabaseName(name)} WITH (FORCE)`);
+      await client.query(
+        `CREATE DATABASE ${quoteDatabaseName(name)} TEMPLATE ${quoteDatabaseName(templateName)}`,
+      );
+      urls.push(url);
+    }
+  } finally {
+    await client.end();
+  }
+  return urls;
+}
+
+/** Elimina las bases de los workers (nunca la plantilla ni la base principal). */
+export async function dropWorkerDatabases(
+  workerCount: number = resolveWorkerCount(),
+): Promise<void> {
+  if (workerCount <= 1) return;
+  const baseUrl = resolveBaseTestUrl();
+  const baseName = databaseNameOf(baseUrl);
+  const client = new pg.Client({
+    connectionString: adminUrlOf(baseUrl),
+    connectionTimeoutMillis: 10_000,
+  });
+  try {
+    await client.connect();
+    for (let index = 1; index <= workerCount; index += 1) {
+      const name = workerDatabaseName(baseName, index);
+      assertTestDatabase(withDatabaseName(baseUrl, name));
+      await client.query(`DROP DATABASE IF EXISTS ${quoteDatabaseName(name)} WITH (FORCE)`);
+    }
+  } finally {
+    await client.end();
+  }
 }
 
 // Si se ejecuta directamente como script de CLI
