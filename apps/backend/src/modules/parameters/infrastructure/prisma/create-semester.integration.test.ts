@@ -67,22 +67,17 @@ describe('CreateSemesterUseCase Concurrency Integration (PostgreSQL real, T-010-
   }, 15_000);
 
   it('lets exactly one of N simultaneous overlapping creations win (CA2)', async () => {
-    // 5 candidatos con distintos códigos pero cuyas fechas se superponen todas con el rango central
+    // 4 candidatos con distintos códigos pero cuyas fechas se superponen todas con el día 2027-05-01
     const overlappingRequests = [
       { code: '2027-I', startDate: '2027-03-01', endDate: '2027-07-31' },
-      { code: '2027-II', startDate: '2027-07-31', endDate: '2027-12-31' }, // comparte frontera
-      {
-        code: '2027-III-mock',
-        codeAlias: '2028-I',
-        startDate: '2027-04-01',
-        endDate: '2027-06-30',
-      }, // contenido
-      { code: '2028-II', startDate: '2027-01-01', endDate: '2027-12-31' }, // envolvente
+      { code: '2027-II', startDate: '2027-05-01', endDate: '2027-10-31' },
+      { code: '2028-I', startDate: '2027-04-01', endDate: '2027-06-30' },
+      { code: '2028-II', startDate: '2027-01-01', endDate: '2027-12-31' },
     ];
 
     const attempts = overlappingRequests.map((req, index) =>
       useCase.execute({
-        code: req.codeAlias ?? req.code,
+        code: req.code,
         startDate: req.startDate,
         endDate: req.endDate,
         actorId: `admin_${index + 1}`,
