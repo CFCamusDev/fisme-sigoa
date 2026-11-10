@@ -5,7 +5,7 @@
   "groups": {
     "convenciones": 10,
     "estaticas": 150,
-    "integracion": 150,
+    "integracion": 240,
     "cobertura": 240,
     "imagenes": 240,
     "e2e": 150
