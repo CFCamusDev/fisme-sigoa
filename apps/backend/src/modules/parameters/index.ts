@@ -58,6 +58,7 @@ export function createParametersModule(deps?: ParametersModuleDependencies): Rou
 }
 
 export * from './domain/entities/program.js';
+export * from './domain/entities/semester.js';
 export * from './domain/errors/index.js';
 export * from './domain/ports/index.js';
 export * from './application/edit-program.js';
@@ -65,7 +66,12 @@ export * from './application/edit-program.types.js';
 export * from './application/get-program.js';
 export * from './application/get-program.types.js';
 export * from './application/program-dto.js';
+export * from './application/create-semester.js';
+export * from './application/create-semester.types.js';
+export * from './application/semester-dto.js';
 export * from './infrastructure/http/parameters.controller.js';
 export * from './infrastructure/http/parameters.routes.js';
 export * from './infrastructure/prisma/prisma-program-repository.js';
+export * from './infrastructure/prisma/prisma-semester-repository.js';
+export * from './infrastructure/prisma/prisma-semester-mapper.js';
 export * from './infrastructure/prisma/seed/program-seed.js';
