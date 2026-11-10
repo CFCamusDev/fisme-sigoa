@@ -8,7 +8,7 @@ import { PrismaUnitOfWork } from '../../../../shared/prisma/prisma-unit-of-work.
 import { createPrismaAuditServices } from '../../../../shared/prisma/create-prisma-audit-services.js';
 import { createAuthorizationServices } from '../../index.js';
 import type { ResourceOwnershipResolver } from '../../domain/ports/resource-ownership-resolver.js';
-import { seedAuthorization, grantRole } from '../../../../test/factories/authorization.js';
+import { seedAuthorizationFast, grantRole } from '../../../../test/factories/authorization.js';
 
 describe('Resource Ownership Authorization Probe Integration (PostgreSQL real, HU-008, CA2, RS-011, RF-008, D5, D6)', () => {
   const { getPrisma } = useTestDatabase();
@@ -106,7 +106,7 @@ describe('Resource Ownership Authorization Probe Integration (PostgreSQL real, H
   }
 
   beforeEach(async () => {
-    await seedAuthorization(prisma);
+    await seedAuthorizationFast(prisma);
   });
 
   it('returns 403 for a teacher requesting a measurement that is not theirs (CA2)', async () => {

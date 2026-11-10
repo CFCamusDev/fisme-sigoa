@@ -11,7 +11,7 @@ import { InMemoryEmailSender } from '../../../../shared/email/in-memory-email-se
 import {
   createRoleWithGrants,
   grantRole,
-  seedAuthorization,
+  seedAuthorizationFast,
 } from '../../../../test/factories/authorization.js';
 import { createAuthenticatedActor } from '../../../../test/http/authenticated-actor.js';
 
@@ -42,7 +42,7 @@ describe('PATCH /roles/:id/status HTTP Routes Integration (PostgreSQL real, HU-0
 
   beforeEach(async () => {
     emailSender.clear();
-    await seedAuthorization(prisma);
+    await seedAuthorizationFast(prisma);
   });
 
   async function createActor(roles: string[]) {

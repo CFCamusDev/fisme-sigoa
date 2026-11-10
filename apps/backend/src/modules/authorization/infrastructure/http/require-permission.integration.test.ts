@@ -7,7 +7,7 @@ import { getRequestContext } from '../../../../shared/audit/request-context.js';
 import { createPrismaAuditServices } from '../../../../shared/prisma/create-prisma-audit-services.js';
 import { PrismaUnitOfWork } from '../../../../shared/prisma/prisma-unit-of-work.js';
 import { createAuthorizationModule } from '../../index.js';
-import { seedAuthorization } from '../prisma/seed/authorization-seed.js';
+import { seedAuthorizationFast } from '../../../../test/factories/authorization.js';
 
 describe('requirePermission Integration (PostgreSQL real, RS-002, RS-011, RS-012, RF-008, RNF-004)', () => {
   const { getPrisma } = useTestDatabase();
@@ -69,7 +69,7 @@ describe('requirePermission Integration (PostgreSQL real, RS-002, RS-011, RS-012
   }
 
   it('permite el acceso (200) cuando el usuario tiene un rol con el permiso requerido', async () => {
-    await seedAuthorization(prisma);
+    await seedAuthorizationFast(prisma);
 
     const adminRole = await prisma.role.findUniqueOrThrow({
       where: { code: 'ADMINISTRATOR' },
@@ -90,7 +90,7 @@ describe('requirePermission Integration (PostgreSQL real, RS-002, RS-011, RS-012
   });
 
   it('returns 403 and writes an ACCESS_DENIED audit row when the actor lacks the permission', async () => {
-    await seedAuthorization(prisma);
+    await seedAuthorizationFast(prisma);
 
     const teacherRole = await prisma.role.findUniqueOrThrow({
       where: { code: 'TEACHER' },
@@ -153,7 +153,7 @@ describe('requirePermission Integration (PostgreSQL real, RS-002, RS-011, RS-012
   });
 
   it('keeps a valid audit chain after 20 simultaneous denied requests', async () => {
-    await seedAuthorization(prisma);
+    await seedAuthorizationFast(prisma);
 
     const teacherRole = await prisma.role.findUniqueOrThrow({
       where: { code: 'TEACHER' },

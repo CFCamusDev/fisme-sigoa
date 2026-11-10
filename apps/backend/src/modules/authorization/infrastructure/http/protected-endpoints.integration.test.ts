@@ -9,7 +9,7 @@ import { setupAppRoutes } from '../../../../routes.js';
 import { PrismaUnitOfWork } from '../../../../shared/prisma/prisma-unit-of-work.js';
 import { createPrismaAuditServices } from '../../../../shared/prisma/create-prisma-audit-services.js';
 import { InMemoryEmailSender } from '../../../../shared/email/in-memory-email-sender.js';
-import { seedAuthorization } from '../../../../test/factories/authorization.js';
+import { seedAuthorizationFast } from '../../../../test/factories/authorization.js';
 import { createAuthenticatedActor } from '../../../../test/http/authenticated-actor.js';
 import {
   expectForbiddenWithoutPermission,
@@ -226,7 +226,7 @@ describe('Protected Endpoints 403 Coverage & OpenAPI Drift Guard (PostgreSQL rea
 
   beforeEach(async () => {
     emailSender.clear();
-    await seedAuthorization(prisma);
+    await seedAuthorizationFast(prisma);
   });
 
   it('covers every bearerAuth operation in openapi.json (drift guard, D11)', () => {

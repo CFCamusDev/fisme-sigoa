@@ -10,7 +10,7 @@ import { createPrismaAuditServices } from '../../../../shared/prisma/create-pris
 import { InMemoryEmailSender } from '../../../../shared/email/in-memory-email-sender.js';
 import {
   createRoleWithGrants,
-  seedAuthorization,
+  seedAuthorizationFast,
 } from '../../../../test/factories/authorization.js';
 import { createAuthenticatedActor } from '../../../../test/http/authenticated-actor.js';
 
@@ -41,7 +41,7 @@ describe('PATCH /roles/:id HTTP Routes Integration (PostgreSQL real, HU-006, T-0
 
   beforeEach(async () => {
     emailSender.clear();
-    await seedAuthorization(prisma);
+    await seedAuthorizationFast(prisma);
   });
 
   async function createActor(roles: string[]) {
