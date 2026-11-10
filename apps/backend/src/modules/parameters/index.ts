@@ -98,6 +98,8 @@ export * from './domain/entities/semester.js';
 export * from './domain/entities/parameter.js';
 export * from './domain/policies/parameter-catalog.js';
 export * from './domain/policies/parameter-values-policy.js';
+export * from './domain/policies/pick-effective-version.js';
+export * from './domain/services/parameter-resolver.js';
 export * from './domain/errors/index.js';
 export * from './domain/ports/index.js';
 export * from './application/edit-program.js';
