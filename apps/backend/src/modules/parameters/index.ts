@@ -4,13 +4,18 @@ import type { DbProvider } from '../../shared/prisma/prisma-unit-of-work.js';
 import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
 import { EditProgramUseCase } from './application/edit-program.js';
 import { GetProgramUseCase } from './application/get-program.js';
+import { CreateSemesterUseCase } from './application/create-semester.js';
+import { ListSemestersUseCase } from './application/list-semesters.js';
 import type { ParametersPermissionChecker } from './domain/ports/parameters-permission-checker.js';
 import { ParametersController } from './infrastructure/http/parameters.controller.js';
 import {
   createParametersRouter,
   type ParametersRoutePermissionScope,
 } from './infrastructure/http/parameters.routes.js';
+import { SemestersController } from './infrastructure/http/semesters.controller.js';
+import { createSemestersRouter } from './infrastructure/http/semesters.routes.js';
 import { PrismaProgramRepository } from './infrastructure/prisma/prisma-program-repository.js';
+import { PrismaSemesterRepository } from './infrastructure/prisma/prisma-semester-repository.js';
 
 export interface ParametersModuleDependencies {
   readonly unitOfWork: UnitOfWork;
@@ -57,6 +62,37 @@ export function createParametersModule(deps?: ParametersModuleDependencies): Rou
   });
 }
 
+export function createSemestersModule(deps?: ParametersModuleDependencies): Router {
+  if (!deps) {
+    return Router();
+  }
+
+  const semesterRepository = new PrismaSemesterRepository(deps.dbProvider);
+
+  const createSemesterUseCase = new CreateSemesterUseCase({
+    semesterRepository,
+    permissionChecker: deps.permissionChecker,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+  });
+
+  const listSemestersUseCase = new ListSemestersUseCase({
+    semesterReader: semesterRepository,
+    permissionChecker: deps.permissionChecker,
+  });
+
+  const controller = new SemestersController({
+    createSemesterUseCase,
+    listSemestersUseCase,
+  });
+
+  return createSemestersRouter({
+    controller,
+    authenticate: deps.authenticate,
+    requirePermission: deps.requirePermission,
+  });
+}
+
 export * from './domain/entities/program.js';
 export * from './domain/entities/semester.js';
 export * from './domain/errors/index.js';
@@ -74,6 +110,8 @@ export * from './application/semester-dto.js';
 
 export * from './infrastructure/http/parameters.controller.js';
 export * from './infrastructure/http/parameters.routes.js';
+export * from './infrastructure/http/semesters.controller.js';
+export * from './infrastructure/http/semesters.routes.js';
 export * from './infrastructure/prisma/prisma-program-repository.js';
 export * from './infrastructure/prisma/prisma-semester-repository.js';
 export * from './infrastructure/prisma/prisma-semester-mapper.js';
