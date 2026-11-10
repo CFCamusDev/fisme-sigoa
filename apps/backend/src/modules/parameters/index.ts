@@ -121,3 +121,5 @@ export * from './infrastructure/prisma/prisma-program-repository.js';
 export * from './infrastructure/prisma/prisma-semester-repository.js';
 export * from './infrastructure/prisma/prisma-semester-mapper.js';
 export * from './infrastructure/prisma/seed/program-seed.js';
+export * from './infrastructure/prisma/prisma-parameter-repository.js';
+export * from './infrastructure/prisma/prisma-parameter-mapper.js';
