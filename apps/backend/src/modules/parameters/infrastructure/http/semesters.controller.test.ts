@@ -103,4 +103,54 @@ describe('SemestersController (unit tests, T-010-07, T-010-08, CA1, CA2, CA3)', 
       expect(next).toHaveBeenCalledWith(domainError);
     });
   });
+
+  describe('listSemesters', () => {
+    it('returns 200 with list response and Cache-Control: no-store', async () => {
+      req = {
+        user: { id: 'admin-1' },
+      } as unknown as Request;
+
+      const expectedResponse = {
+        items: [
+          {
+            id: 'sem-1',
+            code: '2027-I',
+            startDate: '2027-03-01',
+            endDate: '2027-07-31',
+            updatedAt: '2026-11-09T00:00:00.000Z',
+          },
+        ],
+      };
+      vi.mocked(mockListSemestersUseCase.execute).mockResolvedValue(expectedResponse);
+
+      await controller.listSemesters(req as Request, res as Response, next);
+
+      expect(mockListSemestersUseCase.execute).toHaveBeenCalledWith({ actorId: 'admin-1' });
+      expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store');
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(expectedResponse);
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    it('passes UnauthorizedError to next when actor is not present', async () => {
+      req = {} as Request;
+
+      await controller.listSemesters(req as Request, res as Response, next);
+
+      expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    });
+
+    it('forwards errors from use case to next', async () => {
+      req = {
+        user: { id: 'admin-1' },
+      } as unknown as Request;
+
+      const readerError = new Error('Database error');
+      vi.mocked(mockListSemestersUseCase.execute).mockRejectedValue(readerError);
+
+      await controller.listSemesters(req as Request, res as Response, next);
+
+      expect(next).toHaveBeenCalledWith(readerError);
+    });
+  });
 });
