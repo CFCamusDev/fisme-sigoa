@@ -163,9 +163,7 @@ test.describe('HU-008 — Autorización por permiso y alcance E2E', () => {
 
     await mainNav.getByRole('link', { name: 'Semestres' }).click();
     await expect(page).toHaveURL(/\/configuracion\/semestres/);
-    await expect(
-      page.getByRole('heading', { level: 1, name: 'Semestres académicos' }),
-    ).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Semestres' })).toBeVisible();
 
     await mainNav.getByRole('link', { name: 'Programa' }).click();
     await expect(page).toHaveURL(/\/configuracion\/programa/);

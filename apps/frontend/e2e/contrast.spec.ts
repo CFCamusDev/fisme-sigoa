@@ -503,10 +503,10 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA)', () => {
     ]);
     expect(semRes.ok()).toBe(true);
 
+    await expect(page.getByRole('heading', { level: 1, name: 'Semestres' })).toBeVisible();
     await expect(
-      page.getByRole('heading', { level: 1, name: 'Semestres académicos' }),
+      page.getByRole('heading', { level: 2, name: 'Registrar nuevo semestre' }),
     ).toBeVisible();
-    await expect(page.getByRole('heading', { level: 2, name: 'Registrar semestre' })).toBeVisible();
 
     // 1. Escritorio antes de registrar
     await expectNoContrastViolations(page, { context: 'semesters-page-desktop' });
@@ -518,8 +518,7 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA)', () => {
 
     // 3. Registrar un semestre con año único (D8) para probar tabla con datos
     const uniqueYear = 3000 + (Date.now() % 6000);
-    await page.getByLabel(/año/i).fill(String(uniqueYear));
-    await page.getByLabel(/período/i).selectOption('1');
+    await page.getByLabel(/código/i).fill(`${uniqueYear}-I`);
     await page.getByLabel(/fecha de inicio/i).fill(`${uniqueYear}-03-15`);
     await page.getByLabel(/fecha de fin/i).fill(`${uniqueYear}-07-15`);
 
@@ -549,9 +548,7 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA)', () => {
     ]);
     expect(semResReadonly.ok()).toBe(true);
 
-    await expect(
-      page.getByRole('heading', { level: 1, name: 'Semestres académicos' }),
-    ).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Semestres' })).toBeVisible();
     await expect(
       page.getByText(/solo lectura: no tienes permiso para registrar semestres/i),
     ).toBeVisible();
