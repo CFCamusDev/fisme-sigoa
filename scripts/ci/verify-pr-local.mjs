@@ -444,6 +444,8 @@ export function createReportJson(data) {
     repeat: data.repeat || 1,
     jobs: data.jobs || 1,
     parallel: (data.jobs || 1) > 1,
+    repeatScope: data.repeatScope || 'all',
+    repeatedTests: data.repeatedTests || [],
     cleanWorkingTree: Boolean(data.cleanWorkingTree),
     startedAt: data.startedAt,
     completedAt: data.completedAt,
@@ -593,18 +595,127 @@ export function markDatabaseStepsOmitted(checks, reason) {
   });
 }
 
+/** Máximo de archivos de prueba que se repiten con --repeat-scope changed (HU-078, D3). */
+export const MAX_REPEATED_TEST_FILES = 10;
+
+const REPEATABLE_STEP_IDS = new Set(['integration-tests', 'pdf-stability', 'e2e']);
+const TEST_FILE_REGEX = /\.(test|spec)\.(ts|tsx|mjs|js)$/;
+
+/**
+ * Lee --repeat de los argumentos: entero positivo (1 por defecto).
+ * @param {string[]} args
+ * @returns {number}
+ */
+export function parseRepeat(args) {
+  const index = args.indexOf('--repeat');
+  if (index === -1) return 1;
+  const raw = args[index + 1];
+  if (raw === undefined || !/^[0-9]+$/.test(raw) || Number(raw) < 1) {
+    throw new Error(`--repeat debe ser un entero positivo (recibido: '${raw ?? ''}').`);
+  }
+  return Number(raw);
+}
+
+/**
+ * Lee --repeat-scope: 'changed' (por defecto cuando hay repeticiones) o 'all' (HU-078, D1).
+ * @param {string[]} args
+ * @param {number} repeat
+ * @returns {'changed' | 'all'}
+ */
+export function parseRepeatScope(args, repeat) {
+  const index = args.indexOf('--repeat-scope');
+  if (index === -1) return repeat > 1 ? 'changed' : 'all';
+  const raw = args[index + 1];
+  if (raw !== 'changed' && raw !== 'all') {
+    throw new Error(`--repeat-scope debe ser 'changed' o 'all' (recibido: '${raw ?? ''}').`);
+  }
+  return raw;
+}
+
+/**
+ * Selecciona las pruebas nuevas o modificadas a partir de `git diff --name-status`.
+ * Descarta los borrados; de un renombrado toma la ruta nueva. Si hay más de `max`, conserva las
+ * primeras por orden alfabético y lo indica en `truncated`.
+ * @param {string} nameStatusOutput
+ * @param {number} [max=MAX_REPEATED_TEST_FILES]
+ * @returns {{ files: string[], total: number, truncated: boolean }}
+ */
+export function selectChangedTests(nameStatusOutput, max = MAX_REPEATED_TEST_FILES) {
+  const files = new Set();
+  for (const line of (nameStatusOutput || '').split(/\r?\n/)) {
+    const parts = line.split('\t');
+    const status = parts[0]?.trim();
+    if (!status) continue;
+    const kind = status[0];
+    if (kind === 'D') continue;
+    const file = kind === 'R' || kind === 'C' ? parts[2] : parts[1];
+    if (!file) continue;
+    const normalized = file.trim().replace(/\\/g, '/');
+    if (TEST_FILE_REGEX.test(normalized)) files.add(normalized);
+  }
+  const sorted = [...files].sort();
+  return { files: sorted.slice(0, max), total: sorted.length, truncated: sorted.length > max };
+}
+
+/**
+ * Archivos que debe repetir cada paso repetible, con rutas relativas a su paquete.
+ * @param {string} stepId
+ * @param {string[]} changedTests
+ * @returns {string[]}
+ */
+export function repeatTargetsFor(stepId, changedTests) {
+  const backend = 'apps/backend/';
+  const frontend = 'apps/frontend/';
+  if (stepId === 'integration-tests') {
+    return changedTests
+      .filter((file) => file.startsWith(backend) && file.endsWith('.integration.test.ts'))
+      .map((file) => file.slice(backend.length));
+  }
+  if (stepId === 'pdf-stability') {
+    return changedTests
+      .filter(
+        (file) =>
+          file.startsWith(backend) &&
+          file.endsWith('.integration.test.ts') &&
+          file.includes('/src/shared/pdf/'),
+      )
+      .map((file) => file.slice(backend.length));
+  }
+  if (stepId === 'e2e') {
+    return changedTests
+      .filter((file) => file.startsWith(`${frontend}e2e/`) && file.endsWith('.spec.ts'))
+      .map((file) => file.slice(frontend.length));
+  }
+  return [];
+}
+
+function quoteArgument(value) {
+  return `"${value}"`;
+}
+
 /**
  * Expande los pasos repetibles (integración, pdf, e2e) según el factor de repetición repeatCount.
+ *
+ * - scope 'all' (por defecto): el paso completo se repite N veces.
+ * - scope 'changed': el paso completo corre una vez y, si hay pruebas nuevas o modificadas que le
+ *   correspondan, esas pruebas corren N-1 veces más (Vitest) o con --repeat-each N-1 (Playwright).
+ *   Sin pruebas que repetir, el paso corre completo una sola vez.
  * @param {Array<{ id: string, name: string, command?: string }>} steps
  * @param {number} [repeatCount=1]
+ * @param {{ scope?: 'changed' | 'all', changedTests?: string[] }} [options]
  * @returns {Array<{ id: string, name: string, command?: string, iteration?: number }>}
  */
-export function planRepeatedSteps(steps, repeatCount = 1) {
-  const repeatableIds = new Set(['integration-tests', 'pdf-stability', 'e2e']);
+export function planRepeatedSteps(steps, repeatCount = 1, options = {}) {
+  const scope = options.scope ?? 'all';
   const result = [];
 
   for (const step of steps) {
-    if (repeatableIds.has(step.id) && repeatCount > 1) {
+    if (!REPEATABLE_STEP_IDS.has(step.id) || repeatCount <= 1) {
+      result.push(step);
+      continue;
+    }
+
+    if (scope === 'all') {
       for (let i = 1; i <= repeatCount; i++) {
         result.push({
           ...step,
@@ -612,8 +723,43 @@ export function planRepeatedSteps(steps, repeatCount = 1) {
           iteration: i,
         });
       }
-    } else {
+      continue;
+    }
+
+    const targets = repeatTargetsFor(step.id, options.changedTests ?? []);
+    if (targets.length === 0) {
       result.push(step);
+      continue;
+    }
+
+    result.push({
+      ...step,
+      name: `${step.name} (Pasada 1 de ${repeatCount})`,
+      iteration: 1,
+    });
+    const quoted = targets.map(quoteArgument).join(' ');
+    if (step.id === 'e2e') {
+      const command = `pnpm --filter frontend exec playwright test --repeat-each ${repeatCount - 1} ${quoted}`;
+      result.push({
+        ...step,
+        name: `${step.name} (Pasadas 2 a ${repeatCount}, solo pruebas nuevas o modificadas)`,
+        iteration: 2,
+        command,
+        parallelCommand: command,
+        repeatedFiles: targets,
+      });
+    } else {
+      const command = `pnpm --filter backend exec vitest run --project integration ${quoted}`;
+      for (let i = 2; i <= repeatCount; i++) {
+        result.push({
+          ...step,
+          name: `${step.name} (Pasada ${i} de ${repeatCount}, solo pruebas nuevas o modificadas)`,
+          iteration: i,
+          command,
+          parallelCommand: command,
+          repeatedFiles: targets,
+        });
+      }
     }
   }
 
@@ -1240,10 +1386,14 @@ async function runCli() {
     mode = args[modeIndex + 1];
   }
 
-  let repeat = 1;
-  const repeatIndex = args.indexOf('--repeat');
-  if (repeatIndex !== -1 && args[repeatIndex + 1]) {
-    repeat = parseInt(args[repeatIndex + 1], 10) || 1;
+  let repeat;
+  let repeatScope;
+  try {
+    repeat = parseRepeat(args);
+    repeatScope = parseRepeatScope(args, repeat);
+  } catch (error) {
+    console.error(`❌ ${error.message}`);
+    process.exit(1);
   }
 
   let only = undefined;
@@ -1270,7 +1420,19 @@ async function runCli() {
   );
 
   const rawPlan = buildExecutionPlan(mode, { only, baseBranch });
-  const plan = planRepeatedSteps(rawPlan, repeat);
+  const changedTests =
+    repeat > 1 && repeatScope === 'changed'
+      ? selectChangedTests(getGit(`git -c core.quotepath=false diff --name-status ${baseBranch}...HEAD`))
+      : { files: [], total: 0, truncated: false };
+  if (changedTests.truncated) {
+    console.warn(
+      `Advertencia: hay ${changedTests.total} pruebas nuevas o modificadas; se repiten solo las primeras ${MAX_REPEATED_TEST_FILES} por orden alfabético.`,
+    );
+  }
+  const plan = planRepeatedSteps(rawPlan, repeat, {
+    scope: repeatScope,
+    changedTests: changedTests.files,
+  });
   const groups = planParallelGroups(plan);
   const results = new Map();
 
@@ -1482,6 +1644,8 @@ async function runCli() {
     mode,
     clean: args.includes('--clean'),
     repeat,
+    repeatScope,
+    repeatedTests: changedTests.files,
     cleanWorkingTree: isTreeClean,
     startedAt,
     completedAt,
