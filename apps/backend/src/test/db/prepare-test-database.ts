@@ -156,12 +156,13 @@ async function prepareTemplate(client: pg.Client, baseUrl: string): Promise<stri
  */
 export async function prepareWorkerDatabases(
   workerCount: number = resolveWorkerCount(),
+  baseUrl?: string,
 ): Promise<string[]> {
-  if (workerCount <= 1) {
+  if (workerCount <= 1 && baseUrl === undefined) {
     return [await prepareTestDatabase()];
   }
 
-  const baseUrl = resolveBaseTestUrl();
+  baseUrl = assertTestDatabase(baseUrl ?? resolveBaseTestUrl());
   const baseName = databaseNameOf(baseUrl);
   const client = new pg.Client({
     connectionString: adminUrlOf(baseUrl),
@@ -195,9 +196,10 @@ export async function prepareWorkerDatabases(
 /** Elimina las bases de los workers (nunca la plantilla ni la base principal). */
 export async function dropWorkerDatabases(
   workerCount: number = resolveWorkerCount(),
+  baseUrl: string = resolveBaseTestUrl(),
 ): Promise<void> {
   if (workerCount <= 1) return;
-  const baseUrl = resolveBaseTestUrl();
+  assertTestDatabase(baseUrl);
   const baseName = databaseNameOf(baseUrl);
   const client = new pg.Client({
     connectionString: adminUrlOf(baseUrl),
