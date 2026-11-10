@@ -35,19 +35,25 @@ describe('Sidebar permission-aware menu filtering (HU-008, T-008-08, CA3)', () =
     expect(screen.getByTestId('sidebar-skeleton-/usuarios')).toBeInTheDocument();
     expect(screen.getByTestId('sidebar-skeleton-/roles')).toBeInTheDocument();
     expect(screen.getByTestId('sidebar-skeleton-/configuracion/programa')).toBeInTheDocument();
+    expect(screen.getByTestId('sidebar-skeleton-/configuracion/semestres')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Usuarios' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Roles' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Programa' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Semestres' })).not.toBeInTheDocument();
 
     resolvePermissions();
 
     expect(await screen.findByRole('link', { name: 'Usuarios' })).toBeInTheDocument();
     expect(await screen.findByRole('link', { name: 'Roles' })).toBeInTheDocument();
     expect(await screen.findByRole('link', { name: 'Programa' })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'Semestres' })).toBeInTheDocument();
     expect(screen.queryByTestId('sidebar-skeleton-/usuarios')).not.toBeInTheDocument();
     expect(screen.queryByTestId('sidebar-skeleton-/roles')).not.toBeInTheDocument();
     expect(
       screen.queryByTestId('sidebar-skeleton-/configuracion/programa'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('sidebar-skeleton-/configuracion/semestres'),
     ).not.toBeInTheDocument();
   });
 
@@ -63,6 +69,7 @@ describe('Sidebar permission-aware menu filtering (HU-008, T-008-08, CA3)', () =
     expect(screen.queryByRole('link', { name: 'Usuarios' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Roles' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Programa' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Semestres' })).not.toBeInTheDocument();
   });
 
   it('renders only permitted entries when the user has partial permissions (usuario.ver only)', async () => {
@@ -74,15 +81,17 @@ describe('Sidebar permission-aware menu filtering (HU-008, T-008-08, CA3)', () =
     expect(await screen.findByRole('link', { name: 'Usuarios' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Roles' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Programa' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Semestres' })).not.toBeInTheDocument();
   });
 
-  it('shows Programa when user has parametro.ver and hides it when missing (HU-009, T-009-12)', async () => {
+  it('shows Programa and Semestres when user has parametro.ver and hides it when missing (HU-009, HU-010)', async () => {
     renderWithProviders(<Sidebar isOpen={false} onClose={vi.fn()} />, {
       permissions: [{ code: 'parametro.ver', scope: 'GLOBAL' }],
     });
 
     expect(await screen.findByRole('link', { name: 'Panel' })).toBeInTheDocument();
     expect(await screen.findByRole('link', { name: 'Programa' })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'Semestres' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Usuarios' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Roles' })).not.toBeInTheDocument();
   });
@@ -110,6 +119,7 @@ describe('Sidebar permission-aware menu filtering (HU-008, T-008-08, CA3)', () =
     expect(screen.queryByRole('link', { name: 'Usuarios' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Roles' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Programa' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Semestres' })).not.toBeInTheDocument();
   });
 
   it('shares a single /me/permissions request across all sidebar items under React.StrictMode', async () => {
@@ -150,6 +160,7 @@ describe('Sidebar permission-aware menu filtering (HU-008, T-008-08, CA3)', () =
     expect(await screen.findByRole('link', { name: 'Usuarios' })).toBeInTheDocument();
     expect(await screen.findByRole('link', { name: 'Roles' })).toBeInTheDocument();
     expect(await screen.findByRole('link', { name: 'Programa' })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'Semestres' })).toBeInTheDocument();
     expect(requestCount).toBe(1);
   });
 });
