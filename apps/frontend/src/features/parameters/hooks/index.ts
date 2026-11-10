@@ -4,3 +4,6 @@ export { useUpdateProgram } from './use-update-program';
 export { semesterKeys } from './semester-keys';
 export { useSemesters } from './use-semesters';
 export { useCreateSemester } from './use-create-semester';
+export { parameterKeys } from './parameter-keys';
+export { useParameters } from './use-parameters';
+export { useDefineParameters } from './use-define-parameters';
