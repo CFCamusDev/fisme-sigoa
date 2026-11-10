@@ -5,6 +5,7 @@ import { getPrismaClient, disconnectPrisma } from './shared/prisma/prisma-client
 import { runSeed, type SeedStep } from './shared/seed/seed-runner.js';
 import type { PrismaClient } from './shared/prisma/generated/client.js';
 import { seedAuthorization } from './modules/authorization/infrastructure/prisma/seed/authorization-seed.js';
+import { seedProgram } from './modules/parameters/infrastructure/prisma/seed/program-seed.js';
 
 loadEnvFileIfPresent();
 
@@ -19,6 +20,12 @@ async function main(): Promise<void> {
       id: 'authorization-predefined-roles-and-permissions',
       run: async (tx) => {
         await seedAuthorization(tx);
+      },
+    },
+    {
+      id: 'parameters-program-epis',
+      run: async (tx) => {
+        await seedProgram(tx);
       },
     },
   ];

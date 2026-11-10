@@ -17,6 +17,7 @@ import { Route as RolesIndexRoute } from '@/routes/_app/roles/index';
 import { Route as RolesNewRoute } from '@/routes/_app/roles/nuevo';
 import { Route as RolesEditRoute } from '@/routes/_app/roles/$roleId/editar';
 import { Route as RolesPermissionsRoute } from '@/routes/_app/roles/$roleId/permisos';
+import { Route as ProgramRoute } from '@/routes/_app/configuracion/programa';
 import { useAuthStore } from '@/stores/auth.store';
 import { server } from '@/test/msw/server';
 import { ForbiddenRouteError, guardPermission } from './permission-guard';
@@ -201,6 +202,7 @@ describe('guardPermission and ForbiddenRouteError (HU-008, T-008-05)', () => {
       { route: RolesNewRoute, permission: 'rol.editar' },
       { route: RolesEditRoute, permission: 'rol.editar' },
       { route: RolesPermissionsRoute, permission: 'rol.editar' },
+      { route: ProgramRoute, permission: 'parametro.ver' },
     ];
 
     for (const { route, permission } of expectedGuards) {
