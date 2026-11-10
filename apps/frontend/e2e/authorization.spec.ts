@@ -1,9 +1,14 @@
 import { execSync } from 'node:child_process';
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support/test';
 import { expectNoContrastViolations } from './support/contrast';
 import { loginAsTestUser, seedUser } from './support/seed-user';
 
-const BACKEND_API_URL = 'http://localhost:3100';
+/** URL del backend del worker actual, fijada por el fixture de e2e/support/test.ts. */
+function backendApiUrl(): string {
+  const url = process.env['E2E_API_URL'];
+  if (!url) throw new Error('Falta E2E_API_URL: la prueba debe usar el test de e2e/support/test.');
+  return url;
+}
 
 function countAccessDeniedLogsForRoute(route: string): number {
   const testDbUrl =
@@ -126,13 +131,13 @@ test.describe('HU-008 — Autorización por permiso y alcance E2E', () => {
     ).toBeVisible();
 
     // 5. Petición directa al API GET /users con el token del Docente responde 403 y audita ACCESS_DENIED (CA1)
-    const loginApiRes = await request.post(`${BACKEND_API_URL}/auth/login`, {
+    const loginApiRes = await request.post(`${backendApiUrl()}/auth/login`, {
       data: { email: teacherEmail, password: teacherPassword },
     });
     expect(loginApiRes.status()).toBe(200);
     const loginBody = (await loginApiRes.json()) as { accessToken: string };
 
-    const usersApiRes = await request.get(`${BACKEND_API_URL}/users`, {
+    const usersApiRes = await request.get(`${backendApiUrl()}/users`, {
       headers: {
         Authorization: `Bearer ${loginBody.accessToken}`,
       },

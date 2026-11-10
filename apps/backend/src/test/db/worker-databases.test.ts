@@ -21,7 +21,7 @@ describe('resolveWorkerCount (T-078-07, D6)', () => {
     expect(resolveWorkerCount({ TEST_DB_WORKERS: '1' }, 16)).toBe(1);
   });
 
-  it.each(['0', '-1', 'abc', '1.5', '33'])('rejects TEST_DB_WORKERS=%s', (value) => {
+  it.each(['0', '-1', 'abc', '1.5', '33', '1e1', '0x2'])('rejects TEST_DB_WORKERS=%s', (value) => {
     expect(() => resolveWorkerCount({ TEST_DB_WORKERS: value }, 16)).toThrow(/TEST_DB_WORKERS/);
   });
 

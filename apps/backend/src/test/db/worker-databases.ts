@@ -15,7 +15,7 @@ export function resolveWorkerCount(
   const raw = env['TEST_DB_WORKERS'];
   if (raw !== undefined && raw.trim() !== '') {
     const parsed = Number(raw);
-    if (!Number.isInteger(parsed) || parsed < 1 || parsed > MAX_WORKERS) {
+    if (!/^[0-9]+$/.test(raw.trim()) || parsed < 1 || parsed > MAX_WORKERS) {
       throw new Error(
         `TEST_DB_WORKERS debe ser un entero entre 1 y ${MAX_WORKERS} (recibido: '${raw}').`,
       );

@@ -1,7 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
+import { resolveE2EWorkers } from './e2e/support/workers';
 
-const BACKEND_PORT = 3100;
-const FRONTEND_PORT = 4173;
 const TEST_DB_URL =
   process.env['TEST_DATABASE_URL'] ||
   process.env['DATABASE_URL'] ||
@@ -34,7 +33,8 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: !!process.env['CI'],
   retries: process.env['CI'] ? 2 : 0,
-  workers: 1,
+  // Cada worker tiene su base de datos, su backend y su frontend (e2e/support/test.ts).
+  workers: resolveE2EWorkers(),
   timeout: 30_000,
   globalTimeout: 15 * 60 * 1000,
   expect: {
@@ -42,7 +42,6 @@ export default defineConfig({
   },
   reporter: [['html', { open: 'never' }], ['list']],
   use: {
-    baseURL: `http://localhost:${FRONTEND_PORT}`,
     trace: 'retain-on-failure',
     actionTimeout: 10_000,
     navigationTimeout: 15_000,
@@ -51,35 +50,6 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-    },
-  ],
-  webServer: [
-    {
-      command: 'pnpm --filter backend exec tsx src/server.ts',
-      url: `http://localhost:${BACKEND_PORT}/health`,
-      reuseExistingServer: !process.env['CI'],
-      timeout: 30000,
-      env: {
-        NODE_ENV: 'test',
-        PORT: String(BACKEND_PORT),
-        CORS_ORIGIN: `http://localhost:${FRONTEND_PORT}`,
-        DATABASE_URL: TEST_DB_URL,
-        HSTS_ENABLED: 'false',
-        LOG_LEVEL: 'silent',
-        RATE_LIMIT_LOGIN_MAX: '1000',
-        RATE_LIMIT_SESSION_MAX: '1000',
-        RATE_LIMIT_PUBLIC_MAX: '1000',
-        ALLOWED_ORIGINS: `http://localhost:${FRONTEND_PORT}`,
-      },
-    },
-    {
-      command: `pnpm --filter frontend build && pnpm --filter frontend exec vite preview --port ${FRONTEND_PORT} --strictPort`,
-      url: `http://localhost:${FRONTEND_PORT}`,
-      reuseExistingServer: !process.env['CI'],
-      timeout: 30000,
-      env: {
-        VITE_API_URL: `http://localhost:${BACKEND_PORT}`,
-      },
     },
   ],
 });

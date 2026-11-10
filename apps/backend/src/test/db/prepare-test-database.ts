@@ -240,13 +240,54 @@ export async function dropWorkerDatabases(
   }
 }
 
+function optionValue(name: string): string | undefined {
+  const index = process.argv.indexOf(name);
+  return index !== -1 ? process.argv[index + 1] : undefined;
+}
+
+function parseWorkersOption(raw: string): number {
+  const workers = Number(raw);
+  if (!Number.isInteger(workers) || workers < 1 || workers > 32) {
+    throw new Error(`El número de workers debe ser un entero entre 1 y 32 (recibido: '${raw}').`);
+  }
+  return workers;
+}
+
+/**
+ * Prepara las bases de los workers de E2E y escribe sus URL en `outFile` (HU-078, D13).
+ * Con un solo worker usa la base de siempre.
+ */
+export async function prepareE2eDatabases(workers: number, outFile: string): Promise<string[]> {
+  const urls = await prepareWorkerDatabases(workers);
+  fs.mkdirSync(path.dirname(outFile), { recursive: true });
+  fs.writeFileSync(outFile, JSON.stringify({ workers, urls }, null, 2), 'utf8');
+  return urls;
+}
+
 // Si se ejecuta directamente como script de CLI
 if (process.argv[1]?.includes('prepare-test-database')) {
-  const templateIndex = process.argv.indexOf('--template');
-  const run =
-    templateIndex !== -1 && process.argv[templateIndex + 1]
-      ? prepareMigratedTemplate(process.argv[templateIndex + 1]!)
-      : prepareTestDatabase();
+  const templateUrl = optionValue('--template');
+  const workersOption = optionValue('--workers');
+  const dropOption = optionValue('--drop-workers');
+
+  let run: Promise<string>;
+  if (templateUrl) {
+    run = prepareMigratedTemplate(templateUrl);
+  } else if (dropOption) {
+    run = dropWorkerDatabases(parseWorkersOption(dropOption)).then(
+      () => 'bases de workers eliminadas',
+    );
+  } else if (workersOption) {
+    const outFile = optionValue('--out');
+    if (!outFile) {
+      throw new Error('--workers requiere --out <archivo> para publicar las URL de las bases.');
+    }
+    run = prepareE2eDatabases(parseWorkersOption(workersOption), outFile).then((urls) =>
+      urls.join(', '),
+    );
+  } else {
+    run = prepareTestDatabase();
+  }
   run
     .then((url) => {
       console.log(`Base de datos de pruebas preparada con éxito: ${url}`);
