@@ -3,6 +3,7 @@ import { seedAuthorization } from '../../modules/authorization/infrastructure/pr
 import { deriveRoleCode } from '../../modules/authorization/domain/policies/derive-role-code.js';
 
 export { seedAuthorization };
+export { seedAuthorizationFast } from './authorization-fast.js';
 
 export async function grantRole(
   prisma: PrismaClient,
