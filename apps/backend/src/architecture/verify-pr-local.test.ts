@@ -1014,3 +1014,203 @@ describe('verify-pr-local template preparation (T-078-13)', () => {
     expect(commandForParallelRun(step)).toContain('prisma migrate status');
   });
 });
+
+describe('verify-pr-local repeat of changed tests (T-078-15)', () => {
+  const {
+    selectChangedTests,
+    repeatTargetsFor,
+    parseRepeat,
+    parseRepeatScope,
+    MAX_REPEATED_TEST_FILES,
+  } = verifyPr;
+
+  const diff = (...lines: string[]) => lines.join('\n');
+
+  describe('selectChangedTests', () => {
+    it('selects added and modified test files for repeat', () => {
+      const result = selectChangedTests(
+        diff(
+          'A\tapps/backend/src/test/db/new-case.integration.test.ts',
+          'M\tapps/frontend/e2e/users.spec.ts',
+          'M\tapps/backend/src/modules/users/application/create-user.test.ts',
+        ),
+      );
+      expect(result.files).toEqual([
+        'apps/backend/src/modules/users/application/create-user.test.ts',
+        'apps/backend/src/test/db/new-case.integration.test.ts',
+        'apps/frontend/e2e/users.spec.ts',
+      ]);
+      expect(result.truncated).toBe(false);
+    });
+
+    it('ignores deleted files and files that are not tests', () => {
+      const result = selectChangedTests(
+        diff(
+          'D\tapps/backend/src/old.integration.test.ts',
+          'M\tapps/backend/src/modules/users/application/create-user.ts',
+          'M\tpackage.json',
+          'M\tapps/backend/src/test/db/reset-database.ts',
+        ),
+      );
+      expect(result).toEqual({ files: [], total: 0, truncated: false });
+    });
+
+    it('takes the new path of a renamed test and ignores a renamed non-test', () => {
+      const result = selectChangedTests(
+        diff(
+          'R087\tapps/backend/src/a.integration.test.ts\tapps/backend/src/b.integration.test.ts',
+          'R100\tapps/backend/src/c.integration.test.ts\tapps/backend/src/c.ts',
+        ),
+      );
+      expect(result.files).toEqual(['apps/backend/src/b.integration.test.ts']);
+    });
+
+    it('returns nothing for a branch without tests or for empty output', () => {
+      expect(selectChangedTests('').files).toEqual([]);
+      expect(selectChangedTests(undefined).files).toEqual([]);
+      expect(selectChangedTests('\n\n').total).toBe(0);
+    });
+
+    it('deduplicates, normalizes separators and keeps paths with spaces', () => {
+      const result = selectChangedTests(
+        diff('M\tapps\\frontend\\e2e\\mi prueba.spec.ts', 'M\tapps/frontend/e2e/mi prueba.spec.ts'),
+      );
+      expect(result.files).toEqual(['apps/frontend/e2e/mi prueba.spec.ts']);
+    });
+
+    it('keeps the first ten files in alphabetical order and reports the truncation', () => {
+      const lines = Array.from(
+        { length: 14 },
+        (_, index) =>
+          `A\tapps/backend/src/case-${String(index).padStart(2, '0')}.integration.test.ts`,
+      );
+      const result = selectChangedTests(diff(...lines.reverse()));
+
+      expect(MAX_REPEATED_TEST_FILES).toBe(10);
+      expect(result.files).toHaveLength(10);
+      expect(result.total).toBe(14);
+      expect(result.truncated).toBe(true);
+      expect(result.files[0]).toBe('apps/backend/src/case-00.integration.test.ts');
+      expect(result.files[9]).toBe('apps/backend/src/case-09.integration.test.ts');
+    });
+  });
+
+  describe('repeatTargetsFor', () => {
+    const changed = [
+      'apps/backend/src/shared/pdf/pdf-generator.integration.test.ts',
+      'apps/backend/src/modules/users/x.integration.test.ts',
+      'apps/backend/src/modules/users/y.test.ts',
+      'apps/frontend/e2e/users.spec.ts',
+      'apps/frontend/src/features/a.test.tsx',
+    ];
+
+    it('maps each repeatable step to its own files relative to the package', () => {
+      expect(repeatTargetsFor('integration-tests', changed)).toEqual([
+        'src/shared/pdf/pdf-generator.integration.test.ts',
+        'src/modules/users/x.integration.test.ts',
+      ]);
+      expect(repeatTargetsFor('pdf-stability', changed)).toEqual([
+        'src/shared/pdf/pdf-generator.integration.test.ts',
+      ]);
+      expect(repeatTargetsFor('e2e', changed)).toEqual(['e2e/users.spec.ts']);
+      expect(repeatTargetsFor('lint', changed)).toEqual([]);
+    });
+  });
+
+  describe('planRepeatedSteps with scope', () => {
+    const steps = [
+      { id: 'env-parity', name: 'Paridad' },
+      { id: 'integration-tests', name: 'Integración', command: 'pnpm integration' },
+      { id: 'pdf-stability', name: 'PDF', command: 'pnpm pdf' },
+      { id: 'e2e', name: 'E2E', command: 'pnpm test:e2e' },
+    ];
+
+    it('repeats only the changed tests and runs the full step once', () => {
+      const planned = planRepeatedSteps(steps, 3, {
+        scope: 'changed',
+        changedTests: [
+          'apps/backend/src/modules/users/x.integration.test.ts',
+          'apps/frontend/e2e/users.spec.ts',
+        ],
+      });
+
+      const integration = planned.filter((s: { id: string }) => s.id === 'integration-tests');
+      expect(integration).toHaveLength(3);
+      expect(integration[0].command).toBe('pnpm integration');
+      expect(integration[1].command).toContain('vitest run --project integration');
+      expect(integration[1].command).toContain('"src/modules/users/x.integration.test.ts"');
+      expect(integration[2].iteration).toBe(3);
+
+      const e2e = planned.filter((s: { id: string }) => s.id === 'e2e');
+      expect(e2e).toHaveLength(2);
+      expect(e2e[0].command).toBe('pnpm test:e2e');
+      expect(e2e[1].command).toContain('playwright test --repeat-each 2 "e2e/users.spec.ts"');
+
+      // pdf-stability no tiene pruebas cambiadas: corre completo una sola vez
+      const pdf = planned.filter((s: { id: string }) => s.id === 'pdf-stability');
+      expect(pdf).toHaveLength(1);
+      expect(pdf[0].iteration).toBeUndefined();
+      expect(planned.filter((s: { id: string }) => s.id === 'env-parity')).toHaveLength(1);
+    });
+
+    it('runs everything once when the branch has no new or modified tests', () => {
+      const planned = planRepeatedSteps(steps, 3, { scope: 'changed', changedTests: [] });
+      expect(planned).toEqual(steps);
+    });
+
+    it('keeps the current behavior with scope all', () => {
+      const planned = planRepeatedSteps(steps, 3, { scope: 'all', changedTests: ['x'] });
+      expect(planned.filter((s: { id: string }) => s.id === 'integration-tests')).toHaveLength(3);
+      expect(planned.filter((s: { id: string }) => s.id === 'e2e')).toHaveLength(3);
+      expect(planned.filter((s: { id: string }) => s.id === 'pdf-stability')).toHaveLength(3);
+    });
+
+    it('does not repeat anything with a single pass', () => {
+      expect(planRepeatedSteps(steps, 1, { scope: 'changed', changedTests: ['a'] })).toEqual(steps);
+    });
+
+    it('records the repeated files in the repeated steps and keeps the ids for scheduling', () => {
+      const planned = planRepeatedSteps(steps, 2, {
+        scope: 'changed',
+        changedTests: ['apps/backend/src/modules/users/x.integration.test.ts'],
+      });
+      const repeated = planned.filter((s: { repeatedFiles?: string[] }) => s.repeatedFiles);
+      expect(repeated).toHaveLength(1);
+      expect(repeated[0].repeatedFiles).toEqual(['src/modules/users/x.integration.test.ts']);
+      expect(() => planParallelGroupsOf(planned)).not.toThrow();
+    });
+  });
+
+  describe('argument parsing', () => {
+    it('reads --repeat and defaults to one pass', () => {
+      expect(parseRepeat([])).toBe(1);
+      expect(parseRepeat(['--repeat', '3'])).toBe(3);
+    });
+
+    it.each([['0'], ['-2'], ['abc'], ['1.5'], ['']])('rejects --repeat %j', (value) => {
+      expect(() => parseRepeat(['--repeat', value])).toThrow(
+        /--repeat debe ser un entero positivo/,
+      );
+    });
+
+    it('rejects --repeat without a value', () => {
+      expect(() => parseRepeat(['--repeat'])).toThrow(/--repeat debe ser un entero positivo/);
+    });
+
+    it('defaults the scope to changed with repetitions and to all otherwise', () => {
+      expect(parseRepeatScope([], 3)).toBe('changed');
+      expect(parseRepeatScope([], 1)).toBe('all');
+      expect(parseRepeatScope(['--repeat-scope', 'all'], 3)).toBe('all');
+      expect(parseRepeatScope(['--repeat-scope', 'changed'], 3)).toBe('changed');
+    });
+
+    it('rejects an unknown or missing --repeat-scope', () => {
+      expect(() => parseRepeatScope(['--repeat-scope', 'some'], 3)).toThrow(/--repeat-scope/);
+      expect(() => parseRepeatScope(['--repeat-scope'], 3)).toThrow(/--repeat-scope/);
+    });
+  });
+});
+
+function planParallelGroupsOf(steps: unknown[]) {
+  return verifyPr.planParallelGroups(steps);
+}
