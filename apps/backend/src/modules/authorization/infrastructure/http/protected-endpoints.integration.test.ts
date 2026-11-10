@@ -181,6 +181,22 @@ const PROTECTED_ENDPOINTS: readonly ProtectedEndpointSpec[] = [
       endDate: '2027-07-31',
     },
   },
+  {
+    method: 'get',
+    openApiPath: '/parameters',
+    requestPath: '/parameters',
+    requiredPermission: 'parametro.ver',
+  },
+  {
+    method: 'post',
+    openApiPath: '/parameters',
+    requestPath: '/parameters',
+    requiredPermission: 'parametro.editar',
+    sampleBody: {
+      semesterCode: '2027-I',
+      values: [{ key: 'UMBRAL_LOGRADO', value: 15 }],
+    },
+  },
 ];
 
 describe('Protected Endpoints 403 Coverage & OpenAPI Drift Guard (PostgreSQL real, HU-008, T-008-06, CA1, RF-008, RNF-009, D11)', () => {

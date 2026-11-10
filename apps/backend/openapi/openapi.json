@@ -3362,6 +3362,485 @@
         }
       }
     },
+    "/parameters": {
+      "get": {
+        "tags": ["Parameters"],
+        "summary": "Consultar parámetros vigentes con su historial",
+        "description": "Retorna los siete parámetros del sistema con el valor que rige para un semestre y el historial de sus versiones. Sin 'semesterCode' rige el último semestre iniciado hasta hoy; si no hay semestres, los valores por defecto. Requiere el permiso 'parametro.ver' con alcance GLOBAL (HU-011, RF-011, RN-005, RS-002).",
+        "operationId": "listParameters",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "semesterCode",
+            "in": "query",
+            "required": false,
+            "description": "Código del semestre consultado (AAAA-I o AAAA-II). Opcional.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-(I|II)$"
+            },
+            "example": "2027-I"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Parámetros vigentes obtenidos exitosamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché HTTP."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParametersResponse"
+                },
+                "example": {
+                  "semesterCode": "2027-I",
+                  "items": [
+                    {
+                      "key": "UMBRAL_LOGRADO",
+                      "label": "Umbral de logrado",
+                      "unit": "SCORE",
+                      "value": 15,
+                      "effectiveFromSemesterCode": "2027-I",
+                      "versions": [
+                        {
+                          "value": 14,
+                          "effectiveFromSemesterCode": null,
+                          "effectiveToSemesterCode": "2026-II"
+                        },
+                        {
+                          "value": 15,
+                          "effectiveFromSemesterCode": "2027-I",
+                          "effectiveToSemesterCode": null
+                        }
+                      ]
+                    },
+                    {
+                      "key": "META_AG",
+                      "label": "Meta por atributo del graduado",
+                      "unit": "PERCENT",
+                      "value": 70,
+                      "effectiveFromSemesterCode": null,
+                      "versions": [
+                        {
+                          "value": 70,
+                          "effectiveFromSemesterCode": null,
+                          "effectiveToSemesterCode": null
+                        }
+                      ]
+                    },
+                    {
+                      "key": "PESO_DIRECTA",
+                      "label": "Peso de la medición directa",
+                      "unit": "PERCENT",
+                      "value": 70,
+                      "effectiveFromSemesterCode": null,
+                      "versions": [
+                        {
+                          "value": 70,
+                          "effectiveFromSemesterCode": null,
+                          "effectiveToSemesterCode": null
+                        }
+                      ]
+                    },
+                    {
+                      "key": "PESO_INDIRECTA",
+                      "label": "Peso de la medición indirecta",
+                      "unit": "PERCENT",
+                      "value": 30,
+                      "effectiveFromSemesterCode": null,
+                      "versions": [
+                        {
+                          "value": 30,
+                          "effectiveFromSemesterCode": null,
+                          "effectiveToSemesterCode": null
+                        }
+                      ]
+                    },
+                    {
+                      "key": "MIN_PARTICIPACION",
+                      "label": "Participación mínima",
+                      "unit": "COUNT",
+                      "value": 3,
+                      "effectiveFromSemesterCode": null,
+                      "versions": [
+                        {
+                          "value": 3,
+                          "effectiveFromSemesterCode": null,
+                          "effectiveToSemesterCode": null
+                        }
+                      ]
+                    },
+                    {
+                      "key": "TOKEN_DIAS",
+                      "label": "Días de vigencia del token",
+                      "unit": "DAYS",
+                      "value": 7,
+                      "effectiveFromSemesterCode": null,
+                      "versions": [
+                        {
+                          "value": 7,
+                          "effectiveFromSemesterCode": null,
+                          "effectiveToSemesterCode": null
+                        }
+                      ]
+                    },
+                    {
+                      "key": "LOGIN_INTENTOS",
+                      "label": "Intentos de inicio de sesión",
+                      "unit": "COUNT",
+                      "value": 5,
+                      "effectiveFromSemesterCode": null,
+                      "versions": [
+                        {
+                          "value": 5,
+                          "effectiveFromSemesterCode": null,
+                          "effectiveToSemesterCode": null
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetro de consulta desconocido, repetido o con formato inválido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "La solicitud contiene errores de validación",
+                    "requestId": "req_par_get_400",
+                    "details": [
+                      {
+                        "path": "query.semesterCode",
+                        "message": "El código del semestre debe tener el formato AAAA-I o AAAA-II (por ejemplo, 2027-I)"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o token de acceso inválido o expirado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado",
+                    "requestId": "req_par_get_401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere el permiso 'parametro.ver'.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para realizar esta acción",
+                    "requestId": "req_par_get_403"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "El semestre indicado no existe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "El semestre 2099-I no existe.",
+                    "requestId": "req_par_get_404"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Parameters"],
+        "summary": "Definir parámetros con vigencia desde un semestre",
+        "description": "Crea una nueva versión de cada parámetro indicado, vigente desde el semestre dado; los semestres anteriores no cambian. Si la versión (clave, semestre) ya existe, reemplaza su valor. Los pesos PESO_DIRECTA y PESO_INDIRECTA se envían juntos y deben sumar 100. Cada cambio se audita (PARAMETER_CHANGE). Requiere el permiso 'parametro.editar' con alcance GLOBAL (HU-011, RF-011, RN-005, RS-002, RS-020).",
+        "operationId": "defineParameters",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DefineParametersRequest"
+              },
+              "example": {
+                "semesterCode": "2027-I",
+                "values": [
+                  {
+                    "key": "UMBRAL_LOGRADO",
+                    "value": 15
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Parámetros definidos; retorna la vista vigente del semestre.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché HTTP."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParametersResponse"
+                },
+                "example": {
+                  "semesterCode": "2027-I",
+                  "items": [
+                    {
+                      "key": "UMBRAL_LOGRADO",
+                      "label": "Umbral de logrado",
+                      "unit": "SCORE",
+                      "value": 15,
+                      "effectiveFromSemesterCode": "2027-I",
+                      "versions": [
+                        {
+                          "value": 14,
+                          "effectiveFromSemesterCode": null,
+                          "effectiveToSemesterCode": "2026-II"
+                        },
+                        {
+                          "value": 15,
+                          "effectiveFromSemesterCode": "2027-I",
+                          "effectiveToSemesterCode": null
+                        }
+                      ]
+                    },
+                    {
+                      "key": "META_AG",
+                      "label": "Meta por atributo del graduado",
+                      "unit": "PERCENT",
+                      "value": 70,
+                      "effectiveFromSemesterCode": null,
+                      "versions": [
+                        {
+                          "value": 70,
+                          "effectiveFromSemesterCode": null,
+                          "effectiveToSemesterCode": null
+                        }
+                      ]
+                    },
+                    {
+                      "key": "PESO_DIRECTA",
+                      "label": "Peso de la medición directa",
+                      "unit": "PERCENT",
+                      "value": 70,
+                      "effectiveFromSemesterCode": null,
+                      "versions": [
+                        {
+                          "value": 70,
+                          "effectiveFromSemesterCode": null,
+                          "effectiveToSemesterCode": null
+                        }
+                      ]
+                    },
+                    {
+                      "key": "PESO_INDIRECTA",
+                      "label": "Peso de la medición indirecta",
+                      "unit": "PERCENT",
+                      "value": 30,
+                      "effectiveFromSemesterCode": null,
+                      "versions": [
+                        {
+                          "value": 30,
+                          "effectiveFromSemesterCode": null,
+                          "effectiveToSemesterCode": null
+                        }
+                      ]
+                    },
+                    {
+                      "key": "MIN_PARTICIPACION",
+                      "label": "Participación mínima",
+                      "unit": "COUNT",
+                      "value": 3,
+                      "effectiveFromSemesterCode": null,
+                      "versions": [
+                        {
+                          "value": 3,
+                          "effectiveFromSemesterCode": null,
+                          "effectiveToSemesterCode": null
+                        }
+                      ]
+                    },
+                    {
+                      "key": "TOKEN_DIAS",
+                      "label": "Días de vigencia del token",
+                      "unit": "DAYS",
+                      "value": 7,
+                      "effectiveFromSemesterCode": null,
+                      "versions": [
+                        {
+                          "value": 7,
+                          "effectiveFromSemesterCode": null,
+                          "effectiveToSemesterCode": null
+                        }
+                      ]
+                    },
+                    {
+                      "key": "LOGIN_INTENTOS",
+                      "label": "Intentos de inicio de sesión",
+                      "unit": "COUNT",
+                      "value": 5,
+                      "effectiveFromSemesterCode": null,
+                      "versions": [
+                        {
+                          "value": 5,
+                          "effectiveFromSemesterCode": null,
+                          "effectiveToSemesterCode": null
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Cuerpo inválido: valores fuera de rango, claves repetidas o fuera del catálogo, o pesos que no suman 100.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "La solicitud contiene errores de validación",
+                    "requestId": "req_par_post_400",
+                    "details": [
+                      {
+                        "path": "body.values",
+                        "message": "Los pesos de medición directa e indirecta deben sumar 100."
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o token de acceso inválido o expirado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado",
+                    "requestId": "req_par_post_401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere el permiso 'parametro.editar'.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para realizar esta acción",
+                    "requestId": "req_par_post_403"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "El semestre indicado no existe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "El semestre 2099-I no existe.",
+                    "requestId": "req_par_post_404"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto al guardar: ya existe una versión de este parámetro para el semestre.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "Ya existe una versión de este parámetro para el semestre indicado.",
+                    "requestId": "req_par_post_409"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/semesters": {
       "get": {
         "tags": ["Parameters"],
@@ -4502,6 +4981,133 @@
               "$ref": "#/components/schemas/SemesterDto"
             },
             "description": "Lista de semestres registrados en orden cronológico descendente."
+          }
+        }
+      },
+      "ParameterVersionDto": {
+        "type": "object",
+        "required": ["value", "effectiveFromSemesterCode", "effectiveToSemesterCode"],
+        "additionalProperties": false,
+        "properties": {
+          "value": {
+            "type": "integer",
+            "description": "Valor de esta versión."
+          },
+          "effectiveFromSemesterCode": {
+            "type": ["string", "null"],
+            "pattern": "^\\d{4}-(I|II)$",
+            "description": "Semestre desde el que rige; nulo es el valor por defecto."
+          },
+          "effectiveToSemesterCode": {
+            "type": ["string", "null"],
+            "pattern": "^\\d{4}-(I|II)$",
+            "description": "Último semestre en que rige (derivado de la versión siguiente); nulo si no tiene fin."
+          }
+        }
+      },
+      "ParameterDto": {
+        "type": "object",
+        "required": ["key", "label", "unit", "value", "effectiveFromSemesterCode", "versions"],
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "UMBRAL_LOGRADO",
+              "META_AG",
+              "PESO_DIRECTA",
+              "PESO_INDIRECTA",
+              "MIN_PARTICIPACION",
+              "TOKEN_DIAS",
+              "LOGIN_INTENTOS"
+            ],
+            "description": "Clave del parámetro."
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Etiqueta en español."
+          },
+          "unit": {
+            "type": "string",
+            "enum": ["SCORE", "PERCENT", "COUNT", "DAYS"],
+            "description": "Unidad del valor."
+          },
+          "value": {
+            "type": "integer",
+            "description": "Valor que rige para el semestre consultado."
+          },
+          "effectiveFromSemesterCode": {
+            "type": ["string", "null"],
+            "pattern": "^\\d{4}-(I|II)$",
+            "description": "Semestre desde el que rige el valor; nulo es el valor por defecto."
+          },
+          "versions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ParameterVersionDto"
+            },
+            "description": "Historial de versiones en orden de vigencia."
+          }
+        }
+      },
+      "ParametersResponse": {
+        "type": "object",
+        "required": ["semesterCode", "items"],
+        "additionalProperties": false,
+        "properties": {
+          "semesterCode": {
+            "type": ["string", "null"],
+            "pattern": "^\\d{4}-(I|II)$",
+            "description": "Semestre al que corresponde la vista; nulo si no hay semestres iniciados."
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ParameterDto"
+            },
+            "description": "Los siete parámetros del catálogo."
+          }
+        }
+      },
+      "DefineParametersRequest": {
+        "type": "object",
+        "required": ["semesterCode", "values"],
+        "additionalProperties": false,
+        "properties": {
+          "semesterCode": {
+            "type": "string",
+            "pattern": "^\\d{4}-(I|II)$",
+            "description": "Semestre existente desde el que rigen los valores."
+          },
+          "values": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 7,
+            "description": "Valores a definir; claves únicas del catálogo.",
+            "items": {
+              "type": "object",
+              "required": ["key", "value"],
+              "additionalProperties": false,
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "enum": [
+                    "UMBRAL_LOGRADO",
+                    "META_AG",
+                    "PESO_DIRECTA",
+                    "PESO_INDIRECTA",
+                    "MIN_PARTICIPACION",
+                    "TOKEN_DIAS",
+                    "LOGIN_INTENTOS"
+                  ]
+                },
+                "value": {
+                  "type": "integer",
+                  "description": "Entero dentro del rango de la clave."
+                }
+              }
+            }
           }
         }
       }
