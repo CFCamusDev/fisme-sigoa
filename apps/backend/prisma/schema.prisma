@@ -349,3 +349,22 @@ model Program {
   @@map("programs")
 }
 
+// ==============================================================================
+// GESTIÓN DE SEMESTRES (HU-010)
+// ==============================================================================
+
+model Semester {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  startDate DateTime @db.Date
+  endDate   DateTime @db.Date
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([startDate])
+  @@map("semesters")
+}
+
+
