@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { useTestDatabase } from '../../../../test/db/use-test-database.js';
 import { PrismaUnitOfWork } from '../../../../shared/prisma/prisma-unit-of-work.js';
 import { createPrismaAuditServices } from '../../../../shared/prisma/create-prisma-audit-services.js';
-import { seedAuthorization } from '../../../../test/factories/authorization.js';
+import { seedAuthorizationFast } from '../../../../test/factories/authorization.js';
 import { ProtectedRoleError } from '../../domain/errors/protected-role-error.js';
 import { PermissionAuthorizer } from '../../application/permission-authorizer.js';
 import { AssignUserRolesUseCase } from '../../application/assign-user-roles.js';
@@ -21,7 +21,7 @@ describe('AssignUserRoles concurrency', () => {
   const prisma = getPrisma();
 
   it('keeps at least one active administrator when two administrators remove each other concurrently', async () => {
-    await seedAuthorization(prisma);
+    await seedAuthorizationFast(prisma);
     const admin = await prisma.role.findUniqueOrThrow({ where: { code: 'ADMINISTRATOR' } });
     const teacher = await prisma.role.findUniqueOrThrow({ where: { code: 'TEACHER' } });
     const first = await prisma.user.create({
@@ -139,7 +139,7 @@ describe('AssignUserRoles concurrency', () => {
     );
   });
   async function setup() {
-    await seedAuthorization(prisma);
+    await seedAuthorizationFast(prisma);
     const administrator = await prisma.role.findUniqueOrThrow({ where: { code: 'ADMINISTRATOR' } });
     const teacher = await prisma.role.findUniqueOrThrow({ where: { code: 'TEACHER' } });
     const member = await prisma.role.findUniqueOrThrow({ where: { code: 'COMMITTEE_MEMBER' } });

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useTestDatabase } from '../../../../test/db/use-test-database.js';
 import { PrismaUnitOfWork } from '../../../../shared/prisma/prisma-unit-of-work.js';
 import { createPrismaAuditServices } from '../../../../shared/prisma/create-prisma-audit-services.js';
-import { seedAuthorization } from '../../../../test/factories/authorization.js';
+import { seedAuthorizationFast } from '../../../../test/factories/authorization.js';
 import { createAuthenticatedActor } from '../../../../test/http/authenticated-actor.js';
 import { PrismaRoleRepository } from './prisma-role-repository.js';
 import { PrismaPermissionRepository } from './prisma-permission-repository.js';
@@ -89,7 +89,7 @@ describe('Permission Cache Integration (PostgreSQL real, HU-007, T-007-09, CA1, 
 
   beforeEach(async () => {
     cachingGrantReader.invalidateAll();
-    await seedAuthorization(prisma);
+    await seedAuthorizationFast(prisma);
 
     const admin = await createAuthenticatedActor({
       prisma,

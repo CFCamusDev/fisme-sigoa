@@ -6,7 +6,7 @@ import { createPrismaAuditServices } from '../../../../shared/prisma/create-pris
 import {
   createRoleWithGrants,
   grantRole,
-  seedAuthorization,
+  seedAuthorizationFast,
 } from '../../../../test/factories/authorization.js';
 import { createAuthenticatedActor } from '../../../../test/http/authenticated-actor.js';
 import { PrismaRoleRepository } from './prisma-role-repository.js';
@@ -37,7 +37,7 @@ describe('ChangeRoleStatusUseCase Integration (PostgreSQL real, HU-006, T-006-11
   let adminActorId: string;
 
   beforeEach(async () => {
-    await seedAuthorization(prisma);
+    await seedAuthorizationFast(prisma);
 
     const admin = await createAuthenticatedActor({
       prisma,
