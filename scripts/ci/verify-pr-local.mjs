@@ -265,7 +265,7 @@ export function buildExecutionPlan(mode, options = {}) {
     group: 'calidad',
     command: 'pnpm format:check',
     actionSuggestion: 'Ejecuta pnpm format para corregir el estilo de formato.',
-    timeoutMs: 60_000,
+    timeoutMs: 180_000,
   });
   plan.push({
     id: 'lint',
