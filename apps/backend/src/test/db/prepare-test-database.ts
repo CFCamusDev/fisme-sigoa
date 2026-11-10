@@ -150,6 +150,29 @@ async function prepareTemplate(client: pg.Client, baseUrl: string): Promise<stri
 }
 
 /**
+ * Deja migrada la plantilla `<base>_tpl_test` de una base de pruebas y devuelve su URL (HU-078, D6).
+ * El verificador local la llama una sola vez por ejecución y clona de ella las bases de sus grupos.
+ */
+export async function prepareMigratedTemplate(baseUrl: string): Promise<string> {
+  assertTestDatabase(baseUrl);
+  const client = new pg.Client({
+    connectionString: adminUrlOf(baseUrl),
+    connectionTimeoutMillis: 10_000,
+  });
+  try {
+    try {
+      await client.connect();
+    } catch (error) {
+      throw connectionError(baseUrl, error);
+    }
+    const templateName = await prepareTemplate(client, baseUrl);
+    return withDatabaseName(baseUrl, templateName);
+  } finally {
+    await client.end();
+  }
+}
+
+/**
  * Prepara una base por worker clonada de una plantilla migrada (HU-078, D4).
  * Con un solo worker usa la base de siempre. Cada ejecución recrea los clones.
  * Devuelve las URL de las bases que usarán los workers.
@@ -219,7 +242,12 @@ export async function dropWorkerDatabases(
 
 // Si se ejecuta directamente como script de CLI
 if (process.argv[1]?.includes('prepare-test-database')) {
-  prepareTestDatabase()
+  const templateIndex = process.argv.indexOf('--template');
+  const run =
+    templateIndex !== -1 && process.argv[templateIndex + 1]
+      ? prepareMigratedTemplate(process.argv[templateIndex + 1]!)
+      : prepareTestDatabase();
+  run
     .then((url) => {
       console.log(`Base de datos de pruebas preparada con éxito: ${url}`);
       process.exit(0);

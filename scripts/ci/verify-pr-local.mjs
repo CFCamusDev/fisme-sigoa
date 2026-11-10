@@ -329,6 +329,8 @@ export function buildExecutionPlan(mode, options = {}) {
       name: 'Base de datos desechable y migraciones desde cero',
       group: 'calidad',
       command: 'pnpm --filter backend exec prisma migrate deploy',
+      // En la ejecución por grupos la base se clona de la plantilla ya migrada: aquí solo se comprueba.
+      parallelCommand: 'pnpm --filter backend exec prisma migrate status',
       actionSuggestion: 'Revisa las migraciones de Prisma en prisma/migrations/.',
       timeoutMs: 120_000,
     });
@@ -1018,6 +1020,77 @@ const IS_WINDOWS = os.type() === 'Windows_NT';
 /** Preparación única antes de los grupos paralelos (HU-078; T-078-13 la completa en el tramo 2). */
 export const PREPARATION_COMMAND = 'pnpm build:shared && pnpm db:generate';
 
+/** Nombre de la plantilla de una base de pruebas (`x_test` → `x_tpl_test`). */
+export function templateNameFor(dbName) {
+  return `${dbName.replace(/_test$/, '')}_tpl_test`;
+}
+
+/**
+ * Plan de la preparación de bases (HU-078, D6): una sola migración de la plantilla de la ejecución y,
+ * después, el clonado de la base y de la plantilla de cada grupo con base de datos.
+ * @param {{ runDbName: string, groupDbNames: string[] }} options
+ * @returns {Array<{ type: 'migrate-template' | 'clone-base' | 'clone-template', create?: string, from?: string, base?: string }>}
+ */
+export function planTemplatePreparation({ runDbName, groupDbNames }) {
+  const runTemplate = templateNameFor(runDbName);
+  const steps = [{ type: 'migrate-template', base: runDbName, create: runTemplate }];
+  for (const groupDb of groupDbNames) {
+    steps.push({ type: 'clone-base', create: groupDb, from: runTemplate });
+    steps.push({ type: 'clone-template', create: templateNameFor(groupDb), from: runTemplate });
+  }
+  return steps;
+}
+
+/** Cliente de administración de PostgreSQL (base `postgres`) usando el pg del backend. */
+async function openAdminClient(baseEnv) {
+  const require = createRequire(path.resolve('apps', 'backend', 'package.json'));
+  const pg = require('pg');
+  const baseUrl =
+    baseEnv.TEST_DATABASE_URL ||
+    baseEnv.DATABASE_URL ||
+    'postgresql://postgres:postgres@localhost:5432/sigoa_test?schema=public';
+  const adminUrl = new URL(baseUrl);
+  adminUrl.pathname = '/postgres';
+  const client = new pg.Client({
+    connectionString: adminUrl.toString(),
+    connectionTimeoutMillis: 5000,
+  });
+  await client.connect();
+  return client;
+}
+
+/**
+ * Crea las bases de los grupos clonando la plantilla migrada. Solo con nombres desechables.
+ * La plantilla clonada conserva el comentario con el hash de migraciones para que la integración
+ * paralela no vuelva a migrar.
+ */
+async function cloneFromTemplate(steps, baseEnv) {
+  const client = await openAdminClient(baseEnv);
+  try {
+    for (const step of steps) {
+      if (step.type === 'migrate-template') continue;
+      if (!isSafeToDropDatabase(step.create) || !isSafeToDropDatabase(step.from)) {
+        throw new Error(`Nombre de base no permitido: ${step.create} desde ${step.from}`);
+      }
+      await client.query(`CREATE DATABASE "${step.create}" TEMPLATE "${step.from}"`);
+      if (step.type === 'clone-template') {
+        const comment = await client.query(
+          "SELECT shobj_description(oid, 'pg_database') AS comment FROM pg_database WHERE datname = $1",
+          [step.from],
+        );
+        const value = comment.rows[0]?.comment;
+        if (value) {
+          await client.query(
+            `COMMENT ON DATABASE "${step.create}" IS '${value.replace(/'/g, "''")}'`,
+          );
+        }
+      }
+    }
+  } finally {
+    await client.end();
+  }
+}
+
 /**
  * Ejecuta un proceso sin bloquear el ciclo de eventos. Termina el árbol de procesos si vence el plazo.
  * @returns {Promise<{ ok: boolean, error?: string }>}
@@ -1075,26 +1148,13 @@ function runProcess(file, args, { shell, env, timeoutMs }) {
  */
 async function dropDisposableDatabases(dbNames, baseEnv) {
   try {
-    const require = createRequire(path.resolve('apps', 'backend', 'package.json'));
-    const pg = require('pg');
-    const baseUrl =
-      baseEnv.TEST_DATABASE_URL ||
-      baseEnv.DATABASE_URL ||
-      'postgresql://postgres:postgres@localhost:5432/sigoa_test?schema=public';
-    const adminUrl = new URL(baseUrl);
-    adminUrl.pathname = '/postgres';
-    const client = new pg.Client({
-      connectionString: adminUrl.toString(),
-      connectionTimeoutMillis: 5000,
-    });
-    await client.connect();
+    const client = await openAdminClient(baseEnv);
     try {
       for (const dbName of dbNames) {
         const prefix = dbName.replace(/_test$/, '');
-        const found = await client.query(
-          'SELECT datname FROM pg_database WHERE datname ~ $1',
-          [`^${prefix}(_tpl|_w[0-9]+)?_test$`],
-        );
+        const found = await client.query('SELECT datname FROM pg_database WHERE datname ~ $1', [
+          `^${prefix}(_tpl|_w[0-9]+)?_test$`,
+        ]);
         for (const row of found.rows) {
           if (isSafeToDropDatabase(row.datname)) {
             await client.query(`DROP DATABASE IF EXISTS "${row.datname}" WITH (FORCE)`);
@@ -1311,6 +1371,7 @@ async function runCli() {
     }
   }
 
+  const runDbNames = [];
   let executedChecks = [];
   try {
     // Preparación única antes de los grupos: los pasos usan el resultado sin repetirla.
@@ -1330,7 +1391,48 @@ async function runCli() {
       );
     }
 
-    if (preparation && preparation.status === 'failed') {
+    // Migración única: una plantilla de la ejecución de la que se clonan las bases de los grupos.
+    let templatePreparation;
+    if (preparation?.status !== 'failed' && dbNameByGroup.size > 0) {
+      const templateStart = Date.now();
+      const check = {
+        id: 'template-preparation',
+        name: 'Plantilla de base de datos migrada una sola vez',
+        group: 'calidad',
+        actionSuggestion: 'Revisa la conexión a PostgreSQL y las migraciones de Prisma.',
+      };
+      let error;
+      try {
+        const runDbName = generateDisposableDbName();
+        runDbNames.push(runDbName);
+        const steps = planTemplatePreparation({
+          runDbName,
+          groupDbNames: [...dbNameByGroup.values()],
+        });
+        const env = buildGroupEnvironment('integracion', { dbName: runDbName });
+        const migrated = await runProcess(
+          `pnpm --filter backend exec tsx src/test/db/prepare-test-database.ts --template "${env.TEST_DATABASE_URL}"`,
+          [],
+          { shell: true, env, timeoutMs: 180_000 },
+        );
+        if (!migrated.ok) throw new Error(migrated.error);
+        await cloneFromTemplate(steps, process.env);
+      } catch (cause) {
+        error = cause instanceof Error ? cause.message : String(cause);
+      }
+      templatePreparation = {
+        ...check,
+        status: error ? 'failed' : 'ok',
+        durationMs: Date.now() - templateStart,
+        finishedAt: new Date().toISOString(),
+        ...(error ? { error } : {}),
+      };
+      console.log(
+        `${error ? '✖' : '✔'} [preparacion] ${check.name} (${(templatePreparation.durationMs / 1000).toFixed(1)}s)`,
+      );
+    }
+
+    if (preparation?.status === 'failed' || templatePreparation?.status === 'failed') {
       for (const group of groups) {
         for (const check of group.steps) {
           results.set(check, {
@@ -1364,10 +1466,11 @@ async function runCli() {
 
     executedChecks = [
       ...(preparation ? [preparation] : []),
+      ...(templatePreparation ? [templatePreparation] : []),
       ...[...results.values()].sort((a, b) => a.order - b.order),
     ];
   } finally {
-    await dropDisposableDatabases([...dbNameByGroup.values()], process.env);
+    await dropDisposableDatabases([...dbNameByGroup.values(), ...runDbNames], process.env);
   }
 
   const completedAt = new Date().toISOString();

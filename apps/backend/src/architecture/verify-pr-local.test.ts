@@ -958,3 +958,59 @@ describe('verify-pr-local parallel groups and scheduler (T-078-12)', () => {
     });
   });
 });
+
+describe('verify-pr-local template preparation (T-078-13)', () => {
+  const { planTemplatePreparation, templateNameFor, commandForParallelRun } = verifyPr;
+
+  it('migrates the template once before the groups start', () => {
+    const steps = planTemplatePreparation({
+      runDbName: 'sigoa_verify_00000001_test',
+      groupDbNames: ['sigoa_verify_00000002_test', 'sigoa_verify_00000003_test'],
+    });
+
+    const migrations = steps.filter((step: { type: string }) => step.type === 'migrate-template');
+    expect(migrations).toHaveLength(1);
+    expect(steps[0].type).toBe('migrate-template');
+    expect(migrations[0].create).toBe('sigoa_verify_00000001_tpl_test');
+  });
+
+  it('clones the base and the template of every database group from the migrated template', () => {
+    const steps = planTemplatePreparation({
+      runDbName: 'sigoa_verify_00000001_test',
+      groupDbNames: ['sigoa_verify_00000002_test', 'sigoa_verify_00000003_test'],
+    });
+
+    const clones = steps.slice(1) as Array<{ type: string; create: string; from: string }>;
+    expect(clones).toHaveLength(4);
+    expect(clones.every((step) => step.from === 'sigoa_verify_00000001_tpl_test')).toBe(true);
+    expect(clones.map((step) => `${step.type}:${step.create}`)).toEqual([
+      'clone-base:sigoa_verify_00000002_test',
+      'clone-template:sigoa_verify_00000002_tpl_test',
+      'clone-base:sigoa_verify_00000003_test',
+      'clone-template:sigoa_verify_00000003_tpl_test',
+    ]);
+    for (const step of steps as Array<{ create: string }>) {
+      expect(isSafeToDropDatabase(step.create)).toBe(true);
+    }
+  });
+
+  it('only migrates the template when there is no database group', () => {
+    const steps = planTemplatePreparation({
+      runDbName: 'sigoa_verify_00000001_test',
+      groupDbNames: [],
+    });
+    expect(steps).toHaveLength(1);
+  });
+
+  it('derives the template name that the integration global setup expects', () => {
+    expect(templateNameFor('sigoa_verify_0a1b2c3d_test')).toBe('sigoa_verify_0a1b2c3d_tpl_test');
+  });
+
+  it('keeps migrate deploy in the plan for the ci and only checks the status in parallel runs', () => {
+    const step = buildExecutionPlan('standard').find(
+      (check: { id: string }) => check.id === 'disposable-db',
+    );
+    expect(step.command).toContain('prisma migrate deploy');
+    expect(commandForParallelRun(step)).toContain('prisma migrate status');
+  });
+});
