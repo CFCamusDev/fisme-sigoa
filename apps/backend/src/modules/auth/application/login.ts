@@ -7,7 +7,8 @@ import {
   AccountPendingActivationError,
 } from '../domain/errors/index.js';
 import { RefreshToken } from '../domain/entities/refresh-token.js';
-import type { LoginPolicy } from '../domain/value-objects/login-policy.js';
+import type { MaxFailedAttemptsProvider } from '../domain/ports/max-failed-attempts-provider.js';
+import { LoginPolicy } from '../domain/value-objects/login-policy.js';
 import type {
   AccessTokenSigner,
   PasswordHasher,
@@ -27,6 +28,8 @@ export interface LoginUseCaseDependencies {
   unitOfWork: UnitOfWork;
   auditLogger: AuditLogger;
   loginPolicy: LoginPolicy;
+  /** Límite de intentos vigente (parámetro LOGIN_INTENTOS); si falta se usa `loginPolicy`. */
+  maxFailedAttemptsProvider?: MaxFailedAttemptsProvider;
   clock?: () => Date;
 }
 
@@ -39,6 +42,7 @@ export class LoginUseCase {
   private readonly unitOfWork: UnitOfWork;
   private readonly auditLogger: AuditLogger;
   private readonly loginPolicy: LoginPolicy;
+  private readonly maxFailedAttemptsProvider?: MaxFailedAttemptsProvider;
   private readonly clock: () => Date;
 
   constructor(deps: LoginUseCaseDependencies) {
@@ -50,12 +54,14 @@ export class LoginUseCase {
     this.unitOfWork = deps.unitOfWork;
     this.auditLogger = deps.auditLogger;
     this.loginPolicy = deps.loginPolicy;
+    this.maxFailedAttemptsProvider = deps.maxFailedAttemptsProvider;
     this.clock = deps.clock ?? (() => new Date());
   }
 
   async execute(command: LoginCommand): Promise<LoginResult> {
     const normalizedEmail = command.email.trim().toLowerCase();
     const now = this.clock();
+    const policy = await this.resolvePolicy();
 
     // FASE 1: Verificación de contraseña fuera de la transacción para no retener bloqueos durante argon2
     const initialUser = await this.userRepository.findByEmail(normalizedEmail);
@@ -87,8 +93,8 @@ export class LoginUseCase {
             outcome: 'FAILURE',
             reason: 'INVALID_CREDENTIALS',
             policy: {
-              maxFailedAttempts: this.loginPolicy.maxFailedAttempts,
-              lockoutMinutes: this.loginPolicy.lockoutMinutes,
+              maxFailedAttempts: policy.maxFailedAttempts,
+              lockoutMinutes: policy.lockoutMinutes,
             },
           },
         });
@@ -122,8 +128,8 @@ export class LoginUseCase {
             failedLoginAttempts: user.failedLoginAttempts,
             lockedUntil: user.lockedUntil?.toISOString() ?? null,
             policy: {
-              maxFailedAttempts: this.loginPolicy.maxFailedAttempts,
-              lockoutMinutes: this.loginPolicy.lockoutMinutes,
+              maxFailedAttempts: policy.maxFailedAttempts,
+              lockoutMinutes: policy.lockoutMinutes,
             },
           },
         });
@@ -144,8 +150,8 @@ export class LoginUseCase {
             failedLoginAttempts: user.failedLoginAttempts,
             lockedUntil: user.lockedUntil?.toISOString() ?? null,
             policy: {
-              maxFailedAttempts: this.loginPolicy.maxFailedAttempts,
-              lockoutMinutes: this.loginPolicy.lockoutMinutes,
+              maxFailedAttempts: policy.maxFailedAttempts,
+              lockoutMinutes: policy.lockoutMinutes,
             },
           },
         });
@@ -167,8 +173,8 @@ export class LoginUseCase {
             failedLoginAttempts: user.failedLoginAttempts,
             lockedUntil: user.lockedUntil?.toISOString() ?? null,
             policy: {
-              maxFailedAttempts: this.loginPolicy.maxFailedAttempts,
-              lockoutMinutes: this.loginPolicy.lockoutMinutes,
+              maxFailedAttempts: policy.maxFailedAttempts,
+              lockoutMinutes: policy.lockoutMinutes,
             },
           },
         });
@@ -176,7 +182,7 @@ export class LoginUseCase {
       }
 
       if (!passwordValid) {
-        user.registerFailedLogin(now, this.loginPolicy);
+        user.registerFailedLogin(now, policy);
         await this.userRepository.save(user);
 
         const isNowLocked = user.isLocked(now);
@@ -194,8 +200,8 @@ export class LoginUseCase {
             failedLoginAttempts: user.failedLoginAttempts,
             lockedUntil: user.lockedUntil?.toISOString() ?? null,
             policy: {
-              maxFailedAttempts: this.loginPolicy.maxFailedAttempts,
-              lockoutMinutes: this.loginPolicy.lockoutMinutes,
+              maxFailedAttempts: policy.maxFailedAttempts,
+              lockoutMinutes: policy.lockoutMinutes,
             },
           },
         });
@@ -264,5 +270,17 @@ export class LoginUseCase {
       case 'ACCOUNT_PENDING_ACTIVATION':
         throw new AccountPendingActivationError();
     }
+  }
+
+  /** Política vigente: el límite de intentos sale del parámetro; el bloqueo, de la configuración. */
+  private async resolvePolicy(): Promise<LoginPolicy> {
+    if (!this.maxFailedAttemptsProvider) {
+      return this.loginPolicy;
+    }
+    const maxFailedAttempts = await this.maxFailedAttemptsProvider.getMaxFailedAttempts();
+    return new LoginPolicy({
+      maxFailedAttempts,
+      lockoutMinutes: this.loginPolicy.lockoutMinutes,
+    });
   }
 }

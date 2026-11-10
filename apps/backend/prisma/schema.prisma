@@ -363,8 +363,25 @@ model Semester {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  parameters Parameter[]
+
   @@index([startDate])
   @@map("semesters")
 }
 
+model Parameter {
+  id                      String   @id @default(cuid())
+  key                     String
+  value                   Int
+  effectiveFromSemesterId String?
+  createdBy               String?
+  updatedBy               String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 
+  effectiveFromSemester Semester? @relation(fields: [effectiveFromSemesterId], references: [id], onDelete: Restrict)
+
+  @@unique([key, effectiveFromSemesterId])
+  @@index([key])
+  @@map("parameters")
+}

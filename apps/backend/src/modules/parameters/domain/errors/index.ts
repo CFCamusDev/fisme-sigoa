@@ -4,3 +4,7 @@ export * from './program-code-already-exists-error.js';
 export * from './invalid-semester-data-error.js';
 export * from './semester-overlap-error.js';
 export * from './semester-code-already-exists-error.js';
+export * from './invalid-parameter-data-error.js';
+export * from './parameter-semester-not-found-error.js';
+export * from './parameter-not-configured-error.js';
+export * from './parameter-conflict-error.js';

@@ -1,3 +1,4 @@
+import type { MaxFailedAttemptsProvider } from '../domain/ports/max-failed-attempts-provider.js';
 import { describe, expect, it, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import { LoginUseCase } from './login.js';
@@ -43,7 +44,7 @@ describe('LoginUseCase (T-001-09, T-001-19, CA1, CA2, CA3, CA4)', () => {
     });
   }
 
-  function setup() {
+  function setup(maxFailedAttemptsProvider?: MaxFailedAttemptsProvider) {
     const userRepository = mock<UserRepository>();
     const refreshTokenRepository = mock<RefreshTokenRepository>();
     const passwordHasher = mock<PasswordHasher>();
@@ -65,6 +66,7 @@ describe('LoginUseCase (T-001-09, T-001-19, CA1, CA2, CA3, CA4)', () => {
       unitOfWork,
       auditLogger,
       loginPolicy: policy,
+      maxFailedAttemptsProvider,
       clock,
     });
 
@@ -269,6 +271,47 @@ describe('LoginUseCase (T-001-09, T-001-19, CA1, CA2, CA3, CA4)', () => {
         }),
       }),
     );
+  });
+
+  it('locks the account at the LOGIN_INTENTOS limit provided by the parameter (RF-011)', async () => {
+    const provider: MaxFailedAttemptsProvider = { getMaxFailedAttempts: async () => 3 };
+    const { useCase, userRepository, passwordHasher, auditLogger } = setup(provider);
+
+    const user = createActiveUser({ failedLoginAttempts: 2 });
+    userRepository.findByEmail.mockResolvedValue(user);
+    userRepository.findByEmailForUpdate.mockResolvedValue(user);
+    passwordHasher.verify.mockResolvedValue(false);
+
+    await expect(
+      useCase.execute({ email: 'juan.perez@untrm.edu.pe', password: 'Wrong!', ip: '190.12.34.56' }),
+    ).rejects.toThrow(new UnauthorizedError('Correo o contraseña incorrectos'));
+
+    expect(user.failedLoginAttempts).toBe(3);
+    expect(user.lockedUntil).toEqual(new Date('2026-10-30T10:15:00.000Z'));
+    expect(auditLogger.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        after: expect.objectContaining({
+          policy: { maxFailedAttempts: 3, lockoutMinutes: 15 },
+        }),
+      }),
+    );
+  });
+
+  it('does not lock before the parameter limit even if the configured limit is lower', async () => {
+    const provider: MaxFailedAttemptsProvider = { getMaxFailedAttempts: async () => 10 };
+    const { useCase, userRepository, passwordHasher } = setup(provider);
+
+    const user = createActiveUser({ failedLoginAttempts: 4 });
+    userRepository.findByEmail.mockResolvedValue(user);
+    userRepository.findByEmailForUpdate.mockResolvedValue(user);
+    passwordHasher.verify.mockResolvedValue(false);
+
+    await expect(
+      useCase.execute({ email: 'juan.perez@untrm.edu.pe', password: 'Wrong!', ip: '190.12.34.56' }),
+    ).rejects.toThrow(UnauthorizedError);
+
+    expect(user.failedLoginAttempts).toBe(5);
+    expect(user.lockedUntil).toBeNull();
   });
 
   it('rejects inactive and pending activation users with specific domain errors (CA4)', async () => {

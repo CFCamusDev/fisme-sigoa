@@ -1,5 +1,12 @@
 import type { LucideIcon } from 'lucide-react';
-import { Building2, CalendarRange, LayoutDashboard, ShieldCheck, Users } from 'lucide-react';
+import {
+  Building2,
+  CalendarRange,
+  LayoutDashboard,
+  ShieldCheck,
+  SlidersHorizontal,
+  Users,
+} from 'lucide-react';
 
 export interface NavItem {
   title: string;
@@ -36,6 +43,12 @@ export const MAIN_NAV_ITEMS: readonly NavItem[] = [
     title: 'Semestres',
     href: '/configuracion/semestres',
     icon: CalendarRange,
+    permission: 'parametro.ver',
+  },
+  {
+    title: 'Parámetros',
+    href: '/configuracion/parametros',
+    icon: SlidersHorizontal,
     permission: 'parametro.ver',
   },
 ] as const;

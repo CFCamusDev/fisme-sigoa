@@ -6,6 +6,7 @@ import { runSeed, type SeedStep } from './shared/seed/seed-runner.js';
 import type { PrismaClient } from './shared/prisma/generated/client.js';
 import { seedAuthorization } from './modules/authorization/infrastructure/prisma/seed/authorization-seed.js';
 import { seedProgram } from './modules/parameters/infrastructure/prisma/seed/program-seed.js';
+import { seedParameterDefaults } from './modules/parameters/infrastructure/prisma/seed/parameter-seed.js';
 
 loadEnvFileIfPresent();
 
@@ -26,6 +27,12 @@ async function main(): Promise<void> {
       id: 'parameters-program-epis',
       run: async (tx) => {
         await seedProgram(tx);
+      },
+    },
+    {
+      id: 'parameters-defaults',
+      run: async (tx) => {
+        await seedParameterDefaults(tx);
       },
     },
   ];

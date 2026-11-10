@@ -24,7 +24,15 @@ import {
   createUserAccessModule,
 } from './modules/authorization/index.js';
 import { createUsersModule, EmailActivationSender } from './modules/users/index.js';
-import { createParametersModule, createSemestersModule } from './modules/parameters/index.js';
+import {
+  LoginAttemptsParameterProvider,
+  ParameterResolver,
+  PrismaParameterRepository,
+  PrismaSemesterRepository,
+  createParametersModule,
+  createParameterValuesModule,
+  createSemestersModule,
+} from './modules/parameters/index.js';
 
 export interface AppRoutesDependencies {
   unitOfWork: UnitOfWork;
@@ -78,10 +86,22 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
     publicAppUrl,
   });
 
+  // LOGIN_INTENTOS (RF-011): `auth` consulta el parámetro vigente por el puerto de login.
+  const maxFailedAttemptsProvider = new LoginAttemptsParameterProvider({
+    resolver: new ParameterResolver({
+      parameterReader: new PrismaParameterRepository(deps.dbProvider),
+      semesterReader: new PrismaSemesterRepository(deps.dbProvider),
+    }),
+    fallbackMaxFailedAttempts: deps.env.AUTH_MAX_FAILED_ATTEMPTS,
+    clock: deps.clock,
+    logger: deps.logger,
+  });
+
   app.use(
     '/auth',
     createAuthModule({
       ...deps,
+      maxFailedAttemptsProvider,
       passwordResetEmailSender,
       detachedTaskRunner: deps.detachedTaskRunner,
     }),
@@ -140,6 +160,19 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
   app.use(
     '/program',
     createParametersModule({
+      unitOfWork: deps.unitOfWork,
+      auditLogger: deps.auditLogger,
+      dbProvider: deps.dbProvider,
+      authenticate: authServices.authenticate,
+      requirePermission: authorizationServices.requirePermission,
+      permissionChecker: authorizationServices.authorizer,
+      logger: deps.logger,
+      clock: deps.clock,
+    }),
+  );
+  app.use(
+    '/parameters',
+    createParameterValuesModule({
       unitOfWork: deps.unitOfWork,
       auditLogger: deps.auditLogger,
       dbProvider: deps.dbProvider,

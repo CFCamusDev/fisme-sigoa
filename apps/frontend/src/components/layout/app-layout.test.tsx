@@ -96,6 +96,18 @@ describe('AppLayout Component', () => {
     expect(semestersLink).toHaveAttribute('href', '/configuracion/semestres');
   });
 
+  it('renders navigation item "Parámetros" linking to /configuracion/parametros (HU-011, T-011-13)', async () => {
+    renderWithProviders(
+      <AppLayout>
+        <p>Dashboard</p>
+      </AppLayout>,
+    );
+
+    const parametersLink = await screen.findByRole('link', { name: /Parámetros/i });
+    expect(parametersLink).toBeInTheDocument();
+    expect(parametersLink).toHaveAttribute('href', '/configuracion/parametros');
+  });
+
   it('controls mobile sidebar visibility with accessible aria-expanded button', async () => {
     const user = userEvent.setup();
 
