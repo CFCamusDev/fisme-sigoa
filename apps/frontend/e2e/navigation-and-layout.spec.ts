@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support/test';
 import { loginAsTestUser } from './support/seed-user';
 
 test.describe('Navigation, layout accessibility and responsiveness', () => {

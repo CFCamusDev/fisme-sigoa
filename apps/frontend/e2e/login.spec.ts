@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support/test';
 import { seedUser } from './support/seed-user';
 
 test.describe('HU-001 — Iniciar sesión E2E', () => {

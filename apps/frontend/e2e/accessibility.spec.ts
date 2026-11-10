@@ -1,4 +1,5 @@
-import { test, expect, type Locator } from '@playwright/test';
+import { test, expect } from './support/test';
+import type { Locator } from '@playwright/test';
 import { loginAsTestUser, seedUser } from './support/seed-user';
 
 async function expectVisibleFocusIndicator(locator: Locator) {
