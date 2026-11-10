@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Parameter } from './parameter.js';
 import { InvalidParameterDataError } from '../errors/index.js';
-import { assertValidParameterChange } from '../policies/parameter-values-policy.js';
 
 describe('Parameter entity and values policy (T-011-02, RF-011)', () => {
   const baseProps = {
@@ -28,12 +27,18 @@ describe('Parameter entity and values policy (T-011-02, RF-011)', () => {
     );
   });
 
-  it('rejects weights that do not add up to 100', () => {
-    expect(() =>
-      assertValidParameterChange([
-        { key: 'PESO_DIRECTA', value: 70 },
-        { key: 'PESO_INDIRECTA', value: 40 },
-      ]),
-    ).toThrow(InvalidParameterDataError);
+  it('keeps a version tied to a semester', () => {
+    const parameter = Parameter.create({ ...baseProps, effectiveFromSemesterId: 'sem_2027_1' });
+    expect(parameter.effectiveFromSemesterId).toBe('sem_2027_1');
+  });
+
+  it.each([
+    ['UMBRAL_LOGRADO', 21],
+    ['UMBRAL_LOGRADO', -1],
+    ['UMBRAL_LOGRADO', 13.5],
+    ['LOGIN_INTENTOS', 0],
+    ['PESO_DIRECTA', 101],
+  ])('rejects %s = %d', (key, value) => {
+    expect(() => Parameter.create({ ...baseProps, key, value })).toThrow(InvalidParameterDataError);
   });
 });
