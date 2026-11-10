@@ -906,6 +906,9 @@ export const DATABASE_PARALLEL_GROUPS = new Set(['integracion', 'e2e']);
 /** Concurrencia por defecto de los grupos (HU-078, D8). */
 export const DEFAULT_JOBS = 3;
 
+/** Grupos sensibles al tiempo (navegador real): corren solos, sin competir por CPU (HU-078). */
+export const EXCLUSIVE_PARALLEL_GROUPS = ['e2e'];
+
 /**
  * Reparte los pasos del plan en grupos que se pueden ejecutar en paralelo.
  * Cada paso queda en exactamente un grupo; dentro del grupo conserva el orden del plan.
@@ -948,24 +951,33 @@ export function parseJobs(args) {
  * @param {Array<{ id: string }>} groups
  * @param {number} jobs
  * @param {(group: { id: string }) => Promise<T>} runGroup
+ * @param {{ exclusiveIds?: string[] }} [options] grupos que se ejecutan solos, al final
  * @returns {Promise<Array<{ group: { id: string }, value?: T, error?: unknown }>>}
  */
-export async function runGroupsWithLimit(groups, jobs, runGroup) {
+export async function runGroupsWithLimit(groups, jobs, runGroup, options = {}) {
+  const exclusiveIds = new Set(options.exclusiveIds ?? []);
   const results = new Array(groups.length);
-  let next = 0;
-  const worker = async () => {
-    while (next < groups.length) {
-      const index = next;
-      next += 1;
-      const group = groups[index];
-      try {
-        results[index] = { group, value: await runGroup(group) };
-      } catch (error) {
-        results[index] = { group, error };
-      }
+  const pooled = groups.filter((group) => !exclusiveIds.has(group.id));
+  const exclusive = groups.filter((group) => exclusiveIds.has(group.id));
+  const runOne = async (group) => {
+    const index = groups.indexOf(group);
+    try {
+      results[index] = { group, value: await runGroup(group) };
+    } catch (error) {
+      results[index] = { group, error };
     }
   };
-  await Promise.all(Array.from({ length: Math.min(jobs, groups.length) }, worker));
+  let next = 0;
+  const worker = async () => {
+    while (next < pooled.length) {
+      const group = pooled[next];
+      next += 1;
+      await runOne(group);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(jobs, pooled.length) }, worker));
+  // Los grupos exclusivos corren solos, cuando ya no queda ningún otro en ejecución.
+  for (const group of exclusive) await runOne(group);
   return results;
 }
 
@@ -1330,7 +1342,9 @@ async function runCli() {
         }
       }
     } else {
-      const outcomes = await runGroupsWithLimit(groups, jobs, runGroup);
+      const outcomes = await runGroupsWithLimit(groups, jobs, runGroup, {
+        exclusiveIds: EXCLUSIVE_PARALLEL_GROUPS,
+      });
       for (const outcome of outcomes) {
         if (!outcome.error) continue;
         for (const check of outcome.group.steps) {

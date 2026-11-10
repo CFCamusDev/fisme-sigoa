@@ -821,6 +821,41 @@ describe('verify-pr-local parallel groups and scheduler (T-078-12)', () => {
       expect(report.checks).toHaveLength(2);
     });
 
+    it('runs an exclusive group alone, after every other group has finished', async () => {
+      const events: string[] = [];
+      let active = 0;
+      let activeWhenExclusiveStarted = -1;
+
+      const results = await runGroupsWithLimit(
+        makeGroups(4),
+        3,
+        async (group: Group) => {
+          if (group.id === 'g1') activeWhenExclusiveStarted = active;
+          active += 1;
+          events.push(`start:${group.id}`);
+          await flushMicrotasks();
+          events.push(`end:${group.id}`);
+          active -= 1;
+          return group.id;
+        },
+        { exclusiveIds: ['g1'] },
+      );
+
+      expect(activeWhenExclusiveStarted).toBe(0);
+      expect(events.at(-2)).toBe('start:g1');
+      expect(events.slice(0, -2).every((event) => !event.endsWith(':g1'))).toBe(true);
+      expect(results.map((result: { value: string }) => result.value)).toEqual([
+        'g1',
+        'g2',
+        'g3',
+        'g4',
+      ]);
+    });
+
+    it('runs the e2e group exclusively', () => {
+      expect(verifyPr.EXCLUSIVE_PARALLEL_GROUPS).toEqual(['e2e']);
+    });
+
     it('handles no groups', async () => {
       expect(await runGroupsWithLimit([], 3, async () => 'x')).toEqual([]);
     });
