@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useTestDatabase } from '../../../../test/db/use-test-database.js';
-import { seedAuthorization } from './seed/authorization-seed.js';
+import { seedAuthorizationFast } from '../../../../test/factories/authorization.js';
 import { PrismaRoleReader } from './prisma-role-reader.js';
 
 describe('PrismaRoleReader Integration (PostgreSQL real, A2.1, RS-010, LS 3.2, HU-006, T-006-12a)', () => {
@@ -9,7 +9,7 @@ describe('PrismaRoleReader Integration (PostgreSQL real, A2.1, RS-010, LS 3.2, H
   const reader = new PrismaRoleReader({ get: () => prisma });
 
   beforeEach(async () => {
-    await seedAuthorization(prisma);
+    await seedAuthorizationFast(prisma);
   });
 
   it('lists the five predefined roles with their permissions and zero users', async () => {

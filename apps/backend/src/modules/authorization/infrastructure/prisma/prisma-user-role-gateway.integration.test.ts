@@ -5,7 +5,7 @@ import { PrismaUnitOfWork } from '../../../../shared/prisma/prisma-unit-of-work.
 import {
   createRoleWithGrants,
   grantRole,
-  seedAuthorization,
+  seedAuthorizationFast,
 } from '../../../../test/factories/authorization.js';
 import { createAuthenticatedActor } from '../../../../test/http/authenticated-actor.js';
 import { PrismaUserRoleGateway } from './prisma-user-role-gateway.js';
@@ -20,7 +20,7 @@ describe('PrismaUserRoleGateway Integration (PostgreSQL real, HU-006, T-006-11, 
   let userId: string;
 
   beforeEach(async () => {
-    await seedAuthorization(prisma);
+    await seedAuthorizationFast(prisma);
 
     const userActor = await createAuthenticatedActor({
       prisma,

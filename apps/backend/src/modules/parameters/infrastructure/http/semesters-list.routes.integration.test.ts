@@ -8,7 +8,7 @@ import { setupAppRoutes } from '../../../../routes.js';
 import { PrismaUnitOfWork } from '../../../../shared/prisma/prisma-unit-of-work.js';
 import { createPrismaAuditServices } from '../../../../shared/prisma/create-prisma-audit-services.js';
 import { InMemoryEmailSender } from '../../../../shared/email/in-memory-email-sender.js';
-import { seedAuthorization } from '../../../../test/factories/authorization.js';
+import { seedAuthorizationFast } from '../../../../test/factories/authorization.js';
 import { createAuthenticatedActor } from '../../../../test/http/authenticated-actor.js';
 
 describe('GET /semesters HTTP Routes Integration (PostgreSQL real, HU-010, T-010-17, CA1, RF-010, RS-002, RS-015, RNF-009, D1, D5, D6)', () => {
@@ -41,7 +41,7 @@ describe('GET /semesters HTTP Routes Integration (PostgreSQL real, HU-010, T-010
     await prisma.semester.deleteMany();
     await prisma.auditLog.deleteMany();
     await prisma.auditChainHead.deleteMany();
-    await seedAuthorization(prisma);
+    await seedAuthorizationFast(prisma);
   });
 
   async function createActor(roles: string[]) {
