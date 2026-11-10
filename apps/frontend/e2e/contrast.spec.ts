@@ -607,8 +607,10 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA)', () => {
       page.getByLabel('Vigente desde el semestre').selectOption(`${uniqueYear}-I`),
     ]);
     expect(formRes.ok()).toBe(true);
-    await expect(page.getByLabel('Peso de la medición directa')).toHaveValue('70');
-    await page.getByLabel('Peso de la medición directa').fill('80');
+    await expect(page.getByRole('spinbutton', { name: 'Peso de la medición directa' })).toHaveValue(
+      '70',
+    );
+    await page.getByRole('spinbutton', { name: 'Peso de la medición directa' }).fill('80');
     await page.getByRole('button', { name: 'Guardar parámetros' }).click();
     await expect(page.getByText(/deben sumar 100/i).first()).toBeVisible();
     await expectNoContrastViolations(page, { context: 'parameters-page-weights-error-desktop' });
