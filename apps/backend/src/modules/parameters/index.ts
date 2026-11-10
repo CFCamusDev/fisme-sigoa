@@ -5,6 +5,7 @@ import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
 import { EditProgramUseCase } from './application/edit-program.js';
 import { GetProgramUseCase } from './application/get-program.js';
 import { CreateSemesterUseCase } from './application/create-semester.js';
+import { DefineParametersUseCase } from './application/define-parameters.js';
 import { ListSemestersUseCase } from './application/list-semesters.js';
 import type { ParametersPermissionChecker } from './domain/ports/parameters-permission-checker.js';
 import { ParametersController } from './infrastructure/http/parameters.controller.js';
@@ -12,8 +13,11 @@ import {
   createParametersRouter,
   type ParametersRoutePermissionScope,
 } from './infrastructure/http/parameters.routes.js';
+import { ParameterValuesController } from './infrastructure/http/parameter-values.controller.js';
+import { createParameterValuesRouter } from './infrastructure/http/parameter-values.routes.js';
 import { SemestersController } from './infrastructure/http/semesters.controller.js';
 import { createSemestersRouter } from './infrastructure/http/semesters.routes.js';
+import { PrismaParameterRepository } from './infrastructure/prisma/prisma-parameter-repository.js';
 import { PrismaProgramRepository } from './infrastructure/prisma/prisma-program-repository.js';
 import { PrismaSemesterRepository } from './infrastructure/prisma/prisma-semester-repository.js';
 
@@ -93,6 +97,31 @@ export function createSemestersModule(deps?: ParametersModuleDependencies): Rout
   });
 }
 
+export function createParameterValuesModule(deps?: ParametersModuleDependencies): Router {
+  if (!deps) {
+    return Router();
+  }
+
+  const parameterRepository = new PrismaParameterRepository(deps.dbProvider);
+  const semesterRepository = new PrismaSemesterRepository(deps.dbProvider);
+
+  const defineParametersUseCase = new DefineParametersUseCase({
+    parameterRepository,
+    semesterReader: semesterRepository,
+    permissionChecker: deps.permissionChecker,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+  });
+
+  const controller = new ParameterValuesController({ defineParametersUseCase });
+
+  return createParameterValuesRouter({
+    controller,
+    authenticate: deps.authenticate,
+    requirePermission: deps.requirePermission,
+  });
+}
+
 export * from './domain/entities/program.js';
 export * from './domain/entities/semester.js';
 export * from './domain/entities/parameter.js';
@@ -131,3 +160,5 @@ export * from './infrastructure/login-attempts-parameter-provider.js';
 export * from './domain/policies/find-semester-at.js';
 export * from './application/list-effective-parameters.js';
 export * from './application/list-effective-parameters.types.js';
+export * from './infrastructure/http/parameter-values.controller.js';
+export * from './infrastructure/http/parameter-values.routes.js';

@@ -67,6 +67,21 @@ describe('setupAppRoutes', () => {
     expect(response.status).toBe(401);
   });
 
+  it('mounts /parameters router and rejects unauthenticated requests with 401 (HU-011, T-011-09)', async () => {
+    const app = express();
+    app.use(express.json());
+    setupAppRoutes(app, {
+      unitOfWork: dummyUnitOfWork,
+      auditLogger: dummyAuditLogger,
+      dbProvider: dummyDbProvider,
+      env: createTestEnv(),
+    });
+    app.use(errorHandler);
+
+    const response = await request(app).post('/parameters').send({});
+    expect(response.status).toBe(401);
+  });
+
   it('throws an error in production if APP_PUBLIC_URL is not configured', () => {
     const app = express();
     const prodEnv = createTestEnv({

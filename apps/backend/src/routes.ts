@@ -30,6 +30,7 @@ import {
   PrismaParameterRepository,
   PrismaSemesterRepository,
   createParametersModule,
+  createParameterValuesModule,
   createSemestersModule,
 } from './modules/parameters/index.js';
 
@@ -159,6 +160,19 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
   app.use(
     '/program',
     createParametersModule({
+      unitOfWork: deps.unitOfWork,
+      auditLogger: deps.auditLogger,
+      dbProvider: deps.dbProvider,
+      authenticate: authServices.authenticate,
+      requirePermission: authorizationServices.requirePermission,
+      permissionChecker: authorizationServices.authorizer,
+      logger: deps.logger,
+      clock: deps.clock,
+    }),
+  );
+  app.use(
+    '/parameters',
+    createParameterValuesModule({
       unitOfWork: deps.unitOfWork,
       auditLogger: deps.auditLogger,
       dbProvider: deps.dbProvider,
