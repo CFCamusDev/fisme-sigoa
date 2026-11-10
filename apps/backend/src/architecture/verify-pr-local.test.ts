@@ -626,3 +626,300 @@ describe('verify-pr-local pure logic (T-002-22 / G1)', () => {
     });
   });
 });
+
+describe('verify-pr-local parallel groups and scheduler (T-078-12)', () => {
+  const {
+    planParallelGroups,
+    parseJobs,
+    runGroupsWithLimit,
+    buildGroupEnvironment,
+    commandForParallelRun,
+    PARALLEL_GROUP_ORDER,
+    DATABASE_PARALLEL_GROUPS,
+    DEFAULT_JOBS,
+  } = verifyPr;
+  const repoRootDir = path.resolve(__dirname, '../../../../');
+
+  type Step = { id: string; name: string; command?: string; parallelGroup?: string };
+  type Group = { id: string; steps: Step[] };
+
+  const flushMicrotasks = () => new Promise<void>((resolve) => setImmediate(resolve));
+
+  describe('planParallelGroups', () => {
+    it.each(['quick', 'standard', 'full'] as const)(
+      'schedules every ci check in exactly one group (%s)',
+      (mode) => {
+        const plan: Step[] = planRepeatedSteps(buildExecutionPlan(mode), 3);
+        const groups: Group[] = planParallelGroups(plan);
+
+        const scheduled = groups.flatMap((group) => group.steps);
+        expect(scheduled).toHaveLength(plan.length);
+        expect(scheduled.map((step) => `${step.id}|${step.name}`).sort()).toEqual(
+          plan.map((step) => `${step.id}|${step.name}`).sort(),
+        );
+        for (const group of groups) {
+          for (const step of group.steps) {
+            expect(step.parallelGroup).toBe(group.id);
+          }
+        }
+      },
+    );
+
+    it('covers every run step of pr-checks.yml with the scheduled checks', () => {
+      const workflow = fs.readFileSync(
+        path.join(repoRootDir, '.github', 'workflows', 'pr-checks.yml'),
+        'utf-8',
+      );
+      const groups: Group[] = planParallelGroups(buildExecutionPlan('full'));
+      const scheduled = groups.flatMap((group) => group.steps);
+
+      const drift = checkWorkflowDrift(workflow, scheduled);
+      expect(drift.unmappedCommands).toEqual([]);
+      expect(drift.inParity).toBe(true);
+    });
+
+    it('keeps the plan order inside each group and the group order of the scheduler', () => {
+      const plan: Step[] = buildExecutionPlan('full');
+      const groups: Group[] = planParallelGroups(plan);
+
+      expect(groups.map((group) => group.id)).toEqual(
+        PARALLEL_GROUP_ORDER.filter((id: string) => groups.some((group) => group.id === id)),
+      );
+      const position = new Map(plan.map((step, index) => [step.id, index]));
+      for (const group of groups) {
+        const indexes = group.steps.map((step) => position.get(step.id)!);
+        expect(indexes).toEqual([...indexes].sort((a, b) => a - b));
+      }
+    });
+
+    it('puts lint, format, typecheck and depcruise together and the database checks apart', () => {
+      const groups: Group[] = planParallelGroups(buildExecutionPlan('full'));
+      const idsOf = (groupId: string) =>
+        groups.find((group) => group.id === groupId)?.steps.map((step) => step.id) ?? [];
+
+      expect(idsOf('estaticas')).toEqual(
+        expect.arrayContaining(['lint', 'format', 'typecheck', 'depcruise']),
+      );
+      expect(idsOf('integracion')).toEqual(['disposable-db', 'integration-tests', 'pdf-stability']);
+      expect(idsOf('e2e')).toEqual(['e2e']);
+      expect(idsOf('cobertura')).toEqual(['test-coverage', 'build']);
+      expect(idsOf('imagenes')).toEqual(
+        expect.arrayContaining(['compose-config', 'compose-hardening', 'docker-smoke']),
+      );
+    });
+
+    it('rejects a step that has no group instead of dropping it', () => {
+      expect(() => planParallelGroups([{ id: 'brand-new-check' }])).toThrow(
+        /brand-new-check.*grupo paralelo/,
+      );
+    });
+  });
+
+  describe('parseJobs', () => {
+    it('defaults to 3 and reads a positive integer', () => {
+      expect(DEFAULT_JOBS).toBe(3);
+      expect(parseJobs(['--mode', 'full'])).toBe(3);
+      expect(parseJobs(['--jobs', '1'])).toBe(1);
+      expect(parseJobs(['--jobs', '6'])).toBe(6);
+    });
+
+    it.each([['0'], ['-1'], ['abc'], ['2.5'], ['']])('rejects --jobs %j', (value) => {
+      expect(() => parseJobs(['--jobs', value])).toThrow(/--jobs debe ser un entero positivo/);
+    });
+
+    it('rejects --jobs without a value', () => {
+      expect(() => parseJobs(['--jobs'])).toThrow(/--jobs debe ser un entero positivo/);
+    });
+  });
+
+  describe('runGroupsWithLimit', () => {
+    const makeGroups = (count: number): Group[] =>
+      Array.from({ length: count }, (_, index) => ({ id: `g${index + 1}`, steps: [] }));
+
+    it('runs at most jobs groups at the same time', async () => {
+      const gates = new Map<string, () => void>();
+      let active = 0;
+      let maxActive = 0;
+      const started: string[] = [];
+
+      const done = runGroupsWithLimit(makeGroups(5), 2, (group: Group) => {
+        active += 1;
+        maxActive = Math.max(maxActive, active);
+        started.push(group.id);
+        return new Promise<string>((resolve) => {
+          gates.set(group.id, () => {
+            active -= 1;
+            resolve(group.id);
+          });
+        });
+      });
+
+      await flushMicrotasks();
+      expect(started).toEqual(['g1', 'g2']);
+
+      gates.get('g1')!();
+      await flushMicrotasks();
+      expect(started).toEqual(['g1', 'g2', 'g3']);
+
+      for (const id of ['g2', 'g3', 'g4', 'g5']) {
+        await flushMicrotasks();
+        gates.get(id)!();
+      }
+      const results = await done;
+
+      expect(maxActive).toBe(2);
+      expect(results.map((result: { value: string }) => result.value)).toEqual([
+        'g1',
+        'g2',
+        'g3',
+        'g4',
+        'g5',
+      ]);
+    });
+
+    it('runs one group at a time with jobs 1', async () => {
+      let active = 0;
+      let maxActive = 0;
+      await runGroupsWithLimit(makeGroups(4), 1, async () => {
+        active += 1;
+        maxActive = Math.max(maxActive, active);
+        await flushMicrotasks();
+        active -= 1;
+      });
+      expect(maxActive).toBe(1);
+    });
+
+    it('does not leave other groups orphaned when one of them throws', async () => {
+      const finished: string[] = [];
+      const results = await runGroupsWithLimit(makeGroups(4), 3, async (group: Group) => {
+        if (group.id === 'g2') throw new Error('group exploded');
+        await flushMicrotasks();
+        finished.push(group.id);
+        return group.id;
+      });
+
+      expect(finished.sort()).toEqual(['g1', 'g3', 'g4']);
+      expect(results).toHaveLength(4);
+      expect(results[1].error).toBeInstanceOf(Error);
+      expect(results[1].value).toBeUndefined();
+      expect(results.filter((result: { error?: unknown }) => !result.error)).toHaveLength(3);
+    });
+
+    it('still lets the report be built when a group failed', async () => {
+      const results = await runGroupsWithLimit(makeGroups(2), 2, async (group: Group) => {
+        if (group.id === 'g1') throw new Error('boom');
+        return 'ok';
+      });
+      const checks = results.map((result: { group: Group; error?: unknown }) => ({
+        id: result.group.id,
+        status: result.error ? 'failed' : 'ok',
+      }));
+
+      const report = createReportJson({ mode: 'full', jobs: 2, checks });
+      expect(report.overallStatus).toBe('failed');
+      expect(report.exitCode).toBe(1);
+      expect(report.checks).toHaveLength(2);
+    });
+
+    it('handles no groups', async () => {
+      expect(await runGroupsWithLimit([], 3, async () => 'x')).toEqual([]);
+    });
+  });
+
+  describe('group environment and disposable databases (D7)', () => {
+    const baseEnv = {
+      TEST_DATABASE_URL: 'postgresql://user:pw@db.local:5433/sigoa_test?schema=public',
+      OTHER: '1',
+    };
+
+    it('gives each database group its own disposable database', () => {
+      const integrationName = generateDisposableDbName();
+      const e2eName = generateDisposableDbName();
+      const integration = buildGroupEnvironment('integracion', {
+        baseEnv,
+        dbName: integrationName,
+      });
+      const e2e = buildGroupEnvironment('e2e', { baseEnv, dbName: e2eName });
+
+      expect(integrationName).not.toBe(e2eName);
+      expect(new URL(integration.DATABASE_URL).pathname).toBe(`/${integrationName}`);
+      expect(integration.TEST_DATABASE_URL).toBe(integration.DATABASE_URL);
+      expect(new URL(e2e.DATABASE_URL).pathname).toBe(`/${e2eName}`);
+      expect(new URL(integration.DATABASE_URL).host).toBe('db.local:5433');
+      expect(new URL(integration.DATABASE_URL).username).toBe('user');
+      expect(integration.OTHER).toBe('1');
+      expect(DATABASE_PARALLEL_GROUPS.has('integracion')).toBe(true);
+      expect(DATABASE_PARALLEL_GROUPS.has('cobertura')).toBe(false);
+    });
+
+    it('leaves groups without database untouched', () => {
+      const env = buildGroupEnvironment('estaticas', {
+        baseEnv,
+        dbName: generateDisposableDbName(),
+      });
+      expect(env.TEST_DATABASE_URL).toBe(baseEnv.TEST_DATABASE_URL);
+    });
+
+    it('only drops disposable databases and the template and worker databases derived from them', () => {
+      expect(isSafeToDropDatabase('sigoa_verify_0a1b2c3d_test')).toBe(true);
+      expect(isSafeToDropDatabase('sigoa_verify_0a1b2c3d_tpl_test')).toBe(true);
+      expect(isSafeToDropDatabase('sigoa_verify_0a1b2c3d_w4_test')).toBe(true);
+      expect(isSafeToDropDatabase('sigoa_tpl_test')).toBe(false);
+      expect(isSafeToDropDatabase('sigoa_w1_test')).toBe(false);
+      expect(isSafeToDropDatabase('sigoa_dev')).toBe(false);
+      expect(isSafeToDropDatabase('sigoa_verify_0a1b2c3d')).toBe(false);
+    });
+  });
+
+  describe('report and commands', () => {
+    it('adds jobs and parallel to the report and keeps the status gate working', () => {
+      const report = createReportJson({
+        branch: 'feature/HU-078-pruebas-rapidas',
+        headSha: 'abc1234',
+        baseSha: 'develop',
+        mode: 'full',
+        jobs: 3,
+        cleanWorkingTree: true,
+        startedAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+        checks: [{ id: 'lint', name: 'Lint', status: 'ok' }],
+      });
+
+      expect(report.jobs).toBe(3);
+      expect(report.parallel).toBe(true);
+      expect(report.version).toBe('1.0.0');
+      expect(
+        verifyReportStatus(
+          report,
+          {
+            currentHeadSha: 'abc1234',
+            currentBranch: 'feature/HU-078-pruebas-rapidas',
+            isTreeClean: true,
+            now: new Date(),
+          },
+          { requireMode: 'full' },
+        ).valid,
+      ).toBe(true);
+    });
+
+    it('marks the report as not parallel with one job', () => {
+      const report = createReportJson({ mode: 'quick', jobs: 1, checks: [] });
+      expect(report.jobs).toBe(1);
+      expect(report.parallel).toBe(false);
+    });
+
+    it('does not repeat the shared build or the prisma client generation in the parallel commands', () => {
+      const steps: Array<{ id: string; command?: string; parallelCommand?: string }> =
+        buildExecutionPlan('full');
+      for (const id of ['typecheck', 'test-coverage', 'build', 'e2e']) {
+        const step = steps.find((candidate) => candidate.id === id)!;
+        const parallel = commandForParallelRun(step);
+        expect(parallel).toBeDefined();
+        expect(parallel).not.toBe(step.command);
+        expect(parallel).not.toMatch(/build:shared|db:generate/);
+      }
+      const lint = steps.find((candidate) => candidate.id === 'lint')!;
+      expect(commandForParallelRun(lint)).toBe(lint.command);
+    });
+  });
+});
