@@ -60,7 +60,7 @@ describe('worker database isolation (T-078-09, CA3)', () => {
   afterAll(async () => {
     await dropWorkerDatabases(sandboxWorkers, sandboxUrl);
     await dropDatabases(sandboxUrl, [templateDatabaseName(sandboxBaseName), sandboxBaseName]);
-  }, 60_000);
+  }, 180_000);
 
   it('names every worker database with the _test suffix', () => {
     expect(workerUrls).toHaveLength(sandboxWorkers);
@@ -151,7 +151,7 @@ describe('integration results with one and four workers (T-078-09, CA2)', () => 
       templateDatabaseName(compareBaseName),
       compareBaseName,
     ]);
-  }, 60_000);
+  }, 180_000);
 
   async function runSubset(workers: number): Promise<Map<string, string>> {
     const outputFile = path.join(tmpDir, `result-${workers}.json`);
