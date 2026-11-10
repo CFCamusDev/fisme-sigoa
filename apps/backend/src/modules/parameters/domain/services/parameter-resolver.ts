@@ -1,6 +1,7 @@
 import type { Semester } from '../entities/semester.js';
 import { ParameterNotConfiguredError, ParameterSemesterNotFoundError } from '../errors/index.js';
 import { PARAMETER_KEYS, type ParameterKey } from '../policies/parameter-catalog.js';
+import { findSemesterAt } from '../policies/find-semester-at.js';
 import { pickEffectiveVersion } from '../policies/pick-effective-version.js';
 import type { ParameterReader, ParameterVersion } from '../ports/parameter-reader.js';
 import type { SemesterReader } from '../ports/semester-reader.js';
@@ -31,15 +32,7 @@ export class ParameterResolver {
   /** Valores vigentes en un día: los del último semestre iniciado hasta esa fecha. */
   public async resolveAt(isoDay: string): Promise<ResolvedParameters> {
     const semesters = await this.deps.semesterReader.list();
-    let latestStart: string | null = null;
-    for (const semester of semesters) {
-      if (
-        semester.startDate <= isoDay &&
-        (latestStart === null || semester.startDate > latestStart)
-      ) {
-        latestStart = semester.startDate;
-      }
-    }
+    const latestStart = findSemesterAt(semesters, isoDay)?.startDate ?? null;
     const versions = await this.deps.parameterReader.listVersions();
     return this.pickAll(versions, latestStart);
   }
