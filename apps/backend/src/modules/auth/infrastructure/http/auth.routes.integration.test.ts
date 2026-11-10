@@ -191,6 +191,43 @@ describe('POST /auth/login Integration (PostgreSQL real, CA1-CA4, RNF-004, RNF-0
     expect(res6.body.error.retryAfterSeconds).toBeDefined();
   }, 30_000);
 
+  it('locks the account at the LOGIN_INTENTOS parameter instead of the configured limit (RF-011)', async () => {
+    await prisma.parameter.create({
+      data: { key: 'LOGIN_INTENTOS', value: 2, createdBy: 'SEED', updatedBy: 'SEED' },
+    });
+    for (const [key, value] of [
+      ['UMBRAL_LOGRADO', 14],
+      ['META_AG', 70],
+      ['PESO_DIRECTA', 70],
+      ['PESO_INDIRECTA', 30],
+      ['MIN_PARTICIPACION', 3],
+      ['TOKEN_DIAS', 7],
+    ] as const) {
+      await prisma.parameter.create({ data: { key, value, createdBy: 'SEED' } });
+    }
+    const email = `param.lockout.${Date.now()}@example.test`;
+    const created = await createFixtureUser({ email, password: 'CorrectPassword123!' });
+
+    for (let i = 1; i <= 2; i++) {
+      const res = await request(app)
+        .post('/auth/login')
+        .set('x-forwarded-for', `10.0.8.${i}`)
+        .send({ email, password: 'BadPassword!' });
+      expect(res.status).toBe(401);
+    }
+
+    const inDb = await prisma.user.findUniqueOrThrow({ where: { id: created.id } });
+    expect(inDb.failedLoginAttempts).toBe(2);
+    expect(inDb.lockedUntil).not.toBeNull();
+
+    const blocked = await request(app)
+      .post('/auth/login')
+      .set('x-forwarded-for', '10.0.8.3')
+      .send({ email, password: 'CorrectPassword123!' });
+    expect(blocked.status).toBe(429);
+    expect(blocked.body.error.code).toBe('ACCOUNT_LOCKED');
+  }, 30_000);
+
   it('does not exceed the attempt limit under concurrent requests', async () => {
     const email = `concurrent.${Date.now()}@example.test`;
     const created = await createFixtureUser({ email, password: 'CorrectPassword123!' });

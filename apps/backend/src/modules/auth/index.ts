@@ -13,6 +13,7 @@ import { JoseAccessTokenSigner } from './infrastructure/security/jose-access-tok
 import { JoseAccessTokenVerifier } from './infrastructure/security/jose-access-token-verifier.js';
 import { RandomRefreshTokenGenerator } from './infrastructure/security/random-refresh-token-generator.js';
 import { RandomActivationTokenGenerator } from './infrastructure/security/random-activation-token-generator.js';
+import type { MaxFailedAttemptsProvider } from './domain/ports/max-failed-attempts-provider.js';
 import { LoginPolicy } from './domain/value-objects/login-policy.js';
 import { LoginUseCase } from './application/login.js';
 import { RefreshSessionUseCase } from './application/refresh-session.js';
@@ -38,6 +39,7 @@ export interface AuthModuleDependencies {
   passwordResetEmailSender?: PasswordResetEmailSender;
   detachedTaskRunner?: DetachedTaskRunner;
   logger?: DetachedTaskRunnerLogger;
+  maxFailedAttemptsProvider?: MaxFailedAttemptsProvider;
 }
 
 export interface AuthServicesDependencies {
@@ -128,6 +130,7 @@ export function createAuthModule(deps: AuthModuleDependencies): Router {
     unitOfWork: deps.unitOfWork,
     auditLogger: deps.auditLogger,
     loginPolicy: services.loginPolicy,
+    maxFailedAttemptsProvider: deps.maxFailedAttemptsProvider,
     clock: deps.clock,
   });
 

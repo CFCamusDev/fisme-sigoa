@@ -127,3 +127,4 @@ export * from './infrastructure/prisma/seed/parameter-seed.js';
 export * from './application/define-parameters.js';
 export * from './application/define-parameters.types.js';
 export * from './application/parameter-dto.js';
+export * from './infrastructure/login-attempts-parameter-provider.js';
