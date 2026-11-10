@@ -415,7 +415,8 @@ export function computeOverallStatus(checks, mode) {
     return { overallStatus: 'failed', exitCode: 1 };
   }
 
-  const hasOmitted = checks.some((c) => c.status === 'omitted');
+  // Lo omitido por alcance (HU-078, D5) no bloquea: el informe lo lista, pero no cambia el resultado.
+  const hasOmitted = checks.some((c) => c.status === 'omitted' && !c.skippedByScope);
   if (hasOmitted) {
     // En modo quick, los omitidos se tratan como advertencia no bloqueante
     if (mode === 'quick') {
@@ -593,6 +594,49 @@ export function markDatabaseStepsOmitted(checks, reason) {
     }
     return check;
   });
+}
+
+/** Pasos que se pueden omitir por alcance cuando el diff no toca sus archivos (HU-078, D4). */
+export const SCOPE_SKIPPABLE_STEP_IDS = ['docker-smoke', 'pdf-stability'];
+
+/** Motivo que se registra en el informe para lo omitido por alcance. */
+export const SCOPE_SKIP_REASON = 'omitido por alcance';
+
+/**
+ * Rutas que activan docker-smoke y pdf-stability: imágenes, compose, despliegue, lockfile y PDF.
+ * @param {string} file ruta con separadores / (relativa a la raíz del repositorio)
+ * @returns {boolean}
+ */
+export function touchesImageOrPdfScope(file) {
+  const baseName = file.slice(file.lastIndexOf('/') + 1);
+  return (
+    baseName.startsWith('Dockerfile') ||
+    baseName.startsWith('docker-compose') ||
+    file.startsWith('deploy/') ||
+    file === 'pnpm-lock.yaml' ||
+    file === 'scripts/ci/smoke-image.sh' ||
+    file.startsWith('apps/backend/src/shared/pdf/') ||
+    file.startsWith('apps/backend/src/shared/branding/') ||
+    file === 'docs/despliegue.md'
+  );
+}
+
+/**
+ * Decide qué pasos se omiten por alcance. Nunca omite en el CI ni con --force-all, ni cuando no se
+ * pudo calcular el diff (changedFiles null o indefinido): ante la duda se ejecuta todo.
+ * @param {string[] | null | undefined} changedFiles
+ * @param {{ ci?: boolean, forceAll?: boolean }} [options]
+ * @returns {{ skipIds: string[], reason: string }}
+ */
+export function decideScopeSkips(changedFiles, options = {}) {
+  if (options.ci || options.forceAll || !Array.isArray(changedFiles)) {
+    return { skipIds: [], reason: SCOPE_SKIP_REASON };
+  }
+  const touches = changedFiles
+    .map((file) => file.trim().replace(/\\/g, '/'))
+    .filter(Boolean)
+    .some(touchesImageOrPdfScope);
+  return { skipIds: touches ? [] : [...SCOPE_SKIPPABLE_STEP_IDS], reason: SCOPE_SKIP_REASON };
 }
 
 /** Máximo de archivos de prueba que se repiten con --repeat-scope changed (HU-078, D3). */
@@ -1429,17 +1473,38 @@ async function runCli() {
       `Advertencia: hay ${changedTests.total} pruebas nuevas o modificadas; se repiten solo las primeras ${MAX_REPEATED_TEST_FILES} por orden alfabético.`,
     );
   }
+  const forceAll = args.includes('--force-all');
+  let changedFilesForScope = null;
+  try {
+    changedFilesForScope = execSync(`git -c core.quotepath=false diff --name-only ${baseBranch}...HEAD`, {
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+    })
+      .split(/\r?\n/)
+      .filter(Boolean);
+  } catch {
+    changedFilesForScope = null;
+  }
+  const scopeDecision = decideScopeSkips(changedFilesForScope, {
+    ci: Boolean(process.env.CI),
+    forceAll,
+  });
   const plan = planRepeatedSteps(rawPlan, repeat, {
     scope: repeatScope,
     changedTests: changedTests.files,
-  });
+  }).map((step) =>
+    scopeDecision.skipIds.includes(step.id) ? { ...step, skippedByScope: true } : step,
+  );
   const groups = planParallelGroups(plan);
   const results = new Map();
 
   // Una base desechable por grupo con base de datos (D7).
   const dbNameByGroup = new Map(
     groups
-      .filter((group) => DATABASE_PARALLEL_GROUPS.has(group.id))
+      .filter(
+        (group) =>
+          DATABASE_PARALLEL_GROUPS.has(group.id) && group.steps.some((step) => !step.skippedByScope),
+      )
       .map((group) => [group.id, generateDisposableDbName()]),
   );
 
@@ -1459,6 +1524,17 @@ async function runCli() {
       );
       return result;
     };
+
+    if (check.skippedByScope) {
+      const result = {
+        ...check,
+        status: 'omitted',
+        durationMs: 0,
+        reason: SCOPE_SKIP_REASON,
+      };
+      console.log(`⚠ [${check.parallelGroup}] ${check.name} (${SCOPE_SKIP_REASON})`);
+      return result;
+    }
 
     // Verificaciones internas puras
     if (check.id === 'branch-name') {
@@ -1537,7 +1613,10 @@ async function runCli() {
   let executedChecks = [];
   try {
     // Preparación única antes de los grupos: los pasos usan el resultado sin repetirla.
-    const needsPreparation = groups.some((g) => g.id !== 'convenciones' && g.id !== 'imagenes');
+    const needsPreparation = groups.some(
+      (g) =>
+        g.id !== 'convenciones' && g.id !== 'imagenes' && g.steps.some((step) => !step.skippedByScope),
+    );
     let preparation;
     if (needsPreparation) {
       preparation = await runStep(

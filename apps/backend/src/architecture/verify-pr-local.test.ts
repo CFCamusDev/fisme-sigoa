@@ -1214,3 +1214,136 @@ describe('verify-pr-local repeat of changed tests (T-078-15)', () => {
 function planParallelGroupsOf(steps: unknown[]) {
   return verifyPr.planParallelGroups(steps);
 }
+
+describe('verify-pr-local scope skips (T-078-16)', () => {
+  const { decideScopeSkips, touchesImageOrPdfScope, SCOPE_SKIPPABLE_STEP_IDS, SCOPE_SKIP_REASON } =
+    verifyPr;
+
+  it('omits docker-smoke when the diff is out of scope', () => {
+    const decision = decideScopeSkips([
+      'apps/backend/src/modules/users/application/create-user.ts',
+      'apps/frontend/src/features/users/users-page.tsx',
+      'docs/historias.md',
+    ]);
+    expect(decision.skipIds).toContain('docker-smoke');
+    expect(decision.skipIds).toContain('pdf-stability');
+    expect([...decision.skipIds].sort()).toEqual([...SCOPE_SKIPPABLE_STEP_IDS].sort());
+    expect(decision.reason).toBe('omitido por alcance');
+    expect(SCOPE_SKIP_REASON).toBe('omitido por alcance');
+  });
+
+  it.each([
+    'apps/backend/Dockerfile',
+    'apps/frontend/Dockerfile.dev',
+    'docker-compose.prod.yml',
+    'docker-compose.yml',
+    'deploy/stack.env.example',
+    'pnpm-lock.yaml',
+    'scripts/ci/smoke-image.sh',
+    'apps/backend/src/shared/pdf/pdf-generator.ts',
+    'apps/backend/src/shared/branding/logo-url-resolver.ts',
+    'docs/despliegue.md',
+    'apps\\backend\\Dockerfile',
+  ])('runs the image and pdf checks when the diff touches %s', (file) => {
+    expect(touchesImageOrPdfScope(file.replace(/\\/g, '/'))).toBe(true);
+    expect(decideScopeSkips(['README.md', file]).skipIds).toEqual([]);
+  });
+
+  it('does not treat similar paths as in scope', () => {
+    for (const file of [
+      'apps/backend/src/shared/pdfs/other.ts',
+      'apps/backend/src/modules/pdf/x.ts',
+      'package.json',
+      'scripts/ci/verify-pr-local.mjs',
+      'deployment-notes.md',
+    ]) {
+      expect(touchesImageOrPdfScope(file)).toBe(false);
+    }
+  });
+
+  it('force-all runs everything', () => {
+    expect(decideScopeSkips(['README.md'], { forceAll: true }).skipIds).toEqual([]);
+  });
+
+  it('never omits in the ci', () => {
+    expect(decideScopeSkips(['README.md'], { ci: true }).skipIds).toEqual([]);
+    expect(decideScopeSkips(['README.md'], { ci: true, forceAll: false }).skipIds).toEqual([]);
+  });
+
+  it('runs everything when the diff could not be computed', () => {
+    expect(decideScopeSkips(null).skipIds).toEqual([]);
+    expect(decideScopeSkips(undefined).skipIds).toEqual([]);
+  });
+
+  it('omits both checks for an empty diff', () => {
+    expect(decideScopeSkips([]).skipIds.sort()).toEqual(['docker-smoke', 'pdf-stability']);
+  });
+
+  describe('report and status gate', () => {
+    const skipped = (id: string) => ({
+      id,
+      name: id,
+      status: 'omitted',
+      skippedByScope: true,
+      reason: 'omitido por alcance',
+    });
+
+    it('does not turn a report into omitted when only scope skips are omitted', () => {
+      const checks = [
+        { id: 'lint', status: 'ok' },
+        skipped('docker-smoke'),
+        skipped('pdf-stability'),
+      ];
+      expect(computeOverallStatus(checks, 'full')).toEqual({ overallStatus: 'ok', exitCode: 0 });
+    });
+
+    it('still reports other omitted steps as omitted', () => {
+      const checks = [skipped('docker-smoke'), { id: 'integration-tests', status: 'omitted' }];
+      expect(computeOverallStatus(checks, 'full')).toEqual({
+        overallStatus: 'omitted',
+        exitCode: 2,
+      });
+    });
+
+    it('still fails when a step failed next to a scope skip', () => {
+      const checks = [skipped('docker-smoke'), { id: 'lint', status: 'failed' }];
+      expect(computeOverallStatus(checks, 'full').overallStatus).toBe('failed');
+    });
+
+    it('lists the skipped checks in the report and accepts it for --require full', () => {
+      const report = createReportJson({
+        branch: 'feature/HU-078-pruebas-rapidas',
+        headSha: 'abc1234',
+        baseSha: 'develop',
+        mode: 'full',
+        jobs: 3,
+        cleanWorkingTree: true,
+        startedAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+        checks: [{ id: 'lint', name: 'Lint', status: 'ok' }, skipped('docker-smoke')],
+      });
+      expect(report.overallStatus).toBe('ok');
+      expect(report.checks.find((c: { id: string }) => c.id === 'docker-smoke')).toMatchObject({
+        status: 'omitted',
+        skippedByScope: true,
+      });
+
+      const context = {
+        currentHeadSha: 'abc1234',
+        currentBranch: 'feature/HU-078-pruebas-rapidas',
+        isTreeClean: true,
+        now: new Date(),
+      };
+      expect(verifyReportStatus(report, context, { requireMode: 'full' }).valid).toBe(true);
+
+      // Un informe anterior, sin los campos nuevos, sigue siendo válido.
+      const legacy = {
+        ...report,
+        checks: [{ id: 'lint', name: 'Lint', status: 'ok' }],
+      };
+      delete legacy.repeatScope;
+      delete legacy.repeatedTests;
+      expect(verifyReportStatus(legacy, context, { requireMode: 'full' }).valid).toBe(true);
+    });
+  });
+});
