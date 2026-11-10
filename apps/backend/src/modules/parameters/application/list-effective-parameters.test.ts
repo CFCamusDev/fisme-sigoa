@@ -34,6 +34,9 @@ function version(
   };
 }
 
+const S2027_I = { id: 's27a', code: '2027-I', startDate: '2027-03-01' };
+const S2026_II = { id: 's26b', code: '2026-II', startDate: '2026-08-01' };
+
 const DEFAULTS: ParameterVersion[] = [
   version('d1', 'UMBRAL_LOGRADO', 14, null),
   version('d2', 'META_AG', 70, null),
@@ -105,5 +108,94 @@ describe('ListEffectiveParametersUseCase (T-011-06, T-011-17, RF-011)', () => {
     await expect(
       build().execute({ actorId: 'admin_1', semesterCode: '2099-I' }),
     ).rejects.toBeInstanceOf(ParameterSemesterNotFoundError);
+  });
+
+  it('uses the new value only from its semester on and keeps earlier ones (CA2)', async () => {
+    versions = [...DEFAULTS, version('v1', 'UMBRAL_LOGRADO', 15, S2027_I)];
+
+    const current = await build().execute({ actorId: 'admin_1' });
+    const before = await build().execute({ actorId: 'admin_1', semesterCode: '2026-II' });
+    const from = await build().execute({ actorId: 'admin_1', semesterCode: '2027-I' });
+
+    expect(current.items.find((i) => i.key === 'UMBRAL_LOGRADO')?.value).toBe(15);
+    expect(before.items.find((i) => i.key === 'UMBRAL_LOGRADO')).toMatchObject({
+      value: 14,
+      effectiveFromSemesterCode: null,
+    });
+    expect(from.items.find((i) => i.key === 'UMBRAL_LOGRADO')).toMatchObject({
+      value: 15,
+      effectiveFromSemesterCode: '2027-I',
+    });
+  });
+
+  it('derives the end of each version from the next one', async () => {
+    versions = [...DEFAULTS, version('v1', 'META_AG', 80, S2027_I)];
+
+    const result = await build().execute({ actorId: 'admin_1' });
+    const meta = result.items.find((item) => item.key === 'META_AG');
+
+    expect(meta?.versions).toEqual([
+      { value: 70, effectiveFromSemesterCode: null, effectiveToSemesterCode: '2026-II' },
+      { value: 80, effectiveFromSemesterCode: '2027-I', effectiveToSemesterCode: null },
+    ]);
+  });
+
+  it('keeps several versions ordered by start date whatever the reader order', async () => {
+    versions = [
+      version('v2', 'META_AG', 90, { id: 's27b', code: '2027-II', startDate: '2027-08-01' }),
+      ...DEFAULTS,
+      version('v1', 'META_AG', 80, S2027_I),
+    ];
+    semesters.push(semester('s27b', '2027-II', '2027-08-01', '2027-12-31'));
+
+    const result = await build().execute({ actorId: 'admin_1', semesterCode: '2027-II' });
+    const meta = result.items.find((item) => item.key === 'META_AG');
+
+    expect(meta?.value).toBe(90);
+    expect(meta?.versions.map((v) => v.value)).toEqual([70, 80, 90]);
+  });
+
+  it('answers with the defaults and a null semester when no semester has started', async () => {
+    const result = await build(() => new Date('2020-01-01T00:00:00.000Z')).execute({
+      actorId: 'admin_1',
+    });
+
+    expect(result.semesterCode).toBeNull();
+    expect(result.items).toHaveLength(7);
+    expect(result.items.find((item) => item.key === 'TOKEN_DIAS')?.value).toBe(7);
+  });
+
+  it('answers with the defaults when there are no semesters at all', async () => {
+    semesters = [];
+
+    const result = await build().execute({ actorId: 'admin_1' });
+
+    expect(result.semesterCode).toBeNull();
+    expect(result.items.map((item) => item.value)).toEqual([14, 70, 70, 30, 3, 7, 5]);
+  });
+
+  it('picks the last started semester of the clock day, even if it already ended', async () => {
+    const result = await build(() => new Date('2027-01-20T00:00:00.000Z')).execute({
+      actorId: 'admin_1',
+    });
+    expect(result.semesterCode).toBe('2026-II');
+  });
+
+  it('shows a semester without own versions with the defaults', async () => {
+    versions = [...DEFAULTS, version('v0', 'META_AG', 60, S2026_II)];
+
+    const result = await build().execute({ actorId: 'admin_1', semesterCode: '2026-II' });
+
+    expect(result.items.find((item) => item.key === 'META_AG')).toMatchObject({
+      value: 60,
+      effectiveFromSemesterCode: '2026-II',
+    });
+    expect(result.items.find((item) => item.key === 'UMBRAL_LOGRADO')?.value).toBe(14);
+  });
+
+  it('returns a response that satisfies the public schema', async () => {
+    const { parametersResponseSchema } = await import('@sigoa/shared');
+    const result = await build().execute({ actorId: 'admin_1', semesterCode: '2027-I' });
+    expect(parametersResponseSchema.safeParse(result).success).toBe(true);
   });
 });
