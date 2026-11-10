@@ -1,610 +1,324 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { expectNoContrastViolations } from './support/contrast';
 import { loginAsTestUser, seedUser } from './support/seed-user';
 
+/**
+ * Contraste de color WCAG 2.1 AA, agrupado por ruta (HU-078, T-078-19): cada grupo inicia sesión una
+ * sola vez y recorre sus pantallas y viewports dentro de la misma prueba. El conjunto de `context`
+ * está fijado por `src/e2e-hygiene.test.ts`: no se puede perder ninguna ruta ni viewport.
+ */
+const DESKTOP = { width: 1280, height: 720 };
+const MOBILE = { width: 375, height: 812 };
+
+async function waitForApi(page: Page, fragment: string, goTo: () => Promise<unknown>) {
+  const [response] = await Promise.all([
+    page.waitForResponse((res) => res.url().includes(fragment) && res.status() === 200),
+    goTo(),
+  ]);
+  expect(response.ok()).toBe(true);
+}
+
 test.describe('Color Contrast Accessibility (WCAG 2.1 AA)', () => {
-  test.setTimeout(30_000);
+  test.setTimeout(120_000);
 
-  test('login has no contrast violations on desktop', async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 720 });
+  test('login page states have no contrast violations', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
     await page.goto('/login');
-
     await expect(page.getByRole('heading', { name: /iniciar sesión/i })).toBeVisible();
     await expectNoContrastViolations(page, { context: 'login-desktop' });
-  });
 
-  test('login has no contrast violations on mobile', async ({ page }) => {
-    await page.setViewportSize({ width: 375, height: 812 });
+    await page.setViewportSize(MOBILE);
     await page.goto('/login');
-
     await expect(page.getByRole('heading', { name: /iniciar sesión/i })).toBeVisible();
     await expectNoContrastViolations(page, { context: 'login-mobile' });
-  });
 
-  test('login session expired notice has no contrast violations', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
     await page.goto('/login?reason=session-expired');
-
     await expect(page.getByRole('heading', { name: /iniciar sesión/i })).toBeVisible();
     await expect(page.getByRole('status')).toBeVisible();
     await expectNoContrastViolations(page, { context: 'login-session-expired' });
-  });
 
-  test('login credentials error has no contrast violations', async ({ page }) => {
     await page.goto('/login');
-
     await page.getByLabel(/correo electrónico/i).fill('invalid-user@example.test');
     await page.getByLabel(/contraseña/i).fill('WrongPassword123!');
     await page.getByRole('button', { name: /acceder al sistema/i }).click();
-
-    const alert = page.getByRole('alert');
-    await expect(alert).toBeVisible();
+    await expect(page.getByRole('alert')).toBeVisible();
     await expectNoContrastViolations(page, { context: 'login-credentials-error' });
   });
 
-  test('authenticated layout has no contrast violations on desktop', async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 720 });
+  test('authenticated layout has no contrast violations on desktop and mobile with the menu open', async ({
+    page,
+  }) => {
+    await page.setViewportSize(DESKTOP);
     await loginAsTestUser(page);
 
     await expect(page.getByRole('heading', { name: 'FISME-SIGOA' })).toBeVisible();
     await expect(page.getByRole('button', { name: /cerrar sesión/i })).toBeVisible();
     await expectNoContrastViolations(page, { context: 'authenticated-layout-desktop' });
-  });
 
-  test('authenticated layout has no contrast violations on mobile with the menu open', async ({
-    page,
-  }) => {
-    await page.setViewportSize({ width: 375, height: 812 });
-    await loginAsTestUser(page);
-
+    await page.setViewportSize(MOBILE);
     const menuToggle = page.getByRole('button', { name: /menú de navegación/i });
     await expect(menuToggle).toBeVisible();
-
     await menuToggle.click();
     await expect(menuToggle).toHaveAttribute('aria-expanded', 'true');
-
-    const closeButton = page.getByRole('button', { name: /cerrar barra lateral/i });
-    await expect(closeButton).toBeVisible();
-
+    await expect(page.getByRole('button', { name: /cerrar barra lateral/i })).toBeVisible();
     await expectNoContrastViolations(page, {
       context: 'authenticated-layout-mobile-menu-open',
     });
   });
 
-  test('users list has no contrast violations on desktop and mobile', async ({ page }) => {
-    const adminEmail = `contrast-admin-${Date.now()}@example.test`;
-    await loginAsTestUser(page, {
-      email: adminEmail,
-      roles: ['ADMINISTRATOR'],
-    });
-
-    // 1. Escritorio (1280px)
-    await page.setViewportSize({ width: 1280, height: 720 });
-    await page.goto('/usuarios');
-    await expect(page.getByRole('heading', { level: 1, name: 'Usuarios' })).toBeVisible();
-    await expectNoContrastViolations(page, { context: 'users-list-desktop' });
-
-    // 2. Móvil (375px)
-    await page.setViewportSize({ width: 375, height: 812 });
-    await expectNoContrastViolations(page, { context: 'users-list-mobile' });
-  });
-
-  test('deactivation confirmation has no contrast violations', async ({ page }) => {
+  test('user routes have no contrast violations', async ({ page }) => {
     const timestamp = Date.now();
-    const adminEmail = `contrast-admin-deact-${timestamp}@example.test`;
-    const targetEmail = `contrast-target-${timestamp}@example.test`;
-
-    const uniqueName = `Destino${timestamp % 10000}`;
+    const suffix = timestamp % 10000;
+    const targetSurname = `Destino${suffix}`;
+    const editSurname = `Objetivo${suffix}`;
+    const accessSurname = `Acceso${suffix}`;
+    const draftSurname = `Borrador${suffix}`;
 
     seedUser({
-      email: targetEmail,
+      email: `contrast-target-${timestamp}@example.test`,
       names: 'Usuario',
-      firstSurname: uniqueName,
+      firstSurname: targetSurname,
       roles: ['TEACHER'],
       status: 'ACTIVE',
     });
-
-    await loginAsTestUser(page, {
-      email: adminEmail,
-      roles: ['ADMINISTRATOR'],
-    });
-
-    await page.goto('/usuarios');
-    await expect(page.getByText(`Usuario ${uniqueName}`)).toBeVisible();
-
-    const deactivateBtn = page.getByRole('button', {
-      name: new RegExp(`inactivar a usuario ${uniqueName}`, 'i'),
-    });
-    await deactivateBtn.click();
-
-    const dialog = page.getByRole('alertdialog');
-    await expect(dialog).toBeVisible();
-
-    await expectNoContrastViolations(page, { context: 'users-deactivation-confirmation' });
-  });
-
-  test('empty filtered list has no contrast violations', async ({ page }) => {
-    const adminEmail = `contrast-admin-empty-${Date.now()}@example.test`;
-    await loginAsTestUser(page, {
-      email: adminEmail,
-      roles: ['ADMINISTRATOR'],
-    });
-
-    await page.goto('/usuarios?status=INACTIVE');
-    await expect(page.getByRole('heading', { level: 1, name: 'Usuarios' })).toBeVisible();
-    await expectNoContrastViolations(page, { context: 'users-list-empty-filtered' });
-  });
-
-  test('create user form has no contrast violations (empty and with errors)', async ({ page }) => {
-    const adminEmail = `contrast-admin-create-${Date.now()}@example.test`;
-    await loginAsTestUser(page, {
-      email: adminEmail,
-      roles: ['ADMINISTRATOR'],
-    });
-
-    await page.setViewportSize({ width: 1280, height: 720 });
-    await page.goto('/usuarios/nuevo');
-    await expect(page.getByRole('heading', { level: 1, name: 'Nuevo usuario' })).toBeVisible();
-
-    // 1. Formulario vacío en escritorio
-    await expectNoContrastViolations(page, { context: 'create-user-empty-desktop' });
-
-    // 2. Formulario vacío en móvil
-    await page.setViewportSize({ width: 375, height: 812 });
-    await expectNoContrastViolations(page, { context: 'create-user-empty-mobile' });
-
-    // 3. Formulario con errores de validación
-    await page.getByRole('button', { name: /crear usuario/i }).click();
-    await expect(page.getByText('Los nombres son obligatorios')).toBeVisible();
-    await expectNoContrastViolations(page, { context: 'create-user-with-errors' });
-  });
-
-  test('edit user form has no contrast violations', async ({ page }) => {
-    const timestamp = Date.now();
-    const adminEmail = `contrast-admin-edit-${timestamp}@example.test`;
-    const targetEmail = `contrast-edit-target-${timestamp}@example.test`;
-
-    const uniqueEditSurname = `Objetivo${timestamp % 10000}`;
-
     seedUser({
-      email: targetEmail,
+      email: `contrast-edit-target-${timestamp}@example.test`,
       names: 'Editar',
-      firstSurname: uniqueEditSurname,
+      firstSurname: editSurname,
       secondSurname: 'Prueba',
       dni: String(40000000 + (timestamp % 10000000)),
       roles: ['TEACHER'],
       status: 'ACTIVE',
     });
-
-    await loginAsTestUser(page, {
-      email: adminEmail,
-      roles: ['ADMINISTRATOR'],
-    });
-
-    await page.goto('/usuarios');
-    await expect(page.getByText(`Editar ${uniqueEditSurname} Prueba`)).toBeVisible();
-
-    const editLink = page.getByRole('link', {
-      name: new RegExp(`editar a editar ${uniqueEditSurname}`, 'i'),
-    });
-    await editLink.click();
-
-    await expect(page.getByRole('heading', { level: 1, name: /editar usuario/i })).toBeVisible();
-    await expectNoContrastViolations(page, { context: 'edit-user-form' });
-  });
-
-  test('user access panel has no contrast violations on desktop and mobile (HU-007, T-007-27)', async ({
-    page,
-  }) => {
-    const timestamp = Date.now();
-    const adminEmail = `contrast-admin-access-${timestamp}@example.test`;
-    const targetEmail = `contrast-target-access-${timestamp}@example.test`;
-    const uniqueSurname = `Acceso${timestamp % 10000}`;
-
     seedUser({
-      email: targetEmail,
+      email: `contrast-target-access-${timestamp}@example.test`,
       names: 'Usuario',
-      firstSurname: uniqueSurname,
+      firstSurname: accessSurname,
       secondSurname: 'Permisos',
       dni: String(50000000 + (timestamp % 10000000)),
       roles: ['TEACHER'],
       status: 'ACTIVE',
     });
-
-    await loginAsTestUser(page, {
-      email: adminEmail,
-      roles: ['ADMINISTRATOR'],
-    });
-
-    await page.setViewportSize({ width: 1280, height: 720 });
-    await page.goto('/usuarios');
-    await expect(page.getByText(`Usuario ${uniqueSurname} Permisos`)).toBeVisible();
-
-    const [response] = await Promise.all([
-      page.waitForResponse(
-        (res) => res.url().includes('/effective-permissions') && res.status() === 200,
-      ),
-      page
-        .getByRole('link', {
-          name: new RegExp(`editar a usuario ${uniqueSurname}`, 'i'),
-        })
-        .click(),
-    ]);
-    expect(response.ok()).toBe(true);
-
-    await expect(page.getByRole('heading', { name: 'Roles asignados' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Permisos directos' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Permisos efectivos' })).toBeVisible();
-
-    // 1. Escritorio (1280px)
-    await expectNoContrastViolations(page, { context: 'user-access-panel-desktop' });
-
-    // 2. Móvil (375px)
-    await page.setViewportSize({ width: 375, height: 812 });
-    await expectNoContrastViolations(page, { context: 'user-access-panel-mobile' });
-  });
-
-  test('user access panel with unsaved changes has no contrast violations (HU-007, T-007-27)', async ({
-    page,
-  }) => {
-    const timestamp = Date.now();
-    const adminEmail = `contrast-admin-access-unsaved-${timestamp}@example.test`;
-    const targetEmail = `contrast-target-access-unsaved-${timestamp}@example.test`;
-    const uniqueSurname = `Borrador${timestamp % 10000}`;
-
     seedUser({
-      email: targetEmail,
+      email: `contrast-target-access-unsaved-${timestamp}@example.test`,
       names: 'Usuario',
-      firstSurname: uniqueSurname,
+      firstSurname: draftSurname,
       secondSurname: 'Borrador',
       dni: String(60000000 + (timestamp % 10000000)),
       roles: ['TEACHER'],
       status: 'ACTIVE',
     });
 
+    await page.setViewportSize(DESKTOP);
     await loginAsTestUser(page, {
-      email: adminEmail,
+      email: `contrast-admin-${timestamp}@example.test`,
       roles: ['ADMINISTRATOR'],
     });
 
-    await page.setViewportSize({ width: 1280, height: 720 });
+    // Lista de usuarios: escritorio y móvil
     await page.goto('/usuarios');
-    await expect(page.getByText(`Usuario ${uniqueSurname} Borrador`)).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Usuarios' })).toBeVisible();
+    await expectNoContrastViolations(page, { context: 'users-list-desktop' });
+    await page.setViewportSize(MOBILE);
+    await expectNoContrastViolations(page, { context: 'users-list-mobile' });
+    await page.setViewportSize(DESKTOP);
 
-    const [response] = await Promise.all([
-      page.waitForResponse(
-        (res) => res.url().includes('/effective-permissions') && res.status() === 200,
-      ),
+    // Confirmación de inactivación
+    await expect(page.getByText(`Usuario ${targetSurname}`)).toBeVisible();
+    await page
+      .getByRole('button', { name: new RegExp(`inactivar a usuario ${targetSurname}`, 'i') })
+      .click();
+    await expect(page.getByRole('alertdialog')).toBeVisible();
+    await expectNoContrastViolations(page, { context: 'users-deactivation-confirmation' });
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('alertdialog')).toHaveCount(0);
+
+    // Lista vacía filtrada
+    await page.goto('/usuarios?status=INACTIVE');
+    await expect(page.getByRole('heading', { level: 1, name: 'Usuarios' })).toBeVisible();
+    await expectNoContrastViolations(page, { context: 'users-list-empty-filtered' });
+
+    // Formulario de alta: vacío (escritorio y móvil) y con errores
+    await page.goto('/usuarios/nuevo');
+    await expect(page.getByRole('heading', { level: 1, name: 'Nuevo usuario' })).toBeVisible();
+    await expectNoContrastViolations(page, { context: 'create-user-empty-desktop' });
+    await page.setViewportSize(MOBILE);
+    await expectNoContrastViolations(page, { context: 'create-user-empty-mobile' });
+    await page.setViewportSize(DESKTOP);
+    await page.getByRole('button', { name: /crear usuario/i }).click();
+    await expect(page.getByText('Los nombres son obligatorios')).toBeVisible();
+    await expectNoContrastViolations(page, { context: 'create-user-with-errors' });
+
+    // Formulario de edición
+    await page.goto('/usuarios');
+    await expect(page.getByText(`Editar ${editSurname} Prueba`)).toBeVisible();
+    await page
+      .getByRole('link', { name: new RegExp(`editar a editar ${editSurname}`, 'i') })
+      .click();
+    await expect(page.getByRole('heading', { level: 1, name: /editar usuario/i })).toBeVisible();
+    await expectNoContrastViolations(page, { context: 'edit-user-form' });
+
+    // Panel de accesos: escritorio y móvil
+    await page.goto('/usuarios');
+    await expect(page.getByText(`Usuario ${accessSurname} Permisos`)).toBeVisible();
+    await waitForApi(page, '/effective-permissions', () =>
       page
-        .getByRole('link', {
-          name: new RegExp(`editar a usuario ${uniqueSurname}`, 'i'),
-        })
+        .getByRole('link', { name: new RegExp(`editar a usuario ${accessSurname}`, 'i') })
         .click(),
-    ]);
-    expect(response.ok()).toBe(true);
-
+    );
     await expect(page.getByRole('heading', { name: 'Roles asignados' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Permisos directos' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Permisos efectivos' })).toBeVisible();
+    await expectNoContrastViolations(page, { context: 'user-access-panel-desktop' });
+    await page.setViewportSize(MOBILE);
+    await expectNoContrastViolations(page, { context: 'user-access-panel-mobile' });
+    await page.setViewportSize(DESKTOP);
 
-    // Modificar un checkbox no seleccionado para crear un borrador
-    const uncheckedCheckbox = page.locator('input[type="checkbox"]:not(:checked)').first();
-    await uncheckedCheckbox.click();
-
-    const unsavedNotice = page.getByText(/cambio sin guardar/i).first();
-    await expect(unsavedNotice).toBeVisible();
-
+    // Panel de accesos con cambios sin guardar (al final: navegar fuera pediría confirmación)
+    await page.goto('/usuarios');
+    await expect(page.getByText(`Usuario ${draftSurname} Borrador`)).toBeVisible();
+    await waitForApi(page, '/effective-permissions', () =>
+      page.getByRole('link', { name: new RegExp(`editar a usuario ${draftSurname}`, 'i') }).click(),
+    );
+    await expect(page.getByRole('heading', { name: 'Roles asignados' })).toBeVisible();
+    await page.locator('input[type="checkbox"]:not(:checked)').first().click();
+    await expect(page.getByText(/cambio sin guardar/i).first()).toBeVisible();
     await expectNoContrastViolations(page, { context: 'user-access-panel-unsaved-changes' });
   });
 
-  test('roles list has no contrast violations on desktop and mobile', async ({ page }) => {
-    const adminEmail = `contrast-admin-roles-${Date.now()}@example.test`;
+  test('role routes have no contrast violations', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
     await loginAsTestUser(page, {
-      email: adminEmail,
+      email: `contrast-admin-roles-${Date.now()}@example.test`,
       roles: ['ADMINISTRATOR'],
     });
 
-    // 1. Escritorio (1280px)
-    await page.setViewportSize({ width: 1280, height: 720 });
+    // Lista de roles: escritorio y móvil
     await page.goto('/roles');
     await expect(page.getByRole('heading', { level: 1, name: 'Roles' })).toBeVisible();
     await expectNoContrastViolations(page, { context: 'roles-list-desktop' });
-
-    // 2. Móvil (375px)
-    await page.setViewportSize({ width: 375, height: 812 });
+    await page.setViewportSize(MOBILE);
     await expectNoContrastViolations(page, { context: 'roles-list-mobile' });
-  });
+    await page.setViewportSize(DESKTOP);
 
-  test('create role form has no contrast violations (empty and with errors)', async ({ page }) => {
-    const adminEmail = `contrast-admin-create-role-${Date.now()}@example.test`;
-    await loginAsTestUser(page, {
-      email: adminEmail,
-      roles: ['ADMINISTRATOR'],
-    });
-
-    await page.setViewportSize({ width: 1280, height: 720 });
-    await page.goto('/roles/nuevo');
-    await expect(page.getByRole('heading', { level: 1, name: 'Nuevo rol' })).toBeVisible();
-
-    // 1. Formulario vacío en escritorio
-    await expectNoContrastViolations(page, { context: 'create-role-empty-desktop' });
-
-    // 2. Formulario vacío en móvil
-    await page.setViewportSize({ width: 375, height: 812 });
-    await expectNoContrastViolations(page, { context: 'create-role-empty-mobile' });
-
-    // 3. Formulario con errores de validación
-    await page.getByRole('button', { name: /guardar/i }).click();
-    await expect(page.getByText('El nombre de rol es requerido')).toBeVisible();
-    await expectNoContrastViolations(page, { context: 'create-role-with-errors' });
-  });
-
-  test('edit role form has no contrast violations', async ({ page }) => {
-    const adminEmail = `contrast-admin-edit-role-${Date.now()}@example.test`;
-    await loginAsTestUser(page, {
-      email: adminEmail,
-      roles: ['ADMINISTRATOR'],
-    });
-
-    await page.goto('/roles');
-    await expect(page.getByRole('heading', { level: 1, name: 'Roles' })).toBeVisible();
-
-    // Clic en la primera acción de edición disponible
-    const firstEditButton = page.getByRole('link', { name: /editar rol/i }).first();
-    await expect(firstEditButton).toBeVisible();
-    await firstEditButton.click();
-
-    await expect(page.getByRole('heading', { level: 1, name: /editar rol:/i })).toBeVisible();
-    await expectNoContrastViolations(page, { context: 'edit-role-form' });
-  });
-
-  test('role permissions matrix has no contrast violations on desktop and mobile', async ({
-    page,
-  }) => {
-    const adminEmail = `contrast-admin-perm-matrix-${Date.now()}@example.test`;
-    await loginAsTestUser(page, {
-      email: adminEmail,
-      roles: ['ADMINISTRATOR'],
-    });
-
-    await page.setViewportSize({ width: 1280, height: 720 });
-    await page.goto('/roles');
-    await expect(page.getByRole('heading', { level: 1, name: 'Roles' })).toBeVisible();
-
-    const permissionsLink = page.getByRole('link', { name: /permisos del rol/i }).first();
-    await expect(permissionsLink).toBeVisible();
-    await permissionsLink.click();
-
-    await expect(page.getByRole('heading', { level: 1, name: /permisos del rol:/i })).toBeVisible();
-
-    // 1. Escritorio (1280px)
-    await expectNoContrastViolations(page, { context: 'role-permissions-matrix-desktop' });
-
-    // 2. Móvil (375px)
-    await page.setViewportSize({ width: 375, height: 812 });
-    await expectNoContrastViolations(page, { context: 'role-permissions-matrix-mobile' });
-  });
-
-  test('role permissions matrix with unsaved changes has no contrast violations', async ({
-    page,
-  }) => {
-    const adminEmail = `contrast-admin-unsaved-matrix-${Date.now()}@example.test`;
-    await loginAsTestUser(page, {
-      email: adminEmail,
-      roles: ['ADMINISTRATOR'],
-    });
-
-    await page.setViewportSize({ width: 1280, height: 720 });
-    await page.goto('/roles');
-    await expect(page.getByRole('heading', { level: 1, name: 'Roles' })).toBeVisible();
-
-    const permissionsLink = page.getByRole('link', { name: /permisos del rol/i }).first();
-    await expect(permissionsLink).toBeVisible();
-    await permissionsLink.click();
-
-    await expect(page.getByRole('heading', { level: 1, name: /permisos del rol:/i })).toBeVisible();
-
-    // Modificar el primer select interactivo disponible
-    const firstSelect = page.getByRole('combobox').first();
-    await expect(firstSelect).toBeVisible();
-
-    const currentValue = await firstSelect.inputValue();
-    const targetValue = currentValue === 'GLOBAL' ? 'NONE' : 'GLOBAL';
-    await firstSelect.selectOption(targetValue);
-
-    const unsavedNotice = page.getByText(/cambio sin guardar/i);
-    await expect(unsavedNotice).toBeVisible();
-
-    await expectNoContrastViolations(page, { context: 'role-permissions-unsaved-changes' });
-  });
-
-  test('roles list with deactivation confirmation alertdialog has no contrast violations', async ({
-    page,
-  }) => {
-    const adminEmail = `contrast-admin-role-deact-${Date.now()}@example.test`;
-    await loginAsTestUser(page, {
-      email: adminEmail,
-      roles: ['ADMINISTRATOR'],
-    });
-
-    await page.setViewportSize({ width: 1280, height: 720 });
-    await page.goto('/roles');
-    await expect(page.getByRole('heading', { level: 1, name: 'Roles' })).toBeVisible();
-
+    // Confirmación de desactivación
     const deactivateButton = page.getByRole('button', { name: /desactivar rol/i }).first();
     if (await deactivateButton.isVisible()) {
       await deactivateButton.click();
-      const alertDialog = page.getByRole('alertdialog');
-      await expect(alertDialog).toBeVisible();
+      await expect(page.getByRole('alertdialog')).toBeVisible();
       await expectNoContrastViolations(page, { context: 'roles-deactivation-alertdialog' });
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('alertdialog')).toHaveCount(0);
     }
+
+    // Formulario de alta: vacío (escritorio y móvil) y con errores
+    await page.goto('/roles/nuevo');
+    await expect(page.getByRole('heading', { level: 1, name: 'Nuevo rol' })).toBeVisible();
+    await expectNoContrastViolations(page, { context: 'create-role-empty-desktop' });
+    await page.setViewportSize(MOBILE);
+    await expectNoContrastViolations(page, { context: 'create-role-empty-mobile' });
+    await page.setViewportSize(DESKTOP);
+    await page.getByRole('button', { name: /guardar/i }).click();
+    await expect(page.getByText('El nombre de rol es requerido')).toBeVisible();
+    await expectNoContrastViolations(page, { context: 'create-role-with-errors' });
+
+    // Formulario de edición
+    await page.goto('/roles');
+    await expect(page.getByRole('heading', { level: 1, name: 'Roles' })).toBeVisible();
+    const firstEditButton = page.getByRole('link', { name: /editar rol/i }).first();
+    await expect(firstEditButton).toBeVisible();
+    await firstEditButton.click();
+    await expect(page.getByRole('heading', { level: 1, name: /editar rol:/i })).toBeVisible();
+    await expectNoContrastViolations(page, { context: 'edit-role-form' });
+
+    // Matriz de permisos: escritorio y móvil
+    await page.goto('/roles');
+    await expect(page.getByRole('heading', { level: 1, name: 'Roles' })).toBeVisible();
+    const permissionsLink = page.getByRole('link', { name: /permisos del rol/i }).first();
+    await expect(permissionsLink).toBeVisible();
+    await permissionsLink.click();
+    await expect(page.getByRole('heading', { level: 1, name: /permisos del rol:/i })).toBeVisible();
+    await expectNoContrastViolations(page, { context: 'role-permissions-matrix-desktop' });
+    await page.setViewportSize(MOBILE);
+    await expectNoContrastViolations(page, { context: 'role-permissions-matrix-mobile' });
+    await page.setViewportSize(DESKTOP);
+
+    // Matriz con cambios sin guardar (al final: navegar fuera pediría confirmación)
+    const firstSelect = page.getByRole('combobox').first();
+    await expect(firstSelect).toBeVisible();
+    const currentValue = await firstSelect.inputValue();
+    await firstSelect.selectOption(currentValue === 'GLOBAL' ? 'NONE' : 'GLOBAL');
+    await expect(page.getByText(/cambio sin guardar/i)).toBeVisible();
+    await expectNoContrastViolations(page, { context: 'role-permissions-unsaved-changes' });
   });
 
-  test('program configuration page has no contrast violations in editable mode (HU-009, T-009-12)', async ({
+  test('program, semesters and parameters routes have no contrast violations in editable mode', async ({
     page,
   }) => {
-    const adminEmail = `contrast-admin-prog-${Date.now()}@example.test`;
+    await page.setViewportSize(DESKTOP);
     await loginAsTestUser(page, {
-      email: adminEmail,
+      email: `contrast-admin-config-${Date.now()}@example.test`,
       roles: ['ADMINISTRATOR'],
     });
 
-    await page.setViewportSize({ width: 1280, height: 720 });
-    const [progRes] = await Promise.all([
-      page.waitForResponse((res) => res.url().includes('/program') && res.status() === 200),
-      page.goto('/configuracion/programa'),
-    ]);
-    expect(progRes.ok()).toBe(true);
-
+    // Programa
+    await waitForApi(page, '/program', () => page.goto('/configuracion/programa'));
     await expect(page.getByRole('heading', { level: 1, name: 'Programa' })).toBeVisible();
     await expect(page.getByRole('button', { name: /guardar cambios/i })).toBeVisible();
-
-    // 1. Escritorio
     await expectNoContrastViolations(page, { context: 'program-config-editable-desktop' });
-
-    // 2. Móvil
-    await page.setViewportSize({ width: 375, height: 812 });
+    await page.setViewportSize(MOBILE);
     await expectNoContrastViolations(page, { context: 'program-config-editable-mobile' });
-  });
+    await page.setViewportSize(DESKTOP);
 
-  test('program configuration page has no contrast violations in read-only mode (HU-009, T-009-12)', async ({
-    page,
-  }) => {
-    const committeeEmail = `contrast-committee-prog-${Date.now()}@example.test`;
-    await loginAsTestUser(page, {
-      email: committeeEmail,
-      roles: ['COMMITTEE_MEMBER'],
-    });
-
-    await page.setViewportSize({ width: 1280, height: 720 });
-    const [progResReadonly] = await Promise.all([
-      page.waitForResponse((res) => res.url().includes('/program') && res.status() === 200),
-      page.goto('/configuracion/programa'),
-    ]);
-    expect(progResReadonly.ok()).toBe(true);
-
-    await expect(page.getByRole('heading', { level: 1, name: 'Programa' })).toBeVisible();
-    await expect(page.getByText(/solo lectura: no tienes permiso para editar/i)).toBeVisible();
-    await expect(page.getByRole('button', { name: /guardar cambios/i })).toHaveCount(0);
-
-    await expectNoContrastViolations(page, { context: 'program-config-readonly-desktop' });
-  });
-
-  test('semesters page has no contrast violations in editable mode with data (HU-010, T-010-11)', async ({
-    page,
-  }) => {
-    const adminEmail = `contrast-admin-sem-${Date.now()}@example.test`;
-    await loginAsTestUser(page, {
-      email: adminEmail,
-      roles: ['ADMINISTRATOR'],
-    });
-
-    await page.setViewportSize({ width: 1280, height: 720 });
-    const [semRes] = await Promise.all([
-      page.waitForResponse((res) => res.url().includes('/semesters') && res.status() === 200),
-      page.goto('/configuracion/semestres'),
-    ]);
-    expect(semRes.ok()).toBe(true);
-
+    // Semestres: antes de registrar, móvil y con datos (año único)
+    const baseYear = 3000 + (Date.now() % 5000);
+    await waitForApi(page, '/semesters', () => page.goto('/configuracion/semestres'));
     await expect(page.getByRole('heading', { level: 1, name: 'Semestres' })).toBeVisible();
     await expect(
       page.getByRole('heading', { level: 2, name: 'Registrar nuevo semestre' }),
     ).toBeVisible();
-
-    // 1. Escritorio antes de registrar
     await expectNoContrastViolations(page, { context: 'semesters-page-desktop' });
-
-    // 2. Móvil
-    await page.setViewportSize({ width: 375, height: 812 });
+    await page.setViewportSize(MOBILE);
     await expectNoContrastViolations(page, { context: 'semesters-page-mobile' });
-    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.setViewportSize(DESKTOP);
 
-    // 3. Registrar un semestre con año único (D8) para probar tabla con datos
-    const uniqueYear = 3000 + (Date.now() % 6000);
-    await page.getByLabel(/código/i).fill(`${uniqueYear}-I`);
-    await page.getByLabel(/fecha de inicio/i).fill(`${uniqueYear}-03-15`);
-    await page.getByLabel(/fecha de fin/i).fill(`${uniqueYear}-07-15`);
-
-    const [createRes] = await Promise.all([
-      page.waitForResponse((res) => res.url().includes('/semesters') && res.status() === 201),
-      page.getByRole('button', { name: /registrar semestre/i }).click(),
-    ]);
-    expect(createRes.ok()).toBe(true);
-
-    await expect(page.getByText(`${uniqueYear}-I`)).toBeVisible();
+    const registerSemester = async (year: number) => {
+      await page.getByLabel(/código/i).fill(`${year}-I`);
+      await page.getByLabel(/fecha de inicio/i).fill(`${year}-03-15`);
+      await page.getByLabel(/fecha de fin/i).fill(`${year}-07-15`);
+      const [createRes] = await Promise.all([
+        page.waitForResponse((res) => res.url().includes('/semesters') && res.status() === 201),
+        page.getByRole('button', { name: /registrar semestre/i }).click(),
+      ]);
+      expect(createRes.ok()).toBe(true);
+    };
+    await registerSemester(baseYear);
+    await expect(page.getByText(`${baseYear}-I`)).toBeVisible();
     await expectNoContrastViolations(page, { context: 'semesters-page-with-data-desktop' });
-  });
 
-  test('semesters page has no contrast violations in read-only mode (HU-010, T-010-11)', async ({
-    page,
-  }) => {
-    const committeeEmail = `contrast-committee-sem-${Date.now()}@example.test`;
-    await loginAsTestUser(page, {
-      email: committeeEmail,
-      roles: ['COMMITTEE_MEMBER'],
-    });
-
-    await page.setViewportSize({ width: 1280, height: 720 });
-    const [semResReadonly] = await Promise.all([
-      page.waitForResponse((res) => res.url().includes('/semesters') && res.status() === 200),
-      page.goto('/configuracion/semestres'),
-    ]);
-    expect(semResReadonly.ok()).toBe(true);
-
-    await expect(page.getByRole('heading', { level: 1, name: 'Semestres' })).toBeVisible();
-    await expect(
-      page.getByText(/solo lectura: no tienes permiso para registrar semestres/i),
-    ).toBeVisible();
-    await expect(page.getByRole('button', { name: /registrar semestre/i })).toHaveCount(0);
-
-    await expectNoContrastViolations(page, { context: 'semesters-page-readonly-desktop' });
-  });
-
-  test('parameters page has no contrast violations with history open and weights error (HU-011, T-011-13)', async ({
-    page,
-  }) => {
-    const adminEmail = `contrast-admin-par-${Date.now()}@example.test`;
-    await loginAsTestUser(page, {
-      email: adminEmail,
-      roles: ['ADMINISTRATOR'],
-    });
-
-    // Un semestre propio (año único) para poder elegir la vigencia en el formulario.
-    await page.setViewportSize({ width: 1280, height: 720 });
-    await page.goto('/configuracion/semestres');
-    const uniqueYear = 3000 + (Date.now() % 6000);
-    await page.getByLabel(/código/i).fill(`${uniqueYear}-I`);
-    await page.getByLabel(/fecha de inicio/i).fill(`${uniqueYear}-03-15`);
-    await page.getByLabel(/fecha de fin/i).fill(`${uniqueYear}-07-15`);
-    const [createRes] = await Promise.all([
-      page.waitForResponse((res) => res.url().includes('/semesters') && res.status() === 201),
-      page.getByRole('button', { name: /registrar semestre/i }).click(),
-    ]);
-    expect(createRes.ok()).toBe(true);
-
-    const [parametersRes] = await Promise.all([
-      page.waitForResponse((res) => res.url().includes('/parameters') && res.status() === 200),
-      page.goto('/configuracion/parametros'),
-    ]);
-    expect(parametersRes.ok()).toBe(true);
+    // Parámetros: un semestre propio (año único distinto) para elegir la vigencia
+    const parametersYear = baseYear + 1000;
+    await registerSemester(parametersYear);
+    await waitForApi(page, '/parameters', () => page.goto('/configuracion/parametros'));
     await expect(page.getByRole('heading', { level: 1, name: 'Parámetros' })).toBeVisible();
     await expect(page.getByRole('heading', { level: 2, name: 'Valores vigentes' })).toBeVisible();
 
-    // 1. Escritorio con un historial abierto
     await page.getByText('Umbral de logrado', { exact: false }).last().click();
     await expectNoContrastViolations(page, { context: 'parameters-page-history-desktop' });
-
-    // 2. Móvil
-    await page.setViewportSize({ width: 375, height: 812 });
+    await page.setViewportSize(MOBILE);
     await expectNoContrastViolations(page, { context: 'parameters-page-mobile' });
-    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.setViewportSize(DESKTOP);
 
-    // 3. Error de pesos visible (el esquema compartido lo rechaza antes de llamar a la API)
+    // Error de pesos visible (el esquema compartido lo rechaza antes de llamar a la API)
     const [formRes] = await Promise.all([
       page.waitForResponse(
         (res) =>
           res.url().includes('/parameters?semesterCode=') &&
-          res.url().includes(String(uniqueYear)) &&
+          res.url().includes(String(parametersYear)) &&
           res.status() === 200,
       ),
-      page.getByLabel('Vigente desde el semestre').selectOption(`${uniqueYear}-I`),
+      page.getByLabel('Vigente desde el semestre').selectOption(`${parametersYear}-I`),
     ]);
     expect(formRes.ok()).toBe(true);
     await expect(page.getByRole('spinbutton', { name: 'Peso de la medición directa' })).toHaveValue(
@@ -616,28 +330,35 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA)', () => {
     await expectNoContrastViolations(page, { context: 'parameters-page-weights-error-desktop' });
   });
 
-  test('parameters page has no contrast violations in read-only mode (HU-011, T-011-13)', async ({
+  test('program, semesters and parameters routes have no contrast violations in read-only mode', async ({
     page,
   }) => {
-    const committeeEmail = `contrast-committee-par-${Date.now()}@example.test`;
+    await page.setViewportSize(DESKTOP);
     await loginAsTestUser(page, {
-      email: committeeEmail,
+      email: `contrast-committee-config-${Date.now()}@example.test`,
       roles: ['COMMITTEE_MEMBER'],
     });
 
-    await page.setViewportSize({ width: 1280, height: 720 });
-    const [parametersRes] = await Promise.all([
-      page.waitForResponse((res) => res.url().includes('/parameters') && res.status() === 200),
-      page.goto('/configuracion/parametros'),
-    ]);
-    expect(parametersRes.ok()).toBe(true);
+    await waitForApi(page, '/program', () => page.goto('/configuracion/programa'));
+    await expect(page.getByRole('heading', { level: 1, name: 'Programa' })).toBeVisible();
+    await expect(page.getByText(/solo lectura: no tienes permiso para editar/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /guardar cambios/i })).toHaveCount(0);
+    await expectNoContrastViolations(page, { context: 'program-config-readonly-desktop' });
 
+    await waitForApi(page, '/semesters', () => page.goto('/configuracion/semestres'));
+    await expect(page.getByRole('heading', { level: 1, name: 'Semestres' })).toBeVisible();
+    await expect(
+      page.getByText(/solo lectura: no tienes permiso para registrar semestres/i),
+    ).toBeVisible();
+    await expect(page.getByRole('button', { name: /registrar semestre/i })).toHaveCount(0);
+    await expectNoContrastViolations(page, { context: 'semesters-page-readonly-desktop' });
+
+    await waitForApi(page, '/parameters', () => page.goto('/configuracion/parametros'));
     await expect(page.getByRole('heading', { level: 1, name: 'Parámetros' })).toBeVisible();
     await expect(
       page.getByText(/solo lectura: no tienes permiso para modificar los parámetros/i),
     ).toBeVisible();
     await expect(page.getByRole('button', { name: 'Guardar parámetros' })).toHaveCount(0);
-
     await expectNoContrastViolations(page, { context: 'parameters-page-readonly-desktop' });
   });
 });
