@@ -3,11 +3,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { UnauthorizedError } from '../../../../shared/errors/app-error.js';
 import type { CreateResponseScaleUseCase } from '../../application/create-response-scale.js';
 import type { EditResponseScaleUseCase } from '../../application/edit-response-scale.js';
+import type { ListResponseScalesUseCase } from '../../application/list-response-scales.js';
 import { ResponseScalesController } from './response-scales.controller.js';
 
 describe('ResponseScalesController (unit tests, T-012-11, RF-012)', () => {
   let createUseCase: CreateResponseScaleUseCase;
   let editUseCase: EditResponseScaleUseCase;
+  let listUseCase: ListResponseScalesUseCase;
   let controller: ResponseScalesController;
   let res: Partial<Response>;
   let next: NextFunction;
@@ -24,9 +26,11 @@ describe('ResponseScalesController (unit tests, T-012-11, RF-012)', () => {
   beforeEach(() => {
     createUseCase = { execute: vi.fn() } as unknown as CreateResponseScaleUseCase;
     editUseCase = { execute: vi.fn() } as unknown as EditResponseScaleUseCase;
+    listUseCase = { execute: vi.fn() } as unknown as ListResponseScalesUseCase;
     controller = new ResponseScalesController({
       createResponseScaleUseCase: createUseCase,
       editResponseScaleUseCase: editUseCase,
+      listResponseScalesUseCase: listUseCase,
     });
     res = {
       setHeader: vi.fn().mockReturnThis(),
@@ -129,6 +133,37 @@ describe('ResponseScalesController (unit tests, T-012-11, RF-012)', () => {
 
       expect(next).toHaveBeenCalledWith(failure);
       expect(res.json).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('listResponseScales', () => {
+    const validated = (query: object) =>
+      ({ locals: { validated: { query } } }) as unknown as Partial<Response>;
+
+    it('answers 200 with the list, passing the type filter and forbidding caching', async () => {
+      vi.mocked(listUseCase.execute).mockResolvedValue({ items: [dto] } as never);
+      const req = { user: { id: 'admin-1' } } as unknown as Request;
+      const response = {
+        ...res,
+        ...validated({ type: 'LIKERT' }),
+      } as unknown as Response;
+
+      await controller.listResponseScales(req, response, next);
+
+      expect(listUseCase.execute).toHaveBeenCalledWith({ actorId: 'admin-1', type: 'LIKERT' });
+      expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store');
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({ items: [dto] });
+    });
+
+    it('passes UnauthorizedError to next when there is no session', async () => {
+      const req = {} as unknown as Request;
+      const response = { ...res, ...validated({}) } as unknown as Response;
+
+      await controller.listResponseScales(req, response, next);
+
+      expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+      expect(listUseCase.execute).not.toHaveBeenCalled();
     });
   });
 });

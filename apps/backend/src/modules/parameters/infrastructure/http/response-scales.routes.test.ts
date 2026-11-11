@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../../../../shared/middleware/error-handler.js';
 import type { CreateResponseScaleUseCase } from '../../application/create-response-scale.js';
 import type { EditResponseScaleUseCase } from '../../application/edit-response-scale.js';
+import type { ListResponseScalesUseCase } from '../../application/list-response-scales.js';
 import { ResponseScalesController } from './response-scales.controller.js';
 import { createResponseScalesRouter } from './response-scales.routes.js';
 
@@ -12,9 +13,11 @@ describe('/response-scales middleware chain (T-012-11, RNF-009)', () => {
     const calls: string[] = [];
     const create = vi.fn().mockResolvedValue({ id: 'scale-1' });
     const edit = vi.fn().mockResolvedValue({ id: 'scale-1' });
+    const list = vi.fn().mockResolvedValue({ items: [] });
     const controller = new ResponseScalesController({
       createResponseScaleUseCase: { execute: create } as unknown as CreateResponseScaleUseCase,
       editResponseScaleUseCase: { execute: edit } as unknown as EditResponseScaleUseCase,
+      listResponseScalesUseCase: { execute: list } as unknown as ListResponseScalesUseCase,
     });
     const authenticate: RequestHandler = (req, _res, next) => {
       calls.push('authenticate');
@@ -39,7 +42,7 @@ describe('/response-scales middleware chain (T-012-11, RNF-009)', () => {
       createResponseScalesRouter({ controller, authenticate, requirePermission }),
     );
     app.use(errorHandler);
-    return { app, calls, create, edit };
+    return { app, calls, create, edit, list };
   }
 
   const body = {
@@ -124,5 +127,39 @@ describe('/response-scales middleware chain (T-012-11, RNF-009)', () => {
 
     expect(responses.map((r) => r.status)).toEqual([400, 400, 400, 400, 400]);
     expect(edit).not.toHaveBeenCalled();
+  });
+
+  it('GET runs authenticate, then permission parametro.ver GLOBAL, and forbids caching', async () => {
+    const { app, calls, list } = build();
+
+    const response = await request(app).get('/response-scales?type=LIKERT');
+
+    expect(response.status).toBe(200);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(calls).toEqual(['authenticate', 'permission:parametro.ver:GLOBAL']);
+    expect(list).toHaveBeenCalledWith({ actorId: 'admin_1', type: 'LIKERT' });
+  });
+
+  it('GET answers 400 on an invalid or repeated type, a long type and an unknown query', async () => {
+    const { app, list } = build();
+
+    const responses = await Promise.all([
+      request(app).get('/response-scales?type=OTHER'),
+      request(app).get('/response-scales?type=LIKERT&type=NUMERIC'),
+      request(app).get('/response-scales?type=' + 'a'.repeat(5000)),
+      request(app).get('/response-scales?foo=1'),
+    ]);
+
+    expect(responses.map((r) => r.status)).toEqual([400, 400, 400, 400]);
+    expect(list).not.toHaveBeenCalled();
+  });
+
+  it('GET does not reach the use case without permission', async () => {
+    const { app, list } = build({ allowed: false });
+
+    const response = await request(app).get('/response-scales');
+
+    expect(response.status).toBe(403);
+    expect(list).not.toHaveBeenCalled();
   });
 });

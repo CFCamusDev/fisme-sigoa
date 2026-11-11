@@ -10,6 +10,7 @@ import { ListEffectiveParametersUseCase } from './application/list-effective-par
 import { ListSemestersUseCase } from './application/list-semesters.js';
 import { CreateResponseScaleUseCase } from './application/create-response-scale.js';
 import { EditResponseScaleUseCase } from './application/edit-response-scale.js';
+import { ListResponseScalesUseCase } from './application/list-response-scales.js';
 import type { ParametersPermissionChecker } from './domain/ports/parameters-permission-checker.js';
 import type { ScaleUsageReader } from './domain/ports/scale-usage-reader.js';
 import { NeverUsedScaleUsageReader } from './infrastructure/never-used-scale-usage-reader.js';
@@ -151,6 +152,8 @@ export function createResponseScalesModule(deps?: ParametersModuleDependencies):
   const scaleRepository = new PrismaResponseScaleRepository(deps.dbProvider);
   const levelRepository = new PrismaScaleLevelRepository(deps.dbProvider);
 
+  const scaleUsageReader = deps.scaleUsageReader ?? new NeverUsedScaleUsageReader();
+
   const createResponseScaleUseCase = new CreateResponseScaleUseCase({
     scaleReader: scaleRepository,
     scaleRepository,
@@ -163,15 +166,22 @@ export function createResponseScalesModule(deps?: ParametersModuleDependencies):
   const editResponseScaleUseCase = new EditResponseScaleUseCase({
     scaleRepository,
     levelRepository,
-    scaleUsageReader: deps.scaleUsageReader ?? new NeverUsedScaleUsageReader(),
+    scaleUsageReader,
     permissionChecker: deps.permissionChecker,
     unitOfWork: deps.unitOfWork,
     auditLogger: deps.auditLogger,
   });
 
+  const listResponseScalesUseCase = new ListResponseScalesUseCase({
+    scaleReader: scaleRepository,
+    scaleUsageReader,
+    permissionChecker: deps.permissionChecker,
+  });
+
   const controller = new ResponseScalesController({
     createResponseScaleUseCase,
     editResponseScaleUseCase,
+    listResponseScalesUseCase,
   });
 
   return createResponseScalesRouter({

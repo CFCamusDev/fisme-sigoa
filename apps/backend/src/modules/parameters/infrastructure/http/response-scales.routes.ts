@@ -1,6 +1,7 @@
 import { Router, type RequestHandler } from 'express';
 import {
   createResponseScaleRequestSchema,
+  listResponseScalesQuerySchema,
   responseScaleIdParamSchema,
   updateResponseScaleRequestSchema,
 } from '@sigoa/shared';
@@ -23,6 +24,18 @@ export interface ResponseScalesRouterDependencies {
 
 export function createResponseScalesRouter(deps: ResponseScalesRouterDependencies): Router {
   const router = Router();
+
+  // GET /response-scales (HU-012, T-012-14, CA1, CA2, RF-012, RS-002, RNF-008, RNF-009)
+  // Cadena obligatoria: authenticate -> requirePermission -> validateRequest -> controller
+  router.get(
+    '/',
+    deps.authenticate,
+    deps.requirePermission('parametro.ver', 'GLOBAL'),
+    validateRequest({
+      query: listResponseScalesQuerySchema,
+    }),
+    deps.controller.listResponseScales,
+  );
 
   // POST /response-scales (HU-012, T-012-11, RF-012, RS-002, RS-020, RNF-008, RNF-009)
   // Cadena obligatoria: authenticate -> requirePermission -> validateRequest -> controller
