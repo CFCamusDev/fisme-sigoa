@@ -197,6 +197,41 @@ const PROTECTED_ENDPOINTS: readonly ProtectedEndpointSpec[] = [
       values: [{ key: 'UMBRAL_LOGRADO', value: 15 }],
     },
   },
+  {
+    method: 'get',
+    openApiPath: '/response-scales',
+    requestPath: '/response-scales',
+    requiredPermission: 'parametro.ver',
+  },
+  {
+    method: 'post',
+    openApiPath: '/response-scales',
+    requestPath: '/response-scales',
+    requiredPermission: 'parametro.editar',
+    sampleBody: {
+      code: 'EVIDENCE_4_V2',
+      name: 'Evidencia 4 (v2)',
+      type: 'EVIDENCE',
+      levels: [
+        { label: 'No se evidencia', value: 1, countsAsAchievement: false },
+        { label: 'Se evidencia totalmente', value: 4, countsAsAchievement: true },
+      ],
+    },
+  },
+  {
+    method: 'patch',
+    openApiPath: '/response-scales/{id}',
+    requestPath: '/response-scales/scale_target_1',
+    requiredPermission: 'parametro.editar',
+    sampleBody: { name: 'Nombre editado' },
+  },
+  {
+    method: 'post',
+    openApiPath: '/response-scales/{id}/duplicate',
+    requestPath: '/response-scales/scale_target_1/duplicate',
+    requiredPermission: 'parametro.editar',
+    sampleBody: { code: 'COPIA_1', name: 'Copia' },
+  },
 ];
 
 describe('Protected Endpoints 403 Coverage & OpenAPI Drift Guard (PostgreSQL real, HU-008, T-008-06, CA1, RF-008, RNF-009, D11)', () => {

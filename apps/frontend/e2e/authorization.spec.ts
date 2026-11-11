@@ -94,6 +94,7 @@ test.describe('HU-008 — Autorización por permiso y alcance E2E', () => {
     await expect(mainNav.getByRole('link', { name: 'Programa' })).toHaveCount(0);
     await expect(mainNav.getByRole('link', { name: 'Semestres' })).toHaveCount(0);
     await expect(mainNav.getByRole('link', { name: 'Parámetros' })).toHaveCount(0);
+    await expect(mainNav.getByRole('link', { name: 'Escalas' })).toHaveCount(0);
 
     // Verificar contraste WCAG 2.1 AA en el panel del Docente (escritorio y móvil)
     await expectNoContrastViolations(page, { screen: 'teacher-dashboard-desktop' });
@@ -167,6 +168,7 @@ test.describe('HU-008 — Autorización por permiso y alcance E2E', () => {
     await expect(mainNav.getByRole('link', { name: 'Programa' })).toBeVisible();
     await expect(mainNav.getByRole('link', { name: 'Semestres' })).toBeVisible();
     await expect(mainNav.getByRole('link', { name: 'Parámetros' })).toBeVisible();
+    await expect(mainNav.getByRole('link', { name: 'Escalas' })).toBeVisible();
 
     await mainNav.getByRole('link', { name: 'Semestres' }).click();
     await expect(page).toHaveURL(/\/configuracion\/semestres/);
@@ -175,6 +177,12 @@ test.describe('HU-008 — Autorización por permiso y alcance E2E', () => {
     await mainNav.getByRole('link', { name: 'Parámetros' }).click();
     await expect(page).toHaveURL(/\/configuracion\/parametros/);
     await expect(page.getByRole('heading', { level: 1, name: 'Parámetros' })).toBeVisible();
+
+    await mainNav.getByRole('link', { name: 'Escalas' }).click();
+    await expect(page).toHaveURL(/\/configuracion\/escalas/);
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Escalas de respuesta' }),
+    ).toBeVisible();
 
     await mainNav.getByRole('link', { name: 'Programa' }).click();
     await expect(page).toHaveURL(/\/configuracion\/programa/);

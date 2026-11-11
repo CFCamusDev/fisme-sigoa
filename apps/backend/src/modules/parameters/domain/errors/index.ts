@@ -8,3 +8,7 @@ export * from './invalid-parameter-data-error.js';
 export * from './parameter-semester-not-found-error.js';
 export * from './parameter-not-configured-error.js';
 export * from './parameter-conflict-error.js';
+export * from './invalid-response-scale-data-error.js';
+export * from './response-scale-in-use-error.js';
+export * from './response-scale-not-found-error.js';
+export * from './response-scale-code-already-exists-error.js';

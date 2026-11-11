@@ -4071,6 +4071,714 @@
           }
         }
       }
+    },
+    "/response-scales": {
+      "get": {
+        "tags": ["ResponseScales"],
+        "summary": "Consultar las escalas de respuesta con sus niveles",
+        "description": "Retorna el catálogo de escalas (Likert 5, Numérica 1–5 y Evidencia 4 de origen, más las que cree el Administrador), cada una con sus niveles ordenados, si el nivel cuenta como logro y si la escala está en uso en una encuesta publicada. Sin paginación: el catálogo es acotado. Requiere el permiso 'parametro.ver' con alcance GLOBAL (HU-012, RF-012, RN-052, RS-002).",
+        "operationId": "listResponseScales",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "description": "Filtra por tipo de escala. Opcional.",
+            "schema": {
+              "type": "string",
+              "enum": ["LIKERT", "NUMERIC", "EVIDENCE"]
+            },
+            "example": "EVIDENCE"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Escalas obtenidas exitosamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché HTTP."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseScalesResponse"
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "cm0evidence4scale0001",
+                      "code": "EVIDENCE_4",
+                      "name": "Evidencia en el desempeño (4)",
+                      "type": "EVIDENCE",
+                      "inUse": false,
+                      "levels": [
+                        {
+                          "order": 1,
+                          "label": "Se evidencia totalmente",
+                          "value": 4,
+                          "countsAsAchievement": true
+                        },
+                        {
+                          "order": 2,
+                          "label": "Se evidencia mayormente",
+                          "value": 3,
+                          "countsAsAchievement": true
+                        },
+                        {
+                          "order": 3,
+                          "label": "Se evidencia parcialmente",
+                          "value": 2,
+                          "countsAsAchievement": false
+                        },
+                        {
+                          "order": 4,
+                          "label": "No se evidencia en su desempeño",
+                          "value": 1,
+                          "countsAsAchievement": false
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetro de consulta inválido o desconocido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "La solicitud contiene errores de validación",
+                    "requestId": "req_rs_get_400",
+                    "details": [
+                      {
+                        "path": "query.type",
+                        "message": "El tipo de escala debe ser LIKERT, NUMERIC o EVIDENCE"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o token de acceso inválido o expirado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado",
+                    "requestId": "req_rs_get_401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere el permiso 'parametro.ver'.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para realizar esta acción",
+                    "requestId": "req_rs_get_403"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["ResponseScales"],
+        "summary": "Crear una escala de respuesta con sus niveles",
+        "description": "Crea una escala con 2 a 10 niveles. Cada nivel define etiqueta, valor (entero 0–100, único en la escala) y si cuenta como logro; el orden es la posición en la lista. El código es único y no cambia después. La creación se audita (CREATE). Requiere el permiso 'parametro.editar' con alcance GLOBAL (HU-012, RF-012, RN-052, RS-002, RS-020).",
+        "operationId": "createResponseScale",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateResponseScaleRequest"
+              },
+              "example": {
+                "code": "EVIDENCE_4_V2",
+                "name": "Evidencia en el desempeño (4) (copia)",
+                "type": "EVIDENCE",
+                "levels": [
+                  {
+                    "label": "Se evidencia totalmente",
+                    "value": 4,
+                    "countsAsAchievement": true
+                  },
+                  {
+                    "label": "Se evidencia mayormente",
+                    "value": 3,
+                    "countsAsAchievement": true
+                  },
+                  {
+                    "label": "Se evidencia parcialmente",
+                    "value": 2,
+                    "countsAsAchievement": false
+                  },
+                  {
+                    "label": "No se evidencia en su desempeño",
+                    "value": 1,
+                    "countsAsAchievement": false
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Escala creada exitosamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché HTTP."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseScaleDto"
+                },
+                "example": {
+                  "id": "cm0evidence4scale0002",
+                  "code": "EVIDENCE_4_V2",
+                  "name": "Evidencia en el desempeño (4) (copia)",
+                  "type": "EVIDENCE",
+                  "inUse": false,
+                  "levels": [
+                    {
+                      "order": 1,
+                      "label": "Se evidencia totalmente",
+                      "value": 4,
+                      "countsAsAchievement": true
+                    },
+                    {
+                      "order": 2,
+                      "label": "Se evidencia mayormente",
+                      "value": 3,
+                      "countsAsAchievement": true
+                    },
+                    {
+                      "order": 3,
+                      "label": "Se evidencia parcialmente",
+                      "value": 2,
+                      "countsAsAchievement": false
+                    },
+                    {
+                      "order": 4,
+                      "label": "No se evidencia en su desempeño",
+                      "value": 1,
+                      "countsAsAchievement": false
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Cuerpo inválido: código, nombre o niveles fuera de las reglas, valores o etiquetas repetidos, o campos desconocidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "La solicitud contiene errores de validación",
+                    "requestId": "req_rs_post_400",
+                    "details": [
+                      {
+                        "path": "body.levels",
+                        "message": "La escala debe tener al menos 2 niveles"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o token de acceso inválido o expirado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado",
+                    "requestId": "req_rs_post_401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere el permiso 'parametro.editar'.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para realizar esta acción",
+                    "requestId": "req_rs_post_403"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ya existe una escala con ese código.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "Ya existe una escala de respuesta con el código especificado.",
+                    "requestId": "req_rs_post_409"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/response-scales/{id}": {
+      "patch": {
+        "tags": ["ResponseScales"],
+        "summary": "Editar el nombre y los niveles de una escala",
+        "description": "Cambia el nombre y/o reemplaza la lista completa de niveles; el código y el tipo no cambian. Una escala usada en una encuesta publicada no se modifica: responde 409 y propone duplicarla. Si no hay cambios responde 200 sin escribir ni auditar. Cada cambio se audita (UPDATE). Requiere el permiso 'parametro.editar' con alcance GLOBAL (HU-012, RF-012, RS-002, RS-020).",
+        "operationId": "editResponseScale",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "description": "Identificador de la escala de respuesta (CUID)."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateResponseScaleRequest"
+              },
+              "example": {
+                "name": "Evidencia en el desempeño (4)",
+                "levels": [
+                  {
+                    "label": "Se evidencia totalmente",
+                    "value": 4,
+                    "countsAsAchievement": true
+                  },
+                  {
+                    "label": "Se evidencia mayormente",
+                    "value": 3,
+                    "countsAsAchievement": true
+                  },
+                  {
+                    "label": "Se evidencia parcialmente",
+                    "value": 2,
+                    "countsAsAchievement": false
+                  },
+                  {
+                    "label": "No se evidencia en su desempeño",
+                    "value": 1,
+                    "countsAsAchievement": false
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Escala actualizada exitosamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché HTTP."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseScaleDto"
+                },
+                "example": {
+                  "id": "cm0evidence4scale0001",
+                  "code": "EVIDENCE_4",
+                  "name": "Evidencia en el desempeño (4)",
+                  "type": "EVIDENCE",
+                  "inUse": false,
+                  "levels": [
+                    {
+                      "order": 1,
+                      "label": "Se evidencia totalmente",
+                      "value": 4,
+                      "countsAsAchievement": true
+                    },
+                    {
+                      "order": 2,
+                      "label": "Se evidencia mayormente",
+                      "value": 3,
+                      "countsAsAchievement": true
+                    },
+                    {
+                      "order": 3,
+                      "label": "Se evidencia parcialmente",
+                      "value": 2,
+                      "countsAsAchievement": false
+                    },
+                    {
+                      "order": 4,
+                      "label": "No se evidencia en su desempeño",
+                      "value": 1,
+                      "countsAsAchievement": false
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Cuerpo vacío o inválido, o con código o tipo (no se pueden cambiar).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "La solicitud contiene errores de validación",
+                    "requestId": "req_rs_patch_400",
+                    "details": [
+                      {
+                        "path": "body",
+                        "message": "Indica el nombre o los niveles que quieres cambiar"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o token de acceso inválido o expirado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado",
+                    "requestId": "req_rs_patch_401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere el permiso 'parametro.editar'.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para realizar esta acción",
+                    "requestId": "req_rs_patch_403"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La escala indicada no existe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "Escala de respuesta no encontrada.",
+                    "requestId": "req_rs_patch_404"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "La escala está en uso en una encuesta publicada: duplícala para crear una nueva.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "La escala está en uso en una encuesta publicada y no se puede modificar. Duplícala para crear una nueva",
+                    "requestId": "req_rs_patch_409"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/response-scales/{id}/duplicate": {
+      "post": {
+        "tags": ["ResponseScales"],
+        "summary": "Duplicar una escala en otra nueva y editable",
+        "description": "Copia el tipo y los niveles de la escala indicada (en uso o no) en una escala nueva con otro código y nombre; es la salida cuando una escala en uso no se puede editar. La duplicación se audita (CREATE) con la escala de origen. Requiere el permiso 'parametro.editar' con alcance GLOBAL (HU-012, RF-012, RS-002, RS-020).",
+        "operationId": "duplicateResponseScale",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "description": "Identificador de la escala de respuesta (CUID)."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DuplicateResponseScaleRequest"
+              },
+              "example": {
+                "code": "EVIDENCE_4_V2",
+                "name": "Evidencia en el desempeño (4) (copia)"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Escala duplicada exitosamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché HTTP."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseScaleDto"
+                },
+                "example": {
+                  "id": "cm0evidence4scale0002",
+                  "code": "EVIDENCE_4_V2",
+                  "name": "Evidencia en el desempeño (4) (copia)",
+                  "type": "EVIDENCE",
+                  "inUse": false,
+                  "levels": [
+                    {
+                      "order": 1,
+                      "label": "Se evidencia totalmente",
+                      "value": 4,
+                      "countsAsAchievement": true
+                    },
+                    {
+                      "order": 2,
+                      "label": "Se evidencia mayormente",
+                      "value": 3,
+                      "countsAsAchievement": true
+                    },
+                    {
+                      "order": 3,
+                      "label": "Se evidencia parcialmente",
+                      "value": 2,
+                      "countsAsAchievement": false
+                    },
+                    {
+                      "order": 4,
+                      "label": "No se evidencia en su desempeño",
+                      "value": 1,
+                      "countsAsAchievement": false
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Cuerpo inválido: código o nombre fuera de las reglas, o campos desconocidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "La solicitud contiene errores de validación",
+                    "requestId": "req_rs_dup_400",
+                    "details": [
+                      {
+                        "path": "body.code",
+                        "message": "El código debe tener de 2 a 40 caracteres: mayúsculas, números y guion bajo, empezando por una letra"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o token de acceso inválido o expirado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado",
+                    "requestId": "req_rs_dup_401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere el permiso 'parametro.editar'.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para realizar esta acción",
+                    "requestId": "req_rs_dup_403"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La escala de origen no existe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "Escala de respuesta no encontrada.",
+                    "requestId": "req_rs_dup_404"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ya existe una escala con el código indicado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "Ya existe una escala de respuesta con el código especificado.",
+                    "requestId": "req_rs_dup_409"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5108,6 +5816,186 @@
                 }
               }
             }
+          }
+        }
+      },
+      "ScaleLevelDto": {
+        "type": "object",
+        "required": ["order", "label", "value", "countsAsAchievement"],
+        "additionalProperties": false,
+        "properties": {
+          "order": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Posición del nivel, desde 1."
+          },
+          "label": {
+            "type": "string"
+          },
+          "value": {
+            "type": "integer"
+          },
+          "countsAsAchievement": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ResponseScaleDto": {
+        "type": "object",
+        "required": ["id", "code", "name", "type", "inUse", "levels"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]{1,39}$",
+            "description": "Código único de la escala: 2 a 40 caracteres, mayúsculas, números y guion bajo."
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["LIKERT", "NUMERIC", "EVIDENCE"],
+            "description": "Tipo de escala."
+          },
+          "inUse": {
+            "type": "boolean",
+            "description": "Si la usa una encuesta publicada; entonces no se edita, se duplica."
+          },
+          "levels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScaleLevelDto"
+            }
+          }
+        }
+      },
+      "ResponseScalesResponse": {
+        "type": "object",
+        "required": ["items"],
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResponseScaleDto"
+            }
+          }
+        }
+      },
+      "CreateResponseScaleRequest": {
+        "type": "object",
+        "required": ["code", "name", "type", "levels"],
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]{1,39}$",
+            "description": "Código único de la escala: 2 a 40 caracteres, mayúsculas, números y guion bajo."
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "description": "Nombre de la escala."
+          },
+          "type": {
+            "type": "string",
+            "enum": ["LIKERT", "NUMERIC", "EVIDENCE"],
+            "description": "Tipo de escala."
+          },
+          "levels": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 10,
+            "description": "Niveles de la escala; el orden es la posición en la lista.",
+            "items": {
+              "type": "object",
+              "required": ["label", "value", "countsAsAchievement"],
+              "additionalProperties": false,
+              "properties": {
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 120,
+                  "description": "Etiqueta del nivel; única en la escala sin distinguir mayúsculas."
+                },
+                "value": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100,
+                  "description": "Valor del nivel; único en la escala."
+                },
+                "countsAsAchievement": {
+                  "type": "boolean",
+                  "description": "Si el nivel cuenta como logro (RN-085)."
+                }
+              }
+            }
+          }
+        }
+      },
+      "UpdateResponseScaleRequest": {
+        "type": "object",
+        "minProperties": 1,
+        "additionalProperties": false,
+        "description": "Al menos uno de los dos campos. El código y el tipo no se pueden cambiar.",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "description": "Nombre de la escala."
+          },
+          "levels": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 10,
+            "description": "Niveles de la escala; el orden es la posición en la lista.",
+            "items": {
+              "type": "object",
+              "required": ["label", "value", "countsAsAchievement"],
+              "additionalProperties": false,
+              "properties": {
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 120,
+                  "description": "Etiqueta del nivel; única en la escala sin distinguir mayúsculas."
+                },
+                "value": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100,
+                  "description": "Valor del nivel; único en la escala."
+                },
+                "countsAsAchievement": {
+                  "type": "boolean",
+                  "description": "Si el nivel cuenta como logro (RN-085)."
+                }
+              }
+            }
+          }
+        }
+      },
+      "DuplicateResponseScaleRequest": {
+        "type": "object",
+        "required": ["code", "name"],
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]{1,39}$",
+            "description": "Código único de la escala: 2 a 40 caracteres, mayúsculas, números y guion bajo."
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "description": "Nombre de la escala."
           }
         }
       }

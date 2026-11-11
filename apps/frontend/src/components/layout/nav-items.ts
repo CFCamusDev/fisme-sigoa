@@ -3,6 +3,7 @@ import {
   Building2,
   CalendarRange,
   LayoutDashboard,
+  ListChecks,
   ShieldCheck,
   SlidersHorizontal,
   Users,
@@ -49,6 +50,12 @@ export const MAIN_NAV_ITEMS: readonly NavItem[] = [
     title: 'Parámetros',
     href: '/configuracion/parametros',
     icon: SlidersHorizontal,
+    permission: 'parametro.ver',
+  },
+  {
+    title: 'Escalas',
+    href: '/configuracion/escalas',
+    icon: ListChecks,
     permission: 'parametro.ver',
   },
 ] as const;

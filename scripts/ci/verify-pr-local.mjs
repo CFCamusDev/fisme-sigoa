@@ -252,6 +252,15 @@ export function buildExecutionPlan(mode, options = {}) {
     timeoutMs: 30_000,
   });
   plan.push({
+    id: 'test-patterns',
+    name: 'Patrones de pruebas de integración (AGENTS §9)',
+    group: 'calidad',
+    command: 'pnpm check:test-patterns',
+    actionSuggestion:
+      'Usa seedAuthorizationFast en lugar de seedAuthorization en las pruebas de integración (HU-078).',
+    timeoutMs: 30_000,
+  });
+  plan.push({
     id: 'audit',
     name: 'Auditoría de dependencias (pnpm audit high/critical)',
     group: 'seguridad',
@@ -1109,6 +1118,7 @@ export function checkWorkflowDrift(
       if (rawCommand.includes('for i in 1 2 3') && mc.includes('src/shared/pdf')) return true;
       if (rawCommand.includes('vitest run') && mc.includes('vitest run')) return true;
       if (rawCommand.includes('pnpm check:env-parity') && mc.includes('check:env-parity')) return true;
+      if (rawCommand.includes('check:test-patterns') && mc.includes('check:test-patterns')) return true;
       if (
         (rawCommand.includes('check-windows-paths') || rawCommand.includes('check:windows-paths')) &&
         mc.includes('check-windows-paths')
@@ -1163,6 +1173,7 @@ const STEP_PARALLEL_GROUP = {
   'branch-sync': 'convenciones',
   'env-parity': 'estaticas',
   'windows-paths': 'estaticas',
+  'test-patterns': 'estaticas',
   audit: 'estaticas',
   format: 'estaticas',
   lint: 'estaticas',

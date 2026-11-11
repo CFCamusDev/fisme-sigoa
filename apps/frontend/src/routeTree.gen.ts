@@ -15,6 +15,7 @@ import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as AuthRecuperarContrasenaRouteImport } from './routes/_auth/recuperar-contrasena'
 import { Route as EncuestaTokenRouteImport } from './routes/encuesta/$token'
+import { Route as AppConfiguracionEscalasRouteImport } from './routes/_app/configuracion/escalas'
 import { Route as AppConfiguracionParametrosRouteImport } from './routes/_app/configuracion/parametros'
 import { Route as AppConfiguracionProgramaRouteImport } from './routes/_app/configuracion/programa'
 import { Route as AppConfiguracionSemestresRouteImport } from './routes/_app/configuracion/semestres'
@@ -55,6 +56,11 @@ const EncuestaTokenRoute = EncuestaTokenRouteImport.update({
   id: '/encuesta/$token',
   path: '/encuesta/$token',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppConfiguracionEscalasRoute = AppConfiguracionEscalasRouteImport.update({
+  id: '/configuracion/escalas',
+  path: '/configuracion/escalas',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppConfiguracionParametrosRoute =
   AppConfiguracionParametrosRouteImport.update({
@@ -125,6 +131,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof AuthLoginRoute
   '/recuperar-contrasena': typeof AuthRecuperarContrasenaRoute
   '/encuesta/$token': typeof EncuestaTokenRoute
+  '/configuracion/escalas': typeof AppConfiguracionEscalasRoute
   '/configuracion/parametros': typeof AppConfiguracionParametrosRoute
   '/configuracion/programa': typeof AppConfiguracionProgramaRoute
   '/configuracion/semestres': typeof AppConfiguracionSemestresRoute
@@ -143,6 +150,7 @@ export interface FileRoutesByTo {
   '/login': typeof AuthLoginRoute
   '/recuperar-contrasena': typeof AuthRecuperarContrasenaRoute
   '/encuesta/$token': typeof EncuestaTokenRoute
+  '/configuracion/escalas': typeof AppConfiguracionEscalasRoute
   '/configuracion/parametros': typeof AppConfiguracionParametrosRoute
   '/configuracion/programa': typeof AppConfiguracionProgramaRoute
   '/configuracion/semestres': typeof AppConfiguracionSemestresRoute
@@ -164,6 +172,7 @@ export interface FileRoutesById {
   '/_auth/recuperar-contrasena': typeof AuthRecuperarContrasenaRoute
   '/encuesta/$token': typeof EncuestaTokenRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/configuracion/escalas': typeof AppConfiguracionEscalasRoute
   '/_app/configuracion/parametros': typeof AppConfiguracionParametrosRoute
   '/_app/configuracion/programa': typeof AppConfiguracionProgramaRoute
   '/_app/configuracion/semestres': typeof AppConfiguracionSemestresRoute
@@ -184,6 +193,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/recuperar-contrasena'
     | '/encuesta/$token'
+    | '/configuracion/escalas'
     | '/configuracion/parametros'
     | '/configuracion/programa'
     | '/configuracion/semestres'
@@ -202,6 +212,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/recuperar-contrasena'
     | '/encuesta/$token'
+    | '/configuracion/escalas'
     | '/configuracion/parametros'
     | '/configuracion/programa'
     | '/configuracion/semestres'
@@ -222,6 +233,7 @@ export interface FileRouteTypes {
     | '/_auth/recuperar-contrasena'
     | '/encuesta/$token'
     | '/_app/'
+    | '/_app/configuracion/escalas'
     | '/_app/configuracion/parametros'
     | '/_app/configuracion/programa'
     | '/_app/configuracion/semestres'
@@ -285,6 +297,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/encuesta/$token'
       preLoaderRoute: typeof EncuestaTokenRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_app/configuracion/escalas': {
+      id: '/_app/configuracion/escalas'
+      path: '/configuracion/escalas'
+      fullPath: '/configuracion/escalas'
+      preLoaderRoute: typeof AppConfiguracionEscalasRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/configuracion/parametros': {
       id: '/_app/configuracion/parametros'
@@ -375,6 +394,7 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
+  AppConfiguracionEscalasRoute: typeof AppConfiguracionEscalasRoute
   AppConfiguracionParametrosRoute: typeof AppConfiguracionParametrosRoute
   AppConfiguracionProgramaRoute: typeof AppConfiguracionProgramaRoute
   AppConfiguracionSemestresRoute: typeof AppConfiguracionSemestresRoute
@@ -389,6 +409,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
+  AppConfiguracionEscalasRoute: AppConfiguracionEscalasRoute,
   AppConfiguracionParametrosRoute: AppConfiguracionParametrosRoute,
   AppConfiguracionProgramaRoute: AppConfiguracionProgramaRoute,
   AppConfiguracionSemestresRoute: AppConfiguracionSemestresRoute,

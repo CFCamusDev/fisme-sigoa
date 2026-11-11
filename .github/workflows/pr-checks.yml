@@ -102,6 +102,8 @@ jobs:
         run: pnpm check:env-parity
       - name: Verificación de rutas de Windows
         run: pnpm check:windows-paths
+      - name: Verificación de patrones de pruebas
+        run: pnpm check:test-patterns
       - name: Lint y formato
         run: pnpm lint && pnpm format:check
       - name: Typecheck (TypeScript estricto)

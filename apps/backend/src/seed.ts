@@ -7,6 +7,7 @@ import type { PrismaClient } from './shared/prisma/generated/client.js';
 import { seedAuthorization } from './modules/authorization/infrastructure/prisma/seed/authorization-seed.js';
 import { seedProgram } from './modules/parameters/infrastructure/prisma/seed/program-seed.js';
 import { seedParameterDefaults } from './modules/parameters/infrastructure/prisma/seed/parameter-seed.js';
+import { seedResponseScaleDefaults } from './modules/parameters/infrastructure/prisma/seed/response-scale-seed.js';
 
 loadEnvFileIfPresent();
 
@@ -33,6 +34,12 @@ async function main(): Promise<void> {
       id: 'parameters-defaults',
       run: async (tx) => {
         await seedParameterDefaults(tx);
+      },
+    },
+    {
+      id: 'parameters-response-scales',
+      run: async (tx) => {
+        await seedResponseScaleDefaults(tx);
       },
     },
   ];
