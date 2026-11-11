@@ -8,3 +8,4 @@ export * from './user-access.js';
 export * from './program.js';
 export * from './semester.js';
 export * from './parameter.js';
+export * from './response-scale.js';
