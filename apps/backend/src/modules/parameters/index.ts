@@ -9,7 +9,10 @@ import { DefineParametersUseCase } from './application/define-parameters.js';
 import { ListEffectiveParametersUseCase } from './application/list-effective-parameters.js';
 import { ListSemestersUseCase } from './application/list-semesters.js';
 import { CreateResponseScaleUseCase } from './application/create-response-scale.js';
+import { EditResponseScaleUseCase } from './application/edit-response-scale.js';
 import type { ParametersPermissionChecker } from './domain/ports/parameters-permission-checker.js';
+import type { ScaleUsageReader } from './domain/ports/scale-usage-reader.js';
+import { NeverUsedScaleUsageReader } from './infrastructure/never-used-scale-usage-reader.js';
 import { ParametersController } from './infrastructure/http/parameters.controller.js';
 import {
   createParametersRouter,
@@ -39,6 +42,8 @@ export interface ParametersModuleDependencies {
   readonly permissionChecker: ParametersPermissionChecker;
   readonly logger?: { error: (message: string, error?: unknown) => void };
   readonly clock?: () => Date;
+  /** Quién usa una escala; la HU de encuestas lo reemplaza (D4, D25). */
+  readonly scaleUsageReader?: ScaleUsageReader;
 }
 
 export function createParametersModule(deps?: ParametersModuleDependencies): Router {
@@ -155,7 +160,19 @@ export function createResponseScalesModule(deps?: ParametersModuleDependencies):
     auditLogger: deps.auditLogger,
   });
 
-  const controller = new ResponseScalesController({ createResponseScaleUseCase });
+  const editResponseScaleUseCase = new EditResponseScaleUseCase({
+    scaleRepository,
+    levelRepository,
+    scaleUsageReader: deps.scaleUsageReader ?? new NeverUsedScaleUsageReader(),
+    permissionChecker: deps.permissionChecker,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+  });
+
+  const controller = new ResponseScalesController({
+    createResponseScaleUseCase,
+    editResponseScaleUseCase,
+  });
 
   return createResponseScalesRouter({
     controller,

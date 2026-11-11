@@ -1,5 +1,9 @@
 import { Router, type RequestHandler } from 'express';
-import { createResponseScaleRequestSchema } from '@sigoa/shared';
+import {
+  createResponseScaleRequestSchema,
+  responseScaleIdParamSchema,
+  updateResponseScaleRequestSchema,
+} from '@sigoa/shared';
 import { z } from 'zod';
 import { validateRequest } from '../../../../shared/middleware/validate-request.js';
 import type { ParametersRoutePermissionScope } from './parameters.routes.js';
@@ -31,6 +35,20 @@ export function createResponseScalesRouter(deps: ResponseScalesRouterDependencie
       body: createResponseScaleRequestSchema,
     }),
     deps.controller.createResponseScale,
+  );
+
+  // PATCH /response-scales/:id (HU-012, T-012-12, CA3, RF-012, RS-002, RS-020, RNF-008, RNF-009)
+  // Cadena obligatoria: authenticate -> requirePermission -> validateRequest -> controller
+  router.patch(
+    '/:id',
+    deps.authenticate,
+    deps.requirePermission('parametro.editar', 'GLOBAL'),
+    validateRequest({
+      params: responseScaleIdParamSchema,
+      query: emptyQuerySchema,
+      body: updateResponseScaleRequestSchema,
+    }),
+    deps.controller.editResponseScale,
   );
 
   return router;
