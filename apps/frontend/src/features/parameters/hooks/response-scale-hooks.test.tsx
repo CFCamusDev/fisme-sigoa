@@ -178,7 +178,7 @@ describe('response scale mutation hooks (T-012-16)', () => {
         .catch(() => {});
     });
 
-    expect(result.current.error).toMatchObject({ status: 409 });
+    await waitFor(() => expect(result.current.error).toMatchObject({ status: 409 }));
     expect(queryClient.getQueryState(responseScaleKeys.list())?.isInvalidated).toBe(true);
   });
 
