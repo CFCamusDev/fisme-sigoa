@@ -1,8 +1,26 @@
 import { test, expect } from './support/test';
 import { seedUser } from './support/seed-user';
+import { expectNoContrastViolations } from './support/contrast';
 
 test.describe('HU-001 — Iniciar sesión E2E', () => {
   test.setTimeout(30_000);
+
+  for (const viewport of [
+    { name: 'escritorio', width: 1280, height: 800 },
+    { name: 'móvil', width: 375, height: 812 },
+  ]) {
+    test(`shows the institutional panel on the primary color with readable text (${viewport.name})`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: viewport.width, height: viewport.height });
+      await page.goto('/login');
+      await expect(page.getByRole('heading', { name: /iniciar sesión/i })).toBeVisible();
+
+      // El panel declara el azul institucional (--primary #1d4570) como fondo propio
+      await expect(page.locator('aside')).toHaveCSS('background-color', 'rgb(29, 69, 112)');
+      await expectNoContrastViolations(page, { screen: `Login (${viewport.name})` });
+    });
+  }
 
   test('logs in and reaches the dashboard (CA1)', async ({ page }) => {
     const email = `e2e-success-${Date.now()}@example.test`;

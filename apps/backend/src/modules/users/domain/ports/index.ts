@@ -5,3 +5,5 @@ export * from './activation-token-issuer.js';
 export * from './activation-email-sender.js';
 export * from './user-session-revoker.js';
 export * from './user-list-reader.js';
+export * from './bootstrap-admin-repository.js';
+export * from './initial-password-hasher.js';

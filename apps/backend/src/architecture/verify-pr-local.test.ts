@@ -200,6 +200,29 @@ describe('verify-pr-local pure logic (T-002-22 / G1)', () => {
     expect(fullIds).toContain('e2e');
     expect(fullIds).toContain('pdf-stability');
     expect(fullIds).toContain('docker-smoke');
+    expect(fullIds).toContain('fresh-deploy');
+  });
+
+  it('fresh-deploy runs smoke-fresh-deploy.sh with a 900 s limit in the images group (HU-079)', () => {
+    const freshDeploy = buildExecutionPlan('full').find(
+      (c: {
+        id: string;
+        command?: string;
+        script?: string;
+        args?: string[];
+        timeoutMs?: number;
+        group?: string;
+      }) => c.id === 'fresh-deploy',
+    );
+    expect(freshDeploy).toMatchObject({
+      command: 'bash scripts/ci/smoke-fresh-deploy.sh',
+      script: 'scripts/ci/smoke-fresh-deploy.sh',
+      args: [],
+      timeoutMs: 900_000,
+    });
+    expect(buildExecutionPlan('standard').map((c: { id: string }) => c.id)).not.toContain(
+      'fresh-deploy',
+    );
   });
 
   it('docker-smoke has no hardcoded Git Bash path and runs smoke-image.sh through script and args (T-004-20)', () => {
@@ -705,7 +728,12 @@ describe('verify-pr-local parallel groups and scheduler (T-078-12)', () => {
       expect(idsOf('e2e')).toEqual(['e2e']);
       expect(idsOf('cobertura')).toEqual(['test-coverage', 'build']);
       expect(idsOf('imagenes')).toEqual(
-        expect.arrayContaining(['compose-config', 'compose-hardening', 'docker-smoke']),
+        expect.arrayContaining([
+          'compose-config',
+          'compose-hardening',
+          'docker-smoke',
+          'fresh-deploy',
+        ]),
       );
     });
 
@@ -1228,6 +1256,7 @@ describe('verify-pr-local scope skips (T-078-16)', () => {
     ]);
     expect(decision.skipIds).toContain('docker-smoke');
     expect(decision.skipIds).toContain('pdf-stability');
+    expect(decision.skipIds).toContain('fresh-deploy');
     expect([...decision.skipIds].sort()).toEqual([...SCOPE_SKIPPABLE_STEP_IDS].sort());
     expect(decision.reason).toBe('omitido por alcance');
     expect(SCOPE_SKIP_REASON).toBe('omitido por alcance');
@@ -1241,6 +1270,11 @@ describe('verify-pr-local scope skips (T-078-16)', () => {
     'deploy/stack.env.example',
     'pnpm-lock.yaml',
     'scripts/ci/smoke-image.sh',
+    'scripts/ci/smoke-fresh-deploy.sh',
+    'apps/backend/prisma/schema.prisma',
+    'apps/backend/prisma/migrations/20260101000000_example/migration.sql',
+    'apps/backend/src/seed.ts',
+    'apps/backend/src/seed-database.ts',
     'apps/backend/src/shared/pdf/pdf-generator.ts',
     'apps/backend/src/shared/branding/logo-url-resolver.ts',
     'docs/despliegue.md',
@@ -1250,10 +1284,21 @@ describe('verify-pr-local scope skips (T-078-16)', () => {
     expect(decideScopeSkips(['README.md', file]).skipIds).toEqual([]);
   });
 
+  it('runs fresh-deploy when the diff touches prisma or the seed', () => {
+    for (const file of ['apps/backend/prisma/schema.prisma', 'apps/backend/src/seed.ts']) {
+      expect(decideScopeSkips(['README.md', file]).skipIds).not.toContain('fresh-deploy');
+    }
+    expect(decideScopeSkips(['README.md']).skipIds).toContain('fresh-deploy');
+    expect(decideScopeSkips(['README.md'], { ci: true }).skipIds).toEqual([]);
+    expect(decideScopeSkips(['README.md'], { forceAll: true }).skipIds).toEqual([]);
+  });
+
   it('does not treat similar paths as in scope', () => {
     for (const file of [
       'apps/backend/src/shared/pdfs/other.ts',
       'apps/backend/src/modules/pdf/x.ts',
+      'apps/backend/src/modules/users/application/bootstrap-admin.ts',
+      'apps/backend/prisma-notes.md',
       'package.json',
       'scripts/ci/verify-pr-local.mjs',
       'deployment-notes.md',
@@ -1277,7 +1322,11 @@ describe('verify-pr-local scope skips (T-078-16)', () => {
   });
 
   it('omits both checks for an empty diff', () => {
-    expect(decideScopeSkips([]).skipIds.sort()).toEqual(['docker-smoke', 'pdf-stability']);
+    expect(decideScopeSkips([]).skipIds.sort()).toEqual([
+      'docker-smoke',
+      'fresh-deploy',
+      'pdf-stability',
+    ]);
   });
 
   describe('report and status gate', () => {

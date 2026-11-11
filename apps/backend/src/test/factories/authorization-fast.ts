@@ -7,8 +7,12 @@ import {
 
 /**
  * Siembra de autorización solo para pruebas (HU-078): deja las mismas filas que
- * `seedAuthorization` usando inserciones masivas en lugar de una consulta por fila.
- * Respeta la misma regla: la matriz por defecto solo se concede si el rol o el permiso son nuevos.
+ * `seedAuthorization` usando una sentencia SQL por tabla (`INSERT … SELECT … FROM unnest`) en lugar
+ * de una consulta por fila. Respeta la misma regla: la matriz por defecto solo se concede si el rol
+ * o el permiso son nuevos.
+ *
+ * Son tres etapas: leer lo existente, insertar roles y permisos en paralelo e insertar la matriz
+ * resolviendo los identificadores por código dentro de la propia sentencia.
  */
 export async function seedAuthorizationFast(prisma: PrismaClient): Promise<void> {
   const [existingRoles, existingPerms] = await Promise.all([
@@ -23,53 +27,45 @@ export async function seedAuthorizationFast(prisma: PrismaClient): Promise<void>
   const createdRoleCodes = new Set(newRoles.map((role) => role.code));
   const createdPermCodes = new Set(newPerms.map((perm) => perm.code));
 
-  if (newRoles.length > 0) {
-    await prisma.role.createMany({
-      data: newRoles.map((role) => ({
-        code: role.code,
-        name: role.name,
-        description: role.description,
-        isPredefined: true,
-        status: 'ACTIVE' as const,
-        createdBy: 'SEED',
-        updatedBy: 'SEED',
-      })),
-      skipDuplicates: true,
-    });
-  }
-
-  if (newPerms.length > 0) {
-    await prisma.permission.createMany({
-      data: newPerms.map((perm) => ({
-        code: perm.code,
-        description: perm.description,
-        module: perm.module,
-        createdBy: 'SEED',
-        updatedBy: 'SEED',
-      })),
-      skipDuplicates: true,
-    });
-  }
+  await Promise.all([
+    newRoles.length > 0
+      ? prisma.$executeRaw`
+          INSERT INTO roles (id, code, name, description, "isPredefined", status, "createdBy", "updatedBy", "createdAt", "updatedAt")
+          SELECT gen_random_uuid()::text, t.code, t.name, t.description, true, 'ACTIVE'::"RoleStatus", 'SEED', 'SEED', now(), now()
+          FROM unnest(
+            ${newRoles.map((role) => role.code)}::text[],
+            ${newRoles.map((role) => role.name)}::text[],
+            ${newRoles.map((role) => role.description)}::text[]
+          ) AS t(code, name, description)
+          ON CONFLICT DO NOTHING`
+      : undefined,
+    newPerms.length > 0
+      ? prisma.$executeRaw`
+          INSERT INTO permissions (id, code, description, module, "createdBy", "updatedBy", "createdAt", "updatedAt")
+          SELECT gen_random_uuid()::text, t.code, t.description, t.module, 'SEED', 'SEED', now(), now()
+          FROM unnest(
+            ${newPerms.map((perm) => perm.code)}::text[],
+            ${newPerms.map((perm) => perm.description)}::text[],
+            ${newPerms.map((perm) => perm.module)}::text[]
+          ) AS t(code, description, module)
+          ON CONFLICT DO NOTHING`
+      : undefined,
+  ]);
 
   const grants = DEFAULT_ROLE_PERMISSIONS.filter(
     (grant) => createdRoleCodes.has(grant.roleCode) || createdPermCodes.has(grant.permissionCode),
   );
   if (grants.length === 0) return;
 
-  const [allRoles, allPerms] = await Promise.all([
-    prisma.role.findMany({ select: { id: true, code: true } }),
-    prisma.permission.findMany({ select: { id: true, code: true } }),
-  ]);
-  const roleIdByCode = new Map(allRoles.map((r) => [r.code, r.id]));
-  const permIdByCode = new Map(allPerms.map((p) => [p.code, p.id]));
-
-  const data = grants.flatMap((grant) => {
-    const roleId = roleIdByCode.get(grant.roleCode);
-    const permissionId = permIdByCode.get(grant.permissionCode);
-    return roleId && permissionId
-      ? [{ roleId, permissionId, scope: grant.scope, createdBy: 'SEED' }]
-      : [];
-  });
-
-  await prisma.rolePermission.createMany({ data, skipDuplicates: true });
+  await prisma.$executeRaw`
+    INSERT INTO role_permissions (id, "roleId", "permissionId", scope, "createdBy", "createdAt", "updatedAt")
+    SELECT gen_random_uuid()::text, r.id, p.id, g.scope::"PermissionScope", 'SEED', now(), now()
+    FROM unnest(
+      ${grants.map((grant) => grant.roleCode)}::text[],
+      ${grants.map((grant) => grant.permissionCode)}::text[],
+      ${grants.map((grant) => grant.scope)}::text[]
+    ) AS g(role_code, permission_code, scope)
+    JOIN roles r ON r.code = g.role_code
+    JOIN permissions p ON p.code = g.permission_code
+    ON CONFLICT DO NOTHING`;
 }

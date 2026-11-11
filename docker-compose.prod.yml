@@ -31,6 +31,11 @@ services:
       DATABASE_URL: postgresql://${DB_USER:?Falta DB_USER en las variables del entorno}:${DB_PASSWORD:?Falta DB_PASSWORD en las variables del entorno}@postgres:5432/${DB_NAME:?Falta DB_NAME en las variables del entorno}?schema=public
       APP_DB_USER: ${APP_DB_USER:?Falta APP_DB_USER en las variables del entorno}
       APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Falta APP_DB_PASSWORD en las variables del entorno}
+      # Primer administrador (solo `migrate`; el backend no las recibe). Obligatorias solo mientras no exista un administrador.
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_FULL_NAME: ${ADMIN_FULL_NAME:-}
+      ADMIN_DNI: ${ADMIN_DNI:-}
+      ADMIN_INITIAL_PASSWORD: ${ADMIN_INITIAL_PASSWORD:-}
 
   backend:
     build:

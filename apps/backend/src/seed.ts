@@ -1,13 +1,9 @@
 import { loadEnv } from './config/env.js';
 import { loadEnvFileIfPresent } from './config/load-env-file.js';
+import { Argon2PasswordHasher } from './modules/auth/infrastructure/security/argon2-password-hasher.js';
+import { runDatabaseSeed } from './seed-database.js';
 import { createLogger } from './shared/logger/logger.js';
 import { getPrismaClient, disconnectPrisma } from './shared/prisma/prisma-client.js';
-import { runSeed, type SeedStep } from './shared/seed/seed-runner.js';
-import type { PrismaClient } from './shared/prisma/generated/client.js';
-import { seedAuthorization } from './modules/authorization/infrastructure/prisma/seed/authorization-seed.js';
-import { seedProgram } from './modules/parameters/infrastructure/prisma/seed/program-seed.js';
-import { seedParameterDefaults } from './modules/parameters/infrastructure/prisma/seed/parameter-seed.js';
-import { seedResponseScaleDefaults } from './modules/parameters/infrastructure/prisma/seed/response-scale-seed.js';
 
 loadEnvFileIfPresent();
 
@@ -16,47 +12,23 @@ async function main(): Promise<void> {
   const logger = createLogger(env);
   const prisma = getPrismaClient(env);
 
-  // Lista de pasos de semilla (cada HU posterior registra aquí sus pasos idempotentes)
-  const seedSteps: SeedStep<PrismaClient>[] = [
-    {
-      id: 'authorization-predefined-roles-and-permissions',
-      run: async (tx) => {
-        await seedAuthorization(tx);
-      },
-    },
-    {
-      id: 'parameters-program-epis',
-      run: async (tx) => {
-        await seedProgram(tx);
-      },
-    },
-    {
-      id: 'parameters-defaults',
-      run: async (tx) => {
-        await seedParameterDefaults(tx);
-      },
-    },
-    {
-      id: 'parameters-response-scales',
-      run: async (tx) => {
-        await seedResponseScaleDefaults(tx);
-      },
-    },
-  ];
-
   try {
-    await runSeed({
-      steps: seedSteps,
-      transaction: async <T>(fn: (tx: PrismaClient) => Promise<T>): Promise<T> => {
-        return await prisma.$transaction(async (tx) => {
-          return await fn(tx as unknown as PrismaClient);
-        });
+    await runDatabaseSeed({
+      prisma,
+      rawEnv: process.env,
+      hasher: new Argon2PasswordHasher(),
+      logger: {
+        info: (message) => logger.info(message),
+        warn: (message) => logger.warn(message),
+        error: (message, ...args) => logger.error({ detail: args[0] }, message),
       },
-      logger,
     });
   } catch (error) {
     logger.error({ err: error }, 'Error executing database seed');
-    process.exit(1);
+    // Mensaje legible para el log del contenedor `migrate` (qué variable corregir)
+    const safeMessage = error instanceof Error ? error.message : String(error);
+    console.error(`[db:seed] Error: ${safeMessage}`);
+    process.exitCode = 1;
   } finally {
     await disconnectPrisma();
   }

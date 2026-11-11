@@ -401,6 +401,17 @@ export function buildExecutionPlan(mode, options = {}) {
       actionSuggestion: 'Asegúrate de que el demonio de Docker esté corriendo y las imágenes compilen.',
       timeoutMs: 600_000,
     });
+    plan.push({
+      id: 'fresh-deploy',
+      name: 'Prueba de despliegue desde cero (migrate, seed y primer administrador)',
+      group: 'imagenes',
+      command: 'bash scripts/ci/smoke-fresh-deploy.sh',
+      script: 'scripts/ci/smoke-fresh-deploy.sh',
+      args: [],
+      actionSuggestion:
+        'Revisa los registros de migrate y de backend que imprime la prueba; confirma que Docker está corriendo.',
+      timeoutMs: 900_000,
+    });
   }
 
   // Filtro si se especificó options.only
@@ -694,13 +705,14 @@ export function markDatabaseStepsOmitted(checks, reason) {
 }
 
 /** Pasos que se pueden omitir por alcance cuando el diff no toca sus archivos (HU-078, D4). */
-export const SCOPE_SKIPPABLE_STEP_IDS = ['docker-smoke', 'pdf-stability'];
+export const SCOPE_SKIPPABLE_STEP_IDS = ['docker-smoke', 'pdf-stability', 'fresh-deploy'];
 
 /** Motivo que se registra en el informe para lo omitido por alcance. */
 export const SCOPE_SKIP_REASON = 'omitido por alcance';
 
 /**
- * Rutas que activan docker-smoke y pdf-stability: imágenes, compose, despliegue, lockfile y PDF.
+ * Rutas que activan docker-smoke, pdf-stability y fresh-deploy: imágenes, compose, despliegue,
+ * lockfile, PDF, esquema de Prisma y seed (HU-079).
  * @param {string} file ruta con separadores / (relativa a la raíz del repositorio)
  * @returns {boolean}
  */
@@ -712,6 +724,9 @@ export function touchesImageOrPdfScope(file) {
     file.startsWith('deploy/') ||
     file === 'pnpm-lock.yaml' ||
     file === 'scripts/ci/smoke-image.sh' ||
+    file === 'scripts/ci/smoke-fresh-deploy.sh' ||
+    file.startsWith('apps/backend/prisma/') ||
+    file.startsWith('apps/backend/src/seed') ||
     file.startsWith('apps/backend/src/shared/pdf/') ||
     file.startsWith('apps/backend/src/shared/branding/') ||
     file === 'docs/despliegue.md'
@@ -1135,6 +1150,8 @@ export function checkWorkflowDrift(
       if (rawCommand.includes('pnpm audit') && mc.includes('pnpm audit')) return true;
       if (rawCommand.includes('verify-compose-hardening') && mc.includes('verify-compose-hardening')) return true;
       if (rawCommand.includes('smoke-image.sh') && mc.includes('smoke-image.sh')) return true;
+      if (rawCommand.includes('smoke-fresh-deploy.sh') && mc.includes('smoke-fresh-deploy.sh'))
+        return true;
       if (rawCommand.includes('test:e2e') && mc.includes('test:e2e')) return true;
       return false;
     });
@@ -1183,6 +1200,7 @@ const STEP_PARALLEL_GROUP = {
   'compose-config': 'imagenes',
   'compose-hardening': 'imagenes',
   'docker-smoke': 'imagenes',
+  'fresh-deploy': 'imagenes',
   'disposable-db': 'integracion',
   'integration-tests': 'integracion',
   'pdf-stability': 'integracion',

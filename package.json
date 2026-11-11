@@ -37,6 +37,9 @@
     "verify:pr:full": "node scripts/ci/verify-pr-local.mjs --mode full",
     "verify:pr:clean": "node scripts/ci/verify-pr-local.mjs --clean",
     "verify:pr:status": "node scripts/ci/verify-pr-local.mjs --status",
+    "stack:local:up": "node scripts/deploy/stack-local.mjs up",
+    "stack:local:down": "node scripts/deploy/stack-local.mjs down",
+    "stack:local:reset": "node scripts/deploy/stack-local.mjs reset",
     "prepare": "husky"
   },
   "lint-staged": {

@@ -1,6 +1,19 @@
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 
+/**
+ * `http://` solo se acepta para el propio equipo (pila de producción levantada en local, sin TLS):
+ * cualquier dominio real exige `https://`.
+ */
+function isLoopbackHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
 export const envSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -193,11 +206,15 @@ export const envSchema = z
           path: ['APP_PUBLIC_URL'],
           message: 'APP_PUBLIC_URL is required in production environment',
         });
-      } else if (!data.APP_PUBLIC_URL.startsWith('https://')) {
+      } else if (
+        !data.APP_PUBLIC_URL.startsWith('https://') &&
+        !isLoopbackHttpUrl(data.APP_PUBLIC_URL)
+      ) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['APP_PUBLIC_URL'],
-          message: 'APP_PUBLIC_URL must use https:// in production environment',
+          message:
+            'APP_PUBLIC_URL must use https:// in production environment (http:// is only allowed for localhost, 127.0.0.1 or [::1], e.g. a local copy of the production stack)',
         });
       }
 

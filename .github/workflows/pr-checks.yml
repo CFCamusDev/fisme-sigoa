@@ -158,6 +158,8 @@ jobs:
         run: docker compose --env-file deploy/stack.env.example -f docker-compose.prod.yml config --format json | node scripts/ci/verify-compose-hardening.mjs
       - name: Pruebas de humo de imágenes Docker y PDF Open Sans
         run: bash scripts/ci/smoke-image.sh
+      - name: Prueba de despliegue desde cero (migrate, seed y primer administrador)
+        run: bash scripts/ci/smoke-fresh-deploy.sh
       - name: Diagnóstico del entorno host y Docker ante fallos
         if: failure()
         run: |

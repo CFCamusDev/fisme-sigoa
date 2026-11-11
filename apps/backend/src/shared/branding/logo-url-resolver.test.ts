@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { LOGO_VARIANT_NAMES, LOGO_VARIANTS } from '@sigoa/shared';
 import { LogoUrlResolver } from './logo-url-resolver.js';
@@ -28,5 +30,16 @@ describe('LogoUrlResolver (T-077-05)', () => {
     expect(resolver.resolve('horizontal')).toBe(
       'http://localhost:5173/assets/logo-untrm-v1-256.png',
     );
+  });
+
+  it('points every variant to a file that the frontend actually serves from public/assets', () => {
+    const publicAssets = resolve(__dirname, '../../../../frontend/public/assets');
+    const resolver = new LogoUrlResolver(baseUrl);
+
+    for (const variant of LOGO_VARIANT_NAMES) {
+      const file = new URL(resolver.resolve(variant)).pathname.replace('/assets/', '');
+      expect(file).toBe(LOGO_VARIANTS[variant].file);
+      expect(existsSync(resolve(publicAssets, file)), `Falta public/assets/${file}`).toBe(true);
+    }
   });
 });

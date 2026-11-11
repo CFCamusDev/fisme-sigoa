@@ -16,7 +16,7 @@ function AuthLayout() {
       </a>
 
       {/* Panel izquierdo institucional: azul institucional con motivo y escudo oficial */}
-      <aside className="brand-motif relative flex min-h-[120px] flex-col justify-between overflow-hidden bg-gradient-to-br from-brand-700 to-brand-800 p-6 text-brand-50 lg:min-h-screen lg:w-1/2 lg:p-12">
+      <aside className="brand-motif relative flex min-h-[120px] flex-col justify-between overflow-hidden bg-primary p-6 text-primary-foreground lg:min-h-screen lg:w-1/2 lg:p-12">
         <div className="flex items-center gap-4 lg:flex-col lg:items-start lg:gap-6">
           <Logo variant="square" size={88} className="size-14 shrink-0 lg:size-[88px]" />
           <div className="space-y-1">

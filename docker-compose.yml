@@ -35,6 +35,11 @@ services:
       DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-sigoa_dev}?schema=public
       APP_DB_USER: ${APP_DB_USER:-sigoa_backend}
       APP_DB_PASSWORD: ${APP_DB_PASSWORD:-sigoa_backend_dev_pass}
+      # Primer administrador de desarrollo (valores ficticios; solo `migrate`)
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@sigoa.test}
+      ADMIN_FULL_NAME: ${ADMIN_FULL_NAME:-Administrador Desarrollo Local}
+      ADMIN_DNI: ${ADMIN_DNI:-10000001}
+      ADMIN_INITIAL_PASSWORD: ${ADMIN_INITIAL_PASSWORD:-DesarrolloLocal2026}
 
   backend:
     build:
