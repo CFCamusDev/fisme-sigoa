@@ -1,6 +1,7 @@
 import { Router, type RequestHandler } from 'express';
 import {
   createResponseScaleRequestSchema,
+  duplicateResponseScaleRequestSchema,
   listResponseScalesQuerySchema,
   responseScaleIdParamSchema,
   updateResponseScaleRequestSchema,
@@ -62,6 +63,20 @@ export function createResponseScalesRouter(deps: ResponseScalesRouterDependencie
       body: updateResponseScaleRequestSchema,
     }),
     deps.controller.editResponseScale,
+  );
+
+  // POST /response-scales/:id/duplicate (HU-012, T-012-13, CA3, RF-012, RS-002, RS-020, RNF-008, RNF-009)
+  // Cadena obligatoria: authenticate -> requirePermission -> validateRequest -> controller
+  router.post(
+    '/:id/duplicate',
+    deps.authenticate,
+    deps.requirePermission('parametro.editar', 'GLOBAL'),
+    validateRequest({
+      params: responseScaleIdParamSchema,
+      query: emptyQuerySchema,
+      body: duplicateResponseScaleRequestSchema,
+    }),
+    deps.controller.duplicateResponseScale,
   );
 
   return router;

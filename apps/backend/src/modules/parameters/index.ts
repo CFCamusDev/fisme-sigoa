@@ -9,6 +9,7 @@ import { DefineParametersUseCase } from './application/define-parameters.js';
 import { ListEffectiveParametersUseCase } from './application/list-effective-parameters.js';
 import { ListSemestersUseCase } from './application/list-semesters.js';
 import { CreateResponseScaleUseCase } from './application/create-response-scale.js';
+import { DuplicateResponseScaleUseCase } from './application/duplicate-response-scale.js';
 import { EditResponseScaleUseCase } from './application/edit-response-scale.js';
 import { ListResponseScalesUseCase } from './application/list-response-scales.js';
 import type { ParametersPermissionChecker } from './domain/ports/parameters-permission-checker.js';
@@ -178,10 +179,20 @@ export function createResponseScalesModule(deps?: ParametersModuleDependencies):
     permissionChecker: deps.permissionChecker,
   });
 
+  const duplicateResponseScaleUseCase = new DuplicateResponseScaleUseCase({
+    scaleReader: scaleRepository,
+    scaleRepository,
+    levelRepository,
+    permissionChecker: deps.permissionChecker,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+  });
+
   const controller = new ResponseScalesController({
     createResponseScaleUseCase,
     editResponseScaleUseCase,
     listResponseScalesUseCase,
+    duplicateResponseScaleUseCase,
   });
 
   return createResponseScalesRouter({

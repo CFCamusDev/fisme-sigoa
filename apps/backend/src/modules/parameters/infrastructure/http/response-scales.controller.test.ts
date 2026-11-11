@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from 'express';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { UnauthorizedError } from '../../../../shared/errors/app-error.js';
 import type { CreateResponseScaleUseCase } from '../../application/create-response-scale.js';
+import type { DuplicateResponseScaleUseCase } from '../../application/duplicate-response-scale.js';
 import type { EditResponseScaleUseCase } from '../../application/edit-response-scale.js';
 import type { ListResponseScalesUseCase } from '../../application/list-response-scales.js';
 import { ResponseScalesController } from './response-scales.controller.js';
@@ -10,6 +11,7 @@ describe('ResponseScalesController (unit tests, T-012-11, RF-012)', () => {
   let createUseCase: CreateResponseScaleUseCase;
   let editUseCase: EditResponseScaleUseCase;
   let listUseCase: ListResponseScalesUseCase;
+  let duplicateUseCase: DuplicateResponseScaleUseCase;
   let controller: ResponseScalesController;
   let res: Partial<Response>;
   let next: NextFunction;
@@ -27,10 +29,12 @@ describe('ResponseScalesController (unit tests, T-012-11, RF-012)', () => {
     createUseCase = { execute: vi.fn() } as unknown as CreateResponseScaleUseCase;
     editUseCase = { execute: vi.fn() } as unknown as EditResponseScaleUseCase;
     listUseCase = { execute: vi.fn() } as unknown as ListResponseScalesUseCase;
+    duplicateUseCase = { execute: vi.fn() } as unknown as DuplicateResponseScaleUseCase;
     controller = new ResponseScalesController({
       createResponseScaleUseCase: createUseCase,
       editResponseScaleUseCase: editUseCase,
       listResponseScalesUseCase: listUseCase,
+      duplicateResponseScaleUseCase: duplicateUseCase,
     });
     res = {
       setHeader: vi.fn().mockReturnThis(),
@@ -164,6 +168,56 @@ describe('ResponseScalesController (unit tests, T-012-11, RF-012)', () => {
 
       expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
       expect(listUseCase.execute).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('duplicateResponseScale', () => {
+    const body = { code: 'EVIDENCE_4_V2', name: 'Evidencia 4 (v2)' };
+
+    it('answers 201 with the DTO, passing the source id from the path and forbidding caching', async () => {
+      vi.mocked(duplicateUseCase.execute).mockResolvedValue(dto as never);
+      const req = {
+        user: { id: 'admin-1' },
+        ip: '10.0.0.1',
+        params: { id: 'scale-1' },
+        body,
+      } as unknown as Request;
+
+      await controller.duplicateResponseScale(req, res as Response, next);
+
+      expect(duplicateUseCase.execute).toHaveBeenCalledWith({
+        actorId: 'admin-1',
+        ip: '10.0.0.1',
+        sourceId: 'scale-1',
+        ...body,
+      });
+      expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store');
+      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.json).toHaveBeenCalledWith(dto);
+    });
+
+    it('passes UnauthorizedError to next when there is no session', async () => {
+      const req = { params: { id: 'scale-1' }, body } as unknown as Request;
+
+      await controller.duplicateResponseScale(req, res as Response, next);
+
+      expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+      expect(duplicateUseCase.execute).not.toHaveBeenCalled();
+    });
+
+    it('passes the errors of the use case to next', async () => {
+      const failure = new Error('boom');
+      vi.mocked(duplicateUseCase.execute).mockRejectedValue(failure);
+      const req = {
+        user: { id: 'admin-1' },
+        params: { id: 'scale-1' },
+        body,
+      } as unknown as Request;
+
+      await controller.duplicateResponseScale(req, res as Response, next);
+
+      expect(next).toHaveBeenCalledWith(failure);
+      expect(res.json).not.toHaveBeenCalled();
     });
   });
 });
