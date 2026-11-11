@@ -8,3 +8,4 @@ export * from './parameter-repository.js';
 export * from './scale-usage-reader.js';
 export * from './response-scale-reader.js';
 export * from './response-scale-repository.js';
+export * from './scale-level-repository.js';
