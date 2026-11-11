@@ -8,6 +8,7 @@ import { CreateSemesterUseCase } from './application/create-semester.js';
 import { DefineParametersUseCase } from './application/define-parameters.js';
 import { ListEffectiveParametersUseCase } from './application/list-effective-parameters.js';
 import { ListSemestersUseCase } from './application/list-semesters.js';
+import { CreateResponseScaleUseCase } from './application/create-response-scale.js';
 import type { ParametersPermissionChecker } from './domain/ports/parameters-permission-checker.js';
 import { ParametersController } from './infrastructure/http/parameters.controller.js';
 import {
@@ -16,10 +17,14 @@ import {
 } from './infrastructure/http/parameters.routes.js';
 import { ParameterValuesController } from './infrastructure/http/parameter-values.controller.js';
 import { createParameterValuesRouter } from './infrastructure/http/parameter-values.routes.js';
+import { ResponseScalesController } from './infrastructure/http/response-scales.controller.js';
+import { createResponseScalesRouter } from './infrastructure/http/response-scales.routes.js';
 import { SemestersController } from './infrastructure/http/semesters.controller.js';
 import { createSemestersRouter } from './infrastructure/http/semesters.routes.js';
 import { PrismaParameterRepository } from './infrastructure/prisma/prisma-parameter-repository.js';
 import { PrismaProgramRepository } from './infrastructure/prisma/prisma-program-repository.js';
+import { PrismaResponseScaleRepository } from './infrastructure/prisma/prisma-response-scale-repository.js';
+import { PrismaScaleLevelRepository } from './infrastructure/prisma/prisma-scale-level-repository.js';
 import { PrismaSemesterRepository } from './infrastructure/prisma/prisma-semester-repository.js';
 
 export interface ParametersModuleDependencies {
@@ -133,6 +138,32 @@ export function createParameterValuesModule(deps?: ParametersModuleDependencies)
   });
 }
 
+export function createResponseScalesModule(deps?: ParametersModuleDependencies): Router {
+  if (!deps) {
+    return Router();
+  }
+
+  const scaleRepository = new PrismaResponseScaleRepository(deps.dbProvider);
+  const levelRepository = new PrismaScaleLevelRepository(deps.dbProvider);
+
+  const createResponseScaleUseCase = new CreateResponseScaleUseCase({
+    scaleReader: scaleRepository,
+    scaleRepository,
+    levelRepository,
+    permissionChecker: deps.permissionChecker,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+  });
+
+  const controller = new ResponseScalesController({ createResponseScaleUseCase });
+
+  return createResponseScalesRouter({
+    controller,
+    authenticate: deps.authenticate,
+    requirePermission: deps.requirePermission,
+  });
+}
+
 export * from './domain/entities/program.js';
 export * from './domain/entities/semester.js';
 export * from './domain/entities/parameter.js';
@@ -186,3 +217,5 @@ export * from './application/edit-response-scale.js';
 export * from './application/edit-response-scale.types.js';
 export * from './application/duplicate-response-scale.js';
 export * from './application/duplicate-response-scale.types.js';
+export * from './infrastructure/http/response-scales.controller.js';
+export * from './infrastructure/http/response-scales.routes.js';
