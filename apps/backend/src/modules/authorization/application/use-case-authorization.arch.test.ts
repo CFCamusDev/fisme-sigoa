@@ -10,6 +10,8 @@ const modulesDir = path.resolve(currentDir, '../..');
  * Casos de uso públicos o de identidad propia que validan credenciales, tokens o la sesión
  * del propio actor sin exigir un código de permiso del catálogo (RS-002, D10).
  * También se excluye el módulo de referencia didáctico de arquitectura hexagonal.
+ * `users/application/bootstrap-admin.ts` (HU-079) es un proceso de arranque del seed sin actor:
+ * solo corre dentro de `migrate` y no está expuesto por ningún endpoint.
  */
 const PUBLIC_OR_SELF_IDENTITY_USE_CASES = new Set<string>([
   'auth/application/login.ts',
@@ -19,6 +21,7 @@ const PUBLIC_OR_SELF_IDENTITY_USE_CASES = new Set<string>([
   'auth/application/request-password-recovery.ts',
   'auth/application/reset-password.ts',
   'authorization/application/get-my-permissions.ts',
+  'users/application/bootstrap-admin.ts',
   'reference-module/application/create-reference-item.ts',
 ]);
 
