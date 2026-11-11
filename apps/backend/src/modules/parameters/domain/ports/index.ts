@@ -5,3 +5,5 @@ export * from './semester-repository.js';
 export * from './semester-reader.js';
 export * from './parameter-reader.js';
 export * from './parameter-repository.js';
+export * from './scale-usage-reader.js';
+export * from './response-scale-reader.js';
