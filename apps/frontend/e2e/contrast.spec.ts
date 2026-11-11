@@ -331,6 +331,64 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA)', () => {
     await expectNoContrastViolations(page, { context: 'parameters-page-weights-error-desktop' });
   });
 
+  test('response scales route has no contrast violations in editable mode', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await loginAsTestUser(page, {
+      email: `contrast-admin-scales-${Date.now()}@example.test`,
+      roles: ['ADMINISTRATOR'],
+    });
+
+    await waitForApi(page, '/response-scales', () => page.goto('/configuracion/escalas'));
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Escalas de respuesta' }),
+    ).toBeVisible();
+
+    // Formulario de crear con errores visibles (el esquema compartido los rechaza antes de la API)
+    await page.getByRole('button', { name: 'Nueva escala' }).click();
+    await expect(page.getByRole('heading', { level: 2, name: 'Nueva escala' })).toBeVisible();
+    await page.getByRole('button', { name: 'Guardar escala' }).click();
+    await expect(page.getByLabel('Código', { exact: true })).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+    await expectNoContrastViolations(page, {
+      context: 'response-scales-create-form-error-desktop',
+    });
+
+    // Una escala propia (código único) creada desde la pantalla
+    const code = `E2E_${Date.now()}`;
+    const name = `Escala de contraste ${code}`;
+    await page.getByLabel('Código', { exact: true }).fill(code);
+    await page.getByLabel('Nombre', { exact: true }).fill(name);
+    await page.getByLabel('Etiqueta del nivel 1').fill('Bajo');
+    await page.getByLabel('Valor del nivel 1').fill('1');
+    await page.getByLabel('Etiqueta del nivel 2').fill('Alto');
+    await page.getByLabel('Valor del nivel 2').fill('2');
+    await page.getByLabel('Cuenta como logro del nivel 2').check();
+    const [createRes] = await Promise.all([
+      page.waitForResponse(
+        (res) =>
+          res.url().includes('/response-scales') &&
+          res.request().method() === 'POST' &&
+          res.status() === 201,
+      ),
+      page.getByRole('button', { name: 'Guardar escala' }).click(),
+    ]);
+    expect(createRes.ok()).toBe(true);
+    await expect(page.getByText('Escala creada.')).toBeVisible();
+    await expect(page.getByRole('heading', { level: 2, name })).toBeVisible();
+
+    await expectNoContrastViolations(page, { context: 'response-scales-page-desktop' });
+    await page.setViewportSize(MOBILE);
+    await expectNoContrastViolations(page, { context: 'response-scales-page-mobile' });
+    await page.setViewportSize(DESKTOP);
+
+    // Panel de duplicar abierto en la tarjeta de la escala propia
+    await page.getByRole('region', { name }).getByRole('button', { name: 'Duplicar' }).click();
+    await expect(page.getByRole('heading', { level: 3, name: 'Duplicar escala' })).toBeVisible();
+    await expectNoContrastViolations(page, { context: 'response-scales-duplicate-panel-desktop' });
+  });
+
   test('program, semesters and parameters routes have no contrast violations in read-only mode', async ({
     page,
   }) => {
@@ -361,5 +419,15 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA)', () => {
     ).toBeVisible();
     await expect(page.getByRole('button', { name: 'Guardar parámetros' })).toHaveCount(0);
     await expectNoContrastViolations(page, { context: 'parameters-page-readonly-desktop' });
+
+    await waitForApi(page, '/response-scales', () => page.goto('/configuracion/escalas'));
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Escalas de respuesta' }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(/solo lectura: no tienes permiso para modificar las escalas/i),
+    ).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Nueva escala' })).toHaveCount(0);
+    await expectNoContrastViolations(page, { context: 'response-scales-readonly-desktop' });
   });
 });

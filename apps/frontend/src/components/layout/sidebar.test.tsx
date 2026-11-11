@@ -37,11 +37,13 @@ describe('Sidebar permission-aware menu filtering (HU-008, T-008-08, CA3)', () =
     expect(screen.getByTestId('sidebar-skeleton-/configuracion/programa')).toBeInTheDocument();
     expect(screen.getByTestId('sidebar-skeleton-/configuracion/semestres')).toBeInTheDocument();
     expect(screen.getByTestId('sidebar-skeleton-/configuracion/parametros')).toBeInTheDocument();
+    expect(screen.getByTestId('sidebar-skeleton-/configuracion/escalas')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Usuarios' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Roles' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Programa' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Semestres' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Parámetros' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Escalas' })).not.toBeInTheDocument();
 
     resolvePermissions();
 
@@ -50,6 +52,7 @@ describe('Sidebar permission-aware menu filtering (HU-008, T-008-08, CA3)', () =
     expect(await screen.findByRole('link', { name: 'Programa' })).toBeInTheDocument();
     expect(await screen.findByRole('link', { name: 'Semestres' })).toBeInTheDocument();
     expect(await screen.findByRole('link', { name: 'Parámetros' })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'Escalas' })).toBeInTheDocument();
     expect(screen.queryByTestId('sidebar-skeleton-/usuarios')).not.toBeInTheDocument();
     expect(screen.queryByTestId('sidebar-skeleton-/roles')).not.toBeInTheDocument();
     expect(
@@ -61,6 +64,7 @@ describe('Sidebar permission-aware menu filtering (HU-008, T-008-08, CA3)', () =
     expect(
       screen.queryByTestId('sidebar-skeleton-/configuracion/parametros'),
     ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('sidebar-skeleton-/configuracion/escalas')).not.toBeInTheDocument();
   });
 
   it('hides menu entries the user cannot access (e.g. Teacher role)', async () => {
