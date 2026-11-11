@@ -5,3 +5,5 @@ export * from './invalid-user-status-transition-error.js';
 export * from './user-not-found-error.js';
 export * from './unknown-role-error.js';
 export * from './cannot-deactivate-self-error.js';
+export * from './bootstrap-admin-config-error.js';
+export * from './bootstrap-admin-conflict-error.js';

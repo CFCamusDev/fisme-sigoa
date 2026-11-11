@@ -1,23 +1,12 @@
 import { DNI_PATTERN, passwordSchema } from '@sigoa/shared';
 import { z } from 'zod';
+import type {
+  BootstrapAdminInput as AdministratorInput,
+  BootstrapAdminInputResult,
+} from '../modules/users/application/bootstrap-admin.js';
 
-export interface BootstrapAdminInput {
-  readonly email: string;
-  readonly names: string;
-  readonly firstSurname: string;
-  readonly secondSurname: string | null;
-  readonly dni: string;
-  readonly password: string;
-}
-
-export interface BootstrapAdminEnvIssue {
-  readonly variable: string;
-  readonly message: string;
-}
-
-export type BootstrapAdminEnvResult =
-  | { readonly ok: true; readonly value: BootstrapAdminInput }
-  | { readonly ok: false; readonly issues: BootstrapAdminEnvIssue[] };
+export type BootstrapAdminInput = AdministratorInput;
+export type BootstrapAdminEnvResult = BootstrapAdminInputResult;
 
 const NAME_PART_MAX_LENGTH = 100;
 const EMAIL_MAX_LENGTH = 254;
@@ -55,14 +44,14 @@ const rawSchema = z.object({
   ADMIN_EMAIL: z.preprocess(
     trimmedOrAbsent,
     z
-      .string({ required_error: 'es obligatoria', invalid_type_error: 'debe ser texto' })
+      .string({ error: 'es obligatoria' })
       .max(EMAIL_MAX_LENGTH, `no puede exceder ${EMAIL_MAX_LENGTH} caracteres`)
       .email('debe ser un correo electrónico válido'),
   ),
   ADMIN_FULL_NAME: z.preprocess(
     emptyAsAbsent,
     z
-      .string({ required_error: 'es obligatoria', invalid_type_error: 'debe ser texto' })
+      .string({ error: 'es obligatoria' })
       .max(NAME_PART_MAX_LENGTH * 4, 'es demasiado larga')
       .refine((value) => splitFullName(value) !== null, {
         message: 'debe incluir al menos un nombre y un apellido',
@@ -70,11 +59,12 @@ const rawSchema = z.object({
   ),
   ADMIN_DNI: z.preprocess(
     trimmedOrAbsent,
-    z
-      .string({ required_error: 'es obligatoria', invalid_type_error: 'debe ser texto' })
-      .regex(DNI_PATTERN, 'debe tener exactamente 8 dígitos'),
+    z.string({ error: 'es obligatoria' }).regex(DNI_PATTERN, 'debe tener exactamente 8 dígitos'),
   ),
-  ADMIN_INITIAL_PASSWORD: z.preprocess(emptyAsAbsent, passwordSchema),
+  ADMIN_INITIAL_PASSWORD: z.preprocess(
+    emptyAsAbsent,
+    z.string({ error: 'es obligatoria' }).pipe(passwordSchema),
+  ),
 });
 
 /**
