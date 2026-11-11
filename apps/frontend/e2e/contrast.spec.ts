@@ -344,7 +344,7 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA)', () => {
     ).toBeVisible();
 
     // Formulario de crear con errores visibles (el esquema compartido los rechaza antes de la API)
-    await page.getByRole('button', { name: 'Nueva escala' }).click();
+    await page.getByRole('button', { name: 'Nueva escala' }).first().click();
     await expect(page.getByRole('heading', { level: 2, name: 'Nueva escala' })).toBeVisible();
     await page.getByRole('button', { name: 'Guardar escala' }).click();
     await expect(page.getByLabel('Código', { exact: true })).toHaveAttribute(
