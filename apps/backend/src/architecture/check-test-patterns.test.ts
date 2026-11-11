@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 // @ts-expect-error script sin archivo de declaraciones .d.ts
 import * as checkTestPatterns from '../../../../scripts/ci/check-test-patterns.mjs';
@@ -116,7 +117,7 @@ describe('check-test-patterns (HU-012, AGENTS §9, RNF-030)', () => {
   });
 
   it('passes on the real repository', () => {
-    const files = scanIntegrationTests(path.resolve(__dirname, '../../../..'));
+    const files = scanIntegrationTests(fileURLToPath(new URL('../../../../', import.meta.url)));
 
     expect(files.length).toBeGreaterThan(0);
     expect(findSlowSeedViolations(files, DEFAULT_EXCLUSIONS)).toEqual([]);
