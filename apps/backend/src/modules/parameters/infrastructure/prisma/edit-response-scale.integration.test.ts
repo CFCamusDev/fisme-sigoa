@@ -155,7 +155,17 @@ describe('EditResponseScaleUseCase Integration (PostgreSQL real, T-012-07, CA3)'
         ) === JSON.stringify(finalLevels),
     );
     expect(matching).toHaveLength(1);
-    expect(await prisma.auditLog.count({ where: { entity: 'ResponseScale' } })).toBe(8);
+    const events = await prisma.auditLog.findMany({
+      where: { entity: 'ResponseScale' },
+      orderBy: { sequence: 'asc' },
+    });
+    expect(events).toHaveLength(8);
+    // Bajo el bloqueo de la fila, cada edición parte de lo que dejó la anterior (sin lecturas viejas).
+    const levelsOfPayload = (payload: unknown) => (payload as { levels: unknown[] }).levels;
+    expect(levelsOfPayload(events[0]?.before)).toHaveLength(3);
+    for (let i = 1; i < events.length; i += 1) {
+      expect(levelsOfPayload(events[i]?.before)).toEqual(levelsOfPayload(events[i - 1]?.after));
+    }
     await expectValidAuditChain();
   }, 15_000);
 
