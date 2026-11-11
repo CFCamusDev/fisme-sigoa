@@ -182,3 +182,5 @@ export * from './infrastructure/prisma/prisma-scale-level-repository.js';
 export * from './application/response-scale-dto.js';
 export * from './application/create-response-scale.js';
 export * from './application/create-response-scale.types.js';
+export * from './application/edit-response-scale.js';
+export * from './application/edit-response-scale.types.js';
