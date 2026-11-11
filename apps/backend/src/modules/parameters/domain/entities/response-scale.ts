@@ -40,12 +40,13 @@ export interface ResponseScaleProperties {
   updatedAt: Date;
 }
 
-export interface ResponseScaleSnapshot {
+/** Alias de tipo (no interfaz) para que sirva como carga de auditoría. */
+export type ResponseScaleSnapshot = {
   readonly code: string;
   readonly name: string;
   readonly type: ScaleType;
   readonly levels: readonly ScaleLevel[];
-}
+};
 
 export class ResponseScale {
   private constructor(private readonly props: ResponseScaleProperties) {}
