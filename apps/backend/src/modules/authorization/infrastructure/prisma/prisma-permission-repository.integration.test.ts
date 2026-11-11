@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { useTestDatabase } from '../../../../test/db/use-test-database.js';
 import { PrismaUnitOfWork } from '../../../../shared/prisma/prisma-unit-of-work.js';
 import { PrismaPermissionRepository } from './prisma-permission-repository.js';
-import { seedAuthorization } from './seed/authorization-seed.js';
+import { seedAuthorizationFast } from '../../../../test/factories/authorization.js';
 
 describe('PrismaPermissionRepository Integration (PostgreSQL real, authorization module, HU-006, T-006-28)', () => {
   const { getPrisma } = useTestDatabase();
@@ -11,7 +11,7 @@ describe('PrismaPermissionRepository Integration (PostgreSQL real, authorization
   const permissionRepo = new PrismaPermissionRepository(uow);
 
   beforeEach(async () => {
-    await seedAuthorization(prisma);
+    await seedAuthorizationFast(prisma);
   });
 
   it('lists the seeded catalog ordered by module and code', async () => {

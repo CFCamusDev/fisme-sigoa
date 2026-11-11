@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
 import path from 'node:path';
+import { spawn } from 'node:child_process';
+import os from 'node:os';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { resolveBashPath } from './resolve-bash-path.mjs';
 
@@ -262,7 +265,7 @@ export function buildExecutionPlan(mode, options = {}) {
     group: 'calidad',
     command: 'pnpm format:check',
     actionSuggestion: 'Ejecuta pnpm format para corregir el estilo de formato.',
-    timeoutMs: 60_000,
+    timeoutMs: 180_000,
   });
   plan.push({
     id: 'lint',
@@ -286,6 +289,7 @@ export function buildExecutionPlan(mode, options = {}) {
     name: 'Comprobación estática de tipos (TypeScript)',
     group: 'calidad',
     command: 'pnpm typecheck',
+    parallelCommand: 'pnpm -r --if-present typecheck',
     actionSuggestion: 'Corrige los errores de tipos reportados por tsc.',
     timeoutMs: 120_000,
   });
@@ -325,6 +329,8 @@ export function buildExecutionPlan(mode, options = {}) {
       name: 'Base de datos desechable y migraciones desde cero',
       group: 'calidad',
       command: 'pnpm --filter backend exec prisma migrate deploy',
+      // En la ejecución por grupos la base se clona de la plantilla ya migrada: aquí solo se comprueba.
+      parallelCommand: 'pnpm --filter backend exec prisma migrate status',
       actionSuggestion: 'Revisa las migraciones de Prisma en prisma/migrations/.',
       timeoutMs: 120_000,
     });
@@ -341,6 +347,7 @@ export function buildExecutionPlan(mode, options = {}) {
       name: 'Pruebas unitarias con cobertura >= 80%',
       group: 'calidad',
       command: 'pnpm test:coverage',
+      parallelCommand: 'pnpm -r --if-present test:coverage',
       actionSuggestion: 'Añade pruebas para alcanzar el umbral mínimo del 80% de cobertura.',
       timeoutMs: 300_000,
     });
@@ -349,6 +356,7 @@ export function buildExecutionPlan(mode, options = {}) {
       name: 'Compilación y empaquetado de artefactos',
       group: 'calidad',
       command: 'pnpm build',
+      parallelCommand: 'pnpm --filter backend --filter frontend --if-present build',
       actionSuggestion: 'Corrige los errores de compilación en vite build o tsc build.',
       timeoutMs: 180_000,
     });
@@ -370,8 +378,9 @@ export function buildExecutionPlan(mode, options = {}) {
       name: 'Pruebas end-to-end con Playwright',
       group: 'e2e',
       command: 'pnpm test:e2e',
+      parallelCommand: 'pnpm --filter frontend test:e2e',
       actionSuggestion: 'Revisa los reportes en apps/frontend/test-results/.',
-      timeoutMs: 600_000,
+      timeoutMs: 900_000,
     });
     plan.push({
       id: 'docker-smoke',
@@ -406,7 +415,8 @@ export function computeOverallStatus(checks, mode) {
     return { overallStatus: 'failed', exitCode: 1 };
   }
 
-  const hasOmitted = checks.some((c) => c.status === 'omitted');
+  // Lo omitido por alcance (HU-078, D5) no bloquea: el informe lo lista, pero no cambia el resultado.
+  const hasOmitted = checks.some((c) => c.status === 'omitted' && !c.skippedByScope);
   if (hasOmitted) {
     // En modo quick, los omitidos se tratan como advertencia no bloqueante
     if (mode === 'quick') {
@@ -416,6 +426,83 @@ export function computeOverallStatus(checks, mode) {
   }
 
   return { overallStatus: 'ok', exitCode: 0 };
+}
+
+/**
+ * Valida el contenido de perf-budget.json (HU-078, D7). Un archivo inválido produce una advertencia,
+ * nunca un error: los presupuestos son informativos.
+ * @param {string | null | undefined} jsonText
+ * @returns {{ budget: { groups: Record<string, number>, total: Record<string, number> } | null, warning?: string }}
+ */
+export function parsePerfBudget(jsonText) {
+  if (jsonText === null || jsonText === undefined) {
+    return { budget: null, warning: 'No se encontró scripts/ci/perf-budget.json; se omiten los presupuestos.' };
+  }
+  let data;
+  try {
+    data = JSON.parse(jsonText);
+  } catch {
+    return { budget: null, warning: 'scripts/ci/perf-budget.json no es JSON válido; se omiten los presupuestos.' };
+  }
+  const isPositive = (value) => typeof value === 'number' && Number.isFinite(value) && value > 0;
+  const isBudgetMap = (value) =>
+    value !== null &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    Object.keys(value).length > 0 &&
+    Object.values(value).every(isPositive);
+  if (!data || !isBudgetMap(data.groups) || !isBudgetMap(data.total)) {
+    return {
+      budget: null,
+      warning:
+        'scripts/ci/perf-budget.json tiene una forma inválida (groups y total deben ser mapas de segundos positivos); se omiten los presupuestos.',
+    };
+  }
+  return { budget: { groups: data.groups, total: data.total } };
+}
+
+/**
+ * Calcula los tiempos por grupo contra sus presupuestos. Solo informa: no cambia el estado global.
+ * Con --repeat-scope all el presupuesto de integración y E2E se multiplica por las pasadas.
+ * @param {Array<{ parallelGroup?: string, durationMs?: number }>} checks
+ * @param {{ groups: Record<string, number>, total: Record<string, number> } | null} budget
+ * @param {{ mode: string, repeat?: number, repeatScope?: string, totalDurationMs?: number }} options
+ */
+export function computeTimings(checks, budget, options) {
+  const repeat = options.repeat || 1;
+  const scaled = new Set(['integracion', 'e2e']);
+  const byGroup = new Map();
+  for (const check of checks) {
+    if (!check.parallelGroup) continue;
+    byGroup.set(check.parallelGroup, (byGroup.get(check.parallelGroup) || 0) + (check.durationMs || 0));
+  }
+
+  const warnings = [];
+  const groups = PARALLEL_GROUP_ORDER.filter((id) => byGroup.has(id)).map((id) => {
+    const durationMs = byGroup.get(id);
+    const seconds = budget?.groups[id];
+    const factor = options.repeatScope === 'all' && scaled.has(id) ? repeat : 1;
+    const budgetMs = seconds ? seconds * 1000 * factor : null;
+    const exceededBudget = budgetMs !== null && durationMs > budgetMs;
+    if (exceededBudget) {
+      warnings.push(
+        `El grupo '${id}' tardó ${(durationMs / 1000).toFixed(1)}s y su presupuesto es ${(budgetMs / 1000).toFixed(0)}s.`,
+      );
+    }
+    return { id, durationMs, budgetMs, exceededBudget };
+  });
+
+  const totalSeconds = budget?.total[options.mode];
+  const totalBudgetMs = totalSeconds ? totalSeconds * 1000 : null;
+  const totalDurationMs = options.totalDurationMs ?? null;
+  const exceededTotal =
+    totalBudgetMs !== null && totalDurationMs !== null && totalDurationMs > totalBudgetMs;
+  if (exceededTotal) {
+    warnings.push(
+      `El modo '${options.mode}' tardó ${(totalDurationMs / 1000).toFixed(1)}s y su presupuesto es ${(totalBudgetMs / 1000).toFixed(0)}s.`,
+    );
+  }
+  return { groups, totalBudgetMs, totalDurationMs, exceededTotal, warnings };
 }
 
 /**
@@ -433,6 +520,12 @@ export function createReportJson(data) {
     mode: data.mode,
     clean: Boolean(data.clean),
     repeat: data.repeat || 1,
+    jobs: data.jobs || 1,
+    parallel: (data.jobs || 1) > 1,
+    repeatScope: data.repeatScope || 'all',
+    repeatedTests: data.repeatedTests || [],
+    timings: data.timings || null,
+    timeWarnings: data.timings?.warnings || [],
     cleanWorkingTree: Boolean(data.cleanWorkingTree),
     startedAt: data.startedAt,
     completedAt: data.completedAt,
@@ -473,6 +566,15 @@ export function formatReportTable(report) {
     }
   }
 
+  const timeWarnings = report.timeWarnings || [];
+  if (timeWarnings.length > 0) {
+    lines.push('----------------------------------------------------------------------');
+    lines.push(' Advertencias de tiempo (no afectan el resultado)');
+    for (const warning of timeWarnings) {
+      lines.push(`  ⚠ ${warning}`);
+    }
+  }
+
   lines.push('----------------------------------------------------------------------');
   lines.push(` Resultado global: ${report.overallStatus.toUpperCase()} (Código: ${report.exitCode})`);
   lines.push('======================================================================');
@@ -502,7 +604,8 @@ export function generateDisposableDbName() {
  */
 export function isSafeToDropDatabase(dbName) {
   if (!dbName || typeof dbName !== 'string') return false;
-  return /^sigoa_verify_[0-9a-f]{8}_test$/.test(dbName.trim());
+  // También las bases derivadas por la integración paralela: plantilla (_tpl) y workers (_wN).
+  return /^sigoa_verify_[0-9a-f]{8}(_tpl|_w[0-9]+)?_test$/.test(dbName.trim());
 }
 
 /**
@@ -581,18 +684,170 @@ export function markDatabaseStepsOmitted(checks, reason) {
   });
 }
 
+/** Pasos que se pueden omitir por alcance cuando el diff no toca sus archivos (HU-078, D4). */
+export const SCOPE_SKIPPABLE_STEP_IDS = ['docker-smoke', 'pdf-stability'];
+
+/** Motivo que se registra en el informe para lo omitido por alcance. */
+export const SCOPE_SKIP_REASON = 'omitido por alcance';
+
+/**
+ * Rutas que activan docker-smoke y pdf-stability: imágenes, compose, despliegue, lockfile y PDF.
+ * @param {string} file ruta con separadores / (relativa a la raíz del repositorio)
+ * @returns {boolean}
+ */
+export function touchesImageOrPdfScope(file) {
+  const baseName = file.slice(file.lastIndexOf('/') + 1);
+  return (
+    baseName.startsWith('Dockerfile') ||
+    baseName.startsWith('docker-compose') ||
+    file.startsWith('deploy/') ||
+    file === 'pnpm-lock.yaml' ||
+    file === 'scripts/ci/smoke-image.sh' ||
+    file.startsWith('apps/backend/src/shared/pdf/') ||
+    file.startsWith('apps/backend/src/shared/branding/') ||
+    file === 'docs/despliegue.md'
+  );
+}
+
+/**
+ * Decide qué pasos se omiten por alcance. Nunca omite en el CI ni con --force-all, ni cuando no se
+ * pudo calcular el diff (changedFiles null o indefinido): ante la duda se ejecuta todo.
+ * @param {string[] | null | undefined} changedFiles
+ * @param {{ ci?: boolean, forceAll?: boolean }} [options]
+ * @returns {{ skipIds: string[], reason: string }}
+ */
+export function decideScopeSkips(changedFiles, options = {}) {
+  if (options.ci || options.forceAll || !Array.isArray(changedFiles)) {
+    return { skipIds: [], reason: SCOPE_SKIP_REASON };
+  }
+  const touches = changedFiles
+    .map((file) => file.trim().replace(/\\/g, '/'))
+    .filter(Boolean)
+    .some(touchesImageOrPdfScope);
+  return { skipIds: touches ? [] : [...SCOPE_SKIPPABLE_STEP_IDS], reason: SCOPE_SKIP_REASON };
+}
+
+/** Máximo de archivos de prueba que se repiten con --repeat-scope changed (HU-078, D3). */
+export const MAX_REPEATED_TEST_FILES = 10;
+
+const REPEATABLE_STEP_IDS = new Set(['integration-tests', 'pdf-stability', 'e2e']);
+const TEST_FILE_REGEX = /\.(test|spec)\.(ts|tsx|mjs|js)$/;
+
+/**
+ * Lee --repeat de los argumentos: entero positivo (1 por defecto).
+ * @param {string[]} args
+ * @returns {number}
+ */
+export function parseRepeat(args) {
+  const index = args.indexOf('--repeat');
+  if (index === -1) return 1;
+  const raw = args[index + 1];
+  if (raw === undefined || !/^[0-9]+$/.test(raw) || Number(raw) < 1) {
+    throw new Error(`--repeat debe ser un entero positivo (recibido: '${raw ?? ''}').`);
+  }
+  return Number(raw);
+}
+
+/**
+ * Lee --repeat-scope: 'changed' (por defecto cuando hay repeticiones) o 'all' (HU-078, D1).
+ * @param {string[]} args
+ * @param {number} repeat
+ * @returns {'changed' | 'all'}
+ */
+export function parseRepeatScope(args, repeat) {
+  const index = args.indexOf('--repeat-scope');
+  if (index === -1) return repeat > 1 ? 'changed' : 'all';
+  const raw = args[index + 1];
+  if (raw !== 'changed' && raw !== 'all') {
+    throw new Error(`--repeat-scope debe ser 'changed' o 'all' (recibido: '${raw ?? ''}').`);
+  }
+  return raw;
+}
+
+/**
+ * Selecciona las pruebas nuevas o modificadas a partir de `git diff --name-status`.
+ * Descarta los borrados; de un renombrado toma la ruta nueva. Si hay más de `max`, conserva las
+ * primeras por orden alfabético y lo indica en `truncated`.
+ * @param {string} nameStatusOutput
+ * @param {number} [max=MAX_REPEATED_TEST_FILES]
+ * @returns {{ files: string[], total: number, truncated: boolean }}
+ */
+export function selectChangedTests(nameStatusOutput, max = MAX_REPEATED_TEST_FILES) {
+  const files = new Set();
+  for (const line of (nameStatusOutput || '').split(/\r?\n/)) {
+    const parts = line.split('\t');
+    const status = parts[0]?.trim();
+    if (!status) continue;
+    const kind = status[0];
+    if (kind === 'D') continue;
+    const file = kind === 'R' || kind === 'C' ? parts[2] : parts[1];
+    if (!file) continue;
+    const normalized = file.trim().replace(/\\/g, '/');
+    if (TEST_FILE_REGEX.test(normalized)) files.add(normalized);
+  }
+  const sorted = [...files].sort();
+  return { files: sorted.slice(0, max), total: sorted.length, truncated: sorted.length > max };
+}
+
+/**
+ * Archivos que debe repetir cada paso repetible, con rutas relativas a su paquete.
+ * @param {string} stepId
+ * @param {string[]} changedTests
+ * @returns {string[]}
+ */
+export function repeatTargetsFor(stepId, changedTests) {
+  const backend = 'apps/backend/';
+  const frontend = 'apps/frontend/';
+  if (stepId === 'integration-tests') {
+    return changedTests
+      .filter((file) => file.startsWith(backend) && file.endsWith('.integration.test.ts'))
+      .map((file) => file.slice(backend.length));
+  }
+  if (stepId === 'pdf-stability') {
+    return changedTests
+      .filter(
+        (file) =>
+          file.startsWith(backend) &&
+          file.endsWith('.integration.test.ts') &&
+          file.includes('/src/shared/pdf/'),
+      )
+      .map((file) => file.slice(backend.length));
+  }
+  if (stepId === 'e2e') {
+    return changedTests
+      .filter((file) => file.startsWith(`${frontend}e2e/`) && file.endsWith('.spec.ts'))
+      .map((file) => file.slice(frontend.length));
+  }
+  return [];
+}
+
+function quoteArgument(value) {
+  return `"${value}"`;
+}
+
 /**
  * Expande los pasos repetibles (integración, pdf, e2e) según el factor de repetición repeatCount.
+ *
+ * - scope 'all' (por defecto): el paso completo se repite N veces.
+ * - scope 'changed': el paso completo corre una vez y, si hay pruebas nuevas o modificadas que le
+ *   correspondan, esas pruebas corren N-1 veces más (Vitest) o con --repeat-each N-1 (Playwright).
+ *   Sin pruebas que repetir, el paso corre completo una sola vez.
  * @param {Array<{ id: string, name: string, command?: string }>} steps
  * @param {number} [repeatCount=1]
+ * @param {{ scope?: 'changed' | 'all', changedTests?: string[] }} [options]
  * @returns {Array<{ id: string, name: string, command?: string, iteration?: number }>}
  */
-export function planRepeatedSteps(steps, repeatCount = 1) {
-  const repeatableIds = new Set(['integration-tests', 'pdf-stability', 'e2e']);
+export function planRepeatedSteps(steps, repeatCount = 1, options = {}) {
+  const scope = options.scope ?? 'all';
   const result = [];
 
   for (const step of steps) {
-    if (repeatableIds.has(step.id) && repeatCount > 1) {
+    if (!REPEATABLE_STEP_IDS.has(step.id) || repeatCount <= 1) {
+      result.push(step);
+      continue;
+    }
+
+    if (scope === 'all') {
       for (let i = 1; i <= repeatCount; i++) {
         result.push({
           ...step,
@@ -600,8 +855,43 @@ export function planRepeatedSteps(steps, repeatCount = 1) {
           iteration: i,
         });
       }
-    } else {
+      continue;
+    }
+
+    const targets = repeatTargetsFor(step.id, options.changedTests ?? []);
+    if (targets.length === 0) {
       result.push(step);
+      continue;
+    }
+
+    result.push({
+      ...step,
+      name: `${step.name} (Pasada 1 de ${repeatCount})`,
+      iteration: 1,
+    });
+    const quoted = targets.map(quoteArgument).join(' ');
+    if (step.id === 'e2e') {
+      const command = `pnpm --filter frontend exec playwright test --repeat-each ${repeatCount - 1} ${quoted}`;
+      result.push({
+        ...step,
+        name: `${step.name} (Pasadas 2 a ${repeatCount}, solo pruebas nuevas o modificadas)`,
+        iteration: 2,
+        command,
+        parallelCommand: command,
+        repeatedFiles: targets,
+      });
+    } else {
+      const command = `pnpm --filter backend exec vitest run --project integration ${quoted}`;
+      for (let i = 2; i <= repeatCount; i++) {
+        result.push({
+          ...step,
+          name: `${step.name} (Pasada ${i} de ${repeatCount}, solo pruebas nuevas o modificadas)`,
+          iteration: i,
+          command,
+          parallelCommand: command,
+          repeatedFiles: targets,
+        });
+      }
     }
   }
 
@@ -851,6 +1141,313 @@ export function checkWorkflowDrift(
 }
 
 /**
+ * Orden en que se inician los grupos paralelos (HU-078): primero los más pesados.
+ */
+export const PARALLEL_GROUP_ORDER = [
+  'convenciones',
+  'integracion',
+  'e2e',
+  'cobertura',
+  'estaticas',
+  'imagenes',
+];
+
+/**
+ * Grupo paralelo de cada paso del plan. Un paso sin grupo es un error de programación:
+ * así ninguna comprobación nueva queda fuera de la ejecución.
+ */
+const STEP_PARALLEL_GROUP = {
+  'branch-name': 'convenciones',
+  'commit-messages': 'convenciones',
+  'forbidden-files': 'convenciones',
+  'branch-sync': 'convenciones',
+  'env-parity': 'estaticas',
+  'windows-paths': 'estaticas',
+  audit: 'estaticas',
+  format: 'estaticas',
+  lint: 'estaticas',
+  depcruise: 'estaticas',
+  typecheck: 'estaticas',
+  'lockfile-consistency': 'estaticas',
+  'compose-config': 'imagenes',
+  'compose-hardening': 'imagenes',
+  'docker-smoke': 'imagenes',
+  'disposable-db': 'integracion',
+  'integration-tests': 'integracion',
+  'pdf-stability': 'integracion',
+  'test-coverage': 'cobertura',
+  build: 'cobertura',
+  e2e: 'e2e',
+};
+
+/** Grupos cuyos pasos usan base de datos: cada uno con su base desechable (HU-078, D7). */
+export const DATABASE_PARALLEL_GROUPS = new Set(['integracion', 'e2e']);
+
+/** Concurrencia por defecto de los grupos (HU-078, D8). */
+export const DEFAULT_JOBS = 3;
+
+/** Grupos sensibles al tiempo (navegador real): corren solos, sin competir por CPU (HU-078). */
+export const EXCLUSIVE_PARALLEL_GROUPS = ['e2e'];
+
+/**
+ * Reparte los pasos del plan en grupos que se pueden ejecutar en paralelo.
+ * Cada paso queda en exactamente un grupo; dentro del grupo conserva el orden del plan.
+ * @param {Array<{ id: string }>} steps
+ * @returns {Array<{ id: string, steps: Array<{ id: string, parallelGroup: string }> }>}
+ */
+export function planParallelGroups(steps) {
+  const groups = new Map(PARALLEL_GROUP_ORDER.map((id) => [id, []]));
+  for (const [order, step] of steps.entries()) {
+    const groupId = STEP_PARALLEL_GROUP[step.id];
+    if (!groupId) {
+      throw new Error(`El paso '${step.id}' no tiene grupo paralelo asignado.`);
+    }
+    groups.get(groupId).push({ ...step, parallelGroup: groupId, order });
+  }
+  return PARALLEL_GROUP_ORDER.map((id) => ({ id, steps: groups.get(id) })).filter(
+    (group) => group.steps.length > 0,
+  );
+}
+
+/**
+ * Lee --jobs de los argumentos. Debe ser un entero positivo.
+ * @param {string[]} args
+ * @returns {number}
+ */
+export function parseJobs(args) {
+  const index = args.indexOf('--jobs');
+  if (index === -1) return DEFAULT_JOBS;
+  const raw = args[index + 1];
+  if (raw === undefined || !/^[0-9]+$/.test(raw) || Number(raw) < 1) {
+    throw new Error(`--jobs debe ser un entero positivo (recibido: '${raw ?? ''}').`);
+  }
+  return Number(raw);
+}
+
+/**
+ * Cola con concurrencia limitada: ejecuta a lo sumo `jobs` grupos a la vez. Un grupo que falla o lanza
+ * una excepción no detiene a los demás: todos terminan y cada resultado trae su valor o su error.
+ * @template T
+ * @param {Array<{ id: string }>} groups
+ * @param {number} jobs
+ * @param {(group: { id: string }) => Promise<T>} runGroup
+ * @param {{ exclusiveIds?: string[] }} [options] grupos que se ejecutan solos, al final
+ * @returns {Promise<Array<{ group: { id: string }, value?: T, error?: unknown }>>}
+ */
+export async function runGroupsWithLimit(groups, jobs, runGroup, options = {}) {
+  const exclusiveIds = new Set(options.exclusiveIds ?? []);
+  const results = new Array(groups.length);
+  const pooled = groups.filter((group) => !exclusiveIds.has(group.id));
+  const exclusive = groups.filter((group) => exclusiveIds.has(group.id));
+  const runOne = async (group) => {
+    const index = groups.indexOf(group);
+    try {
+      results[index] = { group, value: await runGroup(group) };
+    } catch (error) {
+      results[index] = { group, error };
+    }
+  };
+  let next = 0;
+  const worker = async () => {
+    while (next < pooled.length) {
+      const group = pooled[next];
+      next += 1;
+      await runOne(group);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(jobs, pooled.length) }, worker));
+  // Los grupos exclusivos corren solos, cuando ya no queda ningún otro en ejecución.
+  for (const group of exclusive) await runOne(group);
+  return results;
+}
+
+/**
+ * Entorno de un grupo. Los grupos con base de datos reciben su propia base desechable.
+ * @param {string} groupId
+ * @param {{ baseEnv?: NodeJS.ProcessEnv, dbName?: string }} [options]
+ * @returns {NodeJS.ProcessEnv}
+ */
+export function buildGroupEnvironment(groupId, options = {}) {
+  const baseEnv = options.baseEnv ?? process.env;
+  const env = { ...baseEnv };
+  if (DATABASE_PARALLEL_GROUPS.has(groupId) && options.dbName) {
+    const baseUrl =
+      baseEnv.TEST_DATABASE_URL ||
+      baseEnv.DATABASE_URL ||
+      'postgresql://postgres:postgres@localhost:5432/sigoa_test?schema=public';
+    const url = new URL(baseUrl);
+    url.pathname = `/${options.dbName}`;
+    env.DATABASE_URL = url.toString();
+    env.TEST_DATABASE_URL = url.toString();
+  }
+  return env;
+}
+
+/**
+ * Elige el comando de un paso: en la ejecución por grupos se usa `parallelCommand` (sin repetir
+ * build:shared ni db:generate, que se hacen una vez antes de los grupos).
+ * @param {{ command?: string, parallelCommand?: string }} step
+ * @returns {string | undefined}
+ */
+export function commandForParallelRun(step) {
+  return step.parallelCommand ?? step.command;
+}
+
+const IS_WINDOWS = os.type() === 'Windows_NT';
+
+/** Preparación única antes de los grupos paralelos (HU-078; T-078-13 la completa en el tramo 2). */
+export const PREPARATION_COMMAND = 'pnpm build:shared && pnpm db:generate';
+
+/** Nombre de la plantilla de una base de pruebas (`x_test` → `x_tpl_test`). */
+export function templateNameFor(dbName) {
+  return `${dbName.replace(/_test$/, '')}_tpl_test`;
+}
+
+/**
+ * Plan de la preparación de bases (HU-078, D6): una sola migración de la plantilla de la ejecución y,
+ * después, el clonado de la base y de la plantilla de cada grupo con base de datos.
+ * @param {{ runDbName: string, groupDbNames: string[] }} options
+ * @returns {Array<{ type: 'migrate-template' | 'clone-base' | 'clone-template', create?: string, from?: string, base?: string }>}
+ */
+export function planTemplatePreparation({ runDbName, groupDbNames }) {
+  const runTemplate = templateNameFor(runDbName);
+  const steps = [{ type: 'migrate-template', base: runDbName, create: runTemplate }];
+  for (const groupDb of groupDbNames) {
+    steps.push({ type: 'clone-base', create: groupDb, from: runTemplate });
+    steps.push({ type: 'clone-template', create: templateNameFor(groupDb), from: runTemplate });
+  }
+  return steps;
+}
+
+/** Cliente de administración de PostgreSQL (base `postgres`) usando el pg del backend. */
+async function openAdminClient(baseEnv) {
+  const require = createRequire(path.resolve('apps', 'backend', 'package.json'));
+  const pg = require('pg');
+  const baseUrl =
+    baseEnv.TEST_DATABASE_URL ||
+    baseEnv.DATABASE_URL ||
+    'postgresql://postgres:postgres@localhost:5432/sigoa_test?schema=public';
+  const adminUrl = new URL(baseUrl);
+  adminUrl.pathname = '/postgres';
+  const client = new pg.Client({
+    connectionString: adminUrl.toString(),
+    connectionTimeoutMillis: 5000,
+  });
+  await client.connect();
+  return client;
+}
+
+/**
+ * Crea las bases de los grupos clonando la plantilla migrada. Solo con nombres desechables.
+ * La plantilla clonada conserva el comentario con el hash de migraciones para que la integración
+ * paralela no vuelva a migrar.
+ */
+async function cloneFromTemplate(steps, baseEnv) {
+  const client = await openAdminClient(baseEnv);
+  try {
+    for (const step of steps) {
+      if (step.type === 'migrate-template') continue;
+      if (!isSafeToDropDatabase(step.create) || !isSafeToDropDatabase(step.from)) {
+        throw new Error(`Nombre de base no permitido: ${step.create} desde ${step.from}`);
+      }
+      await client.query(`CREATE DATABASE "${step.create}" TEMPLATE "${step.from}"`);
+      if (step.type === 'clone-template') {
+        const comment = await client.query(
+          "SELECT shobj_description(oid, 'pg_database') AS comment FROM pg_database WHERE datname = $1",
+          [step.from],
+        );
+        const value = comment.rows[0]?.comment;
+        if (value) {
+          await client.query(
+            `COMMENT ON DATABASE "${step.create}" IS '${value.replace(/'/g, "''")}'`,
+          );
+        }
+      }
+    }
+  } finally {
+    await client.end();
+  }
+}
+
+/**
+ * Ejecuta un proceso sin bloquear el ciclo de eventos. Termina el árbol de procesos si vence el plazo.
+ * @returns {Promise<{ ok: boolean, error?: string }>}
+ */
+function runProcess(file, args, { shell, env, timeoutMs }) {
+  return new Promise((resolve) => {
+    const child = spawn(file, args, {
+      shell,
+      env,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      windowsHide: true,
+      detached: !IS_WINDOWS,
+    });
+    let stdout = '';
+    let stderr = '';
+    let timedOut = false;
+    child.stdout.on('data', (chunk) => {
+      stdout = (stdout + chunk).slice(-4000);
+    });
+    child.stderr.on('data', (chunk) => {
+      stderr = (stderr + chunk).slice(-4000);
+    });
+    const timer = setTimeout(() => {
+      timedOut = true;
+      if (IS_WINDOWS) {
+        spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore' });
+      } else {
+        try {
+          process.kill(-child.pid, 'SIGKILL');
+        } catch {
+          child.kill('SIGKILL');
+        }
+      }
+    }, timeoutMs);
+    child.on('error', (error) => {
+      clearTimeout(timer);
+      resolve({ ok: false, error: error.message });
+    });
+    child.on('close', (code) => {
+      clearTimeout(timer);
+      if (timedOut) {
+        resolve({ ok: false, error: `Tiempo agotado (${timeoutMs} ms).` });
+      } else if (code === 0) {
+        resolve({ ok: true });
+      } else {
+        resolve({ ok: false, error: (stderr || stdout || `Código de salida ${code}`).slice(-500) });
+      }
+    });
+  });
+}
+
+/**
+ * Elimina las bases desechables de un grupo (principal, plantilla y workers). Solo toca nombres que
+ * cumplen el patrón estricto de isSafeToDropDatabase. Un fallo es una advertencia, no un error.
+ */
+async function dropDisposableDatabases(dbNames, baseEnv) {
+  try {
+    const client = await openAdminClient(baseEnv);
+    try {
+      for (const dbName of dbNames) {
+        const prefix = dbName.replace(/_test$/, '');
+        const found = await client.query('SELECT datname FROM pg_database WHERE datname ~ $1', [
+          `^${prefix}(_tpl|_w[0-9]+)?_test$`,
+        ]);
+        for (const row of found.rows) {
+          if (isSafeToDropDatabase(row.datname)) {
+            await client.query(`DROP DATABASE IF EXISTS "${row.datname}" WITH (FORCE)`);
+          }
+        }
+      }
+    } finally {
+      await client.end();
+    }
+  } catch (error) {
+    console.warn(`Advertencia: no se pudieron eliminar las bases desechables: ${error.message}`);
+  }
+}
+
+/**
  * Función principal CLI
  */
 async function runCli() {
@@ -859,7 +1456,7 @@ async function runCli() {
   const cacheDir = path.resolve('node_modules', '.cache', 'sigoa-verify');
   const reportPath = path.join(cacheDir, 'last-report.json');
 
-  const { execSync, execFileSync } = await import('node:child_process');
+  const { execSync } = await import('node:child_process');
 
   function getGit(cmd) {
     try {
@@ -921,10 +1518,14 @@ async function runCli() {
     mode = args[modeIndex + 1];
   }
 
-  let repeat = 1;
-  const repeatIndex = args.indexOf('--repeat');
-  if (repeatIndex !== -1 && args[repeatIndex + 1]) {
-    repeat = parseInt(args[repeatIndex + 1], 10) || 1;
+  let repeat;
+  let repeatScope;
+  try {
+    repeat = parseRepeat(args);
+    repeatScope = parseRepeatScope(args, repeat);
+  } catch (error) {
+    console.error(`❌ ${error.message}`);
+    process.exit(1);
   }
 
   let only = undefined;
@@ -937,70 +1538,119 @@ async function runCli() {
   const title = args.includes('--title') ? args[args.indexOf('--title') + 1] : undefined;
   const isJson = args.includes('--json');
 
+  let jobs;
+  try {
+    jobs = parseJobs(args);
+  } catch (error) {
+    console.error(`❌ ${error.message}`);
+    process.exit(1);
+  }
+
   const startedAt = new Date().toISOString();
-  console.log(`\nIniciando verificación local de PR (Modo: ${mode}, Rama: ${currentBranch})...\n`);
+  console.log(
+    `\nIniciando verificación local de PR (Modo: ${mode}, Rama: ${currentBranch}, Grupos en paralelo: ${jobs})...\n`,
+  );
 
   const rawPlan = buildExecutionPlan(mode, { only, baseBranch });
-  const plan = planRepeatedSteps(rawPlan, repeat);
-  const executedChecks = [];
+  const changedTests =
+    repeat > 1 && repeatScope === 'changed'
+      ? selectChangedTests(getGit(`git -c core.quotepath=false diff --name-status ${baseBranch}...HEAD`))
+      : { files: [], total: 0, truncated: false };
+  if (changedTests.truncated) {
+    console.warn(
+      `Advertencia: hay ${changedTests.total} pruebas nuevas o modificadas; se repiten solo las primeras ${MAX_REPEATED_TEST_FILES} por orden alfabético.`,
+    );
+  }
+  const forceAll = args.includes('--force-all');
+  let changedFilesForScope = null;
+  try {
+    changedFilesForScope = execSync(`git -c core.quotepath=false diff --name-only ${baseBranch}...HEAD`, {
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+    })
+      .split(/\r?\n/)
+      .filter(Boolean);
+  } catch {
+    changedFilesForScope = null;
+  }
+  const scopeDecision = decideScopeSkips(changedFilesForScope, {
+    ci: Boolean(process.env.CI),
+    forceAll,
+  });
+  const plan = planRepeatedSteps(rawPlan, repeat, {
+    scope: repeatScope,
+    changedTests: changedTests.files,
+  }).map((step) =>
+    scopeDecision.skipIds.includes(step.id) ? { ...step, skippedByScope: true } : step,
+  );
+  const groups = planParallelGroups(plan);
+  const results = new Map();
 
-  for (const check of plan) {
+  // Una base desechable por grupo con base de datos (D7).
+  const dbNameByGroup = new Map(
+    groups
+      .filter(
+        (group) =>
+          DATABASE_PARALLEL_GROUPS.has(group.id) && group.steps.some((step) => !step.skippedByScope),
+      )
+      .map((group) => [group.id, generateDisposableDbName()]),
+  );
+
+  async function runStep(check, env) {
     const checkStart = Date.now();
-    process.stdout.write(`• Ejecutando ${check.name}... `);
+    const finish = (status, extra = {}) => {
+      const result = {
+        ...check,
+        status,
+        durationMs: Date.now() - checkStart,
+        finishedAt: new Date().toISOString(),
+        ...extra,
+      };
+      const icon = status === 'ok' ? '✔' : '✖';
+      console.log(
+        `${icon} [${check.parallelGroup ?? 'preparacion'}] ${check.name} (${(result.durationMs / 1000).toFixed(1)}s)`,
+      );
+      return result;
+    };
+
+    if (check.skippedByScope) {
+      const result = {
+        ...check,
+        status: 'omitted',
+        durationMs: 0,
+        reason: SCOPE_SKIP_REASON,
+      };
+      console.log(`⚠ [${check.parallelGroup}] ${check.name} (${SCOPE_SKIP_REASON})`);
+      return result;
+    }
 
     // Verificaciones internas puras
     if (check.id === 'branch-name') {
       const res = validateBranchName(currentBranch);
-      const durationMs = Date.now() - checkStart;
-      if (!res.valid) {
-        console.log('✖');
-        executedChecks.push({ ...check, status: 'failed', durationMs, error: res.error });
-      } else {
-        console.log('✔');
-        executedChecks.push({ ...check, status: 'ok', durationMs });
-      }
-      continue;
+      return res.valid ? finish('ok') : finish('failed', { error: res.error });
     }
 
     if (check.id === 'commit-messages') {
       const commitLog = getGit(`git log ${baseBranch}..HEAD --pretty=format:"%B---COMMIT---"`);
-      const rawCommits = commitLog.split('---COMMIT---').map((c) => c.trim()).filter(Boolean);
-      let failed = false;
-      let errorMsg = '';
-
+      const rawCommits = commitLog
+        .split('---COMMIT---')
+        .map((c) => c.trim())
+        .filter(Boolean);
       for (const commitMsg of rawCommits) {
         const val = validateCommitMessage(commitMsg);
-        if (!val.valid) {
-          failed = true;
-          errorMsg = val.violations.join('; ');
-          break;
-        }
+        if (!val.valid) return finish('failed', { error: val.violations.join('; ') });
       }
-
-      const durationMs = Date.now() - checkStart;
-      if (failed) {
-        console.log('✖');
-        executedChecks.push({ ...check, status: 'failed', durationMs, error: errorMsg });
-      } else {
-        console.log('✔');
-        executedChecks.push({ ...check, status: 'ok', durationMs });
-      }
-      continue;
+      return finish('ok');
     }
 
     if (check.id === 'forbidden-files') {
       const changedFilesRaw = getGit(`git diff --name-only ${baseBranch}...HEAD`);
-      const changedFiles = changedFilesRaw.split('\n').map((f) => f.trim()).filter(Boolean);
+      const changedFiles = changedFilesRaw
+        .split('\n')
+        .map((f) => f.trim())
+        .filter(Boolean);
       const res = validateForbiddenFiles(changedFiles);
-      const durationMs = Date.now() - checkStart;
-      if (!res.valid) {
-        console.log('✖');
-        executedChecks.push({ ...check, status: 'failed', durationMs, error: res.violations.join('; ') });
-      } else {
-        console.log('✔');
-        executedChecks.push({ ...check, status: 'ok', durationMs });
-      }
-      continue;
+      return res.valid ? finish('ok') : finish('failed', { error: res.violations.join('; ') });
     }
 
     if (check.id === 'branch-sync') {
@@ -1008,106 +1658,181 @@ async function runCli() {
       const behindCount = parseInt(behindRaw, 10) || 0;
       const mergeTreeRes = getGit(`git merge-tree --write-tree HEAD ${baseBranch}`);
       const parseConflict = parseMergeTreeOutput(mergeTreeRes, 0);
-
-      const syncRes = checkBranchSync({
-        behindCount,
-        hasConflict: parseConflict.hasConflict,
-      });
-
-      const durationMs = Date.now() - checkStart;
-      if (!syncRes.valid) {
-        console.log('✖');
-        executedChecks.push({ ...check, status: 'failed', durationMs, error: syncRes.error });
-      } else {
-        console.log('✔');
-        executedChecks.push({
-          ...check,
-          status: 'ok',
-          durationMs,
-          reason: syncRes.warning,
-        });
-      }
-      continue;
+      const syncRes = checkBranchSync({ behindCount, hasConflict: parseConflict.hasConflict });
+      return syncRes.valid
+        ? finish('ok', { reason: syncRes.warning })
+        : finish('failed', { error: syncRes.error });
     }
 
     // Ejecución de script de shell (.sh) mediante bash resuelto
     if (check.script) {
-      try {
-        const bashBinary = resolveBashPath();
-        execFileSync(bashBinary, [check.script, ...(check.args || [])], {
-          stdio: ['pipe', 'pipe', 'pipe'],
-          timeout: check.timeoutMs || 120_000,
-        });
-        const durationMs = Date.now() - checkStart;
-        console.log('✔');
-        executedChecks.push({
-          ...check,
-          status: 'ok',
-          durationMs,
-          finishedAt: new Date().toISOString(),
-        });
-      } catch (err) {
-        const durationMs = Date.now() - checkStart;
-        console.log('✖');
-        executedChecks.push({
-          ...check,
-          status: 'failed',
-          durationMs,
-          error: (err.stderr || err.message || '').toString().slice(0, 500),
-          finishedAt: new Date().toISOString(),
-        });
-      }
-      continue;
+      const outcome = await runProcess(
+        resolveBashPath(),
+        [check.script, ...(check.args || [])],
+        { shell: false, env, timeoutMs: check.timeoutMs || 120_000 },
+      );
+      return outcome.ok ? finish('ok') : finish('failed', { error: outcome.error });
     }
 
     // Comandos de shell externos
-    if (check.command) {
-      try {
-        execSync(check.command, {
-          stdio: ['pipe', 'pipe', 'pipe'],
-          timeout: check.timeoutMs || 120_000,
-        });
-        const durationMs = Date.now() - checkStart;
-        console.log('✔');
-        executedChecks.push({
-          ...check,
-          status: 'ok',
-          durationMs,
-          finishedAt: new Date().toISOString(),
-        });
-      } catch (err) {
-        const durationMs = Date.now() - checkStart;
-        console.log('✖');
-        executedChecks.push({
-          ...check,
-          status: 'failed',
-          durationMs,
-          error: (err.stderr || err.message || '').toString().slice(0, 500),
-          finishedAt: new Date().toISOString(),
-        });
-      }
-      continue;
+    const command = commandForParallelRun(check);
+    if (command) {
+      const outcome = await runProcess(command, [], {
+        shell: true,
+        env,
+        timeoutMs: check.timeoutMs || 120_000,
+      });
+      return outcome.ok ? finish('ok') : finish('failed', { error: outcome.error });
     }
 
-    // Default pass
-    const durationMs = Date.now() - checkStart;
-    console.log('✔');
-    executedChecks.push({
-      ...check,
-      status: 'ok',
-      durationMs,
-      finishedAt: new Date().toISOString(),
+    return finish('ok');
+  }
+
+  async function runGroup(group) {
+    const env = buildGroupEnvironment(group.id, {
+      dbName: dbNameByGroup.get(group.id),
     });
+    for (const check of group.steps) {
+      results.set(check, await runStep(check, env));
+    }
+  }
+
+  const runDbNames = [];
+  let executedChecks = [];
+  try {
+    // Preparación única antes de los grupos: los pasos usan el resultado sin repetirla.
+    const needsPreparation = groups.some(
+      (g) =>
+        g.id !== 'convenciones' && g.id !== 'imagenes' && g.steps.some((step) => !step.skippedByScope),
+    );
+    let preparation;
+    if (needsPreparation) {
+      preparation = await runStep(
+        {
+          id: 'workspace-preparation',
+          name: 'Preparación (build:shared y db:generate)',
+          group: 'calidad',
+          command: PREPARATION_COMMAND,
+          timeoutMs: 180_000,
+          actionSuggestion: 'Corrige los errores de compilación de @sigoa/shared o de Prisma.',
+        },
+        process.env,
+      );
+    }
+
+    // Migración única: una plantilla de la ejecución de la que se clonan las bases de los grupos.
+    let templatePreparation;
+    if (preparation?.status !== 'failed' && dbNameByGroup.size > 0) {
+      const templateStart = Date.now();
+      const check = {
+        id: 'template-preparation',
+        name: 'Plantilla de base de datos migrada una sola vez',
+        group: 'calidad',
+        actionSuggestion: 'Revisa la conexión a PostgreSQL y las migraciones de Prisma.',
+      };
+      let error;
+      try {
+        const runDbName = generateDisposableDbName();
+        runDbNames.push(runDbName);
+        const steps = planTemplatePreparation({
+          runDbName,
+          groupDbNames: [...dbNameByGroup.values()],
+        });
+        const env = buildGroupEnvironment('integracion', { dbName: runDbName });
+        const migrated = await runProcess(
+          `pnpm --filter backend exec tsx src/test/db/prepare-test-database.ts --template "${env.TEST_DATABASE_URL}"`,
+          [],
+          { shell: true, env, timeoutMs: 180_000 },
+        );
+        if (!migrated.ok) throw new Error(migrated.error);
+        await cloneFromTemplate(steps, process.env);
+      } catch (cause) {
+        error = cause instanceof Error ? cause.message : String(cause);
+      }
+      templatePreparation = {
+        ...check,
+        status: error ? 'failed' : 'ok',
+        durationMs: Date.now() - templateStart,
+        finishedAt: new Date().toISOString(),
+        ...(error ? { error } : {}),
+      };
+      console.log(
+        `${error ? '✖' : '✔'} [preparacion] ${check.name} (${(templatePreparation.durationMs / 1000).toFixed(1)}s)`,
+      );
+    }
+
+    if (preparation?.status === 'failed' || templatePreparation?.status === 'failed') {
+      for (const group of groups) {
+        for (const check of group.steps) {
+          results.set(check, {
+            ...check,
+            status: 'omitted',
+            durationMs: 0,
+            reason: 'No se ejecutó: falló la preparación.',
+          });
+        }
+      }
+    } else {
+      const outcomes = await runGroupsWithLimit(groups, jobs, runGroup, {
+        exclusiveIds: EXCLUSIVE_PARALLEL_GROUPS,
+      });
+      for (const outcome of outcomes) {
+        if (!outcome.error) continue;
+        for (const check of outcome.group.steps) {
+          if (!results.has(check)) {
+            results.set(check, {
+              ...check,
+              status: 'failed',
+              durationMs: 0,
+              error: `El grupo '${outcome.group.id}' terminó con una excepción: ${
+                outcome.error instanceof Error ? outcome.error.message : String(outcome.error)
+              }`,
+            });
+          }
+        }
+      }
+    }
+
+    executedChecks = [
+      ...(preparation ? [preparation] : []),
+      ...(templatePreparation ? [templatePreparation] : []),
+      ...[...results.values()].sort((a, b) => a.order - b.order),
+    ];
+  } finally {
+    await dropDisposableDatabases([...dbNameByGroup.values(), ...runDbNames], process.env);
   }
 
   const completedAt = new Date().toISOString();
+  let budgetText = null;
+  try {
+    budgetText = fs.readFileSync(
+      path.join(path.dirname(fileURLToPath(import.meta.url)), 'perf-budget.json'),
+      'utf-8',
+    );
+  } catch {
+    budgetText = null;
+  }
+  const parsedBudget = parsePerfBudget(budgetText);
+  if (parsedBudget.warning) console.warn(`Advertencia: ${parsedBudget.warning}`);
+  const timings = computeTimings(executedChecks, parsedBudget.budget, {
+    mode,
+    repeat,
+    repeatScope,
+    totalDurationMs: new Date(completedAt).getTime() - new Date(startedAt).getTime(),
+  });
+  if (parsedBudget.warning) timings.warnings.unshift(parsedBudget.warning);
+
   const reportObj = createReportJson({
+    timings,
+    jobs,
     branch: currentBranch,
     headSha: currentHeadSha,
     baseSha: baseBranch,
     mode,
     clean: args.includes('--clean'),
     repeat,
+    repeatScope,
+    repeatedTests: changedTests.files,
     cleanWorkingTree: isTreeClean,
     startedAt,
     completedAt,

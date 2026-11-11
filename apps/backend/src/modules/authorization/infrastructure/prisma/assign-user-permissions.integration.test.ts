@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { useTestDatabase } from '../../../../test/db/use-test-database.js';
 import { PrismaUnitOfWork } from '../../../../shared/prisma/prisma-unit-of-work.js';
 import { createPrismaAuditServices } from '../../../../shared/prisma/create-prisma-audit-services.js';
-import { seedAuthorization } from '../../../../test/factories/authorization.js';
+import { seedAuthorizationFast } from '../../../../test/factories/authorization.js';
 import { PermissionAuthorizer } from '../../application/permission-authorizer.js';
 import { AssignUserPermissionsUseCase } from '../../application/assign-user-permissions.js';
 import { UserAccessAssembler } from '../../application/user-access-assembler.js';
@@ -22,7 +22,7 @@ describe('AssignUserPermissions transactions', () => {
   const prisma = getPrisma();
 
   async function setup() {
-    await seedAuthorization(prisma);
+    await seedAuthorizationFast(prisma);
     const administrator = await prisma.role.findUniqueOrThrow({ where: { code: 'ADMINISTRATOR' } });
     const actor = await prisma.user.create({
       data: {
@@ -146,7 +146,7 @@ describe('AssignUserPermissions transactions', () => {
   });
 
   it('serializes concurrent replacements for the same user', async () => {
-    await seedAuthorization(prisma);
+    await seedAuthorizationFast(prisma);
     const user = await prisma.user.create({
       data: {
         names: 'Prueba',

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useTestDatabase } from '../../../../test/db/use-test-database.js';
 import { PrismaUnitOfWork } from '../../../../shared/prisma/prisma-unit-of-work.js';
-import { seedAuthorization } from '../../../../test/factories/authorization.js';
+import { seedAuthorizationFast } from '../../../../test/factories/authorization.js';
 import { PrismaUserListReader } from './prisma-user-list-reader.js';
 
 describe('PrismaUserListReader Integration (PostgreSQL real, CA4, RS-020, RNF-030)', () => {
@@ -11,7 +11,7 @@ describe('PrismaUserListReader Integration (PostgreSQL real, CA4, RS-020, RNF-03
   const reader = new PrismaUserListReader(uow);
 
   beforeEach(async () => {
-    await seedAuthorization(prisma);
+    await seedAuthorizationFast(prisma);
   });
 
   async function getRoleId(code: string): Promise<string> {

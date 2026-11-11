@@ -10,7 +10,7 @@ import { createPrismaAuditServices } from '../../../../shared/prisma/create-pris
 import { PrismaAuditChainReader } from '../../../../shared/prisma/prisma-audit-chain-reader.js';
 import { AuditChainVerifier } from '../../../../shared/audit/audit-chain-verifier.js';
 import { InMemoryEmailSender } from '../../../../shared/email/in-memory-email-sender.js';
-import { seedAuthorization } from '../../../../test/factories/authorization.js';
+import { seedAuthorizationFast } from '../../../../test/factories/authorization.js';
 import { createAuthenticatedActor } from '../../../../test/http/authenticated-actor.js';
 import { seedParameterDefaults } from '../prisma/seed/parameter-seed.js';
 
@@ -41,7 +41,7 @@ describe('POST /parameters HTTP Routes Integration (PostgreSQL real, HU-011, T-0
 
   beforeEach(async () => {
     emailSender.clear();
-    await seedAuthorization(prisma);
+    await seedAuthorizationFast(prisma);
     await seedParameterDefaults(prisma);
     await prisma.semester.createMany({
       data: [

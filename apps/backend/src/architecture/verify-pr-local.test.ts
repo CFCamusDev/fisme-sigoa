@@ -626,3 +626,891 @@ describe('verify-pr-local pure logic (T-002-22 / G1)', () => {
     });
   });
 });
+
+describe('verify-pr-local parallel groups and scheduler (T-078-12)', () => {
+  const {
+    planParallelGroups,
+    parseJobs,
+    runGroupsWithLimit,
+    buildGroupEnvironment,
+    commandForParallelRun,
+    PARALLEL_GROUP_ORDER,
+    DATABASE_PARALLEL_GROUPS,
+    DEFAULT_JOBS,
+  } = verifyPr;
+  const repoRootDir = path.resolve(__dirname, '../../../../');
+
+  type Step = { id: string; name: string; command?: string; parallelGroup?: string };
+  type Group = { id: string; steps: Step[] };
+
+  const flushMicrotasks = () => new Promise<void>((resolve) => setImmediate(resolve));
+
+  describe('planParallelGroups', () => {
+    it.each(['quick', 'standard', 'full'] as const)(
+      'schedules every ci check in exactly one group (%s)',
+      (mode) => {
+        const plan: Step[] = planRepeatedSteps(buildExecutionPlan(mode), 3);
+        const groups: Group[] = planParallelGroups(plan);
+
+        const scheduled = groups.flatMap((group) => group.steps);
+        expect(scheduled).toHaveLength(plan.length);
+        expect(scheduled.map((step) => `${step.id}|${step.name}`).sort()).toEqual(
+          plan.map((step) => `${step.id}|${step.name}`).sort(),
+        );
+        for (const group of groups) {
+          for (const step of group.steps) {
+            expect(step.parallelGroup).toBe(group.id);
+          }
+        }
+      },
+    );
+
+    it('covers every run step of pr-checks.yml with the scheduled checks', () => {
+      const workflow = fs.readFileSync(
+        path.join(repoRootDir, '.github', 'workflows', 'pr-checks.yml'),
+        'utf-8',
+      );
+      const groups: Group[] = planParallelGroups(buildExecutionPlan('full'));
+      const scheduled = groups.flatMap((group) => group.steps);
+
+      const drift = checkWorkflowDrift(workflow, scheduled);
+      expect(drift.unmappedCommands).toEqual([]);
+      expect(drift.inParity).toBe(true);
+    });
+
+    it('keeps the plan order inside each group and the group order of the scheduler', () => {
+      const plan: Step[] = buildExecutionPlan('full');
+      const groups: Group[] = planParallelGroups(plan);
+
+      expect(groups.map((group) => group.id)).toEqual(
+        PARALLEL_GROUP_ORDER.filter((id: string) => groups.some((group) => group.id === id)),
+      );
+      const position = new Map(plan.map((step, index) => [step.id, index]));
+      for (const group of groups) {
+        const indexes = group.steps.map((step) => position.get(step.id)!);
+        expect(indexes).toEqual([...indexes].sort((a, b) => a - b));
+      }
+    });
+
+    it('puts lint, format, typecheck and depcruise together and the database checks apart', () => {
+      const groups: Group[] = planParallelGroups(buildExecutionPlan('full'));
+      const idsOf = (groupId: string) =>
+        groups.find((group) => group.id === groupId)?.steps.map((step) => step.id) ?? [];
+
+      expect(idsOf('estaticas')).toEqual(
+        expect.arrayContaining(['lint', 'format', 'typecheck', 'depcruise']),
+      );
+      expect(idsOf('integracion')).toEqual(['disposable-db', 'integration-tests', 'pdf-stability']);
+      expect(idsOf('e2e')).toEqual(['e2e']);
+      expect(idsOf('cobertura')).toEqual(['test-coverage', 'build']);
+      expect(idsOf('imagenes')).toEqual(
+        expect.arrayContaining(['compose-config', 'compose-hardening', 'docker-smoke']),
+      );
+    });
+
+    it('rejects a step that has no group instead of dropping it', () => {
+      expect(() => planParallelGroups([{ id: 'brand-new-check' }])).toThrow(
+        /brand-new-check.*grupo paralelo/,
+      );
+    });
+  });
+
+  describe('parseJobs', () => {
+    it('defaults to 3 and reads a positive integer', () => {
+      expect(DEFAULT_JOBS).toBe(3);
+      expect(parseJobs(['--mode', 'full'])).toBe(3);
+      expect(parseJobs(['--jobs', '1'])).toBe(1);
+      expect(parseJobs(['--jobs', '6'])).toBe(6);
+    });
+
+    it.each([['0'], ['-1'], ['abc'], ['2.5'], ['']])('rejects --jobs %j', (value) => {
+      expect(() => parseJobs(['--jobs', value])).toThrow(/--jobs debe ser un entero positivo/);
+    });
+
+    it('rejects --jobs without a value', () => {
+      expect(() => parseJobs(['--jobs'])).toThrow(/--jobs debe ser un entero positivo/);
+    });
+  });
+
+  describe('runGroupsWithLimit', () => {
+    const makeGroups = (count: number): Group[] =>
+      Array.from({ length: count }, (_, index) => ({ id: `g${index + 1}`, steps: [] }));
+
+    it('runs at most jobs groups at the same time', async () => {
+      const gates = new Map<string, () => void>();
+      let active = 0;
+      let maxActive = 0;
+      const started: string[] = [];
+
+      const done = runGroupsWithLimit(makeGroups(5), 2, (group: Group) => {
+        active += 1;
+        maxActive = Math.max(maxActive, active);
+        started.push(group.id);
+        return new Promise<string>((resolve) => {
+          gates.set(group.id, () => {
+            active -= 1;
+            resolve(group.id);
+          });
+        });
+      });
+
+      await flushMicrotasks();
+      expect(started).toEqual(['g1', 'g2']);
+
+      gates.get('g1')!();
+      await flushMicrotasks();
+      expect(started).toEqual(['g1', 'g2', 'g3']);
+
+      for (const id of ['g2', 'g3', 'g4', 'g5']) {
+        await flushMicrotasks();
+        gates.get(id)!();
+      }
+      const results = await done;
+
+      expect(maxActive).toBe(2);
+      expect(results.map((result: { value: string }) => result.value)).toEqual([
+        'g1',
+        'g2',
+        'g3',
+        'g4',
+        'g5',
+      ]);
+    });
+
+    it('runs one group at a time with jobs 1', async () => {
+      let active = 0;
+      let maxActive = 0;
+      await runGroupsWithLimit(makeGroups(4), 1, async () => {
+        active += 1;
+        maxActive = Math.max(maxActive, active);
+        await flushMicrotasks();
+        active -= 1;
+      });
+      expect(maxActive).toBe(1);
+    });
+
+    it('does not leave other groups orphaned when one of them throws', async () => {
+      const finished: string[] = [];
+      const results = await runGroupsWithLimit(makeGroups(4), 3, async (group: Group) => {
+        if (group.id === 'g2') throw new Error('group exploded');
+        await flushMicrotasks();
+        finished.push(group.id);
+        return group.id;
+      });
+
+      expect(finished.sort()).toEqual(['g1', 'g3', 'g4']);
+      expect(results).toHaveLength(4);
+      expect(results[1].error).toBeInstanceOf(Error);
+      expect(results[1].value).toBeUndefined();
+      expect(results.filter((result: { error?: unknown }) => !result.error)).toHaveLength(3);
+    });
+
+    it('still lets the report be built when a group failed', async () => {
+      const results = await runGroupsWithLimit(makeGroups(2), 2, async (group: Group) => {
+        if (group.id === 'g1') throw new Error('boom');
+        return 'ok';
+      });
+      const checks = results.map((result: { group: Group; error?: unknown }) => ({
+        id: result.group.id,
+        status: result.error ? 'failed' : 'ok',
+      }));
+
+      const report = createReportJson({ mode: 'full', jobs: 2, checks });
+      expect(report.overallStatus).toBe('failed');
+      expect(report.exitCode).toBe(1);
+      expect(report.checks).toHaveLength(2);
+    });
+
+    it('runs an exclusive group alone, after every other group has finished', async () => {
+      const events: string[] = [];
+      let active = 0;
+      let activeWhenExclusiveStarted = -1;
+
+      const results = await runGroupsWithLimit(
+        makeGroups(4),
+        3,
+        async (group: Group) => {
+          if (group.id === 'g1') activeWhenExclusiveStarted = active;
+          active += 1;
+          events.push(`start:${group.id}`);
+          await flushMicrotasks();
+          events.push(`end:${group.id}`);
+          active -= 1;
+          return group.id;
+        },
+        { exclusiveIds: ['g1'] },
+      );
+
+      expect(activeWhenExclusiveStarted).toBe(0);
+      expect(events.at(-2)).toBe('start:g1');
+      expect(events.slice(0, -2).every((event) => !event.endsWith(':g1'))).toBe(true);
+      expect(results.map((result: { value: string }) => result.value)).toEqual([
+        'g1',
+        'g2',
+        'g3',
+        'g4',
+      ]);
+    });
+
+    it('runs the e2e group exclusively', () => {
+      expect(verifyPr.EXCLUSIVE_PARALLEL_GROUPS).toEqual(['e2e']);
+    });
+
+    it('handles no groups', async () => {
+      expect(await runGroupsWithLimit([], 3, async () => 'x')).toEqual([]);
+    });
+  });
+
+  describe('group environment and disposable databases (D7)', () => {
+    const baseEnv = {
+      TEST_DATABASE_URL: 'postgresql://user:pw@db.local:5433/sigoa_test?schema=public',
+      OTHER: '1',
+    };
+
+    it('gives each database group its own disposable database', () => {
+      const integrationName = generateDisposableDbName();
+      const e2eName = generateDisposableDbName();
+      const integration = buildGroupEnvironment('integracion', {
+        baseEnv,
+        dbName: integrationName,
+      });
+      const e2e = buildGroupEnvironment('e2e', { baseEnv, dbName: e2eName });
+
+      expect(integrationName).not.toBe(e2eName);
+      expect(new URL(integration.DATABASE_URL).pathname).toBe(`/${integrationName}`);
+      expect(integration.TEST_DATABASE_URL).toBe(integration.DATABASE_URL);
+      expect(new URL(e2e.DATABASE_URL).pathname).toBe(`/${e2eName}`);
+      expect(new URL(integration.DATABASE_URL).host).toBe('db.local:5433');
+      expect(new URL(integration.DATABASE_URL).username).toBe('user');
+      expect(integration.OTHER).toBe('1');
+      expect(DATABASE_PARALLEL_GROUPS.has('integracion')).toBe(true);
+      expect(DATABASE_PARALLEL_GROUPS.has('cobertura')).toBe(false);
+    });
+
+    it('leaves groups without database untouched', () => {
+      const env = buildGroupEnvironment('estaticas', {
+        baseEnv,
+        dbName: generateDisposableDbName(),
+      });
+      expect(env.TEST_DATABASE_URL).toBe(baseEnv.TEST_DATABASE_URL);
+    });
+
+    it('only drops disposable databases and the template and worker databases derived from them', () => {
+      expect(isSafeToDropDatabase('sigoa_verify_0a1b2c3d_test')).toBe(true);
+      expect(isSafeToDropDatabase('sigoa_verify_0a1b2c3d_tpl_test')).toBe(true);
+      expect(isSafeToDropDatabase('sigoa_verify_0a1b2c3d_w4_test')).toBe(true);
+      expect(isSafeToDropDatabase('sigoa_tpl_test')).toBe(false);
+      expect(isSafeToDropDatabase('sigoa_w1_test')).toBe(false);
+      expect(isSafeToDropDatabase('sigoa_dev')).toBe(false);
+      expect(isSafeToDropDatabase('sigoa_verify_0a1b2c3d')).toBe(false);
+    });
+  });
+
+  describe('report and commands', () => {
+    it('adds jobs and parallel to the report and keeps the status gate working', () => {
+      const report = createReportJson({
+        branch: 'feature/HU-078-pruebas-rapidas',
+        headSha: 'abc1234',
+        baseSha: 'develop',
+        mode: 'full',
+        jobs: 3,
+        cleanWorkingTree: true,
+        startedAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+        checks: [{ id: 'lint', name: 'Lint', status: 'ok' }],
+      });
+
+      expect(report.jobs).toBe(3);
+      expect(report.parallel).toBe(true);
+      expect(report.version).toBe('1.0.0');
+      expect(
+        verifyReportStatus(
+          report,
+          {
+            currentHeadSha: 'abc1234',
+            currentBranch: 'feature/HU-078-pruebas-rapidas',
+            isTreeClean: true,
+            now: new Date(),
+          },
+          { requireMode: 'full' },
+        ).valid,
+      ).toBe(true);
+    });
+
+    it('marks the report as not parallel with one job', () => {
+      const report = createReportJson({ mode: 'quick', jobs: 1, checks: [] });
+      expect(report.jobs).toBe(1);
+      expect(report.parallel).toBe(false);
+    });
+
+    it('does not repeat the shared build or the prisma client generation in the parallel commands', () => {
+      const steps: Array<{ id: string; command?: string; parallelCommand?: string }> =
+        buildExecutionPlan('full');
+      for (const id of ['typecheck', 'test-coverage', 'build', 'e2e']) {
+        const step = steps.find((candidate) => candidate.id === id)!;
+        const parallel = commandForParallelRun(step);
+        expect(parallel).toBeDefined();
+        expect(parallel).not.toBe(step.command);
+        expect(parallel).not.toMatch(/build:shared|db:generate/);
+      }
+      const lint = steps.find((candidate) => candidate.id === 'lint')!;
+      expect(commandForParallelRun(lint)).toBe(lint.command);
+    });
+  });
+});
+
+describe('verify-pr-local template preparation (T-078-13)', () => {
+  const { planTemplatePreparation, templateNameFor, commandForParallelRun } = verifyPr;
+
+  it('migrates the template once before the groups start', () => {
+    const steps = planTemplatePreparation({
+      runDbName: 'sigoa_verify_00000001_test',
+      groupDbNames: ['sigoa_verify_00000002_test', 'sigoa_verify_00000003_test'],
+    });
+
+    const migrations = steps.filter((step: { type: string }) => step.type === 'migrate-template');
+    expect(migrations).toHaveLength(1);
+    expect(steps[0].type).toBe('migrate-template');
+    expect(migrations[0].create).toBe('sigoa_verify_00000001_tpl_test');
+  });
+
+  it('clones the base and the template of every database group from the migrated template', () => {
+    const steps = planTemplatePreparation({
+      runDbName: 'sigoa_verify_00000001_test',
+      groupDbNames: ['sigoa_verify_00000002_test', 'sigoa_verify_00000003_test'],
+    });
+
+    const clones = steps.slice(1) as Array<{ type: string; create: string; from: string }>;
+    expect(clones).toHaveLength(4);
+    expect(clones.every((step) => step.from === 'sigoa_verify_00000001_tpl_test')).toBe(true);
+    expect(clones.map((step) => `${step.type}:${step.create}`)).toEqual([
+      'clone-base:sigoa_verify_00000002_test',
+      'clone-template:sigoa_verify_00000002_tpl_test',
+      'clone-base:sigoa_verify_00000003_test',
+      'clone-template:sigoa_verify_00000003_tpl_test',
+    ]);
+    for (const step of steps as Array<{ create: string }>) {
+      expect(isSafeToDropDatabase(step.create)).toBe(true);
+    }
+  });
+
+  it('only migrates the template when there is no database group', () => {
+    const steps = planTemplatePreparation({
+      runDbName: 'sigoa_verify_00000001_test',
+      groupDbNames: [],
+    });
+    expect(steps).toHaveLength(1);
+  });
+
+  it('derives the template name that the integration global setup expects', () => {
+    expect(templateNameFor('sigoa_verify_0a1b2c3d_test')).toBe('sigoa_verify_0a1b2c3d_tpl_test');
+  });
+
+  it('keeps migrate deploy in the plan for the ci and only checks the status in parallel runs', () => {
+    const step = buildExecutionPlan('standard').find(
+      (check: { id: string }) => check.id === 'disposable-db',
+    );
+    expect(step.command).toContain('prisma migrate deploy');
+    expect(commandForParallelRun(step)).toContain('prisma migrate status');
+  });
+});
+
+describe('verify-pr-local repeat of changed tests (T-078-15)', () => {
+  const {
+    selectChangedTests,
+    repeatTargetsFor,
+    parseRepeat,
+    parseRepeatScope,
+    MAX_REPEATED_TEST_FILES,
+  } = verifyPr;
+
+  const diff = (...lines: string[]) => lines.join('\n');
+
+  describe('selectChangedTests', () => {
+    it('selects added and modified test files for repeat', () => {
+      const result = selectChangedTests(
+        diff(
+          'A\tapps/backend/src/test/db/new-case.integration.test.ts',
+          'M\tapps/frontend/e2e/users.spec.ts',
+          'M\tapps/backend/src/modules/users/application/create-user.test.ts',
+        ),
+      );
+      expect(result.files).toEqual([
+        'apps/backend/src/modules/users/application/create-user.test.ts',
+        'apps/backend/src/test/db/new-case.integration.test.ts',
+        'apps/frontend/e2e/users.spec.ts',
+      ]);
+      expect(result.truncated).toBe(false);
+    });
+
+    it('ignores deleted files and files that are not tests', () => {
+      const result = selectChangedTests(
+        diff(
+          'D\tapps/backend/src/old.integration.test.ts',
+          'M\tapps/backend/src/modules/users/application/create-user.ts',
+          'M\tpackage.json',
+          'M\tapps/backend/src/test/db/reset-database.ts',
+        ),
+      );
+      expect(result).toEqual({ files: [], total: 0, truncated: false });
+    });
+
+    it('takes the new path of a renamed test and ignores a renamed non-test', () => {
+      const result = selectChangedTests(
+        diff(
+          'R087\tapps/backend/src/a.integration.test.ts\tapps/backend/src/b.integration.test.ts',
+          'R100\tapps/backend/src/c.integration.test.ts\tapps/backend/src/c.ts',
+        ),
+      );
+      expect(result.files).toEqual(['apps/backend/src/b.integration.test.ts']);
+    });
+
+    it('returns nothing for a branch without tests or for empty output', () => {
+      expect(selectChangedTests('').files).toEqual([]);
+      expect(selectChangedTests(undefined).files).toEqual([]);
+      expect(selectChangedTests('\n\n').total).toBe(0);
+    });
+
+    it('deduplicates, normalizes separators and keeps paths with spaces', () => {
+      const result = selectChangedTests(
+        diff('M\tapps\\frontend\\e2e\\mi prueba.spec.ts', 'M\tapps/frontend/e2e/mi prueba.spec.ts'),
+      );
+      expect(result.files).toEqual(['apps/frontend/e2e/mi prueba.spec.ts']);
+    });
+
+    it('keeps the first ten files in alphabetical order and reports the truncation', () => {
+      const lines = Array.from(
+        { length: 14 },
+        (_, index) =>
+          `A\tapps/backend/src/case-${String(index).padStart(2, '0')}.integration.test.ts`,
+      );
+      const result = selectChangedTests(diff(...lines.reverse()));
+
+      expect(MAX_REPEATED_TEST_FILES).toBe(10);
+      expect(result.files).toHaveLength(10);
+      expect(result.total).toBe(14);
+      expect(result.truncated).toBe(true);
+      expect(result.files[0]).toBe('apps/backend/src/case-00.integration.test.ts');
+      expect(result.files[9]).toBe('apps/backend/src/case-09.integration.test.ts');
+    });
+  });
+
+  describe('repeatTargetsFor', () => {
+    const changed = [
+      'apps/backend/src/shared/pdf/pdf-generator.integration.test.ts',
+      'apps/backend/src/modules/users/x.integration.test.ts',
+      'apps/backend/src/modules/users/y.test.ts',
+      'apps/frontend/e2e/users.spec.ts',
+      'apps/frontend/src/features/a.test.tsx',
+    ];
+
+    it('maps each repeatable step to its own files relative to the package', () => {
+      expect(repeatTargetsFor('integration-tests', changed)).toEqual([
+        'src/shared/pdf/pdf-generator.integration.test.ts',
+        'src/modules/users/x.integration.test.ts',
+      ]);
+      expect(repeatTargetsFor('pdf-stability', changed)).toEqual([
+        'src/shared/pdf/pdf-generator.integration.test.ts',
+      ]);
+      expect(repeatTargetsFor('e2e', changed)).toEqual(['e2e/users.spec.ts']);
+      expect(repeatTargetsFor('lint', changed)).toEqual([]);
+    });
+  });
+
+  describe('planRepeatedSteps with scope', () => {
+    const steps = [
+      { id: 'env-parity', name: 'Paridad' },
+      { id: 'integration-tests', name: 'Integración', command: 'pnpm integration' },
+      { id: 'pdf-stability', name: 'PDF', command: 'pnpm pdf' },
+      { id: 'e2e', name: 'E2E', command: 'pnpm test:e2e' },
+    ];
+
+    it('repeats only the changed tests and runs the full step once', () => {
+      const planned = planRepeatedSteps(steps, 3, {
+        scope: 'changed',
+        changedTests: [
+          'apps/backend/src/modules/users/x.integration.test.ts',
+          'apps/frontend/e2e/users.spec.ts',
+        ],
+      });
+
+      const integration = planned.filter((s: { id: string }) => s.id === 'integration-tests');
+      expect(integration).toHaveLength(3);
+      expect(integration[0].command).toBe('pnpm integration');
+      expect(integration[1].command).toContain('vitest run --project integration');
+      expect(integration[1].command).toContain('"src/modules/users/x.integration.test.ts"');
+      expect(integration[2].iteration).toBe(3);
+
+      const e2e = planned.filter((s: { id: string }) => s.id === 'e2e');
+      expect(e2e).toHaveLength(2);
+      expect(e2e[0].command).toBe('pnpm test:e2e');
+      expect(e2e[1].command).toContain('playwright test --repeat-each 2 "e2e/users.spec.ts"');
+
+      // pdf-stability no tiene pruebas cambiadas: corre completo una sola vez
+      const pdf = planned.filter((s: { id: string }) => s.id === 'pdf-stability');
+      expect(pdf).toHaveLength(1);
+      expect(pdf[0].iteration).toBeUndefined();
+      expect(planned.filter((s: { id: string }) => s.id === 'env-parity')).toHaveLength(1);
+    });
+
+    it('runs everything once when the branch has no new or modified tests', () => {
+      const planned = planRepeatedSteps(steps, 3, { scope: 'changed', changedTests: [] });
+      expect(planned).toEqual(steps);
+    });
+
+    it('keeps the current behavior with scope all', () => {
+      const planned = planRepeatedSteps(steps, 3, { scope: 'all', changedTests: ['x'] });
+      expect(planned.filter((s: { id: string }) => s.id === 'integration-tests')).toHaveLength(3);
+      expect(planned.filter((s: { id: string }) => s.id === 'e2e')).toHaveLength(3);
+      expect(planned.filter((s: { id: string }) => s.id === 'pdf-stability')).toHaveLength(3);
+    });
+
+    it('does not repeat anything with a single pass', () => {
+      expect(planRepeatedSteps(steps, 1, { scope: 'changed', changedTests: ['a'] })).toEqual(steps);
+    });
+
+    it('records the repeated files in the repeated steps and keeps the ids for scheduling', () => {
+      const planned = planRepeatedSteps(steps, 2, {
+        scope: 'changed',
+        changedTests: ['apps/backend/src/modules/users/x.integration.test.ts'],
+      });
+      const repeated = planned.filter((s: { repeatedFiles?: string[] }) => s.repeatedFiles);
+      expect(repeated).toHaveLength(1);
+      expect(repeated[0].repeatedFiles).toEqual(['src/modules/users/x.integration.test.ts']);
+      expect(() => planParallelGroupsOf(planned)).not.toThrow();
+    });
+  });
+
+  describe('argument parsing', () => {
+    it('reads --repeat and defaults to one pass', () => {
+      expect(parseRepeat([])).toBe(1);
+      expect(parseRepeat(['--repeat', '3'])).toBe(3);
+    });
+
+    it.each([['0'], ['-2'], ['abc'], ['1.5'], ['']])('rejects --repeat %j', (value) => {
+      expect(() => parseRepeat(['--repeat', value])).toThrow(
+        /--repeat debe ser un entero positivo/,
+      );
+    });
+
+    it('rejects --repeat without a value', () => {
+      expect(() => parseRepeat(['--repeat'])).toThrow(/--repeat debe ser un entero positivo/);
+    });
+
+    it('defaults the scope to changed with repetitions and to all otherwise', () => {
+      expect(parseRepeatScope([], 3)).toBe('changed');
+      expect(parseRepeatScope([], 1)).toBe('all');
+      expect(parseRepeatScope(['--repeat-scope', 'all'], 3)).toBe('all');
+      expect(parseRepeatScope(['--repeat-scope', 'changed'], 3)).toBe('changed');
+    });
+
+    it('rejects an unknown or missing --repeat-scope', () => {
+      expect(() => parseRepeatScope(['--repeat-scope', 'some'], 3)).toThrow(/--repeat-scope/);
+      expect(() => parseRepeatScope(['--repeat-scope'], 3)).toThrow(/--repeat-scope/);
+    });
+  });
+});
+
+function planParallelGroupsOf(steps: unknown[]) {
+  return verifyPr.planParallelGroups(steps);
+}
+
+describe('verify-pr-local scope skips (T-078-16)', () => {
+  const { decideScopeSkips, touchesImageOrPdfScope, SCOPE_SKIPPABLE_STEP_IDS, SCOPE_SKIP_REASON } =
+    verifyPr;
+
+  it('omits docker-smoke when the diff is out of scope', () => {
+    const decision = decideScopeSkips([
+      'apps/backend/src/modules/users/application/create-user.ts',
+      'apps/frontend/src/features/users/users-page.tsx',
+      'docs/historias.md',
+    ]);
+    expect(decision.skipIds).toContain('docker-smoke');
+    expect(decision.skipIds).toContain('pdf-stability');
+    expect([...decision.skipIds].sort()).toEqual([...SCOPE_SKIPPABLE_STEP_IDS].sort());
+    expect(decision.reason).toBe('omitido por alcance');
+    expect(SCOPE_SKIP_REASON).toBe('omitido por alcance');
+  });
+
+  it.each([
+    'apps/backend/Dockerfile',
+    'apps/frontend/Dockerfile.dev',
+    'docker-compose.prod.yml',
+    'docker-compose.yml',
+    'deploy/stack.env.example',
+    'pnpm-lock.yaml',
+    'scripts/ci/smoke-image.sh',
+    'apps/backend/src/shared/pdf/pdf-generator.ts',
+    'apps/backend/src/shared/branding/logo-url-resolver.ts',
+    'docs/despliegue.md',
+    'apps\\backend\\Dockerfile',
+  ])('runs the image and pdf checks when the diff touches %s', (file) => {
+    expect(touchesImageOrPdfScope(file.replace(/\\/g, '/'))).toBe(true);
+    expect(decideScopeSkips(['README.md', file]).skipIds).toEqual([]);
+  });
+
+  it('does not treat similar paths as in scope', () => {
+    for (const file of [
+      'apps/backend/src/shared/pdfs/other.ts',
+      'apps/backend/src/modules/pdf/x.ts',
+      'package.json',
+      'scripts/ci/verify-pr-local.mjs',
+      'deployment-notes.md',
+    ]) {
+      expect(touchesImageOrPdfScope(file)).toBe(false);
+    }
+  });
+
+  it('force-all runs everything', () => {
+    expect(decideScopeSkips(['README.md'], { forceAll: true }).skipIds).toEqual([]);
+  });
+
+  it('never omits in the ci', () => {
+    expect(decideScopeSkips(['README.md'], { ci: true }).skipIds).toEqual([]);
+    expect(decideScopeSkips(['README.md'], { ci: true, forceAll: false }).skipIds).toEqual([]);
+  });
+
+  it('runs everything when the diff could not be computed', () => {
+    expect(decideScopeSkips(null).skipIds).toEqual([]);
+    expect(decideScopeSkips(undefined).skipIds).toEqual([]);
+  });
+
+  it('omits both checks for an empty diff', () => {
+    expect(decideScopeSkips([]).skipIds.sort()).toEqual(['docker-smoke', 'pdf-stability']);
+  });
+
+  describe('report and status gate', () => {
+    const skipped = (id: string) => ({
+      id,
+      name: id,
+      status: 'omitted',
+      skippedByScope: true,
+      reason: 'omitido por alcance',
+    });
+
+    it('does not turn a report into omitted when only scope skips are omitted', () => {
+      const checks = [
+        { id: 'lint', status: 'ok' },
+        skipped('docker-smoke'),
+        skipped('pdf-stability'),
+      ];
+      expect(computeOverallStatus(checks, 'full')).toEqual({ overallStatus: 'ok', exitCode: 0 });
+    });
+
+    it('still reports other omitted steps as omitted', () => {
+      const checks = [skipped('docker-smoke'), { id: 'integration-tests', status: 'omitted' }];
+      expect(computeOverallStatus(checks, 'full')).toEqual({
+        overallStatus: 'omitted',
+        exitCode: 2,
+      });
+    });
+
+    it('still fails when a step failed next to a scope skip', () => {
+      const checks = [skipped('docker-smoke'), { id: 'lint', status: 'failed' }];
+      expect(computeOverallStatus(checks, 'full').overallStatus).toBe('failed');
+    });
+
+    it('lists the skipped checks in the report and accepts it for --require full', () => {
+      const report = createReportJson({
+        branch: 'feature/HU-078-pruebas-rapidas',
+        headSha: 'abc1234',
+        baseSha: 'develop',
+        mode: 'full',
+        jobs: 3,
+        cleanWorkingTree: true,
+        startedAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+        checks: [{ id: 'lint', name: 'Lint', status: 'ok' }, skipped('docker-smoke')],
+      });
+      expect(report.overallStatus).toBe('ok');
+      expect(report.checks.find((c: { id: string }) => c.id === 'docker-smoke')).toMatchObject({
+        status: 'omitted',
+        skippedByScope: true,
+      });
+
+      const context = {
+        currentHeadSha: 'abc1234',
+        currentBranch: 'feature/HU-078-pruebas-rapidas',
+        isTreeClean: true,
+        now: new Date(),
+      };
+      expect(verifyReportStatus(report, context, { requireMode: 'full' }).valid).toBe(true);
+
+      // Un informe anterior, sin los campos nuevos, sigue siendo válido.
+      const legacy = {
+        ...report,
+        checks: [{ id: 'lint', name: 'Lint', status: 'ok' }],
+      };
+      delete legacy.repeatScope;
+      delete legacy.repeatedTests;
+      expect(verifyReportStatus(legacy, context, { requireMode: 'full' }).valid).toBe(true);
+    });
+  });
+});
+
+describe('verify-pr-local time budgets (T-078-17)', () => {
+  const { parsePerfBudget, computeTimings, formatReportTable, PARALLEL_GROUP_ORDER } = verifyPr;
+  const repoRootDir = path.resolve(__dirname, '../../../../');
+  const budget = {
+    groups: { estaticas: 100, integracion: 120, e2e: 150 },
+    total: { quick: 60, full: 480 },
+  };
+
+  it('reads the budget file of the repository and covers every group and mode', () => {
+    const text = fs.readFileSync(
+      path.join(repoRootDir, 'scripts', 'ci', 'perf-budget.json'),
+      'utf-8',
+    );
+    const parsed = parsePerfBudget(text);
+
+    expect(parsed.warning).toBeUndefined();
+    expect(Object.keys(parsed.budget.groups).sort()).toEqual([...PARALLEL_GROUP_ORDER].sort());
+    expect(Object.keys(parsed.budget.total).sort()).toEqual(['full', 'quick', 'standard']);
+  });
+
+  it('warns without failing when a group exceeds its budget', () => {
+    const checks = [
+      { id: 'lint', parallelGroup: 'estaticas', status: 'ok', durationMs: 90_000 },
+      { id: 'typecheck', parallelGroup: 'estaticas', status: 'ok', durationMs: 30_000 },
+      { id: 'integration-tests', parallelGroup: 'integracion', status: 'ok', durationMs: 60_000 },
+    ];
+    const timings = computeTimings(checks, budget, { mode: 'full', totalDurationMs: 200_000 });
+
+    const estaticas = timings.groups.find((group: { id: string }) => group.id === 'estaticas');
+    expect(estaticas).toEqual({
+      id: 'estaticas',
+      durationMs: 120_000,
+      budgetMs: 100_000,
+      exceededBudget: true,
+    });
+    expect(
+      timings.groups.find((group: { id: string }) => group.id === 'integracion').exceededBudget,
+    ).toBe(false);
+    expect(timings.warnings).toHaveLength(1);
+    expect(timings.warnings[0]).toMatch(/estaticas.*120\.0s.*100s/);
+
+    const report = createReportJson({ mode: 'full', jobs: 3, checks, timings });
+    expect(report.overallStatus).toBe('ok');
+    expect(report.exitCode).toBe(0);
+    expect(
+      report.timings.groups.find((group: { id: string }) => group.id === 'estaticas')
+        .exceededBudget,
+    ).toBe(true);
+    expect(report.timeWarnings).toHaveLength(1);
+  });
+
+  it('shows the time warnings in the report table', () => {
+    const timings = computeTimings(
+      [{ id: 'lint', parallelGroup: 'estaticas', status: 'ok', durationMs: 200_000 }],
+      budget,
+      { mode: 'full', totalDurationMs: 600_000 },
+    );
+    const report = createReportJson({
+      mode: 'full',
+      branch: 'feature/HU-078-x',
+      headSha: 'abc',
+      jobs: 3,
+      checks: [{ id: 'lint', name: 'Lint', parallelGroup: 'estaticas', status: 'ok' }],
+      timings,
+    });
+
+    const table = formatReportTable(report);
+    expect(table).toContain('Advertencias de tiempo');
+    expect(table).toMatch(/estaticas/);
+    expect(table).toMatch(/modo 'full'/);
+    expect(table).toContain('Resultado global: OK (Código: 0)');
+  });
+
+  it('prints no warning section when everything is within budget', () => {
+    const timings = computeTimings(
+      [{ id: 'lint', parallelGroup: 'estaticas', status: 'ok', durationMs: 1000 }],
+      budget,
+      { mode: 'full', totalDurationMs: 5000 },
+    );
+    const report = createReportJson({
+      mode: 'full',
+      branch: 'b',
+      headSha: 'abc',
+      jobs: 3,
+      checks: [{ id: 'lint', name: 'Lint', status: 'ok' }],
+      timings,
+    });
+    expect(timings.warnings).toEqual([]);
+    expect(formatReportTable(report)).not.toContain('Advertencias de tiempo');
+  });
+
+  it('flags the total of the mode when it exceeds its budget, still as a warning', () => {
+    const timings = computeTimings([], budget, { mode: 'quick', totalDurationMs: 61_000 });
+    expect(timings.exceededTotal).toBe(true);
+    expect(timings.totalBudgetMs).toBe(60_000);
+    expect(timings.warnings[0]).toMatch(/quick/);
+  });
+
+  it('multiplies the integration and e2e budgets by the passes with scope all only', () => {
+    const checks = [
+      { id: 'integration-tests', parallelGroup: 'integracion', status: 'ok', durationMs: 300_000 },
+    ];
+    const all = computeTimings(checks, budget, { mode: 'full', repeat: 3, repeatScope: 'all' });
+    expect(all.groups[0].budgetMs).toBe(360_000);
+    expect(all.groups[0].exceededBudget).toBe(false);
+
+    const changed = computeTimings(checks, budget, {
+      mode: 'full',
+      repeat: 3,
+      repeatScope: 'changed',
+    });
+    expect(changed.groups[0].budgetMs).toBe(120_000);
+    expect(changed.groups[0].exceededBudget).toBe(true);
+  });
+
+  it('reports durations without budget when the budget could not be read', () => {
+    const timings = computeTimings(
+      [{ id: 'lint', parallelGroup: 'estaticas', status: 'ok', durationMs: 5000 }],
+      null,
+      { mode: 'full', totalDurationMs: 9000 },
+    );
+    expect(timings.groups[0]).toEqual({
+      id: 'estaticas',
+      durationMs: 5000,
+      budgetMs: null,
+      exceededBudget: false,
+    });
+    expect(timings.totalBudgetMs).toBeNull();
+    expect(timings.warnings).toEqual([]);
+  });
+
+  describe('parsePerfBudget with a missing or invalid file', () => {
+    it('warns and continues when the file is missing', () => {
+      const parsed = parsePerfBudget(null);
+      expect(parsed.budget).toBeNull();
+      expect(parsed.warning).toMatch(/No se encontró/);
+    });
+
+    it('warns and continues when the file is not JSON', () => {
+      const parsed = parsePerfBudget('{ not json');
+      expect(parsed.budget).toBeNull();
+      expect(parsed.warning).toMatch(/JSON válido/);
+    });
+
+    it.each([
+      ['no groups', '{"total":{"full":1}}'],
+      ['no total', '{"groups":{"e2e":1}}'],
+      ['zero seconds', '{"groups":{"e2e":0},"total":{"full":1}}'],
+      ['negative seconds', '{"groups":{"e2e":-5},"total":{"full":1}}'],
+      ['text seconds', '{"groups":{"e2e":"150"},"total":{"full":1}}'],
+      ['empty groups', '{"groups":{},"total":{"full":1}}'],
+      ['array groups', '{"groups":[1],"total":{"full":1}}'],
+      ['null', 'null'],
+    ])('rejects %s with a warning', (_name, text) => {
+      const parsed = parsePerfBudget(text);
+      expect(parsed.budget).toBeNull();
+      expect(parsed.warning).toMatch(/forma inválida|JSON válido/);
+    });
+
+    it('accepts a valid budget without a warning', () => {
+      const parsed = parsePerfBudget('{"groups":{"e2e":150},"total":{"full":480}}');
+      expect(parsed.warning).toBeUndefined();
+      expect(parsed.budget.groups.e2e).toBe(150);
+    });
+  });
+});

@@ -4,7 +4,7 @@ import { PrismaUnitOfWork } from '../../../../shared/prisma/prisma-unit-of-work.
 import {
   createRoleWithGrants,
   grantRole,
-  seedAuthorization,
+  seedAuthorizationFast,
 } from '../../../../test/factories/authorization.js';
 import { createAuthenticatedActor } from '../../../../test/http/authenticated-actor.js';
 import { PrismaGrantReader } from './prisma-grant-reader.js';
@@ -21,7 +21,7 @@ describe('PrismaGrantReader Integration (PostgreSQL real, HU-006, T-006-11, CA3,
   let userId: string;
 
   beforeEach(async () => {
-    await seedAuthorization(prisma);
+    await seedAuthorizationFast(prisma);
 
     const userActor = await createAuthenticatedActor({
       prisma,

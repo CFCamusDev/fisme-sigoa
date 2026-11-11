@@ -3,7 +3,7 @@ import { useTestDatabase } from '../../../../test/db/use-test-database.js';
 import { PrismaUnitOfWork } from '../../../../shared/prisma/prisma-unit-of-work.js';
 import { PrismaRolePermissionRepository } from './prisma-role-permission-repository.js';
 import { PrismaRoleRepository } from './prisma-role-repository.js';
-import { seedAuthorization } from './seed/authorization-seed.js';
+import { seedAuthorizationFast } from '../../../../test/factories/authorization.js';
 
 describe('PrismaRolePermissionRepository Integration (PostgreSQL real, authorization module, HU-006, T-006-29)', () => {
   const { getPrisma } = useTestDatabase();
@@ -17,7 +17,7 @@ describe('PrismaRolePermissionRepository Integration (PostgreSQL real, authoriza
   let perm3Id: string;
 
   beforeEach(async () => {
-    await seedAuthorization(prisma);
+    await seedAuthorizationFast(prisma);
     const p1 = await prisma.permission.findUniqueOrThrow({ where: { code: 'usuario.ver' } });
     const p2 = await prisma.permission.findUniqueOrThrow({ where: { code: 'usuario.crear' } });
     const p3 = await prisma.permission.findUniqueOrThrow({ where: { code: 'usuario.editar' } });

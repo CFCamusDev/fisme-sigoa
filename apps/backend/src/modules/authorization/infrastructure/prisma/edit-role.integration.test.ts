@@ -3,7 +3,7 @@ import { roleDtoSchema, type UpdateRoleRequest } from '@sigoa/shared';
 import { useTestDatabase } from '../../../../test/db/use-test-database.js';
 import { PrismaUnitOfWork } from '../../../../shared/prisma/prisma-unit-of-work.js';
 import { createPrismaAuditServices } from '../../../../shared/prisma/create-prisma-audit-services.js';
-import { seedAuthorization } from '../../../../test/factories/authorization.js';
+import { seedAuthorizationFast } from '../../../../test/factories/authorization.js';
 import { createAuthenticatedActor } from '../../../../test/http/authenticated-actor.js';
 import { PrismaRoleRepository } from './prisma-role-repository.js';
 import { PrismaRoleReader } from './prisma-role-reader.js';
@@ -27,7 +27,7 @@ describe('EditRoleUseCase Integration (PostgreSQL real, HU-006, T-006-11, RF-006
   let adminActorId: string;
 
   beforeEach(async () => {
-    await seedAuthorization(prisma);
+    await seedAuthorizationFast(prisma);
 
     const admin = await createAuthenticatedActor({
       prisma,

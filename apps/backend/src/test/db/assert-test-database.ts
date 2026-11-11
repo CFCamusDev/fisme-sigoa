@@ -1,3 +1,5 @@
+import { resolveWorkerDatabaseUrl } from './worker-databases.js';
+
 /**
  * Valida que la URL de conexión corresponda estrictamente a una base de datos de prueba
  * cuyo nombre termine en `_test`.
@@ -36,7 +38,11 @@ export function assertTestDatabase(url: string | undefined): string {
   return url;
 }
 
+/**
+ * URL de la base de pruebas. Con varios workers de integración (HU-078) devuelve la base del
+ * worker actual; en el proceso principal y con un solo worker, la base configurada.
+ */
 export function getTestDatabaseUrl(): string {
   const url = process.env['TEST_DATABASE_URL'] || process.env['DATABASE_URL'];
-  return assertTestDatabase(url);
+  return assertTestDatabase(resolveWorkerDatabaseUrl(assertTestDatabase(url)));
 }

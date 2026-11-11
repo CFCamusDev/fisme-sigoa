@@ -8,7 +8,7 @@ import { setupAppRoutes } from '../../../../routes.js';
 import { PrismaUnitOfWork } from '../../../../shared/prisma/prisma-unit-of-work.js';
 import { createPrismaAuditServices } from '../../../../shared/prisma/create-prisma-audit-services.js';
 import { InMemoryEmailSender } from '../../../../shared/email/in-memory-email-sender.js';
-import { seedAuthorization } from '../../../../test/factories/authorization.js';
+import { seedAuthorizationFast } from '../../../../test/factories/authorization.js';
 import { createAuthenticatedActor } from '../../../../test/http/authenticated-actor.js';
 
 describe('Users HTTP Routes Integration (PostgreSQL real, CA1-CA7, RS-002, RS-020, RNF-009, RNF-017, RNF-030)', () => {
@@ -38,7 +38,7 @@ describe('Users HTTP Routes Integration (PostgreSQL real, CA1-CA7, RS-002, RS-02
 
   beforeEach(async () => {
     emailSender.clear();
-    await seedAuthorization(prisma);
+    await seedAuthorizationFast(prisma);
   });
 
   async function getRoleIds(...codes: string[]): Promise<string[]> {

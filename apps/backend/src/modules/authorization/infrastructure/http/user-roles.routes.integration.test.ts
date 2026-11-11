@@ -9,7 +9,7 @@ import { PrismaUnitOfWork } from '../../../../shared/prisma/prisma-unit-of-work.
 import { createPrismaAuditServices } from '../../../../shared/prisma/create-prisma-audit-services.js';
 import { InMemoryEmailSender } from '../../../../shared/email/in-memory-email-sender.js';
 import {
-  seedAuthorization,
+  seedAuthorizationFast,
   createRoleWithGrants,
 } from '../../../../test/factories/authorization.js';
 import { createAuthenticatedActor } from '../../../../test/http/authenticated-actor.js';
@@ -41,7 +41,7 @@ describe('PUT /users/:id/roles HTTP Routes Integration (PostgreSQL real, HU-007,
 
   beforeEach(async () => {
     emailSender.clear();
-    await seedAuthorization(prisma);
+    await seedAuthorizationFast(prisma);
   });
 
   async function createActor(roles: string[]) {

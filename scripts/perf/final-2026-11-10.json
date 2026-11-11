@@ -1,0 +1,24 @@
+{
+  "date": "2026-11-10",
+  "baseline": "scripts/perf/baseline-2026-11-10.json",
+  "source": "pnpm perf:tests y verify:pr:full --repeat 3 sobre la rama de HU-078 (equipo de desarrollo, 12 hilos, PostgreSQL 16 en Docker)",
+  "groups": {
+    "backend-unit": { "seconds": 18.6, "tests": 1270 },
+    "backend-integration": { "seconds": 76, "tests": 568 },
+    "frontend": { "seconds": 84.6, "tests": 649 },
+    "shared": { "seconds": 1.8, "tests": 191 },
+    "pdf": { "seconds": 2.9, "tests": 3 },
+    "e2e": { "seconds": 112.2, "tests": 55, "contrastContexts": 38 },
+    "verify-full-repeat-3": { "seconds": 366.7, "tests": null }
+  },
+  "other": {
+    "testAffectedSeconds": 25,
+    "e2eStability": "3 ejecuciones seguidas con 3 workers, 55 pruebas cada una, sin fallos ni pruebas inestables (87,8 a 91,8 s)",
+    "e2eByWorkers": { "1": 162, "2": 103, "3": 99 }
+  },
+  "notes": [
+    "Las unitarias de backend suben de 14,3 s a 18,6 s porque hay 146 pruebas más.",
+    "El E2E pasa de 71 a 55 pruebas porque el contraste se agrupó por ruta (25 pruebas a 6); se conservan los 38 contextos verificados, fijados por src/e2e-hygiene.test.ts.",
+    "La integración pasa de 554 a 568 pruebas: no se quitó ninguna."
+  ]
+}
