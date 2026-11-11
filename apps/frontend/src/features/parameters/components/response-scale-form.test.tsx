@@ -117,4 +117,28 @@ describe('ResponseScaleForm Component (HU-012, T-012-17)', () => {
     expect(await screen.findByText('No hay cambios que guardar.')).toBeInTheDocument();
     expect(calls).toBe(0);
   });
+
+  it('sends a single request when the save button is clicked twice', async () => {
+    let calls = 0;
+    server.use(
+      http.post(BASE, async () => {
+        calls += 1;
+        await new Promise((resolve) => setTimeout(resolve, 30));
+        return HttpResponse.json(buildLikertScale({ code: 'MI_ESCALA' }), { status: 201 });
+      }),
+    );
+    const onSaved = vi.fn();
+    const user = userEvent.setup();
+    renderWithProviders(
+      <ResponseScaleForm mode={{ kind: 'create' }} onCancel={() => undefined} onSaved={onSaved} />,
+      { withRouter: false },
+    );
+
+    await fillCreateForm(user);
+    await user.dblClick(screen.getByRole('button', { name: 'Guardar escala' }));
+
+    // onSaved llega cuando la primera petición terminó: una segunda ya habría salido para entonces.
+    await vi.waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
+    expect(calls).toBe(1);
+  });
 });
