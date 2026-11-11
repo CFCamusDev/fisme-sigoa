@@ -406,5 +406,25 @@ model ResponseScale {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
+  levels ScaleLevel[]
+
   @@map("response_scales")
+}
+
+model ScaleLevel {
+  id                  String   @id @default(cuid())
+  scaleId             String
+  order               Int
+  label               String
+  value               Int
+  countsAsAchievement Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  scale ResponseScale @relation(fields: [scaleId], references: [id], onDelete: Restrict)
+
+  @@unique([scaleId, order])
+  @@unique([scaleId, value])
+  @@index([scaleId])
+  @@map("scale_levels")
 }
