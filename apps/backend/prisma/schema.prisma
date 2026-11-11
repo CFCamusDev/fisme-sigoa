@@ -385,3 +385,26 @@ model Parameter {
   @@index([key])
   @@map("parameters")
 }
+
+// ==============================================================================
+// ESCALAS DE RESPUESTA (HU-012)
+// ==============================================================================
+
+enum ScaleType {
+  LIKERT
+  NUMERIC
+  EVIDENCE
+}
+
+model ResponseScale {
+  id        String    @id @default(cuid())
+  code      String    @unique
+  name      String
+  type      ScaleType
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("response_scales")
+}
