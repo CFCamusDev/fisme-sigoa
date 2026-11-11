@@ -42,6 +42,12 @@ import {
   parametersResponseSchema,
   parameterDtoSchema,
   parameterVersionDtoSchema,
+  createResponseScaleRequestSchema,
+  updateResponseScaleRequestSchema,
+  duplicateResponseScaleRequestSchema,
+  responseScaleDtoSchema,
+  responseScalesResponseSchema,
+  scaleLevelDtoSchema,
 } from '@sigoa/shared';
 import { createAuthRouter } from '../src/modules/auth/infrastructure/http/auth.routes.js';
 import { createUsersRouter } from '../src/modules/users/infrastructure/http/users.routes.js';
@@ -58,6 +64,8 @@ import { createParametersRouter } from '../src/modules/parameters/infrastructure
 import type { ParametersController } from '../src/modules/parameters/infrastructure/http/parameters.controller.js';
 import { createParameterValuesRouter } from '../src/modules/parameters/infrastructure/http/parameter-values.routes.js';
 import type { ParameterValuesController } from '../src/modules/parameters/infrastructure/http/parameter-values.controller.js';
+import { createResponseScalesRouter } from '../src/modules/parameters/infrastructure/http/response-scales.routes.js';
+import type { ResponseScalesController } from '../src/modules/parameters/infrastructure/http/response-scales.controller.js';
 import { createSemestersRouter } from '../src/modules/parameters/infrastructure/http/semesters.routes.js';
 import type { SemestersController } from '../src/modules/parameters/infrastructure/http/semesters.controller.js';
 
@@ -1771,6 +1779,148 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
       expect(routerEndpoints.sort((a, b) => a.method.localeCompare(b.method))).toEqual([
         { method: 'get', path: '/parameters' },
         { method: 'post', path: '/parameters' },
+      ]);
+    });
+  });
+
+  describe('OpenAPI Specification for Response Scales (HU-012, T-012-15, RF-012, RNF-032)', () => {
+    const base = spec.paths['/response-scales'];
+    const byId = spec.paths['/response-scales/{id}'];
+    const duplicate = spec.paths['/response-scales/{id}/duplicate'];
+
+    it('documents the four operations with bearerAuth and proper status codes', () => {
+      const expectations: [string, string, string[]][] = [
+        ['listResponseScales', 'get', ['200', '400', '401', '403']],
+        ['createResponseScale', 'post', ['201', '400', '401', '403', '409']],
+      ];
+      for (const [operationId, method, codes] of expectations) {
+        const op = base[method];
+        expect(op.operationId).toBe(operationId);
+        expect(op.tags).toContain('ResponseScales');
+        expect(op.security).toEqual([{ bearerAuth: [] }]);
+        expect(Object.keys(op.responses).sort()).toEqual(codes);
+      }
+
+      expect(byId.patch.operationId).toBe('editResponseScale');
+      expect(byId.patch.security).toEqual([{ bearerAuth: [] }]);
+      expect(Object.keys(byId.patch.responses).sort()).toEqual([
+        '200',
+        '400',
+        '401',
+        '403',
+        '404',
+        '409',
+      ]);
+
+      expect(duplicate.post.operationId).toBe('duplicateResponseScale');
+      expect(duplicate.post.security).toEqual([{ bearerAuth: [] }]);
+      expect(Object.keys(duplicate.post.responses).sort()).toEqual([
+        '201',
+        '400',
+        '401',
+        '403',
+        '404',
+        '409',
+      ]);
+    });
+
+    it('proposes duplicating in the 409 of the edit operation (CA3)', () => {
+      const example = byId.patch.responses['409'].content['application/json'].example;
+      expect(example.error.code).toBe('CONFLICT');
+      expect(example.error.message).toContain('Duplícala');
+    });
+
+    it('validates the response and request examples against the shared schemas', () => {
+      const list200 = base.get.responses['200'];
+      expect(list200.headers['Cache-Control'].example).toBe('no-store');
+      expect(
+        responseScalesResponseSchema.safeParse(list200.content['application/json'].example).success,
+      ).toBe(true);
+
+      for (const res of [
+        base.post.responses['201'],
+        byId.patch.responses['200'],
+        duplicate.post.responses['201'],
+      ]) {
+        expect(res.headers['Cache-Control'].example).toBe('no-store');
+        expect(
+          responseScaleDtoSchema.safeParse(res.content['application/json'].example).success,
+        ).toBe(true);
+      }
+
+      expect(
+        createResponseScaleRequestSchema.safeParse(
+          base.post.requestBody.content['application/json'].example,
+        ).success,
+      ).toBe(true);
+      expect(
+        updateResponseScaleRequestSchema.safeParse(
+          byId.patch.requestBody.content['application/json'].example,
+        ).success,
+      ).toBe(true);
+      expect(
+        duplicateResponseScaleRequestSchema.safeParse(
+          duplicate.post.requestBody.content['application/json'].example,
+        ).success,
+      ).toBe(true);
+    });
+
+    it('documents the id path parameter and the type query parameter', () => {
+      expect(byId.patch.parameters[0]).toMatchObject({ name: 'id', in: 'path', required: true });
+      expect(duplicate.post.parameters[0]).toMatchObject({
+        name: 'id',
+        in: 'path',
+        required: true,
+      });
+      expect(base.get.parameters[0]).toMatchObject({ name: 'type', in: 'query', required: false });
+      expect(base.get.parameters[0].schema.enum).toEqual(['LIKERT', 'NUMERIC', 'EVIDENCE']);
+    });
+
+    it('matches components.schemas properties with Zod schemas shape', () => {
+      const expectations: [string, string[]][] = [
+        ['ResponseScaleDto', Object.keys(responseScaleDtoSchema.shape)],
+        ['ScaleLevelDto', Object.keys(scaleLevelDtoSchema.shape)],
+        ['ResponseScalesResponse', Object.keys(responseScalesResponseSchema.shape)],
+        ['CreateResponseScaleRequest', Object.keys(createResponseScaleRequestSchema.shape)],
+        ['UpdateResponseScaleRequest', Object.keys(updateResponseScaleRequestSchema.shape)],
+        ['DuplicateResponseScaleRequest', Object.keys(duplicateResponseScaleRequestSchema.shape)],
+      ];
+      for (const [name, keys] of expectations) {
+        const component = spec.components.schemas[name];
+        expect(component, name).toBeDefined();
+        expect(Object.keys(component.properties).sort(), name).toEqual([...keys].sort());
+      }
+    });
+
+    it('has bidirectional parity between openapi spec and createResponseScalesRouter', () => {
+      const router = createResponseScalesRouter({
+        controller: {
+          listResponseScales: vi.fn(),
+          createResponseScale: vi.fn(),
+          editResponseScale: vi.fn(),
+          duplicateResponseScale: vi.fn(),
+        } as unknown as ResponseScalesController,
+        authenticate: vi.fn(),
+        requirePermission: vi.fn(() => vi.fn()),
+      });
+
+      const routerEndpoints: { method: string; path: string }[] = [];
+      for (const layer of router.stack) {
+        if (layer.route) {
+          const routePath = layer.route.path.replace(':id', '{id}');
+          for (const method of Object.keys(layer.route.methods)) {
+            const normalizedPath = '/response-scales' + (routePath === '/' ? '' : routePath);
+            routerEndpoints.push({ method: method.toLowerCase(), path: normalizedPath });
+          }
+        }
+      }
+
+      const key = (e: { method: string; path: string }) => e.method + ' ' + e.path;
+      expect(routerEndpoints.map(key).sort()).toEqual([
+        'get /response-scales',
+        'patch /response-scales/{id}',
+        'post /response-scales',
+        'post /response-scales/{id}/duplicate',
       ]);
     });
   });
