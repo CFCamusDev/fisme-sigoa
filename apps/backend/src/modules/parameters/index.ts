@@ -237,3 +237,5 @@ export * from './application/duplicate-response-scale.types.js';
 export * from './infrastructure/http/response-scales.controller.js';
 export * from './infrastructure/http/response-scales.routes.js';
 export * from './infrastructure/prisma/seed/response-scale-seed.js';
+export * from './application/list-response-scales.js';
+export * from './application/list-response-scales.types.js';
