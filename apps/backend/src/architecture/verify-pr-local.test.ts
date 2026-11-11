@@ -45,6 +45,12 @@ describe('verify-pr-local pure logic (T-002-22 / G1)', () => {
       hu: 'HU-002',
     });
 
+    // Release y hotfix
+    expect(validateBranchName('release/0.1.0')).toEqual({ valid: true });
+    expect(validateBranchName('hotfix/1.2.3')).toEqual({ valid: true });
+    expect(validateBranchName('release/0.1').valid).toBe(false);
+    expect(validateBranchName('release/0.1.0-extra').valid).toBe(false);
+
     // Prohibido main y develop
     expect(validateBranchName('main').valid).toBe(false);
     expect(validateBranchName('main').error).toMatch(/main/i);
@@ -97,6 +103,10 @@ describe('verify-pr-local pure logic (T-002-22 / G1)', () => {
       valid: true,
       violations: [],
     });
+
+    const releaseRefs = `chore(release): bump version\n\nRefs: T-REL-010-04`;
+    expect(validateCommitMessage(releaseRefs).valid).toBe(true);
+    expect(validateCommitMessage(`chore(release): bump\n\nRefs: T-REL-10-4`).valid).toBe(false);
 
     const multipleRefs = `fix(deploy): wire and declare every variable\n\nRefs: HU-002, T-002-20, T-002-21`;
     expect(validateCommitMessage(multipleRefs)).toEqual({
