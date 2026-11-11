@@ -4,3 +4,7 @@ export { getSemesters } from './get-semesters';
 export { createSemester } from './create-semester';
 export { getParameters } from './get-parameters';
 export { defineParameters } from './define-parameters';
+export { getResponseScales } from './get-response-scales';
+export { createResponseScale } from './create-response-scale';
+export { updateResponseScale } from './update-response-scale';
+export { duplicateResponseScale } from './duplicate-response-scale';
