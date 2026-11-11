@@ -175,3 +175,6 @@ export * from './application/list-effective-parameters.js';
 export * from './application/list-effective-parameters.types.js';
 export * from './infrastructure/http/parameter-values.controller.js';
 export * from './infrastructure/http/parameter-values.routes.js';
+export * from './infrastructure/prisma/prisma-response-scale-repository.js';
+export * from './infrastructure/prisma/prisma-response-scale-mapper.js';
+export * from './infrastructure/never-used-scale-usage-reader.js';
