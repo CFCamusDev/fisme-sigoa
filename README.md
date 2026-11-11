@@ -104,7 +104,7 @@ El repositorio incluye un archivo `docker-compose.yml` multietapa en la raíz pa
    docker compose up --build -d
    ```
    - `postgres`: Base de datos PostgreSQL 16 con healthcheck activo (puerto local `127.0.0.1:5433` para evitar conflictos con instancias nativas).
-   - `migrate`: Contenedor transitorio que ejecuta `prisma migrate deploy` una vez la base de datos está lista.
+   - `migrate`: Contenedor transitorio que, una vez lista la base de datos, aplica las migraciones, aprovisiona el rol de la aplicación y ejecuta el seed (incluido el primer administrador con los valores de desarrollo de `.env.example`: `admin@sigoa.test` / `DesarrolloLocal2026`).
    - `backend`: Servidor Express compilado corriendo bajo el usuario `node` en `http://localhost:3000`.
    - `frontend`: Servidor web Nginx Alpine sirviendo la aplicación SPA en `http://localhost:8001`.
 
@@ -147,9 +147,42 @@ Para entornos de staging o producción en VPS (gestionados con Portainer y Nginx
    ```
 
 4. **Detener el stack:**
+
    ```bash
    docker compose -f docker-compose.prod.yml down
    ```
+
+5. **Stack de staging en tu máquina (mismo compose y variables):** crea `.env.staging.local` (ignorado por Git) a partir de `deploy/stack.env.example` y usa:
+
+   ```bash
+   pnpm stack:local:up      # construye y levanta; espera /health del backend
+   pnpm stack:local:down    # elimina el stack y sus volúmenes
+   pnpm stack:local:reset   # down + up
+   ```
+
+### Primer arranque: qué hace el servicio `migrate`
+
+Un despliegue desde cero no necesita comandos manuales. El servicio `migrate` (una sola ejecución, antes del backend) ejecuta en orden:
+
+1. `prisma migrate deploy`: aplica las migraciones.
+2. `db:provision-app-role`: crea o actualiza el rol restringido de la aplicación.
+3. `db:seed`: carga permisos, roles, programa, parámetros y escalas, y crea el **primer administrador**.
+
+El seed es idempotente y se serializa con un bloqueo de PostgreSQL: dos redespliegues simultáneos no duplican nada. En un redespliegue no cambia la contraseña de nadie, no revierte lo editado desde Roles y agrega los permisos nuevos del código con su concesión por defecto. Si algo falla, `migrate` termina con error, imprime `[db:seed] Error: ...` con la variable a corregir y el backend no arranca.
+
+**Variables del primer administrador** (solo las recibe `migrate`; el backend en ejecución no las ve):
+
+| Variable                 | Contenido                                                                                                               |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| `ADMIN_EMAIL`            | Correo del administrador (se guarda en minúsculas)                                                                      |
+| `ADMIN_FULL_NAME`        | Nombre completo: 2 palabras = nombre y apellido; 3 = un nombre y dos apellidos; 4 o más = las dos últimas son apellidos |
+| `ADMIN_DNI`              | 8 dígitos                                                                                                               |
+| `ADMIN_INITIAL_PASSWORD` | 10 a 128 caracteres, con letras y números                                                                               |
+
+- Son obligatorias **solo mientras no exista ningún usuario con rol Administrador** (primer despliegue). Si ya existe uno, `migrate` las ignora, aunque falten o sean inválidas.
+- La contraseña se guarda con argon2id y no se escribe en registros ni errores. Dejarla en el stack **no** permite cambiar la contraseña de un administrador existente.
+- **Después del primer acceso:** inicia sesión, cambia la contraseña desde la aplicación y **quita `ADMIN_INITIAL_PASSWORD` del stack**.
+- Si el correo o el DNI ya pertenecen a un usuario que no es administrador, `migrate` falla nombrando la variable; la cuenta no se promueve.
 
 ### Respaldo y restauración de base de datos
 
@@ -193,7 +226,7 @@ Configura en `apps/backend/.env`:
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/sigoa_dev?schema=public"
 ```
 
-Aplica las migraciones y ejecuta el semillero inicial (idempotente):
+Aplica las migraciones y ejecuta el semillero inicial (idempotente). Con una base vacía el seed crea también el primer administrador, así que define `ADMIN_EMAIL`, `ADMIN_FULL_NAME`, `ADMIN_DNI` y `ADMIN_INITIAL_PASSWORD` en `apps/backend/.env` (hay valores de ejemplo en `apps/backend/.env.example`):
 
 ```bash
 pnpm --filter backend db:migrate
@@ -212,7 +245,7 @@ El sistema implementa una separación estricta de roles a nivel de PostgreSQL pa
 2. **Aprovisionamiento automático e idempotente:**
    - En despliegues con Docker Compose, el contenedor `migrate` ejecuta:
      ```bash
-     pnpm exec prisma migrate deploy && pnpm run db:provision-app-role
+     pnpm exec prisma migrate deploy && pnpm run db:provision-app-role && pnpm run db:seed
      ```
    - Si el rol no existe, se crea; si ya existe, se actualizan sus credenciales y restricciones. Si la verificación de seguridad falla (por ejemplo, si tiene privilegios de más), el servicio aborta con código de salida ≠ 0 y el backend no arranca.
    - En desarrollo local sin Docker:
