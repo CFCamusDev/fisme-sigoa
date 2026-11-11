@@ -341,6 +341,48 @@ describe('env configuration', () => {
       ).toThrow(/APP_PUBLIC_URL/);
     });
 
+    it.each(['http://localhost:8001', 'http://127.0.0.1:8001', 'http://[::1]:8001'])(
+      'accepts the loopback address %s for APP_PUBLIC_URL in production (local copy of the stack)',
+      (url) => {
+        const valid = parseEnv({
+          DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
+          NODE_ENV: 'production',
+          EMAIL_PROVIDER: 'resend',
+          RESEND_API_KEY: 're_123',
+          EMAIL_FROM: 'sigoa@untrim.edu.pe',
+          FILE_STORAGE_PROVIDER: 'cloudinary',
+          CLOUDINARY_CLOUD_NAME: 'cloud',
+          CLOUDINARY_API_KEY: 'key',
+          CLOUDINARY_API_SECRET: 'secret',
+          AUTH_JWT_SECRET: 'test-secret-at-least-32-chars-long-production-key',
+          APP_PUBLIC_URL: url,
+        });
+        expect(valid.APP_PUBLIC_URL).toBe(url);
+      },
+    );
+
+    it.each([
+      'http://localhost.evil.example',
+      'http://sigoa.localhost.example.com',
+      'http://192.168.1.10:8001',
+    ])('still rejects the non-loopback http:// URL %s in production', (url) => {
+      expect(() =>
+        parseEnv({
+          DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
+          NODE_ENV: 'production',
+          EMAIL_PROVIDER: 'resend',
+          RESEND_API_KEY: 're_123',
+          EMAIL_FROM: 'sigoa@untrim.edu.pe',
+          FILE_STORAGE_PROVIDER: 'cloudinary',
+          CLOUDINARY_CLOUD_NAME: 'cloud',
+          CLOUDINARY_API_KEY: 'key',
+          CLOUDINARY_API_SECRET: 'secret',
+          AUTH_JWT_SECRET: 'test-secret-at-least-32-chars-long-production-key',
+          APP_PUBLIC_URL: url,
+        }),
+      ).toThrow(/APP_PUBLIC_URL/);
+    });
+
     it('accepts valid https:// APP_PUBLIC_URL in production', () => {
       const valid = parseEnv({
         DATABASE_URL: 'postgresql://user:secret@localhost:5432/test_db',
