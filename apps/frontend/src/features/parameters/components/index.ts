@@ -9,3 +9,14 @@ export { ParametersPage } from './parameters-page';
 export { ParametersForm, type ParametersFormProps } from './parameters-form';
 export { ResponseScaleCard, type ResponseScaleCardProps } from './response-scale-card';
 export { ResponseScalesPage } from './response-scales-page';
+export {
+  ResponseScaleForm,
+  type ResponseScaleFormProps,
+  type ResponseScaleFormMode,
+} from './response-scale-form';
+export { DuplicateScaleForm, type DuplicateScaleFormProps } from './duplicate-scale-form';
+export {
+  ScaleLevelsEditor,
+  type ScaleLevelsEditorProps,
+  type ScaleFormValues,
+} from './scale-levels-editor';
