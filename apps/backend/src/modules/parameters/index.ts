@@ -184,3 +184,5 @@ export * from './application/create-response-scale.js';
 export * from './application/create-response-scale.types.js';
 export * from './application/edit-response-scale.js';
 export * from './application/edit-response-scale.types.js';
+export * from './application/duplicate-response-scale.js';
+export * from './application/duplicate-response-scale.types.js';
