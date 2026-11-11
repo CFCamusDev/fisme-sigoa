@@ -70,7 +70,9 @@ set_var CLOUDINARY_API_SECRET "smoke-secret-key-123"
 set_var AUTH_JWT_SECRET "smoke_test_jwt_secret_minimo_32_caracteres_seguro"
 set_var VITE_API_URL "http://localhost:${BACKEND_PORT}"
 set_var CORS_ORIGIN "http://localhost:${FRONTEND_PORT}"
-set_var APP_PUBLIC_URL "https://sigoa.smoke.test"
+# URL pública del frontend: de ella salen el enlace de activación y el escudo de los correos
+PUBLIC_URL="http://localhost:${FRONTEND_PORT}"
+set_var APP_PUBLIC_URL "$PUBLIC_URL"
 set_var ADMIN_EMAIL "$ADMIN_EMAIL"
 set_var ADMIN_FULL_NAME "$ADMIN_FULL_NAME"
 set_var ADMIN_DNI "$ADMIN_DNI"
@@ -79,9 +81,8 @@ set_var ADMIN_INITIAL_PASSWORD "$ADMIN_PASSWORD"
 echo "==> 2. Eliminando restos de ejecuciones anteriores..."
 compose down -v --remove-orphans >/dev/null 2>&1 || true
 
-echo "==> 3. Levantando postgres, migrate y backend con volúmenes vacíos (docker compose up --build)..."
-# El frontend no interviene en la automatización de datos: no se construye para ahorrar tiempo.
-compose up -d --build postgres migrate backend
+echo "==> 3. Levantando postgres, migrate, backend y frontend con volúmenes vacíos (docker compose up --build)..."
+compose up -d --build postgres migrate backend frontend
 
 echo "==> 4. Esperando a que migrate termine (máximo ${MIGRATE_TIMEOUT_S}s)..."
 MIGRATE_ID=""
@@ -151,6 +152,40 @@ if compose exec -T backend env | grep -q '^ADMIN_'; then
   exit 1
 fi
 echo "✓ El backend no recibe ADMIN_*."
+
+echo "==> 8b. Comprobando que la URL pública sirve el enlace de activación y el escudo de los correos..."
+if ! compose exec -T backend printenv APP_PUBLIC_URL | grep -qx "$PUBLIC_URL"; then
+  echo "ERROR: El backend no usa APP_PUBLIC_URL=$PUBLIC_URL (los correos tendrían enlaces rotos)." >&2
+  exit 1
+fi
+FRONT_READY=0
+for ((i=1; i<=HEALTH_TIMEOUT_S; i++)); do
+  if curl -s -f "${PUBLIC_URL}/healthz" >/dev/null 2>&1; then
+    FRONT_READY=1
+    break
+  fi
+  sleep 1
+done
+if [ "$FRONT_READY" -ne 1 ]; then
+  echo "ERROR: El frontend no respondió en ${PUBLIC_URL}/healthz tras ${HEALTH_TIMEOUT_S}s." >&2
+  compose logs frontend >&2
+  exit 1
+fi
+# Misma ruta que construye el correo de activación (/activar/<token>): debe abrir la aplicación
+ACTIVATION_STATUS=$(curl -s -o /dev/null -w '%{http_code}' "${PUBLIC_URL}/activar/token-de-prueba")
+if [ "$ACTIVATION_STATUS" != "200" ]; then
+  echo "ERROR: ${PUBLIC_URL}/activar/<token> respondió $ACTIVATION_STATUS (el botón del correo no abriría)." >&2
+  exit 1
+fi
+# Escudo oficial de los correos (LogoUrlResolver: APP_PUBLIC_URL + /assets/<archivo>)
+for LOGO_FILE in logo-untrm-v1-64.png logo-untrm-v1-256.png; do
+  LOGO_TYPE=$(curl -s -o /dev/null -w '%{http_code} %{content_type}' "${PUBLIC_URL}/assets/${LOGO_FILE}")
+  if [ "$LOGO_TYPE" != "200 image/png" ]; then
+    echo "ERROR: El escudo ${PUBLIC_URL}/assets/${LOGO_FILE} respondió '$LOGO_TYPE' (el correo saldría sin logo)." >&2
+    exit 1
+  fi
+done
+echo "✓ El enlace de activación y el escudo de los correos se sirven desde ${PUBLIC_URL}."
 
 count_users() {
   compose exec -T postgres psql -U "$DB_USER" -d "$DB_NAME" -tAc 'SELECT count(*) FROM users' | tr -d '[:space:]'
