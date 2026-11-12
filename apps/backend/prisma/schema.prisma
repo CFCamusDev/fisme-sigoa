@@ -244,17 +244,17 @@ enum PermissionScope {
 }
 
 model Role {
-  id            String      @id @default(cuid())
-  code          String      @unique
-  name          String      @unique
+  id            String     @id @default(cuid())
+  code          String     @unique
+  name          String     @unique
   description   String?
-  status        RoleStatus  @default(ACTIVE)
+  status        RoleStatus @default(ACTIVE)
   deactivatedAt DateTime?
-  isPredefined  Boolean     @default(false)
+  isPredefined  Boolean    @default(false)
   createdBy     String?
   updatedBy     String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 
   rolePermissions RolePermission[]
   userRoles       UserRole[]
@@ -346,6 +346,8 @@ model Program {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  catalogVersions CatalogVersion[]
+
   @@map("programs")
 }
 
@@ -427,4 +429,35 @@ model ScaleLevel {
   @@unique([scaleId, value])
   @@index([scaleId])
   @@map("scale_levels")
+}
+
+// ==============================================================================
+// CATÁLOGO DE OE Y AG (HU-013)
+// ==============================================================================
+
+enum CatalogVersionStatus {
+  DRAFT
+  IN_VALIDATION
+  APPROVED
+  HISTORICAL
+}
+
+model CatalogVersion {
+  id               String               @id @default(cuid())
+  programId        String
+  number           Int
+  status           CatalogVersionStatus @default(DRAFT)
+  basedOnVersionId String?
+  createdBy        String?
+  updatedBy        String?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  program         Program          @relation(fields: [programId], references: [id], onDelete: Restrict)
+  basedOnVersion  CatalogVersion?  @relation("CatalogVersionOrigin", fields: [basedOnVersionId], references: [id], onDelete: Restrict)
+  derivedVersions CatalogVersion[] @relation("CatalogVersionOrigin")
+
+  @@unique([programId, number])
+  @@index([programId, status])
+  @@map("catalog_versions")
 }
