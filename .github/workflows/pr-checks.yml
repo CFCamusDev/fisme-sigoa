@@ -1,0 +1,213 @@
+# Verificaciones automáticas de la Definition of Done (docs/DEFINITION_OF_DONE.md, sección 5).
+# Marcar estos jobs como "required status checks" en la protección de main y develop.
+# Requiere en el package.json raíz los scripts: lint, format:check, typecheck, test:coverage, build, depcruise.
+name: PR checks
+
+on:
+  pull_request:
+    branches: [develop, main]
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  convenciones:
+    name: Rama y título del PR
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Validar nombre de rama y título
+        env:
+          HEAD: ${{ github.head_ref }}
+          BASE: ${{ github.base_ref }}
+          TITLE: ${{ github.event.pull_request.title }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+          fail() { echo "::error::$1"; exit 1; }
+
+          # Excepción controlada para Pull Requests automáticos de Dependabot
+          if [ "$ACTOR" = "dependabot[bot]" ]; then
+            if [ "$BASE" != "develop" ]; then
+              fail "Los Pull Requests de Dependabot deben dirigirse exclusivamente a 'develop' (recibido base: '$BASE')."
+            fi
+            if [[ ! "$HEAD" =~ ^dependabot/ ]]; then
+              fail "Rama de Dependabot inválida (recibido: '$HEAD'). Debe comenzar con 'dependabot/'."
+            fi
+            if [[ ! "$TITLE" =~ ^(chore|ci|build)\(deps(-dev)?\):\ .+ ]]; then
+              fail "Título de Dependabot inválido ('$TITLE'). Debe cumplir '^(chore|ci|build)(deps(-dev)?): .+'."
+            fi
+            echo "Convenciones de Dependabot correctas."
+            exit 0
+          fi
+
+          if [ "$BASE" = "develop" ]; then
+            # Ramas de trabajo (o merge de vuelta de release/hotfix)
+            if [[ "$HEAD" =~ ^(release|hotfix)/[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "Merge de vuelta de $HEAD a develop"; exit 0
+            fi
+            [[ "$HEAD" =~ ^(feature|fix|bug|docs|refactor|test|chore)/HU-[0-9]{3}-[a-z0-9-]+$ ]] \
+              || fail "Rama '$HEAD' inválida. Formato: tipo/HU-xxx-descripcion (tipos: feature, fix, bug, docs, refactor, test, chore)."
+            [[ "$TITLE" =~ ^(feat|fix|docs|refactor|test|chore|perf|build|ci)\([a-z0-9-]+\):\ HU-[0-9]{3}\ .+ ]] \
+              || fail "Título '$TITLE' inválido. Formato: tipo(módulo): HU-xxx descripción"
+            HU_RAMA=$(echo "$HEAD" | grep -oE 'HU-[0-9]{3}')
+            HU_TITULO=$(echo "$TITLE" | grep -oE 'HU-[0-9]{3}' | head -1)
+            [ "$HU_RAMA" = "$HU_TITULO" ] || fail "La HU de la rama ($HU_RAMA) no coincide con la del título ($HU_TITULO)."
+          elif [ "$BASE" = "main" ]; then
+            if [[ "$HEAD" =~ ^release/([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+              V="${BASH_REMATCH[1]}"
+              [[ "$TITLE" =~ ^release:\ v$V ]] || fail "Título debe empezar con 'release: v$V'."
+            elif [[ "$HEAD" =~ ^hotfix/([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+              V="${BASH_REMATCH[1]}"
+              [[ "$TITLE" =~ ^fix\([a-z0-9-]+\):\ hotfix\ v$V\ .+ ]] || fail "Título debe ser 'fix(módulo): hotfix v$V descripción'."
+            else
+              fail "A main solo llegan ramas release/X.Y.Z o hotfix/X.Y.Z (recibido: '$HEAD')."
+            fi
+          fi
+          echo "Convenciones correctas."
+
+  calidad:
+    name: Lint, tipos, pruebas y build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: convenciones
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: oeag_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U test" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5432/oeag_test
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Paridad de variables de entorno
+        run: pnpm check:env-parity
+      - name: Verificación de rutas de Windows
+        run: pnpm check:windows-paths
+      - name: Verificación de patrones de pruebas
+        run: pnpm check:test-patterns
+      - name: Lint y formato
+        run: pnpm lint && pnpm format:check
+      - name: Typecheck (TypeScript estricto)
+        run: pnpm typecheck
+      - name: Arquitectura hexagonal (dependency-cruiser)
+        run: pnpm depcruise
+      - name: Migraciones desde cero
+        run: pnpm --filter backend prisma migrate deploy
+      - name: Pruebas de integración
+        run: pnpm --filter backend test:integration
+      - name: Estabilidad del PDF con Chromium (3 pasadas)
+        run: |
+          for i in 1 2 3; do
+            echo "==> Pasada $i de 3: prueba de integración del PDF con Chromium real..."
+            pnpm --filter backend exec vitest run --project integration src/shared/pdf
+          done
+      - name: Pruebas con cobertura (umbral 80 % en vitest.config)
+        run: pnpm test:coverage
+      - name: Build
+        run: pnpm build
+
+  seguridad:
+    name: Auditoría de dependencias
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: convenciones
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: pnpm audit (falla con vulnerabilidades altas o críticas)
+        run: pnpm audit --audit-level high
+
+  imagenes:
+    name: Construcción, endurecimiento e imágenes Docker
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: convenciones
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Validar endurecimiento de Docker Compose
+        run: docker compose --env-file deploy/stack.env.example -f docker-compose.prod.yml config --format json | node scripts/ci/verify-compose-hardening.mjs
+      - name: Pruebas de humo de imágenes Docker y PDF Open Sans
+        run: bash scripts/ci/smoke-image.sh
+      - name: Prueba de despliegue desde cero (migrate, seed y primer administrador)
+        run: bash scripts/ci/smoke-fresh-deploy.sh
+      - name: Diagnóstico del entorno host y Docker ante fallos
+        if: failure()
+        run: |
+          echo "=== DIAGNÓSTICO DEL ENTORNO ==="
+          echo "Kernel: $(uname -r)"
+          docker version
+          echo "Docker Security Options: $(docker info --format '{{.SecurityOptions}}')"
+          echo "Sysctl unprivileged user namespaces:"
+          sysctl kernel.unprivileged_userns_clone kernel.apparmor_restrict_unprivileged_userns 2>/dev/null || true
+
+  e2e:
+    name: Pruebas end-to-end (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.base_ref == 'develop' || (github.base_ref == 'main' && startsWith(github.head_ref, 'release/'))
+    needs: calidad
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: oeag_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U test" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5432/oeag_test
+      NODE_ENV: test
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Instalar navegadores de Playwright con dependencias
+        run: pnpm --filter frontend exec playwright install --with-deps chromium
+      - name: Ejecutar pruebas E2E
+        run: pnpm test:e2e
+      - name: Subir reporte de Playwright en fallo
+        uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            apps/frontend/playwright-report/
+            apps/frontend/test-results/
+          retention-days: 7

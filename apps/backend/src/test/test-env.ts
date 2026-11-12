@@ -1,0 +1,28 @@
+import type { Env } from '../config/env.js';
+
+export function createTestEnv(overrides: Partial<Env> = {}): Env {
+  return {
+    NODE_ENV: 'test',
+    PORT: 3000,
+    LOG_LEVEL: 'silent',
+    DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
+    CORS_ORIGIN: ['http://localhost:5173'],
+    HSTS_ENABLED: true,
+    TRUST_PROXY: 0,
+    RATE_LIMIT_WINDOW_MS: 60000,
+    RATE_LIMIT_PUBLIC_MAX: 30,
+    RATE_LIMIT_LOGIN_MAX: 10,
+    RATE_LIMIT_SESSION_MAX: 30,
+    RATE_LIMIT_GENERAL_MAX: 300,
+    EMAIL_PROVIDER: 'memory',
+    FILE_STORAGE_PROVIDER: 'memory',
+    APP_PUBLIC_URL: 'http://localhost:5173',
+    AUTH_JWT_SECRET: 'test-secret-at-least-32-chars-long-abc-123456',
+    AUTH_ACCESS_TTL_SECONDS: 900,
+    AUTH_REFRESH_TTL_DAYS: 7,
+    AUTH_MAX_FAILED_ATTEMPTS: 5,
+    AUTH_LOCKOUT_MINUTES: 15,
+    AUTH_COOKIE_SAMESITE: 'strict',
+    ...overrides,
+  };
+}

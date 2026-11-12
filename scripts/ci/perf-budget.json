@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "unit": "seconds",
+  "description": "Presupuestos de tiempo de verify-pr-local (HU-078). Superarlos solo produce una advertencia en el informe; nunca falla la verificación.",
+  "groups": {
+    "convenciones": 10,
+    "estaticas": 150,
+    "integracion": 240,
+    "cobertura": 240,
+    "imagenes": 240,
+    "e2e": 150
+  },
+  "total": {
+    "quick": 90,
+    "standard": 420,
+    "full": 480
+  }
+}

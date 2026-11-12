@@ -1,0 +1,137 @@
+services:
+  postgres:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME:?Falta DB_NAME en las variables del entorno}
+      POSTGRES_USER: ${DB_USER:?Falta DB_USER en las variables del entorno}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Falta DB_PASSWORD en las variables del entorno}
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    deploy:
+      resources:
+        limits:
+          memory: ${DB_MEMORY_LIMIT:-512M}
+
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+      target: migrator
+    restart: 'no'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:?Falta DB_USER en las variables del entorno}:${DB_PASSWORD:?Falta DB_PASSWORD en las variables del entorno}@postgres:5432/${DB_NAME:?Falta DB_NAME en las variables del entorno}?schema=public
+      APP_DB_USER: ${APP_DB_USER:?Falta APP_DB_USER en las variables del entorno}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Falta APP_DB_PASSWORD en las variables del entorno}
+      # Primer administrador (solo `migrate`; el backend no las recibe). Obligatorias solo mientras no exista un administrador.
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_FULL_NAME: ${ADMIN_FULL_NAME:-}
+      ADMIN_DNI: ${ADMIN_DNI:-}
+      ADMIN_INITIAL_PASSWORD: ${ADMIN_INITIAL_PASSWORD:-}
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+      target: runtime
+    restart: unless-stopped
+    ports:
+      - '${SERVER_PORT:-3000}:${SERVER_PORT:-3000}'
+    shm_size: 256m
+    deploy:
+      resources:
+        limits:
+          memory: ${BACKEND_MEMORY_LIMIT:-1G}
+          pids: 512
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      PORT: ${SERVER_PORT:-3000}
+      DATABASE_URL: postgresql://${APP_DB_USER:?Falta APP_DB_USER en las variables del entorno}:${APP_DB_PASSWORD:?Falta APP_DB_PASSWORD en las variables del entorno}@postgres:5432/${DB_NAME:?Falta DB_NAME en las variables del entorno}?schema=public
+      CORS_ORIGIN: ${CORS_ORIGIN:?Falta CORS_ORIGIN en las variables del entorno}
+      APP_PUBLIC_URL: ${APP_PUBLIC_URL:?Falta APP_PUBLIC_URL en las variables del entorno}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      HSTS_ENABLED: ${HSTS_ENABLED:-true}
+      TRUST_PROXY: ${TRUST_PROXY:-2}
+      RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-60000}
+      RATE_LIMIT_PUBLIC_MAX: ${RATE_LIMIT_PUBLIC_MAX:-30}
+      RATE_LIMIT_LOGIN_MAX: ${RATE_LIMIT_LOGIN_MAX:-10}
+      RATE_LIMIT_SESSION_MAX: ${RATE_LIMIT_SESSION_MAX:-30}
+      RATE_LIMIT_GENERAL_MAX: ${RATE_LIMIT_GENERAL_MAX:-300}
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-resend}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      FILE_STORAGE_PROVIDER: ${FILE_STORAGE_PROVIDER:-cloudinary}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?Falta AUTH_JWT_SECRET en las variables del entorno}
+      AUTH_ACCESS_TTL_SECONDS: ${AUTH_ACCESS_TTL_SECONDS:-900}
+      AUTH_REFRESH_TTL_DAYS: ${AUTH_REFRESH_TTL_DAYS:-7}
+      AUTH_MAX_FAILED_ATTEMPTS: ${AUTH_MAX_FAILED_ATTEMPTS:-5}
+      AUTH_LOCKOUT_MINUTES: ${AUTH_LOCKOUT_MINUTES:-15}
+      AUTH_COOKIE_SAMESITE: ${AUTH_COOKIE_SAMESITE:-strict}
+      PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
+      PDF_CHROMIUM_NO_SANDBOX: ${PDF_CHROMIUM_NO_SANDBOX:-false}
+      HOME: /tmp
+      XDG_CONFIG_HOME: /tmp
+      XDG_CACHE_HOME: /tmp
+    cap_drop:
+      - ALL
+    cap_add:
+      - SYS_CHROOT
+    security_opt:
+      - no-new-privileges:true
+      - seccomp=./deploy/seccomp/chromium.json
+    read_only: true
+    tmpfs:
+      - /tmp:size=256M
+
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:?Falta VITE_API_URL en las variables del entorno}
+    restart: unless-stopped
+    ports:
+      - '${FRONTEND_PORT:-8001}:80'
+    deploy:
+      resources:
+        limits:
+          memory: ${FRONTEND_MEMORY_LIMIT:-128M}
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  backup:
+    image: prodrigestivill/postgres-backup-local:16
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: ${DB_NAME:?Falta DB_NAME en las variables del entorno}
+      POSTGRES_USER: ${DB_USER:?Falta DB_USER en las variables del entorno}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Falta DB_PASSWORD en las variables del entorno}
+      SCHEDULE: ${BACKUP_SCHEDULE:-@daily}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-30}
+      BACKUP_KEEP_WEEKS: ${BACKUP_KEEP_WEEKS:-0}
+      BACKUP_KEEP_MONTHS: ${BACKUP_KEEP_MONTHS:-0}
+    volumes:
+      - pg_backups:/backups
+
+volumes:
+  pg_data:
+  pg_backups:

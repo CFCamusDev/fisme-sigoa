@@ -1,0 +1,4 @@
+dist/
+coverage/
+src/shared/prisma/generated/
+test-fixtures/

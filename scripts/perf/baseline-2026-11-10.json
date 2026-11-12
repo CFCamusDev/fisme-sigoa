@@ -1,0 +1,13 @@
+{
+  "date": "2026-11-10",
+  "source": "Informe de rendimiento del 10/11/2026 (rama develop, HEAD 248c06a)",
+  "groups": {
+    "backend-unit": { "seconds": 14.3, "tests": 1124 },
+    "backend-integration": { "seconds": 559.7, "tests": 554 },
+    "frontend": { "seconds": 109.3, "tests": 636 },
+    "shared": { "seconds": 2.1, "tests": 191 },
+    "pdf": { "seconds": 11.5, "tests": 3 },
+    "e2e": { "seconds": 237.2, "tests": 71 },
+    "verify-full-repeat-3": { "seconds": 1984.6, "tests": null }
+  }
+}

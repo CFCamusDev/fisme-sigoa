@@ -1,0 +1,46 @@
+# ==============================================================================
+# Despliegue automático a Staging (Portainer Webhook) al fusionar en develop
+# Requiere que la variable de repositorio STAGING_ENABLED esté en 'true'
+# ==============================================================================
+name: Deploy to Staging
+
+on:
+  push:
+    branches:
+      - develop
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Desplegar stack de staging en Portainer
+    if: vars.STAGING_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Verificar que el commit proviene de un PR fusionado
+        run: bash scripts/ci/verify-merged-pr.sh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET_BRANCH: develop
+
+      - name: Disparar webhook de Portainer
+        run: bash scripts/ci/trigger-portainer.sh
+        env:
+          PORTAINER_WEBHOOK_URL: ${{ secrets.PORTAINER_STAGING_WEBHOOK_URL }}
+
+      - name: Esperar a que el entorno de staging responda saludable
+        run: bash scripts/ci/wait-for-health.sh
+        env:
+          HEALTH_URL: ${{ vars.STAGING_HEALTH_URL }}
+          TIMEOUT_SECONDS: 900

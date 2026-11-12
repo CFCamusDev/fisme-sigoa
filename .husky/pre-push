@@ -1,0 +1,60 @@
+#!/usr/bin/env sh
+# ==============================================================================
+# Hook pre-push:
+# 1. Bloquea empujones directos a las ramas protegidas main y develop
+# 2. Ejecuta la verificación rápida de PR (pnpm verify:pr:quick) en ramas de trabajo
+# ==============================================================================
+
+has_work_branch=0
+zero_sha="0000000000000000000000000000000000000000"
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  # 1. Bloquear empujón directo a main o develop
+  case "$remote_ref" in
+    refs/heads/main|refs/heads/develop)
+      echo "" >&2
+      echo "======================================================================" >&2
+      echo "[ERROR] Empujón directo denegado a '$remote_ref'." >&2
+      echo "Las ramas 'main' y 'develop' solo admiten cambios mediante Pull Request." >&2
+      echo "Por favor, empuja tu rama de trabajo (feature/*, fix/*, etc.) y abre un PR." >&2
+      echo "======================================================================" >&2
+      echo "" >&2
+      exit 1
+      ;;
+  esac
+
+  # 2. Identificar si es una rama de trabajo (no borrado ni etiqueta)
+  case "$remote_ref" in
+    refs/heads/*)
+      if [ "$local_sha" != "$zero_sha" ]; then
+        has_work_branch=1
+      fi
+      ;;
+  esac
+done
+
+# 3. Si hay ramas de trabajo siendo empujadas, ejecutar la verificación rápida
+if [ "$has_work_branch" -eq 1 ]; then
+  if [ ! -d "node_modules" ]; then
+    echo "" >&2
+    echo "======================================================================" >&2
+    echo "[ERROR] 'node_modules' no encontrado." >&2
+    echo "Ejecuta 'pnpm install' antes de empujar tu rama." >&2
+    echo "======================================================================" >&2
+    echo "" >&2
+    exit 1
+  fi
+
+  echo "==> Ejecutando verificación rápida previa al empujón (pnpm verify:pr:quick)..."
+  pnpm verify:pr:quick || {
+    echo "" >&2
+    echo "======================================================================" >&2
+    echo "[ERROR] La verificación rápida previa al push falló." >&2
+    echo "Corrige los errores indicados arriba antes de subir tu rama." >&2
+    echo "======================================================================" >&2
+    echo "" >&2
+    exit 1
+  }
+fi
+
+exit 0

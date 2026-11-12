@@ -1,0 +1,430 @@
+// ==============================================================================
+// FISME-SIGOA — Esquema de Base de Datos Prisma (PostgreSQL)
+// ==============================================================================
+// Convenciones obligatorias del esquema (LS s.4, RS-070, RS-071, RNF-022, RNF-027):
+//
+// 1. Nombres y Mapeos:
+//    - Modelos en PascalCase singular (ej: model ProcessExecution).
+//    - Tablas en PostgreSQL mapeadas explícitamente a snake_case plural con @@map (ej: @@map("process_executions")).
+//    - Atributos y columnas en camelCase directo sin renombrar salvo requerimiento específico.
+//    - Enums en SCREAMING_SNAKE_CASE con valores en inglés alineados al glosario oficial (AGENTS.md §7.1).
+//
+// 2. Claves primarias y Marcas temporales:
+//    - Clave primaria obligatoria: id String @id @default(cuid()).
+//    - Marcas de tiempo de auditoría técnica:
+//        createdAt DateTime @default(now())
+//        updatedAt DateTime @updatedAt
+//
+// 3. Auditoría de Autoría (sin relación de clave foránea forzada):
+//    - createdBy String?  (ID del usuario que creó el registro o 'SYSTEM'/'SEED')
+//    - updatedBy String?  (ID del último usuario que modificó el registro)
+//    - No declarar relación @relation hacia User para evitar acoplamientos circulares y permitir actores del sistema.
+//
+// 4. Inmutabilidad y Anulación Lógica (RS-070, RS-071, RN-007):
+//    - Los registros con valor de evidencia NUNCA se eliminan físicamente (DELETE prohibido).
+//    - Campos estándar de anulación lógica:
+//        voided Boolean @default(false)
+//        voidReason String?
+//        voidedBy String?
+//        voidedAt DateTime?
+//    - Borrado físico solo admisible en borradores transitorios (DRAFT).
+//
+// 5. Relaciones e Índices:
+//    - Claves foráneas nombradas como <entidadRelacionada>Id (ej: courseOfferingId String).
+//    - Cada clave foránea debe contar con su índice explícito: @@index([courseOfferingId]).
+//    - Restricciones de unicidad compuestas con @@unique([...]).
+//    - Consultas frecuentes con filtros combinados deben definir índices con @@index([...]).
+//
+// 6. Auditoría Append-Only (HU-075):
+//    - La tabla AuditLog es exclusivamente de inserción; nunca se ejecutan UPDATE ni DELETE.
+//    - Excepción justificada a las convenciones generales: sin updatedAt, updatedBy ni campos de anulación lógica (inmutable y append-only).
+//
+// ------------------------------------------------------------------------------
+// MODELO DE EJEMPLO (COMENTADO DE REFERENCIA):
+// ------------------------------------------------------------------------------
+// enum ExampleStatus {
+//   DRAFT
+//   IN_PROGRESS
+//   APPROVED
+//   CLOSED
+//   VOIDED
+// }
+//
+// model ExampleEntity {
+//   id          String        @id @default(cuid())
+//   code        String
+//   title       String
+//   status      ExampleStatus @default(DRAFT)
+//
+//   // Relación con otra entidad
+//   programId   String
+//   // program     Program       @relation(fields: [programId], references: [id])
+//
+//   // Auditoría técnica de autoría
+//   createdBy   String?
+//   updatedBy   String?
+//
+//   // Marcas temporales
+//   createdAt   DateTime      @default(now())
+//   updatedAt   DateTime      @updatedAt
+//
+//   // Anulación lógica (RS-070)
+//   voided      Boolean       @default(false)
+//   voidReason  String?
+//   voidedBy    String?
+//   voidedAt    DateTime?
+//
+//   // Índices y restricciones
+//   @@unique([programId, code])
+//   @@index([programId])
+//   @@index([status])
+//   @@map("example_entities")
+// }
+// ==============================================================================
+
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/shared/prisma/generated"
+}
+
+// ------------------------------------------------------------------------------
+// Auditoría Append-Only (HU-075, RS-040, RS-041, RS-042, RS-043)
+// ------------------------------------------------------------------------------
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  STATE_CHANGE
+  VOID
+  LOGIN_SUCCESS
+  LOGIN_FAILURE
+  ROLE_CHANGE
+  PERMISSION_CHANGE
+  PARAMETER_CHANGE
+  DOWNLOAD
+  PUBLIC_RESPONSE
+  ACCESS_DENIED
+}
+
+model AuditLog {
+  id           String      @id @default(cuid())
+  sequence     BigInt      @unique
+  occurredAt   DateTime
+  actor        String
+  ip           String?
+  requestId    String?
+  action       AuditAction
+  entity       String
+  entityId     String
+  before       Json?
+  after        Json?
+  previousHash String?
+  hash         String      @unique
+
+  @@index([entity, entityId])
+  @@index([actor])
+  @@index([occurredAt])
+  @@map("audit_logs")
+}
+
+model AuditChainHead {
+  id        String   @id // 'MAIN' (excepción documentada a cuid(): puntero técnico único de cabeza)
+  sequence  BigInt
+  hash      String
+  updatedAt DateTime @updatedAt
+
+  @@map("audit_chain_heads")
+}
+
+// ------------------------------------------------------------------------------
+// Archivos almacenados (HU-076, LS s.4.13, RS-072, RNF-013)
+// ------------------------------------------------------------------------------
+
+model StoredFile {
+  id        String   @id @default(cuid())
+  provider  String
+  publicId  String
+  url       String
+  mimeType  String
+  sizeBytes Int
+  sha256    String
+  createdAt DateTime @default(now())
+
+  @@unique([provider, publicId])
+  @@map("stored_files")
+}
+
+// ------------------------------------------------------------------------------
+// Usuarios y Autenticación (HU-001, LS s.4.1, LS s.5.14, RF-001, RS-015, RS-016)
+// ------------------------------------------------------------------------------
+
+enum UserStatus {
+  PENDING_ACTIVATION
+  ACTIVE
+  INACTIVE
+}
+
+model User {
+  id                  String     @id @default(cuid())
+  names               String
+  firstSurname        String
+  secondSurname       String?
+  email               String     @unique
+  dni                 String?    @unique
+  passwordHash        String?
+  status              UserStatus @default(PENDING_ACTIVATION)
+  failedLoginAttempts Int        @default(0)
+  lockedUntil         DateTime?
+  lastLoginAt         DateTime?
+
+  // Relaciones
+  refreshTokens    RefreshToken[]
+  userRoles        UserRole[]
+  activationTokens ActivationToken[]
+  userPermissions  UserPermission[]
+
+  // Auditoría técnica de autoría
+  createdBy String?
+  updatedBy String?
+
+  // Marcas temporales
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@map("users")
+}
+
+model RefreshToken {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  createdByIp String?
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+model ActivationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  createdBy String?
+
+  @@index([userId])
+  @@map("activation_tokens")
+}
+
+// ==============================================================================
+// MÓDULO DE AUTORIZACIÓN (HU-006, HU-007, HU-008, cimientos HU-003)
+// ==============================================================================
+
+enum RoleStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum PermissionScope {
+  GLOBAL
+  OWN
+}
+
+model Role {
+  id            String      @id @default(cuid())
+  code          String      @unique
+  name          String      @unique
+  description   String?
+  status        RoleStatus  @default(ACTIVE)
+  deactivatedAt DateTime?
+  isPredefined  Boolean     @default(false)
+  createdBy     String?
+  updatedBy     String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  rolePermissions RolePermission[]
+  userRoles       UserRole[]
+
+  @@index([status])
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  description String
+  module      String
+  createdBy   String?
+  updatedBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  rolePermissions RolePermission[]
+  userPermissions UserPermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String          @id @default(cuid())
+  roleId       String
+  role         Role            @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  permissionId String
+  permission   Permission      @relation(fields: [permissionId], references: [id], onDelete: Restrict)
+  scope        PermissionScope @default(GLOBAL)
+  createdAt    DateTime        @default(now())
+  createdBy    String?
+  updatedAt    DateTime        @default(now()) @updatedAt
+  updatedBy    String?
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  roleId    String
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  createdBy String?
+  updatedAt DateTime @default(now()) @updatedAt
+  updatedBy String?
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model UserPermission {
+  id           String          @id @default(cuid())
+  userId       String
+  user         User            @relation(fields: [userId], references: [id], onDelete: Restrict)
+  permissionId String
+  permission   Permission      @relation(fields: [permissionId], references: [id], onDelete: Restrict)
+  scope        PermissionScope @default(GLOBAL)
+  createdAt    DateTime        @default(now())
+  createdBy    String?
+  updatedAt    DateTime        @default(now()) @updatedAt
+  updatedBy    String?
+
+  @@unique([userId, permissionId])
+  @@index([userId])
+  @@index([permissionId])
+  @@map("user_permissions")
+}
+
+// ==============================================================================
+// MÓDULO DE PARÁMETROS (HU-009)
+// ==============================================================================
+
+model Program {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  faculty   String
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("programs")
+}
+
+// ==============================================================================
+// GESTIÓN DE SEMESTRES (HU-010)
+// ==============================================================================
+
+model Semester {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  startDate DateTime @db.Date
+  endDate   DateTime @db.Date
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  parameters Parameter[]
+
+  @@index([startDate])
+  @@map("semesters")
+}
+
+model Parameter {
+  id                      String   @id @default(cuid())
+  key                     String
+  value                   Int
+  effectiveFromSemesterId String?
+  createdBy               String?
+  updatedBy               String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  effectiveFromSemester Semester? @relation(fields: [effectiveFromSemesterId], references: [id], onDelete: Restrict)
+
+  @@unique([key, effectiveFromSemesterId])
+  @@index([key])
+  @@map("parameters")
+}
+
+// ==============================================================================
+// ESCALAS DE RESPUESTA (HU-012)
+// ==============================================================================
+
+enum ScaleType {
+  LIKERT
+  NUMERIC
+  EVIDENCE
+}
+
+model ResponseScale {
+  id        String    @id @default(cuid())
+  code      String    @unique
+  name      String
+  type      ScaleType
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  levels ScaleLevel[]
+
+  @@map("response_scales")
+}
+
+model ScaleLevel {
+  id                  String   @id @default(cuid())
+  scaleId             String
+  order               Int
+  label               String
+  value               Int
+  countsAsAchievement Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  scale ResponseScale @relation(fields: [scaleId], references: [id], onDelete: Restrict)
+
+  @@unique([scaleId, order])
+  @@unique([scaleId, value])
+  @@index([scaleId])
+  @@map("scale_levels")
+}

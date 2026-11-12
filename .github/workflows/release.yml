@@ -1,0 +1,89 @@
+# ==============================================================================
+# Verificación de lanzamiento y salud de imágenes al crear una etiqueta de versión
+# Valida la procedencia de la etiqueta sobre main y guía el despliegue a producción
+# ==============================================================================
+name: Release verification
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verificar:
+    name: Verificar etiqueta de versión y procedencia
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout del repositorio con historial completo
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Verificar etiqueta de versión
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: bash scripts/ci/verify-release-tag.sh "${{ github.ref_name }}"
+
+  images:
+    name: Construir y verificar imágenes Docker
+    needs: verificar
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v7
+
+      - name: Ejecutar pruebas de humo sobre imágenes Docker
+        run: bash scripts/ci/smoke-image.sh
+
+  resumen:
+    name: Resumen de versión y guía de despliegue
+    needs: [verificar, images]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Generar resumen de despliegue en Portainer
+        run: |
+          TAG="${{ github.ref_name }}"
+          COMMIT="${{ github.sha }}"
+          cat <<EOF >> "$GITHUB_STEP_SUMMARY"
+          ## 🚀 Verificación de versión exitosa: \`$TAG\`
+
+          La etiqueta y sus imágenes Docker han sido verificadas satisfactoriamente.
+
+          ### Datos de la versión
+          - **Etiqueta:** \`$TAG\`
+          - **Commit SHA:** \`$COMMIT\`
+          - **Referencia Git para Portainer:** \`refs/tags/$TAG\`
+
+          ### Procedimiento manual para desplegar a Producción en Portainer
+          1. Iniciar sesión en la consola de **Portainer**.
+          2. Ir a **Stacks** y seleccionar el stack de producción (\`fisme-sigoa-prod\`).
+          3. Acceder a la configuración del repositorio (**Git repository**).
+          4. En **Repository reference**, actualizar el valor a:
+             \`\`\`text
+             refs/tags/$TAG
+             \`\`\`
+          5. Asegurarse de que **GitOps updates** esté desactivado.
+          6. Verificar las variables de entorno en el panel de configuración (.env).
+          7. Hacer clic en **Pull and redeploy**.
+          8. El servicio \`migrate\` ejecutará automáticamente las migraciones pendientes antes de iniciar el backend.
+          9. Comprobar la disponibilidad:
+             - Backend: \`https://<api-domain>/health\`
+             - Frontend: \`https://<app-domain>/\`
+
+          ### Procedimiento de reversión (Rollback)
+          En caso de incidente en producción:
+          1. En el stack de producción de Portainer, cambiar **Repository reference** a la etiqueta anterior (ej. \`refs/tags/vX.Y.Z-anterior\`).
+          2. Si la versión fallida ejecutó migraciones incompatibles, restaurar la base de datos desde el respaldo previo generado con \`/backup.sh\`.
+          3. Hacer clic en **Pull and redeploy**.
+          EOF
