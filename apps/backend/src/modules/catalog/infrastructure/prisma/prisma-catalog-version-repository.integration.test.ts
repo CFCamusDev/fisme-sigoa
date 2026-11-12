@@ -17,6 +17,7 @@ describe('PrismaCatalogVersionRepository Integration (PostgreSQL real, T-013-19)
   const prisma = getPrisma();
   const uow = new PrismaUnitOfWork(prisma);
   const repository = new PrismaCatalogVersionRepository(uow);
+  const programReader = new PrismaCatalogProgramReader(uow);
 
   async function program(id: string) {
     return prisma.program.create({
@@ -219,7 +220,7 @@ describe('PrismaCatalogVersionRepository Integration (PostgreSQL real, T-013-19)
         uow.run(async () => {
           await repository.lockProgram('p1');
           const next = (await repository.maxNumber('p1')) + 1;
-          await prisma.catalogVersion.create({
+          await uow.get().catalogVersion.create({
             data: {
               id: `n${next}`,
               programId: 'p1',
@@ -238,15 +239,9 @@ describe('PrismaCatalogVersionRepository Integration (PostgreSQL real, T-013-19)
       .sort((a, b) => a - b);
     expect(numbers).toEqual([1, 2, 3, 4, 5]);
   }, 15_000);
-});
-
-describe('PrismaCatalogProgramReader Integration (PostgreSQL real, T-013-19)', () => {
-  const { getPrisma } = useTestDatabase();
-  const prisma = getPrisma();
-  const reader = new PrismaCatalogProgramReader(new PrismaUnitOfWork(prisma));
 
   it('returns null when there is no program', async () => {
-    expect(await reader.getCurrentProgramId()).toBeNull();
+    expect(await programReader.getCurrentProgramId()).toBeNull();
   }, 15_000);
 
   it('returns the oldest program', async () => {
@@ -269,6 +264,6 @@ describe('PrismaCatalogProgramReader Integration (PostgreSQL real, T-013-19)', (
       },
     });
 
-    expect(await reader.getCurrentProgramId()).toBe('old');
+    expect(await programReader.getCurrentProgramId()).toBe('old');
   }, 15_000);
 });
