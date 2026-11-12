@@ -66,6 +66,10 @@ describe('E2E Test Hygiene and Explicit Timeouts (Frontend)', () => {
  * pruebas por ruta (HU-078, T-078-19, RNF-036). Agrupar no puede perder ninguna ruta ni viewport.
  */
 const EXPECTED_CONTRAST_CONTEXTS = [
+  'catalog-versions-empty-desktop',
+  'catalog-versions-with-open-desktop',
+  'catalog-versions-with-open-mobile',
+  'catalog-versions-readonly-desktop',
   'authenticated-layout-desktop',
   'authenticated-layout-mobile-menu-open',
   'create-role-empty-desktop',

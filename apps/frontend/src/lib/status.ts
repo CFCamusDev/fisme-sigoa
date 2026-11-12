@@ -34,7 +34,7 @@ export interface StatusDescriptor {
 }
 
 /**
- * Mapa exhaustivo de los 28 estados del glosario (AGENTS.md §7.1) más los estados de logro de AG (MET / NOT_MET).
+ * Mapa exhaustivo de los 29 estados del glosario (AGENTS.md §7.1, incluido IN_VALIDATION de HU-013) más los estados de logro de AG (MET / NOT_MET).
  */
 export const STATUS = {
   // Ejecución de proceso (PR-M01.02.01-EPIS-01)
@@ -71,6 +71,7 @@ export const STATUS = {
   EVALUATED: { label: 'Evaluada', tone: 'closed' },
 
   // Versiones de catálogo, planes y usuarios
+  IN_VALIDATION: { label: 'En validación', tone: 'warning' },
   CURRENT: { label: 'Vigente', tone: 'success' },
   HISTORICAL: { label: 'Histórica', tone: 'neutral' },
   PENDING_ACTIVATION: { label: 'Pendiente de activación', tone: 'warning' },

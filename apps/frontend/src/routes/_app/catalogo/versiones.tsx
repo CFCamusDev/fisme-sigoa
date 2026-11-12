@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { PageHeader } from '@/components/common';
+import { CatalogVersionsPage } from '@/features/catalog';
 import { guardPermission } from '@/lib/permission-guard';
 
 export const Route = createFileRoute('/_app/catalogo/versiones')({
@@ -8,5 +8,5 @@ export const Route = createFileRoute('/_app/catalogo/versiones')({
 });
 
 function CatalogVersionsRouteComponent() {
-  return <PageHeader title="Versiones del catálogo" />;
+  return <CatalogVersionsPage />;
 }

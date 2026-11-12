@@ -120,6 +120,18 @@ describe('AppLayout Component', () => {
     expect(scalesLink).toHaveAttribute('href', '/configuracion/escalas');
   });
 
+  it('renders navigation item "Catálogo" linking to /catalogo/versiones (HU-013, T-013-16)', async () => {
+    renderWithProviders(
+      <AppLayout>
+        <p>Dashboard</p>
+      </AppLayout>,
+    );
+
+    const catalogLink = await screen.findByRole('link', { name: /Catálogo/i });
+    expect(catalogLink).toBeInTheDocument();
+    expect(catalogLink).toHaveAttribute('href', '/catalogo/versiones');
+  });
+
   it('controls mobile sidebar visibility with accessible aria-expanded button', async () => {
     const user = userEvent.setup();
 

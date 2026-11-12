@@ -169,6 +169,7 @@ test.describe('HU-008 — Autorización por permiso y alcance E2E', () => {
     await expect(mainNav.getByRole('link', { name: 'Semestres' })).toBeVisible();
     await expect(mainNav.getByRole('link', { name: 'Parámetros' })).toBeVisible();
     await expect(mainNav.getByRole('link', { name: 'Escalas' })).toBeVisible();
+    await expect(mainNav.getByRole('link', { name: 'Catálogo' })).toBeVisible();
 
     await mainNav.getByRole('link', { name: 'Semestres' }).click();
     await expect(page).toHaveURL(/\/configuracion\/semestres/);
@@ -182,6 +183,12 @@ test.describe('HU-008 — Autorización por permiso y alcance E2E', () => {
     await expect(page).toHaveURL(/\/configuracion\/escalas/);
     await expect(
       page.getByRole('heading', { level: 1, name: 'Escalas de respuesta' }),
+    ).toBeVisible();
+
+    await mainNav.getByRole('link', { name: 'Catálogo' }).click();
+    await expect(page).toHaveURL(/\/catalogo\/versiones/);
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Versiones del catálogo' }),
     ).toBeVisible();
 
     await mainNav.getByRole('link', { name: 'Programa' }).click();
