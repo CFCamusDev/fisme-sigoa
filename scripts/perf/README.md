@@ -17,6 +17,24 @@ node scripts/perf/measure-tests.mjs --out-dir tmp/perf-otro
 
 `--only` recibe grupos separados por coma: `backend-unit`, `backend-integration`, `frontend`, `shared`, `pdf`, `e2e`, `verify-full-repeat-3`.
 
+## Desempeño de la API (RNF-018)
+
+```bash
+SIGOA_PERF_EMAIL=... SIGOA_PERF_PASSWORD=... pnpm perf:api --base-url http://localhost:3000
+```
+
+Inicia sesión una vez y lanza 20 usuarios virtuales concurrentes durante 30 s sobre las consultas existentes (`/me/permissions`, `/users`, `/roles`, `/semesters`, `/parameters`, `/response-scales`, `/program`). Escribe `tmp/perf/api-report.md` y `api-report.json` con p50, p95, p99, errores y respuestas 429, y sale con código 1 si el p95 de consultas es ≥ 500 ms o el de escrituras ≥ 1 s.
+
+| Opción          | Efecto                                                                                                                                         |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--users N`     | Usuarios concurrentes (20 por defecto).                                                                                                        |
+| `--duration S`  | Segundos de medición (30 por defecto).                                                                                                         |
+| `--think-ms MS` | Pausa entre peticiones de cada usuario (100 por defecto).                                                                                      |
+| `--writes`      | Añade un `PATCH /program` con el nombre actual (no cambia datos, pero deja un registro de auditoría por petición); solo en entornos de prueba. |
+| `--out-dir DIR` | Carpeta del informe (`tmp/perf`).                                                                                                              |
+
+El limitador general (`RATE_LIMIT_GENERAL_MAX`, 300 por minuto y por IP) cuenta las peticiones de todos los usuarios virtuales. Para medir el servidor y no el limitador, levanta el backend de prueba con un valor mayor; cualquier 429 hace fallar la medición. Las credenciales se leen del entorno, nunca de la línea de comandos.
+
 ## Ejecutar menos pruebas mientras desarrollas
 
 | Comando              | Qué hace                                                                                                                                                                                                                                                                               |
