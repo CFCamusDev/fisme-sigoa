@@ -8,3 +8,5 @@ export * from './domain/ports/index.js';
 export * from './infrastructure/prisma/prisma-catalog-version-mapper.js';
 export * from './infrastructure/prisma/prisma-catalog-version-repository.js';
 export * from './infrastructure/prisma/prisma-catalog-program-reader.js';
+export * from './infrastructure/prisma/prisma-educational-objective-mapper.js';
+export * from './infrastructure/prisma/prisma-educational-objective-repository.js';
