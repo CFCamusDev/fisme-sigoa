@@ -17,6 +17,16 @@ export interface CatalogVersionsRouterDependencies {
 export function createCatalogVersionsRouter(deps: CatalogVersionsRouterDependencies): Router {
   const router = Router();
 
+  // GET /catalog-versions (HU-013, RF-013, RS-002, RNF-008, RNF-009)
+  // Cadena obligatoria: authenticate -> requirePermission -> validateRequest -> controller
+  router.get(
+    '/',
+    deps.authenticate,
+    deps.requirePermission('catalogo.ver', 'GLOBAL'),
+    validateRequest({ query: listCatalogVersionsQuerySchema }),
+    deps.controller.listCatalogVersions,
+  );
+
   // POST /catalog-versions (HU-013, T-013-13, CA1, CA2, RF-013, RS-002, RS-020, RNF-008, RNF-009)
   // Cadena obligatoria: authenticate -> requirePermission -> validateRequest -> controller
   router.post(

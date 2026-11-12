@@ -3,6 +3,7 @@ import type { AuditLogger } from '../../shared/audit/audit-logger.js';
 import type { DbProvider } from '../../shared/prisma/prisma-unit-of-work.js';
 import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
 import { CreateCatalogVersionUseCase } from './application/create-catalog-version.js';
+import { ListCatalogVersionsUseCase } from './application/list-catalog-versions.js';
 import type { CatalogPermissionChecker } from './domain/ports/catalog-permission-checker.js';
 import { CatalogVersionsController } from './infrastructure/http/catalog-versions.controller.js';
 import {
@@ -51,7 +52,18 @@ export function createCatalogVersionsModule(deps?: CatalogModuleDependencies): R
     clock: deps.clock,
   });
 
-  const controller = new CatalogVersionsController({ createCatalogVersionUseCase });
+  const listCatalogVersionsUseCase = new ListCatalogVersionsUseCase({
+    programReader,
+    versionReader: versionRepository,
+    objectiveReader: objectiveRepository,
+    attributeReader: attributeRepository,
+    permissionChecker: deps.permissionChecker,
+  });
+
+  const controller = new CatalogVersionsController({
+    createCatalogVersionUseCase,
+    listCatalogVersionsUseCase,
+  });
 
   return createCatalogVersionsRouter({
     controller,
