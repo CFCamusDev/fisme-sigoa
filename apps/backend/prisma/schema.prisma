@@ -453,11 +453,31 @@ model CatalogVersion {
   createdAt        DateTime             @default(now())
   updatedAt        DateTime             @updatedAt
 
-  program         Program          @relation(fields: [programId], references: [id], onDelete: Restrict)
-  basedOnVersion  CatalogVersion?  @relation("CatalogVersionOrigin", fields: [basedOnVersionId], references: [id], onDelete: Restrict)
-  derivedVersions CatalogVersion[] @relation("CatalogVersionOrigin")
+  program         Program                @relation(fields: [programId], references: [id], onDelete: Restrict)
+  basedOnVersion  CatalogVersion?        @relation("CatalogVersionOrigin", fields: [basedOnVersionId], references: [id], onDelete: Restrict)
+  derivedVersions CatalogVersion[]       @relation("CatalogVersionOrigin")
+  objectives      EducationalObjective[]
 
   @@unique([programId, number])
   @@index([programId, status])
   @@map("catalog_versions")
+}
+
+model EducationalObjective {
+  id        String   @id @default(cuid())
+  versionId String
+  code      String
+  statement String
+  order     Int
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  version CatalogVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+
+  @@unique([versionId, code])
+  @@unique([versionId, order])
+  @@index([versionId])
+  @@map("educational_objectives")
 }
