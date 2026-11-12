@@ -50,7 +50,10 @@ if ! command -v gh >/dev/null 2>&1; then
 fi
 
 REPO="${GITHUB_REPOSITORY:-local/repo}"
-PULLS_JSON=$(gh api "repos/${REPO}/commits/${COMMIT_SHA}/pulls" 2>/dev/null || echo "[]")
+if ! PULLS_JSON=$(gh api "repos/${REPO}/commits/${COMMIT_SHA}/pulls" 2>/dev/null); then
+  echo "ERROR: No se pudo consultar a GitHub los Pull Requests del commit $COMMIT_SHA (revisa el permiso pull-requests: read del workflow)." >&2
+  exit 1
+fi
 
 export EXPECTED_VERSION
 export TAG_NAME
