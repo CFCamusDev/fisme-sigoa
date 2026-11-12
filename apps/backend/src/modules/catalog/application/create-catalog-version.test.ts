@@ -6,6 +6,10 @@ import type { UnitOfWork } from '../../../shared/unit-of-work/unit-of-work.js';
 import { CatalogVersion } from '../domain/entities/catalog-version.js';
 import { EducationalObjective } from '../domain/entities/educational-objective.js';
 import { GraduateAttribute } from '../domain/entities/graduate-attribute.js';
+import {
+  CatalogProgramNotFoundError,
+  OpenCatalogVersionExistsError,
+} from '../domain/errors/index.js';
 import type { CatalogPermissionChecker } from '../domain/ports/catalog-permission-checker.js';
 import type { CatalogProgramReader } from '../domain/ports/catalog-program-reader.js';
 import type { CatalogVersionReader } from '../domain/ports/catalog-version-reader.js';
@@ -156,5 +160,114 @@ describe('CreateCatalogVersionUseCase (T-013-10, T-013-18, RF-013, RS-020)', () 
     expect(unitOfWork.run).not.toHaveBeenCalled();
     expect(versionRepository.save).not.toHaveBeenCalled();
     expect(auditLogger.log).not.toHaveBeenCalled();
+  });
+
+  it('fails with a typed not found error when there is no program', async () => {
+    programReader.getCurrentProgramId.mockResolvedValue(null);
+
+    await expect(useCase.execute(command)).rejects.toBeInstanceOf(CatalogProgramNotFoundError);
+
+    expect(unitOfWork.run).not.toHaveBeenCalled();
+  });
+
+  it.each(['DRAFT', 'IN_VALIDATION'] as const)(
+    'rejects creation when an open version exists (%s)',
+    async (status) => {
+      versionReader.findOpen.mockResolvedValue(version('v2', 2, status));
+
+      await expect(useCase.execute(command)).rejects.toBeInstanceOf(OpenCatalogVersionExistsError);
+
+      expect(versionRepository.save).not.toHaveBeenCalled();
+      expect(objectiveRepository.insertMany).not.toHaveBeenCalled();
+      expect(auditLogger.log).not.toHaveBeenCalled();
+    },
+  );
+
+  it('locks the program inside the transaction before checking for an open version', async () => {
+    await useCase.execute(command);
+
+    expect(versionRepository.lockProgram).toHaveBeenCalledWith('p1');
+    const order = [
+      unitOfWork.run,
+      versionRepository.lockProgram,
+      versionReader.findOpen,
+      versionReader.maxNumber,
+      versionRepository.save,
+    ].map((fn) => fn.mock.invocationCallOrder[0]!);
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+  });
+
+  it('creates an empty draft without source when there is no current version', async () => {
+    versionReader.findCurrent.mockResolvedValue(null);
+    versionReader.maxNumber.mockResolvedValue(0);
+
+    const dto = await useCase.execute(command);
+
+    expect(dto).toMatchObject({
+      number: 1,
+      basedOnVersionId: null,
+      objectiveCount: 0,
+      attributeCount: 0,
+    });
+    expect(objectiveReader.listByVersion).not.toHaveBeenCalled();
+    expect(objectiveRepository.insertMany).not.toHaveBeenCalled();
+  });
+
+  it('numbers the draft after the highest version even when the current one is lower', async () => {
+    versionReader.maxNumber.mockResolvedValue(7);
+
+    const dto = await useCase.execute(command);
+
+    expect(dto.number).toBe(8);
+  });
+
+  it('writes one CREATE audit event with the copy counts in the same transaction', async () => {
+    await useCase.execute(command);
+
+    expect(auditLogger.log).toHaveBeenCalledTimes(1);
+    const event = auditLogger.log.mock.calls[0]![0];
+    expect(event).toMatchObject({
+      action: 'CREATE',
+      entity: 'CatalogVersion',
+      actor: 'user-1',
+      ip: '10.0.0.1',
+      before: null,
+      after: {
+        programId: 'p1',
+        number: 2,
+        status: 'DRAFT',
+        basedOnVersionId: 'v1',
+        copiedObjectives: 2,
+        copiedAttributes: 1,
+      },
+    });
+    expect(unitOfWork.run).toHaveBeenCalledTimes(1);
+    expect(auditLogger.log.mock.invocationCallOrder[0]).toBeGreaterThan(
+      unitOfWork.run.mock.invocationCallOrder[0]!,
+    );
+  });
+
+  it('propagates a failed copy so the transaction can roll back, without auditing', async () => {
+    objectiveRepository.insertMany.mockRejectedValue(new Error('fallo de copia'));
+
+    await expect(useCase.execute(command)).rejects.toThrow('fallo de copia');
+
+    expect(auditLogger.log).not.toHaveBeenCalled();
+  });
+
+  it('returns a DTO and never the entity', async () => {
+    const dto = await useCase.execute(command);
+
+    expect(dto).not.toBeInstanceOf(CatalogVersion);
+    expect(Object.keys(dto).sort()).toEqual([
+      'attributeCount',
+      'basedOnVersionId',
+      'createdAt',
+      'id',
+      'number',
+      'objectiveCount',
+      'programId',
+      'status',
+    ]);
   });
 });
