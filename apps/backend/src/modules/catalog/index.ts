@@ -17,3 +17,5 @@ export * from './application/create-catalog-version.js';
 export * from './application/create-catalog-version.types.js';
 export * from './application/list-catalog-versions.js';
 export * from './application/list-catalog-versions.types.js';
+export * from './infrastructure/prisma/seed/catalog-seed-data.js';
+export * from './infrastructure/prisma/seed/catalog-version-seed.js';

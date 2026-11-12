@@ -52,6 +52,14 @@ describe('Database seed (PostgreSQL real, HU-079)', () => {
       expect(counts.programs).toBe(1);
       expect(await prisma.parameter.count()).toBeGreaterThan(0);
       expect(await prisma.responseScale.count()).toBeGreaterThan(0);
+      const catalogVersion = await prisma.catalogVersion.findFirstOrThrow();
+      expect(catalogVersion).toMatchObject({ number: 1, status: 'APPROVED' });
+      expect(
+        await prisma.educationalObjective.count({ where: { versionId: catalogVersion.id } }),
+      ).toBe(4);
+      expect(
+        await prisma.graduateAttribute.count({ where: { versionId: catalogVersion.id } }),
+      ).toBe(12);
 
       const admin = await prisma.user.findUniqueOrThrow({
         where: { email: ADMIN_EMAIL },
@@ -107,6 +115,11 @@ describe('Database seed (PostgreSQL real, HU-079)', () => {
       expect(counts.userRoles).toBe(baseline.userRoles);
       expect(counts.roles).toBe(baseline.roles);
       expect(counts.permissions).toBe(baseline.permissions);
+
+      // El catálogo no se duplica en la segunda ejecución
+      expect(await prisma.catalogVersion.count()).toBe(1);
+      expect(await prisma.educationalObjective.count()).toBe(4);
+      expect(await prisma.graduateAttribute.count()).toBe(12);
 
       // La edición no se revirtió
       const restoredEdit = await prisma.rolePermission.count({
