@@ -1,1 +1,7 @@
+export * from './domain/entities/catalog-limits.js';
+export * from './domain/entities/catalog-version.js';
+export * from './domain/entities/educational-objective.js';
+export * from './domain/entities/graduate-attribute.js';
+export * from './domain/policies/catalog-version-state-machine.js';
+export * from './domain/errors/index.js';
 export * from './domain/ports/index.js';
