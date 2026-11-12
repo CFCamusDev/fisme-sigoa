@@ -23,14 +23,12 @@ export type CatalogVersionStatusValue = z.infer<typeof catalogVersionStatusSchem
  */
 export const createCatalogVersionRequestSchema = z.preprocess(
   (value) => (value === undefined ? {} : value),
-  z.object({}).strict({ message: 'La solicitud no admite datos adicionales' }),
+  z.object({}).strict(),
 );
 export type CreateCatalogVersionRequest = z.infer<typeof createCatalogVersionRequestSchema>;
 
 /** El listado no admite parámetros: rechaza cualquier query. */
-export const listCatalogVersionsQuerySchema = z
-  .object({})
-  .strict({ message: 'El listado no admite parámetros' });
+export const listCatalogVersionsQuerySchema = z.object({}).strict();
 export type ListCatalogVersionsQuery = z.infer<typeof listCatalogVersionsQuerySchema>;
 
 export const catalogVersionDtoSchema = z
