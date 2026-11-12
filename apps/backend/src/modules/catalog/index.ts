@@ -10,3 +10,5 @@ export * from './infrastructure/prisma/prisma-catalog-version-repository.js';
 export * from './infrastructure/prisma/prisma-catalog-program-reader.js';
 export * from './infrastructure/prisma/prisma-educational-objective-mapper.js';
 export * from './infrastructure/prisma/prisma-educational-objective-repository.js';
+export * from './infrastructure/prisma/prisma-graduate-attribute-mapper.js';
+export * from './infrastructure/prisma/prisma-graduate-attribute-repository.js';
