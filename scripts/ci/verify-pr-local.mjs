@@ -26,6 +26,11 @@ export function validateBranchName(branchName) {
     };
   }
 
+  // Ramas de release y hotfix (AGENTS §8.1): no pertenecen a una HU.
+  if (/^(release|hotfix)\/[0-9]+\.[0-9]+\.[0-9]+$/.test(trimmed)) {
+    return { valid: true };
+  }
+
   const regex = /^(feature|fix|bug|docs|refactor|test|chore)\/(HU-[0-9]{3})-[a-z0-9-]+$/;
   const match = trimmed.match(regex);
   if (!match) {
@@ -94,7 +99,9 @@ export function validateCommitMessage(rawMessage) {
   const message = rawMessage.trim();
 
   // 1. Debe incluir pie obligatorio Refs: HU-xxx, T-xxx-yy
-  const refsRegex = /^Refs:\s*HU-\d{3}(?:,\s*T-\d{3}-\d{2})+$/m;
+  // Los commits de un release referencian su tarea: Refs: T-REL-010-01
+  const refsRegex =
+    /^Refs:\s*(?:HU-\d{3}(?:,\s*T-\d{3}-\d{2})+|T-REL-\d{3}-\d{2}(?:,\s*T-REL-\d{3}-\d{2})*)$/m;
   if (!refsRegex.test(message)) {
     violations.push('Falta el pie obligatorio de trazabilidad "Refs: HU-xxx, T-xxx-yy".');
   }
@@ -229,7 +236,8 @@ export function buildExecutionPlan(mode, options = {}) {
     id: 'branch-sync',
     name: 'Sincronía con rama base y sin conflictos',
     group: 'convenciones',
-    actionSuggestion: 'Ejecuta git fetch origin develop && git rebase origin/develop para sincronizar.',
+    actionSuggestion:
+      'Ejecuta git fetch origin develop && git rebase origin/develop para sincronizar.',
   });
 
   // 2. Calidad rápida y seguridad
@@ -306,8 +314,7 @@ export function buildExecutionPlan(mode, options = {}) {
     id: 'compose-config',
     name: 'Sintaxis y configuración de Docker Compose de producción',
     group: 'imagenes',
-    command:
-      'docker compose --env-file deploy/stack.env.example -f docker-compose.prod.yml config',
+    command: 'docker compose --env-file deploy/stack.env.example -f docker-compose.prod.yml config',
     actionSuggestion:
       'Verifica las variables y sintaxis en docker-compose.prod.yml y deploy/stack.env.example.',
     timeoutMs: 60_000,
@@ -377,8 +384,7 @@ export function buildExecutionPlan(mode, options = {}) {
       id: 'pdf-stability',
       name: 'Estabilidad de PDF con Chromium real (3 pasadas)',
       group: 'calidad',
-      command:
-        'pnpm --filter backend exec vitest run --project integration src/shared/pdf',
+      command: 'pnpm --filter backend exec vitest run --project integration src/shared/pdf',
       actionSuggestion: 'Verifica el arranque de Chromium y timeouts de Puppeteer.',
       timeoutMs: 180_000,
     });
@@ -398,7 +404,8 @@ export function buildExecutionPlan(mode, options = {}) {
       command: 'bash scripts/ci/smoke-image.sh',
       script: 'scripts/ci/smoke-image.sh',
       args: [],
-      actionSuggestion: 'Asegúrate de que el demonio de Docker esté corriendo y las imágenes compilen.',
+      actionSuggestion:
+        'Asegúrate de que el demonio de Docker esté corriendo y las imágenes compilen.',
       timeoutMs: 600_000,
     });
     plan.push({
@@ -456,13 +463,19 @@ export function computeOverallStatus(checks, mode) {
  */
 export function parsePerfBudget(jsonText) {
   if (jsonText === null || jsonText === undefined) {
-    return { budget: null, warning: 'No se encontró scripts/ci/perf-budget.json; se omiten los presupuestos.' };
+    return {
+      budget: null,
+      warning: 'No se encontró scripts/ci/perf-budget.json; se omiten los presupuestos.',
+    };
   }
   let data;
   try {
     data = JSON.parse(jsonText);
   } catch {
-    return { budget: null, warning: 'scripts/ci/perf-budget.json no es JSON válido; se omiten los presupuestos.' };
+    return {
+      budget: null,
+      warning: 'scripts/ci/perf-budget.json no es JSON válido; se omiten los presupuestos.',
+    };
   }
   const isPositive = (value) => typeof value === 'number' && Number.isFinite(value) && value > 0;
   const isBudgetMap = (value) =>
@@ -494,7 +507,10 @@ export function computeTimings(checks, budget, options) {
   const byGroup = new Map();
   for (const check of checks) {
     if (!check.parallelGroup) continue;
-    byGroup.set(check.parallelGroup, (byGroup.get(check.parallelGroup) || 0) + (check.durationMs || 0));
+    byGroup.set(
+      check.parallelGroup,
+      (byGroup.get(check.parallelGroup) || 0) + (check.durationMs || 0),
+    );
   }
 
   const warnings = [];
@@ -596,7 +612,9 @@ export function formatReportTable(report) {
   }
 
   lines.push('----------------------------------------------------------------------');
-  lines.push(` Resultado global: ${report.overallStatus.toUpperCase()} (Código: ${report.exitCode})`);
+  lines.push(
+    ` Resultado global: ${report.overallStatus.toUpperCase()} (Código: ${report.exitCode})`,
+  );
   lines.push('======================================================================');
   lines.push('');
 
@@ -958,7 +976,8 @@ export function checkBranchSync(data) {
       valid: false,
       error:
         'Se detectaron conflictos de fusión con la rama base. Se requiere rebase o resolución de conflictos antes del PR.',
-      actionSuggestion: 'Ejecuta git fetch origin develop && git rebase origin/develop y resuelve los conflictos.',
+      actionSuggestion:
+        'Ejecuta git fetch origin develop && git rebase origin/develop y resuelve los conflictos.',
     };
   }
 
@@ -1006,11 +1025,18 @@ export function verifyReportStatus(report, currentContext, options = {}) {
   const now = currentContext.now || new Date();
 
   if (!report || typeof report !== 'object') {
-    return { valid: false, errors: ['No existe o no se pudo leer el informe de verificación.'], warnings };
+    return {
+      valid: false,
+      errors: ['No existe o no se pudo leer el informe de verificación.'],
+      warnings,
+    };
   }
 
   // Regla (a): headSha y branch coinciden con el HEAD actual
-  if (report.headSha !== currentContext.currentHeadSha || report.branch !== currentContext.currentBranch) {
+  if (
+    report.headSha !== currentContext.currentHeadSha ||
+    report.branch !== currentContext.currentBranch
+  ) {
     errors.push(
       `El informe corresponde a otro commit (${report.headSha} en ${report.branch}), pero el HEAD actual es ${currentContext.currentHeadSha} en ${currentContext.currentBranch}.`,
     );
@@ -1021,7 +1047,9 @@ export function verifyReportStatus(report, currentContext, options = {}) {
     errors.push('El informe fue generado con cambios sin confirmar en el árbol de trabajo.');
   }
   if (!currentContext.isTreeClean) {
-    errors.push('El árbol actual está sucio (tiene cambios sin confirmar). Confirma o descarta los cambios.');
+    errors.push(
+      'El árbol actual está sucio (tiene cambios sin confirmar). Confirma o descarta los cambios.',
+    );
   }
 
   // Regla (c): modo del informe cubre el nivel exigido (quick < standard < full)
@@ -1040,7 +1068,9 @@ export function verifyReportStatus(report, currentContext, options = {}) {
     errors.push('El informe contiene verificaciones con estado de fallos.');
   }
   if (report.overallStatus === 'omitted' && requireMode !== 'quick') {
-    errors.push('El informe contiene verificaciones con estado de omitidos dentro del alcance requerido.');
+    errors.push(
+      'El informe contiene verificaciones con estado de omitidos dentro del alcance requerido.',
+    );
   }
 
   // Regla (e): auditoría ejecutada hace <= maxAuditAgeHours
@@ -1102,10 +1132,7 @@ export const WORKFLOW_EXCLUSIONS = [
  * @param {Array<{ id: string, name: string, command?: string }>} [mappedChecks]
  * @returns {{ inParity: boolean, unmappedCommands: string[] }}
  */
-export function checkWorkflowDrift(
-  workflowYamlContent,
-  mappedChecks = buildExecutionPlan('full'),
-) {
+export function checkWorkflowDrift(workflowYamlContent, mappedChecks = buildExecutionPlan('full')) {
   const unmappedCommands = [];
   if (!workflowYamlContent) {
     return { inParity: true, unmappedCommands };
@@ -1114,9 +1141,7 @@ export function checkWorkflowDrift(
   // Extraer todos los comandos de los bloques run:
   const runRegex = /^\s*run:\s*(?:\|)?\s*([^\n\r]+)/gm;
   let match;
-  const mappedCommands = mappedChecks
-    .map((c) => c.command)
-    .filter(Boolean);
+  const mappedCommands = mappedChecks.map((c) => c.command).filter(Boolean);
 
   while ((match = runRegex.exec(workflowYamlContent)) !== null) {
     const rawCommand = match[1].trim();
@@ -1132,10 +1157,13 @@ export function checkWorkflowDrift(
       if (mc === rawCommand) return true;
       if (rawCommand.includes('for i in 1 2 3') && mc.includes('src/shared/pdf')) return true;
       if (rawCommand.includes('vitest run') && mc.includes('vitest run')) return true;
-      if (rawCommand.includes('pnpm check:env-parity') && mc.includes('check:env-parity')) return true;
-      if (rawCommand.includes('check:test-patterns') && mc.includes('check:test-patterns')) return true;
+      if (rawCommand.includes('pnpm check:env-parity') && mc.includes('check:env-parity'))
+        return true;
+      if (rawCommand.includes('check:test-patterns') && mc.includes('check:test-patterns'))
+        return true;
       if (
-        (rawCommand.includes('check-windows-paths') || rawCommand.includes('check:windows-paths')) &&
+        (rawCommand.includes('check-windows-paths') ||
+          rawCommand.includes('check:windows-paths')) &&
         mc.includes('check-windows-paths')
       )
         return true;
@@ -1143,12 +1171,17 @@ export function checkWorkflowDrift(
       if (rawCommand.includes('pnpm format:check') && mc.includes('pnpm format:check')) return true;
       if (rawCommand.includes('pnpm typecheck') && mc.includes('pnpm typecheck')) return true;
       if (rawCommand.includes('pnpm depcruise') && mc.includes('pnpm depcruise')) return true;
-      if (rawCommand.includes('prisma migrate deploy') && mc.includes('prisma migrate deploy')) return true;
+      if (rawCommand.includes('prisma migrate deploy') && mc.includes('prisma migrate deploy'))
+        return true;
       if (rawCommand.includes('test:integration') && mc.includes('test:integration')) return true;
       if (rawCommand.includes('test:coverage') && mc.includes('test:coverage')) return true;
       if (rawCommand.includes('pnpm build') && mc.includes('pnpm build')) return true;
       if (rawCommand.includes('pnpm audit') && mc.includes('pnpm audit')) return true;
-      if (rawCommand.includes('verify-compose-hardening') && mc.includes('verify-compose-hardening')) return true;
+      if (
+        rawCommand.includes('verify-compose-hardening') &&
+        mc.includes('verify-compose-hardening')
+      )
+        return true;
       if (rawCommand.includes('smoke-image.sh') && mc.includes('smoke-image.sh')) return true;
       if (rawCommand.includes('smoke-fresh-deploy.sh') && mc.includes('smoke-fresh-deploy.sh'))
         return true;
@@ -1509,8 +1542,12 @@ async function runCli() {
     }
 
     if (!fs.existsSync(reportPath)) {
-      console.error('❌ [verify:pr:status] No existe un informe previo en node_modules/.cache/sigoa-verify/last-report.json.');
-      console.error(`👉 Ejecuta 'pnpm verify:pr${requireMode === 'full' ? ':full' : requireMode === 'standard' ? '' : ':quick'}' primero.`);
+      console.error(
+        '❌ [verify:pr:status] No existe un informe previo en node_modules/.cache/sigoa-verify/last-report.json.',
+      );
+      console.error(
+        `👉 Ejecuta 'pnpm verify:pr${requireMode === 'full' ? ':full' : requireMode === 'standard' ? '' : ':quick'}' primero.`,
+      );
       process.exit(1);
     }
 
@@ -1529,14 +1566,18 @@ async function runCli() {
     );
 
     if (!verification.valid) {
-      console.error(`❌ [verify:pr:status] El informe actual no satisface los requisitos para el nivel '${requireMode}':`);
+      console.error(
+        `❌ [verify:pr:status] El informe actual no satisface los requisitos para el nivel '${requireMode}':`,
+      );
       for (const err of verification.errors) {
         console.error(`   • ${err}`);
       }
       process.exit(1);
     }
 
-    console.log(`✔ [verify:pr:status] Informe vigente y confiable para ${currentBranch} (${currentHeadSha}) en nivel '${requireMode}'.`);
+    console.log(
+      `✔ [verify:pr:status] Informe vigente y confiable para ${currentBranch} (${currentHeadSha}) en nivel '${requireMode}'.`,
+    );
     process.exit(0);
   }
 
@@ -1583,7 +1624,9 @@ async function runCli() {
   const rawPlan = buildExecutionPlan(mode, { only, baseBranch });
   const changedTests =
     repeat > 1 && repeatScope === 'changed'
-      ? selectChangedTests(getGit(`git -c core.quotepath=false diff --name-status ${baseBranch}...HEAD`))
+      ? selectChangedTests(
+          getGit(`git -c core.quotepath=false diff --name-status ${baseBranch}...HEAD`),
+        )
       : { files: [], total: 0, truncated: false };
   if (changedTests.truncated) {
     console.warn(
@@ -1593,10 +1636,13 @@ async function runCli() {
   const forceAll = args.includes('--force-all');
   let changedFilesForScope = null;
   try {
-    changedFilesForScope = execSync(`git -c core.quotepath=false diff --name-only ${baseBranch}...HEAD`, {
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'ignore'],
-    })
+    changedFilesForScope = execSync(
+      `git -c core.quotepath=false diff --name-only ${baseBranch}...HEAD`,
+      {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'ignore'],
+      },
+    )
       .split(/\r?\n/)
       .filter(Boolean);
   } catch {
@@ -1620,7 +1666,8 @@ async function runCli() {
     groups
       .filter(
         (group) =>
-          DATABASE_PARALLEL_GROUPS.has(group.id) && group.steps.some((step) => !step.skippedByScope),
+          DATABASE_PARALLEL_GROUPS.has(group.id) &&
+          group.steps.some((step) => !step.skippedByScope),
       )
       .map((group) => [group.id, generateDisposableDbName()]),
   );
@@ -1695,11 +1742,11 @@ async function runCli() {
 
     // Ejecución de script de shell (.sh) mediante bash resuelto
     if (check.script) {
-      const outcome = await runProcess(
-        resolveBashPath(),
-        [check.script, ...(check.args || [])],
-        { shell: false, env, timeoutMs: check.timeoutMs || 120_000 },
-      );
+      const outcome = await runProcess(resolveBashPath(), [check.script, ...(check.args || [])], {
+        shell: false,
+        env,
+        timeoutMs: check.timeoutMs || 120_000,
+      });
       return outcome.ok ? finish('ok') : finish('failed', { error: outcome.error });
     }
 
@@ -1732,7 +1779,9 @@ async function runCli() {
     // Preparación única antes de los grupos: los pasos usan el resultado sin repetirla.
     const needsPreparation = groups.some(
       (g) =>
-        g.id !== 'convenciones' && g.id !== 'imagenes' && g.steps.some((step) => !step.skippedByScope),
+        g.id !== 'convenciones' &&
+        g.id !== 'imagenes' &&
+        g.steps.some((step) => !step.skippedByScope),
     );
     let preparation;
     if (needsPreparation) {
@@ -1893,6 +1942,3 @@ if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(currentFil
     process.exit(1);
   });
 }
-
-
-
