@@ -4779,6 +4779,282 @@
           }
         }
       }
+    },
+    "/catalog-versions": {
+      "get": {
+        "tags": ["CatalogVersions"],
+        "summary": "Consultar las versiones del catálogo de OE y AG",
+        "description": "Retorna las versiones del catálogo del programa, de la más reciente a la más antigua, con su estado, la versión de origen y la cantidad de objetivos educacionales y atributos del graduado de cada una. Sin paginación: el conjunto está acotado (a lo sumo una versión abierta y una vigente; el resto es historial). No admite parámetros de consulta. Requiere el permiso 'catalogo.ver' con alcance GLOBAL (HU-013, RF-013, RN-020, RS-002).",
+        "operationId": "listCatalogVersions",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Versiones obtenidas exitosamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché HTTP."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListCatalogVersionsResponse"
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "cm0catalogversion0002",
+                      "programId": "cm0programepis000001",
+                      "number": 2,
+                      "status": "DRAFT",
+                      "basedOnVersionId": "cm0catalogversion0001",
+                      "objectiveCount": 4,
+                      "attributeCount": 12,
+                      "createdAt": "2026-11-12T15:00:00.000Z"
+                    },
+                    {
+                      "id": "cm0catalogversion0001",
+                      "programId": "cm0programepis000001",
+                      "number": 1,
+                      "status": "APPROVED",
+                      "basedOnVersionId": null,
+                      "objectiveCount": 4,
+                      "attributeCount": 12,
+                      "createdAt": "2026-11-01T15:00:00.000Z"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetro de consulta desconocido: el listado no admite ninguno.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "La solicitud contiene errores de validación",
+                    "requestId": "req_cv_get_400",
+                    "details": [
+                      {
+                        "path": "query",
+                        "message": "Unrecognized key: \"page\""
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o token de acceso inválido o expirado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado",
+                    "requestId": "req_cv_get_401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere el permiso 'catalogo.ver'.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para realizar esta acción",
+                    "requestId": "req_cv_get_403"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No hay un programa de estudios configurado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "No hay un programa de estudios configurado para el catálogo.",
+                    "requestId": "req_cv_get_404"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["CatalogVersions"],
+        "summary": "Crear una versión del catálogo en Borrador",
+        "description": "Crea una versión nueva del catálogo en estado Borrador copiando los objetivos educacionales y atributos del graduado de la versión vigente (si no hay vigente, nace vacía). El servidor resuelve el programa y el número consecutivo; el cuerpo es vacío (se acepta ausente). Solo puede haber una versión en Borrador o En validación a la vez: si ya existe, responde 409. La copia y la auditoría se confirman en una sola transacción. Requiere el permiso 'catalogo.editar' con alcance GLOBAL (HU-013, RF-013, RN-020, RS-002, RS-020).",
+        "operationId": "createCatalogVersion",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCatalogVersionRequest"
+              },
+              "example": {}
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Versión creada en Borrador exitosamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché HTTP."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogVersionDto"
+                },
+                "example": {
+                  "id": "cm0catalogversion0002",
+                  "programId": "cm0programepis000001",
+                  "number": 2,
+                  "status": "DRAFT",
+                  "basedOnVersionId": "cm0catalogversion0001",
+                  "objectiveCount": 4,
+                  "attributeCount": 12,
+                  "createdAt": "2026-11-12T15:00:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "El cuerpo o la consulta contienen campos desconocidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "La solicitud contiene errores de validación",
+                    "requestId": "req_cv_post_400",
+                    "details": [
+                      {
+                        "path": "body",
+                        "message": "Unrecognized key: \"programId\""
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o token de acceso inválido o expirado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado",
+                    "requestId": "req_cv_post_401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere el permiso 'catalogo.editar'.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para realizar esta acción",
+                    "requestId": "req_cv_post_403"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No hay un programa de estudios configurado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "No hay un programa de estudios configurado para el catálogo.",
+                    "requestId": "req_cv_post_404"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ya existe una versión en Borrador o En validación.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "Ya existe una versión del catálogo en Borrador o En validación. Ciérrala o apruébala antes de crear otra.",
+                    "requestId": "req_cv_post_409"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5998,6 +6274,75 @@
             "description": "Nombre de la escala."
           }
         }
+      },
+      "CatalogVersionDto": {
+        "type": "object",
+        "required": [
+          "id",
+          "programId",
+          "number",
+          "status",
+          "basedOnVersionId",
+          "objectiveCount",
+          "attributeCount",
+          "createdAt"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "programId": {
+            "type": "string"
+          },
+          "number": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Número consecutivo de la versión dentro del programa."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["DRAFT", "IN_VALIDATION", "APPROVED", "HISTORICAL"],
+            "description": "Estado: Borrador, En validación, Aprobada (vigente) o Histórica."
+          },
+          "basedOnVersionId": {
+            "type": ["string", "null"],
+            "description": "Versión de la que se copió; nulo si la versión nació sin origen."
+          },
+          "objectiveCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Cantidad de objetivos educacionales."
+          },
+          "attributeCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Cantidad de atributos del graduado."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ListCatalogVersionsResponse": {
+        "type": "object",
+        "required": ["items"],
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalogVersionDto"
+            }
+          }
+        }
+      },
+      "CreateCatalogVersionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {},
+        "description": "Cuerpo vacío: el servidor resuelve el programa y copia la versión vigente. Se acepta ausente."
       }
     },
     "securitySchemes": {
