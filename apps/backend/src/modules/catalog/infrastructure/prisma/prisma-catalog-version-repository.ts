@@ -17,7 +17,7 @@ function isUniqueViolation(error: unknown): boolean {
   return !!error && typeof error === 'object' && (error as { code?: string }).code === 'P2002';
 }
 
-/** Texto de la violación (meta y mensaje) para distinguir qué índice único se rompió. */
+/** Texto de la violación (meta y mensaje) para distinguir qué índice único se rompió: el de `(programId, number)` nombra `number`; el de abiertas, no. */
 function violationText(error: unknown): string {
   const { meta, message } = error as { meta?: unknown; message?: string };
   return `${JSON.stringify(meta ?? {})} ${message ?? ''}`;
@@ -92,7 +92,7 @@ export class PrismaCatalogVersionRepository
     } catch (error) {
       if (isUniqueViolation(error)) {
         const text = violationText(error);
-        if (text.includes('programId_number') || text.includes('number_key')) {
+        if (text.includes('number')) {
           throw new CatalogVersionNumberConflictError();
         }
         throw new OpenCatalogVersionExistsError();
