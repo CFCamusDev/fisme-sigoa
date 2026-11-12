@@ -157,6 +157,20 @@ describe('PrismaEducationalObjectiveRepository Integration (PostgreSQL real, T-0
     await expect(insert('c6', 'OEP6', 'x'.repeat(100_000), 6)).resolves.toBeDefined();
   }, 15_000);
 
+  it('counts objectives per version in one query, with zero for versions without rows', async () => {
+    await version('v1');
+    await prisma.catalogVersion.update({ where: { id: 'v1' }, data: { status: 'APPROVED' } });
+    await version('v2');
+    await uow.run(() =>
+      repository.insertMany('v1', [objective('o1', 'OEP1', 1), objective('o2', 'OEP2', 2)]),
+    );
+
+    const counts = await repository.countByVersionIds(['v1', 'v2', 'missing']);
+
+    expect(Object.fromEntries(counts)).toEqual({ v1: 2, v2: 0, missing: 0 });
+    expect((await repository.countByVersionIds([])).size).toBe(0);
+  }, 15_000);
+
   it('refuses to delete a version that has objectives', async () => {
     await version();
     await uow.run(() => repository.insertMany('v1', [objective('o1', 'OEP1', 1)]));

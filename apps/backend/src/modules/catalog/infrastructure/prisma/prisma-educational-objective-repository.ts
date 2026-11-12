@@ -22,6 +22,22 @@ export class PrismaEducationalObjectiveRepository
     );
   }
 
+  async countByVersionIds(versionIds: readonly string[]): Promise<ReadonlyMap<string, number>> {
+    const counts = new Map<string, number>(versionIds.map((id) => [id, 0]));
+    if (versionIds.length === 0) {
+      return counts;
+    }
+    const rows = await this.dbProvider.get().educationalObjective.groupBy({
+      by: ['versionId'],
+      where: { versionId: { in: [...versionIds] } },
+      _count: { _all: true },
+    });
+    for (const row of rows) {
+      counts.set(row.versionId, row._count._all);
+    }
+    return counts;
+  }
+
   async insertMany(versionId: string, items: readonly EducationalObjective[]): Promise<void> {
     const inTx = this.dbProvider.isInTransaction?.() ?? false;
     if (!inTx) {

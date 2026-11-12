@@ -148,6 +148,24 @@ describe('PrismaGraduateAttributeRepository Integration (PostgreSQL real, T-013-
     await expect(insert('c7', 'AG-C07', 'Nombre', 'x'.repeat(100_000), 7)).resolves.toBeDefined();
   }, 15_000);
 
+  it('counts attributes per version in one query, with zero for versions without rows', async () => {
+    await version('v1');
+    await prisma.catalogVersion.update({ where: { id: 'v1' }, data: { status: 'APPROVED' } });
+    await version('v2');
+    await uow.run(() =>
+      repository.insertMany('v1', [
+        attribute('a1', 'AG-C01', 1),
+        attribute('a2', 'AG-C02', 2),
+        attribute('a3', 'AG-C03', 3),
+      ]),
+    );
+
+    const counts = await repository.countByVersionIds(['v1', 'v2', 'missing']);
+
+    expect(Object.fromEntries(counts)).toEqual({ v1: 3, v2: 0, missing: 0 });
+    expect((await repository.countByVersionIds([])).size).toBe(0);
+  }, 15_000);
+
   it('refuses to delete a version that has attributes', async () => {
     await version();
     await uow.run(() => repository.insertMany('v1', [attribute('a1', 'AG-C01', 1)]));
