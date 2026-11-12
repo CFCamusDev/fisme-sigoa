@@ -30,6 +30,7 @@
     "depcruise": "pnpm --filter backend --if-present depcruise",
     "check:env-parity": "node scripts/ci/check-env-parity.mjs",
     "perf:tests": "node scripts/perf/measure-tests.mjs",
+    "perf:api": "node scripts/perf/api-load.mjs",
     "check:windows-paths": "node scripts/ci/check-windows-paths.mjs",
     "check:test-patterns": "node scripts/ci/check-test-patterns.mjs",
     "verify:pr": "node scripts/ci/verify-pr-local.mjs --mode standard",
