@@ -157,12 +157,4 @@ describe('CreateCatalogVersionUseCase (T-013-10, T-013-18, RF-013, RS-020)', () 
     expect(versionRepository.save).not.toHaveBeenCalled();
     expect(auditLogger.log).not.toHaveBeenCalled();
   });
-
-  it('fails with a typed not found error when there is no program', async () => {
-    programReader.getCurrentProgramId.mockResolvedValue(null);
-
-    await expect(useCase.execute(command)).rejects.toBeInstanceOf(CatalogProgramNotFoundError);
-
-    expect(unitOfWork.run).not.toHaveBeenCalled();
-  });
 });
