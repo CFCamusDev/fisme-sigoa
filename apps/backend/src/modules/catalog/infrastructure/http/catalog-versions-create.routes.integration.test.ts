@@ -230,7 +230,8 @@ describe('POST /catalog-versions HTTP Routes Integration (PostgreSQL real, HU-01
       const response = await request(app)
         .post('/catalog-versions')
         .set('Authorization', `Bearer ${president.token}`)
-        .send(payload);
+        .set('Content-Type', 'application/json')
+        .send(JSON.stringify(payload));
 
       expect(response.status).toBe(400);
       expect(response.body.error.code).toBe('VALIDATION_ERROR');
