@@ -4,13 +4,13 @@ import { server } from '@/test/msw/server';
 import { buildCatalogVersion } from '@/test/catalog-fixtures';
 import { sendCatalogVersionToValidation } from './send-catalog-version-to-validation';
 
-const URL = 'http://localhost:3000/catalog-versions/cv-2/validation';
+const VALIDATION_URL = 'http://localhost:3000/catalog-versions/cv-2/validation';
 
 describe('sendCatalogVersionToValidation (T-015-05, CA1, CA2)', () => {
   it('posts without a body and returns the version in validation', async () => {
     let rawBody = 'not-called';
     server.use(
-      http.post(URL, async ({ request }) => {
+      http.post(VALIDATION_URL, async ({ request }) => {
         rawBody = await request.text();
         return HttpResponse.json(
           buildCatalogVersion({ id: 'cv-2', number: 2, status: 'IN_VALIDATION' }),
@@ -39,14 +39,14 @@ describe('sendCatalogVersionToValidation (T-015-05, CA1, CA2)', () => {
   });
 
   it('rejects a response that does not match the shared schema', async () => {
-    server.use(http.post(URL, () => HttpResponse.json({ id: 'cv-2', status: 'OTHER' })));
+    server.use(http.post(VALIDATION_URL, () => HttpResponse.json({ id: 'cv-2', status: 'OTHER' })));
 
     await expect(sendCatalogVersionToValidation('cv-2')).rejects.toThrow();
   });
 
   it('throws with the status and message when the server answers 409', async () => {
     server.use(
-      http.post(URL, () =>
+      http.post(VALIDATION_URL, () =>
         HttpResponse.json(
           { error: { code: 'CONFLICT', message: 'Falta un atributo del graduado.' } },
           { status: 409 },
