@@ -7,6 +7,9 @@ export const CATALOG_ITEM_LIMITS = {
   nameMaxLength: 120,
 } as const;
 
+/** Máximo de OE y de AG por versión (D7); coincide con `CATALOG_MAX_ITEMS` de `@sigoa/shared`. */
+export const CATALOG_MAX_ITEMS = 100;
+
 export function validateCatalogCode(rawCode: string): string {
   const code = typeof rawCode === 'string' ? rawCode.trim() : '';
   if (!CATALOG_ITEM_LIMITS.codeRegex.test(code)) {

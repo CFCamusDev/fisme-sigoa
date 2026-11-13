@@ -64,6 +64,63 @@ export class EducationalObjective {
     return this.props.updatedAt;
   }
 
+  /** Alta de un OE nuevo en una versión (HU-014). */
+  public static createNew(input: {
+    id: string;
+    versionId: string;
+    code: string;
+    statement: string;
+    order: number;
+    actorId: string;
+    now: Date;
+  }): EducationalObjective {
+    return EducationalObjective.create({
+      id: input.id,
+      versionId: input.versionId,
+      code: input.code,
+      statement: input.statement,
+      order: input.order,
+      createdBy: input.actorId,
+      updatedBy: input.actorId,
+      createdAt: input.now,
+      updatedAt: input.now,
+    });
+  }
+
+  /** Devuelve un OE nuevo con código y enunciado editados; conserva id, versión y orden. */
+  public edit(input: {
+    code: string;
+    statement: string;
+    actorId: string;
+    now: Date;
+  }): EducationalObjective {
+    return EducationalObjective.create({
+      ...this.props,
+      code: input.code,
+      statement: input.statement,
+      updatedBy: input.actorId,
+      updatedAt: input.now,
+    });
+  }
+
+  /** Devuelve un OE nuevo con otro orden. */
+  public withOrder(order: number, actorId: string, now: Date): EducationalObjective {
+    return EducationalObjective.create({
+      ...this.props,
+      order,
+      updatedBy: actorId,
+      updatedAt: now,
+    });
+  }
+
+  /** `true` si el código y el enunciado ya valen lo indicado (edición sin cambios). */
+  public hasSameContent(input: { code: string; statement: string }): boolean {
+    return (
+      this.props.code === validateCatalogCode(input.code) &&
+      this.props.statement === validateCatalogStatement(input.statement)
+    );
+  }
+
   /** Copia el OE a otra versión conservando código, texto y orden. */
   public copyTo(
     newId: string,
