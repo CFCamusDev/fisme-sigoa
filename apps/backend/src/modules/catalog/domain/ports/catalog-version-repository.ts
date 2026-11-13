@@ -1,4 +1,4 @@
-import type { CatalogVersion } from '../entities/catalog-version.js';
+import type { CatalogVersion, CatalogVersionStatus } from '../entities/catalog-version.js';
 
 export interface CatalogVersionRepository {
   /**
@@ -17,4 +17,16 @@ export interface CatalogVersionRepository {
    * que dos ediciones simultáneas o un cambio de estado no se pisan (D5).
    */
   lockForEdit(versionId: string): Promise<CatalogVersion | null>;
+  /**
+   * Exige transacción activa. Cambia el estado solo si sigue siendo `from`
+   * (`UPDATE … WHERE id AND status = from`); devuelve `false` si no afectó ninguna fila, de modo
+   * que solo una ejecución concurrente gane (AGENTS §4.2, punto 7).
+   */
+  transitionStatus(
+    versionId: string,
+    from: CatalogVersionStatus,
+    to: CatalogVersionStatus,
+    actorId: string,
+    now: Date,
+  ): Promise<boolean>;
 }

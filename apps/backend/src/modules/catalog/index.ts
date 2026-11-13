@@ -151,6 +151,8 @@ export * from './application/save-graduate-attribute.js';
 export * from './application/save-graduate-attribute.types.js';
 export * from './application/reorder-catalog-items.js';
 export * from './application/reorder-catalog-items.types.js';
+export * from './application/send-catalog-version-to-validation.js';
+export * from './application/send-catalog-version-to-validation.types.js';
 export * from './infrastructure/prisma/seed/catalog-seed-data.js';
 export * from './infrastructure/prisma/seed/catalog-version-seed.js';
 export * from './infrastructure/http/catalog-versions.controller.js';

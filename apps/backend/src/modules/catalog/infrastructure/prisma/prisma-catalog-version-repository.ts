@@ -1,5 +1,8 @@
 import type { DbProvider } from '../../../../shared/prisma/prisma-unit-of-work.js';
-import type { CatalogVersion } from '../../domain/entities/catalog-version.js';
+import type {
+  CatalogVersion,
+  CatalogVersionStatus,
+} from '../../domain/entities/catalog-version.js';
 import {
   CatalogVersionNumberConflictError,
   OpenCatalogVersionExistsError,
@@ -86,6 +89,26 @@ export class PrismaCatalogVersionRepository
       .$queryRawUnsafe('SELECT "id" FROM "catalog_versions" WHERE "id" = $1 FOR UPDATE', versionId);
     // Se lee después del bloqueo para ver el estado confirmado por la última transacción.
     return await this.findById(versionId);
+  }
+
+  async transitionStatus(
+    versionId: string,
+    from: CatalogVersionStatus,
+    to: CatalogVersionStatus,
+    actorId: string,
+    now: Date,
+  ): Promise<boolean> {
+    const inTx = this.dbProvider.isInTransaction?.() ?? false;
+    if (!inTx) {
+      throw new Error(
+        'transitionStatus solo puede ejecutarse dentro de una transacción activa (UnitOfWork).',
+      );
+    }
+    const result = await this.dbProvider.get().catalogVersion.updateMany({
+      where: { id: versionId, status: from },
+      data: { status: to, updatedBy: actorId, updatedAt: now },
+    });
+    return result.count === 1;
   }
 
   async save(version: CatalogVersion): Promise<void> {
