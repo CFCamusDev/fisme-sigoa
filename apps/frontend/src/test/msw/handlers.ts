@@ -9,6 +9,7 @@ export const DEFAULT_TEST_PERMISSIONS = [
   { code: 'permiso.asignar', scope: 'GLOBAL' as const },
   { code: 'parametro.ver', scope: 'GLOBAL' as const },
   { code: 'parametro.editar', scope: 'GLOBAL' as const },
+  { code: 'catalogo.ver', scope: 'GLOBAL' as const },
 ];
 
 export const handlers = [

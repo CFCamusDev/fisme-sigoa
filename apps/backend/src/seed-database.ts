@@ -3,6 +3,7 @@ import { BootstrapAdminUseCase } from './modules/users/application/bootstrap-adm
 import type { InitialPasswordHasher } from './modules/users/domain/ports/initial-password-hasher.js';
 import { PrismaBootstrapAdminRepository } from './modules/users/infrastructure/prisma/prisma-bootstrap-admin-repository.js';
 import { seedAuthorization } from './modules/authorization/infrastructure/prisma/seed/authorization-seed.js';
+import { seedCatalogVersionDefaults } from './modules/catalog/infrastructure/prisma/seed/catalog-version-seed.js';
 import { seedProgram } from './modules/parameters/infrastructure/prisma/seed/program-seed.js';
 import { seedParameterDefaults } from './modules/parameters/infrastructure/prisma/seed/parameter-seed.js';
 import { seedResponseScaleDefaults } from './modules/parameters/infrastructure/prisma/seed/response-scale-seed.js';
@@ -56,6 +57,12 @@ export async function runDatabaseSeed(options: RunDatabaseSeedOptions): Promise<
       id: 'parameters-response-scales',
       run: async (tx) => {
         await seedResponseScaleDefaults(tx);
+      },
+    },
+    {
+      id: 'catalog-version-1',
+      run: async (tx) => {
+        await seedCatalogVersionDefaults(tx);
       },
     },
     {

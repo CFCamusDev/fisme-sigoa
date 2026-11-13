@@ -99,6 +99,21 @@ describe('setupAppRoutes', () => {
     expect(response.status).toBe(401);
   });
 
+  it('mounts /catalog-versions router and rejects unauthenticated requests with 401 (HU-013, T-013-13)', async () => {
+    const app = express();
+    app.use(express.json());
+    setupAppRoutes(app, {
+      unitOfWork: dummyUnitOfWork,
+      auditLogger: dummyAuditLogger,
+      dbProvider: dummyDbProvider,
+      env: createTestEnv(),
+    });
+    app.use(errorHandler);
+
+    const response = await request(app).post('/catalog-versions').send({});
+    expect(response.status).toBe(401);
+  });
+
   it('throws an error in production if APP_PUBLIC_URL is not configured', () => {
     const app = express();
     const prodEnv = createTestEnv({

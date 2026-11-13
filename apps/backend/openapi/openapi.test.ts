@@ -48,6 +48,9 @@ import {
   responseScaleDtoSchema,
   responseScalesResponseSchema,
   scaleLevelDtoSchema,
+  catalogVersionDtoSchema,
+  listCatalogVersionsResponseSchema,
+  createCatalogVersionRequestSchema,
 } from '@sigoa/shared';
 import { createAuthRouter } from '../src/modules/auth/infrastructure/http/auth.routes.js';
 import { createUsersRouter } from '../src/modules/users/infrastructure/http/users.routes.js';
@@ -66,6 +69,8 @@ import { createParameterValuesRouter } from '../src/modules/parameters/infrastru
 import type { ParameterValuesController } from '../src/modules/parameters/infrastructure/http/parameter-values.controller.js';
 import { createResponseScalesRouter } from '../src/modules/parameters/infrastructure/http/response-scales.routes.js';
 import type { ResponseScalesController } from '../src/modules/parameters/infrastructure/http/response-scales.controller.js';
+import { createCatalogVersionsRouter } from '../src/modules/catalog/infrastructure/http/catalog-versions.routes.js';
+import type { CatalogVersionsController } from '../src/modules/catalog/infrastructure/http/catalog-versions.controller.js';
 import { createSemestersRouter } from '../src/modules/parameters/infrastructure/http/semesters.routes.js';
 import type { SemestersController } from '../src/modules/parameters/infrastructure/http/semesters.controller.js';
 
@@ -1921,6 +1926,99 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
         'patch /response-scales/{id}',
         'post /response-scales',
         'post /response-scales/{id}/duplicate',
+      ]);
+    });
+  });
+
+  describe('OpenAPI Specification for Catalog Versions (HU-013, T-013-14, RF-013, RNF-032)', () => {
+    const base = spec.paths['/catalog-versions'];
+
+    it('documents both operations with bearerAuth and proper status codes', () => {
+      const expectations: [string, string, string[]][] = [
+        ['listCatalogVersions', 'get', ['200', '400', '401', '403', '404']],
+        ['createCatalogVersion', 'post', ['201', '400', '401', '403', '404', '409']],
+      ];
+      for (const [operationId, method, codes] of expectations) {
+        const op = base[method];
+        expect(op.operationId).toBe(operationId);
+        expect(op.tags).toContain('CatalogVersions');
+        expect(op.security).toEqual([{ bearerAuth: [] }]);
+        expect(Object.keys(op.responses).sort()).toEqual(codes);
+      }
+    });
+
+    it('validates the response and request examples against the shared schemas', () => {
+      const list200 = base.get.responses['200'];
+      expect(list200.headers['Cache-Control'].example).toBe('no-store');
+      const listExample = list200.content['application/json'].example;
+      expect(listCatalogVersionsResponseSchema.safeParse(listExample).success).toBe(true);
+      expect(listExample.items.length).toBeGreaterThan(1);
+
+      const created = base.post.responses['201'];
+      expect(created.headers['Cache-Control'].example).toBe('no-store');
+      const createdExample = created.content['application/json'].example;
+      expect(catalogVersionDtoSchema.safeParse(createdExample).success).toBe(true);
+      expect(createdExample.status).toBe('DRAFT');
+
+      const requestExample = base.post.requestBody.content['application/json'].example;
+      expect(createCatalogVersionRequestSchema.safeParse(requestExample).success).toBe(true);
+      expect(base.post.requestBody.required).toBe(false);
+    });
+
+    it('explains the open version conflict in the 409 of the create operation (CA2)', () => {
+      const example = base.post.responses['409'].content['application/json'].example;
+      expect(example.error.code).toBe('CONFLICT');
+      expect(example.error.message).toContain('Borrador o En validación');
+    });
+
+    it('matches components.schemas properties with Zod schemas shape', () => {
+      const dto = spec.components.schemas['CatalogVersionDto'];
+      expect(Object.keys(dto.properties).sort()).toEqual(
+        Object.keys(catalogVersionDtoSchema.shape).sort(),
+      );
+      expect([...dto.required].sort()).toEqual(Object.keys(catalogVersionDtoSchema.shape).sort());
+      expect(dto.properties.basedOnVersionId.type).toEqual(['string', 'null']);
+      expect(dto.properties.status.enum).toEqual([
+        'DRAFT',
+        'IN_VALIDATION',
+        'APPROVED',
+        'HISTORICAL',
+      ]);
+
+      const list = spec.components.schemas['ListCatalogVersionsResponse'];
+      expect(Object.keys(list.properties).sort()).toEqual(
+        Object.keys(listCatalogVersionsResponseSchema.shape).sort(),
+      );
+      expect(spec.components.schemas['CreateCatalogVersionRequest'].additionalProperties).toBe(
+        false,
+      );
+    });
+
+    it('has bidirectional parity between openapi spec and createCatalogVersionsRouter', () => {
+      const router = createCatalogVersionsRouter({
+        controller: {
+          listCatalogVersions: vi.fn(),
+          createCatalogVersion: vi.fn(),
+        } as unknown as CatalogVersionsController,
+        authenticate: vi.fn(),
+        requirePermission: vi.fn(() => vi.fn()),
+      });
+
+      const routerEndpoints: { method: string; path: string }[] = [];
+      for (const layer of router.stack) {
+        if (layer.route) {
+          for (const method of Object.keys(layer.route.methods)) {
+            const normalizedPath =
+              '/catalog-versions' + (layer.route.path === '/' ? '' : layer.route.path);
+            routerEndpoints.push({ method: method.toLowerCase(), path: normalizedPath });
+          }
+        }
+      }
+
+      const key = (e: { method: string; path: string }) => e.method + ' ' + e.path;
+      expect(routerEndpoints.map(key).sort()).toEqual([
+        'get /catalog-versions',
+        'post /catalog-versions',
       ]);
     });
   });

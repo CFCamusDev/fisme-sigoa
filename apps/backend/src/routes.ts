@@ -23,6 +23,7 @@ import {
   createRolesModule,
   createUserAccessModule,
 } from './modules/authorization/index.js';
+import { createCatalogVersionsModule } from './modules/catalog/index.js';
 import { createUsersModule, EmailActivationSender } from './modules/users/index.js';
 import {
   LoginAttemptsParameterProvider,
@@ -207,6 +208,18 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
       requirePermission: authorizationServices.requirePermission,
       permissionChecker: authorizationServices.authorizer,
       logger: deps.logger,
+      clock: deps.clock,
+    }),
+  );
+  app.use(
+    '/catalog-versions',
+    createCatalogVersionsModule({
+      unitOfWork: deps.unitOfWork,
+      auditLogger: deps.auditLogger,
+      dbProvider: deps.dbProvider,
+      authenticate: authServices.authenticate,
+      requirePermission: authorizationServices.requirePermission,
+      permissionChecker: authorizationServices.authorizer,
       clock: deps.clock,
     }),
   );

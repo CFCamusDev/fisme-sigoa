@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import {
+  BookMarked,
   Building2,
   CalendarRange,
   LayoutDashboard,
@@ -57,5 +58,11 @@ export const MAIN_NAV_ITEMS: readonly NavItem[] = [
     href: '/configuracion/escalas',
     icon: ListChecks,
     permission: 'parametro.ver',
+  },
+  {
+    title: 'Catálogo',
+    href: '/catalogo/versiones',
+    icon: BookMarked,
+    permission: 'catalogo.ver',
   },
 ] as const;

@@ -13,6 +13,7 @@ const GLOSSARY_STATUSES = [
   'VOIDED',
   'DRAFT',
   'IN_REVIEW',
+  'IN_VALIDATION',
   'SIGNED',
   'REGISTERED',
   'APPROVED',
@@ -38,9 +39,9 @@ const GLOSSARY_STATUSES = [
 ] as const;
 
 describe('StatusBadge and status coverage', () => {
-  it('covers all 28 glossary statuses plus MET and NOT_MET in STATUS map', () => {
+  it('covers all 29 glossary statuses plus MET and NOT_MET in STATUS map', () => {
     expectStatusCoverage(GLOSSARY_STATUSES);
-    expect(Object.keys(STATUS)).toHaveLength(30);
+    expect(Object.keys(STATUS)).toHaveLength(31);
   });
 
   it('renders badge with icon and localized label', () => {

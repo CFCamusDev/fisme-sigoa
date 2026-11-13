@@ -430,4 +430,62 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA)', () => {
     await expect(page.getByRole('button', { name: 'Nueva escala' })).toHaveCount(0);
     await expectNoContrastViolations(page, { context: 'response-scales-readonly-desktop' });
   });
+
+  test('catalog versions route has no contrast violations in empty, open and read-only states', async ({
+    page,
+  }) => {
+    await page.setViewportSize(DESKTOP);
+    await loginAsTestUser(page, {
+      email: `contrast-president-catalog-${Date.now()}@example.test`,
+      roles: ['COMMITTEE_PRESIDENT'],
+    });
+
+    // Sin versiones: estado vacío con la acción «Nueva versión»
+    await waitForApi(page, '/catalog-versions', () => page.goto('/catalogo/versiones'));
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Versiones del catálogo' }),
+    ).toBeVisible();
+    await expect(page.getByText('Aún no hay versiones del catálogo')).toBeVisible();
+    await expectNoContrastViolations(page, { context: 'catalog-versions-empty-desktop' });
+
+    // Crear la primera versión deja una abierta: aviso de éxito, tabla y ayuda de bloqueo (CA2)
+    const [createRes] = await Promise.all([
+      page.waitForResponse(
+        (res) =>
+          res.url().includes('/catalog-versions') &&
+          res.request().method() === 'POST' &&
+          res.status() === 201,
+      ),
+      page.getByRole('button', { name: 'Nueva versión' }).click(),
+    ]);
+    expect(createRes.ok()).toBe(true);
+    await expect(page.getByText(/Se creó la versión 1 en Borrador/)).toBeVisible();
+    await expect(page.getByRole('table')).toBeVisible();
+    await expect(page.getByText(/Ya existe la versión 1 en Borrador/)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Nueva versión' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    await expectNoContrastViolations(page, { context: 'catalog-versions-with-open-desktop' });
+
+    await page.setViewportSize(MOBILE);
+    await expect(page.getByRole('table')).toBeVisible();
+    await expectNoContrastViolations(page, { context: 'catalog-versions-with-open-mobile' });
+  });
+
+  test('catalog versions route has no contrast violations in read-only mode', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    // El Administrador puede consultar el catálogo pero no tiene catalogo.editar (matriz por defecto)
+    await loginAsTestUser(page, {
+      email: `contrast-admin-catalog-${Date.now()}@example.test`,
+      roles: ['ADMINISTRATOR'],
+    });
+
+    await waitForApi(page, '/catalog-versions', () => page.goto('/catalogo/versiones'));
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Versiones del catálogo' }),
+    ).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Nueva versión' })).toHaveCount(0);
+    await expectNoContrastViolations(page, { context: 'catalog-versions-readonly-desktop' });
+  });
 });

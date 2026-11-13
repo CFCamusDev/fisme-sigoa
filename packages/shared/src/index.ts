@@ -9,3 +9,4 @@ export * from './program.js';
 export * from './semester.js';
 export * from './parameter.js';
 export * from './response-scale.js';
+export * from './catalog-version.js';
