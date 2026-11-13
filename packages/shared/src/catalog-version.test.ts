@@ -6,6 +6,7 @@ import {
   createCatalogVersionRequestSchema,
   listCatalogVersionsQuerySchema,
   listCatalogVersionsResponseSchema,
+  sendCatalogVersionToValidationRequestSchema,
 } from './catalog-version.js';
 
 const dto = {
@@ -35,6 +36,24 @@ describe('catalog version schemas (T-013-12, RF-013)', () => {
 
     it.each([null, 'texto', 5, []])('rejects the non-object body %j', (body) => {
       expect(createCatalogVersionRequestSchema.safeParse(body).success).toBe(false);
+    });
+  });
+
+  describe('send to validation request (HU-015)', () => {
+    it('accepts an empty object and an absent body', () => {
+      expect(sendCatalogVersionToValidationRequestSchema.safeParse({}).success).toBe(true);
+      expect(sendCatalogVersionToValidationRequestSchema.safeParse(undefined).success).toBe(true);
+    });
+
+    it.each([{ status: 'IN_VALIDATION' }, { versionId: 'v2' }, { foo: 1 }])(
+      'rejects the unknown field %j',
+      (body) => {
+        expect(sendCatalogVersionToValidationRequestSchema.safeParse(body).success).toBe(false);
+      },
+    );
+
+    it.each([null, 'texto', 5, []])('rejects the non-object body %j', (body) => {
+      expect(sendCatalogVersionToValidationRequestSchema.safeParse(body).success).toBe(false);
     });
   });
 
