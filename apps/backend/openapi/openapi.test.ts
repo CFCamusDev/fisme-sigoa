@@ -51,6 +51,11 @@ import {
   catalogVersionDtoSchema,
   listCatalogVersionsResponseSchema,
   createCatalogVersionRequestSchema,
+  catalogObjectivesRequestSchema,
+  catalogAttributesRequestSchema,
+  catalogObjectivesResponseSchema,
+  catalogAttributesResponseSchema,
+  catalogVersionDetailDtoSchema,
 } from '@sigoa/shared';
 import { createAuthRouter } from '../src/modules/auth/infrastructure/http/auth.routes.js';
 import { createUsersRouter } from '../src/modules/users/infrastructure/http/users.routes.js';
@@ -1993,6 +1998,92 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
       expect(spec.components.schemas['CreateCatalogVersionRequest'].additionalProperties).toBe(
         false,
       );
+    });
+
+    it('documents the item edit and detail operations with bearerAuth and status codes (HU-014, T-014-08)', () => {
+      const expectations: [string, string, string, string[]][] = [
+        [
+          '/catalog-versions/{id}',
+          'get',
+          'getCatalogVersionDetail',
+          ['200', '400', '401', '403', '404'],
+        ],
+        [
+          '/catalog-versions/{id}/objectives',
+          'put',
+          'editCatalogObjectives',
+          ['200', '400', '401', '403', '404', '409'],
+        ],
+        [
+          '/catalog-versions/{id}/attributes',
+          'put',
+          'editCatalogAttributes',
+          ['200', '400', '401', '403', '404', '409'],
+        ],
+      ];
+      for (const [route, method, operationId, codes] of expectations) {
+        const op = spec.paths[route][method];
+        expect(op.operationId).toBe(operationId);
+        expect(op.tags).toContain('CatalogVersions');
+        expect(op.security).toEqual([{ bearerAuth: [] }]);
+        expect(op.parameters[0]).toMatchObject({ name: 'id', in: 'path', required: true });
+        expect(Object.keys(op.responses).sort()).toEqual(codes);
+        expect(op.responses['200'].headers['Cache-Control'].example).toBe('no-store');
+      }
+    });
+
+    it('keeps the item edit examples valid against the shared schemas (HU-014, T-014-08)', () => {
+      const objectives = spec.paths['/catalog-versions/{id}/objectives'].put;
+      for (const example of Object.values(
+        objectives.requestBody.content['application/json'].examples,
+      ) as { value: unknown }[]) {
+        expect(catalogObjectivesRequestSchema.safeParse(example.value).success).toBe(true);
+      }
+      expect(
+        catalogObjectivesResponseSchema.safeParse(
+          objectives.responses['200'].content['application/json'].example,
+        ).success,
+      ).toBe(true);
+
+      const attributes = spec.paths['/catalog-versions/{id}/attributes'].put;
+      for (const example of Object.values(
+        attributes.requestBody.content['application/json'].examples,
+      ) as { value: unknown }[]) {
+        expect(catalogAttributesRequestSchema.safeParse(example.value).success).toBe(true);
+      }
+      expect(
+        catalogAttributesResponseSchema.safeParse(
+          attributes.responses['200'].content['application/json'].example,
+        ).success,
+      ).toBe(true);
+
+      const detail = spec.paths['/catalog-versions/{id}'].get;
+      expect(
+        catalogVersionDetailDtoSchema.safeParse(
+          detail.responses['200'].content['application/json'].example,
+        ).success,
+      ).toBe(true);
+    });
+
+    it('declares the item schemas strict and discriminated by operation (HU-014, T-014-08)', () => {
+      const schemas = spec.components.schemas;
+      for (const name of [
+        'SaveCatalogObjectiveRequest',
+        'SaveCatalogAttributeRequest',
+        'ReorderCatalogItemsRequest',
+        'CatalogObjectiveDto',
+        'CatalogAttributeDto',
+        'CatalogVersionDetailDto',
+        'CatalogObjectivesResponse',
+        'CatalogAttributesResponse',
+      ]) {
+        expect(schemas[name].additionalProperties, name).toBe(false);
+      }
+      expect(schemas['CatalogObjectivesRequest'].discriminator.propertyName).toBe('operation');
+      expect(schemas['CatalogAttributesRequest'].discriminator.propertyName).toBe('operation');
+      expect(schemas['ReorderCatalogItemsRequest'].properties.orderedIds.maxItems).toBe(100);
+      expect(schemas['SaveCatalogAttributeRequest'].required).toContain('name');
+      expect(schemas['SaveCatalogObjectiveRequest'].properties.name).toBeUndefined();
     });
 
     it('has bidirectional parity between openapi spec and createCatalogVersionsRouter', () => {
