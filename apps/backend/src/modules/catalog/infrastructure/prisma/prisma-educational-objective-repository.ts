@@ -1,4 +1,5 @@
 import type { DbProvider } from '../../../../shared/prisma/prisma-unit-of-work.js';
+import { CatalogItemNotFoundError, DuplicateCatalogCodeError } from '../../domain/errors/index.js';
 import type { EducationalObjective } from '../../domain/entities/educational-objective.js';
 import type { EducationalObjectiveReader } from '../../domain/ports/educational-objective-reader.js';
 import type { EducationalObjectiveRepository } from '../../domain/ports/educational-objective-repository.js';
@@ -6,6 +7,10 @@ import {
   mapPrismaEducationalObjectiveRowToDomain,
   type PrismaEducationalObjectiveRow,
 } from './prisma-educational-objective-mapper.js';
+
+function isUniqueViolation(error: unknown): boolean {
+  return !!error && typeof error === 'object' && (error as { code?: string }).code === 'P2002';
+}
 
 export class PrismaEducationalObjectiveRepository
   implements EducationalObjectiveReader, EducationalObjectiveRepository
@@ -20,6 +25,13 @@ export class PrismaEducationalObjectiveRepository
     return rows.map((row) =>
       mapPrismaEducationalObjectiveRowToDomain(row as PrismaEducationalObjectiveRow),
     );
+  }
+
+  async findById(id: string): Promise<EducationalObjective | null> {
+    const row = await this.dbProvider.get().educationalObjective.findUnique({ where: { id } });
+    return row
+      ? mapPrismaEducationalObjectiveRowToDomain(row as PrismaEducationalObjectiveRow)
+      : null;
   }
 
   async countByVersionIds(versionIds: readonly string[]): Promise<ReadonlyMap<string, number>> {
@@ -61,5 +73,52 @@ export class PrismaEducationalObjectiveRepository
         updatedAt: item.updatedAt,
       })),
     });
+  }
+
+  async insert(item: EducationalObjective): Promise<void> {
+    try {
+      await this.dbProvider.get().educationalObjective.create({
+        data: {
+          id: item.id,
+          versionId: item.versionId,
+          code: item.code,
+          statement: item.statement,
+          order: item.order,
+          createdBy: item.createdBy,
+          updatedBy: item.updatedBy,
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt,
+        },
+      });
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw new DuplicateCatalogCodeError();
+      }
+      throw error;
+    }
+  }
+
+  async update(item: EducationalObjective): Promise<void> {
+    let affected: number;
+    try {
+      const result = await this.dbProvider.get().educationalObjective.updateMany({
+        where: { id: item.id, versionId: item.versionId },
+        data: {
+          code: item.code,
+          statement: item.statement,
+          updatedBy: item.updatedBy,
+          updatedAt: item.updatedAt,
+        },
+      });
+      affected = result.count;
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw new DuplicateCatalogCodeError();
+      }
+      throw error;
+    }
+    if (affected !== 1) {
+      throw new CatalogItemNotFoundError();
+    }
   }
 }
