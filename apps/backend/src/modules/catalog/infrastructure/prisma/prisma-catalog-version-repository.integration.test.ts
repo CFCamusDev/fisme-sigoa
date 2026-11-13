@@ -289,9 +289,6 @@ describe('PrismaCatalogVersionRepository Integration (PostgreSQL real, T-013-19)
         WHERE datname = current_database() AND wait_event_type = 'Lock'
       `;
       waiting = rows[0]?.total ?? 0;
-      if (waiting === 0) {
-        await new Promise((resolve) => setTimeout(resolve, 10));
-      }
     }
     expect(waiting).toBeGreaterThan(0);
 
