@@ -4,3 +4,6 @@ export * from './domain/entities/resolution-approved.js';
 export * from './domain/policies/resolution-state-machine.js';
 export * from './domain/errors/index.js';
 export * from './domain/ports/index.js';
+export * from './infrastructure/prisma/prisma-resolution-mapper.js';
+export * from './infrastructure/prisma/prisma-resolution-repository.js';
+export * from './infrastructure/prisma/prisma-resolution-catalog-version-reader.js';
