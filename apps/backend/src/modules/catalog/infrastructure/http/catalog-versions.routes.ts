@@ -1,12 +1,20 @@
 import { Router, type RequestHandler } from 'express';
-import { createCatalogVersionRequestSchema, listCatalogVersionsQuerySchema } from '@sigoa/shared';
+import {
+  catalogItemsQuerySchema,
+  catalogObjectivesRequestSchema,
+  catalogVersionIdParamsSchema,
+  createCatalogVersionRequestSchema,
+  listCatalogVersionsQuerySchema,
+} from '@sigoa/shared';
 import { validateRequest } from '../../../../shared/middleware/validate-request.js';
+import type { CatalogVersionItemsController } from './catalog-version-items.controller.js';
 import type { CatalogVersionsController } from './catalog-versions.controller.js';
 
 export type CatalogRoutePermissionScope = 'GLOBAL' | 'OWN';
 
 export interface CatalogVersionsRouterDependencies {
   readonly controller: CatalogVersionsController;
+  readonly itemsController: CatalogVersionItemsController;
   readonly authenticate: RequestHandler;
   readonly requirePermission: (
     permission: string,
@@ -38,6 +46,20 @@ export function createCatalogVersionsRouter(deps: CatalogVersionsRouterDependenc
       body: createCatalogVersionRequestSchema,
     }),
     deps.controller.createCatalogVersion,
+  );
+
+  // PUT /catalog-versions/:id/objectives (HU-014, T-014-06, CA1-CA3, RF-014, RS-020, RNF-008, RNF-009)
+  // Cadena obligatoria: authenticate -> requirePermission -> validateRequest -> controller
+  router.put(
+    '/:id/objectives',
+    deps.authenticate,
+    deps.requirePermission('catalogo.editar', 'GLOBAL'),
+    validateRequest({
+      params: catalogVersionIdParamsSchema,
+      query: catalogItemsQuerySchema,
+      body: catalogObjectivesRequestSchema,
+    }),
+    deps.itemsController.editObjectives,
   );
 
   return router;

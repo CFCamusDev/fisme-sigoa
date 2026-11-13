@@ -71,6 +71,7 @@ import { createResponseScalesRouter } from '../src/modules/parameters/infrastruc
 import type { ResponseScalesController } from '../src/modules/parameters/infrastructure/http/response-scales.controller.js';
 import { createCatalogVersionsRouter } from '../src/modules/catalog/infrastructure/http/catalog-versions.routes.js';
 import type { CatalogVersionsController } from '../src/modules/catalog/infrastructure/http/catalog-versions.controller.js';
+import type { CatalogVersionItemsController } from '../src/modules/catalog/infrastructure/http/catalog-version-items.controller.js';
 import { createSemestersRouter } from '../src/modules/parameters/infrastructure/http/semesters.routes.js';
 import type { SemestersController } from '../src/modules/parameters/infrastructure/http/semesters.controller.js';
 
@@ -2000,6 +2001,9 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
           listCatalogVersions: vi.fn(),
           createCatalogVersion: vi.fn(),
         } as unknown as CatalogVersionsController,
+        itemsController: {
+          editObjectives: vi.fn(),
+        } as unknown as CatalogVersionItemsController,
         authenticate: vi.fn(),
         requirePermission: vi.fn(() => vi.fn()),
       });
@@ -2019,6 +2023,7 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
       expect(routerEndpoints.map(key).sort()).toEqual([
         'get /catalog-versions',
         'post /catalog-versions',
+        'put /catalog-versions/:id/objectives',
       ]);
     });
   });
