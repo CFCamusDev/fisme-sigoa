@@ -3,6 +3,7 @@ import type { AuditLogger } from '../../shared/audit/audit-logger.js';
 import type { DbProvider } from '../../shared/prisma/prisma-unit-of-work.js';
 import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
 import { CreateCatalogVersionUseCase } from './application/create-catalog-version.js';
+import { GetCatalogVersionDetailUseCase } from './application/get-catalog-version-detail.js';
 import { ListCatalogVersionsUseCase } from './application/list-catalog-versions.js';
 import { ReorderCatalogItemsUseCase } from './application/reorder-catalog-items.js';
 import { SaveEducationalObjectiveUseCase } from './application/save-educational-objective.js';
@@ -90,9 +91,17 @@ export function createCatalogVersionsModule(deps?: CatalogModuleDependencies): R
     clock: deps.clock,
   });
 
+  const getCatalogVersionDetailUseCase = new GetCatalogVersionDetailUseCase({
+    versionReader: versionRepository,
+    objectiveReader: objectiveRepository,
+    attributeReader: attributeRepository,
+    permissionChecker: deps.permissionChecker,
+  });
+
   const itemsController = new CatalogVersionItemsController({
     saveEducationalObjectiveUseCase,
     reorderCatalogItemsUseCase,
+    getCatalogVersionDetailUseCase,
   });
 
   return createCatalogVersionsRouter({
@@ -123,6 +132,7 @@ export * from './application/create-catalog-version.types.js';
 export * from './application/list-catalog-versions.js';
 export * from './application/list-catalog-versions.types.js';
 export * from './application/catalog-item-dto.js';
+export * from './application/get-catalog-version-detail.js';
 export * from './application/save-educational-objective.js';
 export * from './application/save-educational-objective.types.js';
 export * from './application/save-graduate-attribute.js';

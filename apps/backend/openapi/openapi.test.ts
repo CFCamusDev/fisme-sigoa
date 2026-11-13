@@ -2003,6 +2003,7 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
         } as unknown as CatalogVersionsController,
         itemsController: {
           editObjectives: vi.fn(),
+          getVersionDetail: vi.fn(),
         } as unknown as CatalogVersionItemsController,
         authenticate: vi.fn(),
         requirePermission: vi.fn(() => vi.fn()),
@@ -2022,6 +2023,7 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
       const key = (e: { method: string; path: string }) => e.method + ' ' + e.path;
       expect(routerEndpoints.map(key).sort()).toEqual([
         'get /catalog-versions',
+        'get /catalog-versions/:id',
         'post /catalog-versions',
         'put /catalog-versions/:id/objectives',
       ]);
