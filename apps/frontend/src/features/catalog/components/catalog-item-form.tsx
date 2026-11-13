@@ -56,11 +56,14 @@ export function CatalogItemForm({
     resolver: zodResolver(
       isAttribute ? attributeFormSchema : objectiveFormSchema,
     ) as unknown as Resolver<CatalogItemFormValues>,
-    defaultValues: {
-      code: item?.code ?? '',
-      name: item && hasName(item) ? item.name : '',
-      statement: item?.statement ?? '',
-    },
+    // El esquema de los OE es estricto: el campo `name` solo existe en los AG.
+    defaultValues: isAttribute
+      ? {
+          code: item?.code ?? '',
+          name: item && hasName(item) ? item.name : '',
+          statement: item?.statement ?? '',
+        }
+      : { code: item?.code ?? '', statement: item?.statement ?? '' },
   });
 
   useEffect(() => {
