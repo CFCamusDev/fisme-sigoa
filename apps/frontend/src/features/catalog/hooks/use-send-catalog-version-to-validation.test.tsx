@@ -48,7 +48,8 @@ describe('useSendCatalogVersionToValidation (T-015-05, CA1, CA2)', () => {
     const detail = queryClient.getQueryData<CatalogVersionDetailDto>(catalogKeys.detail('cv-2'));
     expect(detail?.version.status).toBe('IN_VALIDATION');
     expect(detail?.objectives).toHaveLength(3);
-    await waitFor(() => expect(lists).toBe(1));
+    expect(queryClient.getQueryState(catalogKeys.list())?.isInvalidated).toBe(true);
+    expect(lists).toBe(0);
   });
 
   it('sends one request for several simultaneous calls', async () => {
