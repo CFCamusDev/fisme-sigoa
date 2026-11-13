@@ -7,3 +7,6 @@ export * from './domain/ports/index.js';
 export * from './infrastructure/prisma/prisma-resolution-mapper.js';
 export * from './infrastructure/prisma/prisma-resolution-repository.js';
 export * from './infrastructure/prisma/prisma-resolution-catalog-version-reader.js';
+export * from './application/resolution-dto.js';
+export * from './application/register-resolution.js';
+export * from './application/register-resolution.types.js';
