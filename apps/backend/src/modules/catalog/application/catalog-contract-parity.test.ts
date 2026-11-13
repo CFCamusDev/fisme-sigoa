@@ -1,11 +1,15 @@
 import {
   CATALOG_CODE_PATTERN,
+  CATALOG_MAX_ITEMS,
   CATALOG_NAME_MAX_LENGTH,
   CATALOG_STATEMENT_MAX_LENGTH,
   CATALOG_VERSION_STATUSES as SHARED_STATUSES,
 } from '@sigoa/shared';
 import { describe, expect, it } from 'vitest';
-import { CATALOG_ITEM_LIMITS } from '../domain/entities/catalog-limits.js';
+import {
+  CATALOG_ITEM_LIMITS,
+  CATALOG_MAX_ITEMS as DOMAIN_MAX_ITEMS,
+} from '../domain/entities/catalog-limits.js';
 import { CATALOG_VERSION_STATUSES as DOMAIN_STATUSES } from '../domain/entities/catalog-version.js';
 
 describe('catalog contract parity between @sigoa/shared and the domain (T-013-12)', () => {
@@ -20,5 +24,9 @@ describe('catalog contract parity between @sigoa/shared and the domain (T-013-12
   it('uses the same statement and name limits on both sides', () => {
     expect(CATALOG_STATEMENT_MAX_LENGTH).toBe(CATALOG_ITEM_LIMITS.statementMaxLength);
     expect(CATALOG_NAME_MAX_LENGTH).toBe(CATALOG_ITEM_LIMITS.nameMaxLength);
+  });
+
+  it('uses the same maximum number of items on both sides (T-014-05)', () => {
+    expect(CATALOG_MAX_ITEMS).toBe(DOMAIN_MAX_ITEMS);
   });
 });
