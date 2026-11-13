@@ -6,6 +6,7 @@ import {
   catalogVersionIdParamsSchema,
   createCatalogVersionRequestSchema,
   listCatalogVersionsQuerySchema,
+  sendCatalogVersionToValidationRequestSchema,
 } from '@sigoa/shared';
 import { validateRequest } from '../../../../shared/middleware/validate-request.js';
 import type { CatalogVersionItemsController } from './catalog-version-items.controller.js';
@@ -85,6 +86,20 @@ export function createCatalogVersionsRouter(deps: CatalogVersionsRouterDependenc
       body: catalogAttributesRequestSchema,
     }),
     deps.itemsController.editAttributes,
+  );
+
+  // POST /catalog-versions/:id/validation (HU-015, T-015-03, CA1, CA2, RF-015, RS-020, RNF-008, RNF-009)
+  // Cadena obligatoria: authenticate -> requirePermission -> validateRequest -> controller
+  router.post(
+    '/:id/validation',
+    deps.authenticate,
+    deps.requirePermission('catalogo.editar', 'GLOBAL'),
+    validateRequest({
+      params: catalogVersionIdParamsSchema,
+      query: catalogItemsQuerySchema,
+      body: sendCatalogVersionToValidationRequestSchema,
+    }),
+    deps.itemsController.sendToValidation,
   );
 
   return router;

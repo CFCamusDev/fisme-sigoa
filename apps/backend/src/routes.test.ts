@@ -135,6 +135,21 @@ describe('setupAppRoutes', () => {
     expect(attributes.status).toBe(401);
   });
 
+  it('mounts the send to validation route and rejects unauthenticated requests with 401 (HU-015, T-015-03)', async () => {
+    const app = express();
+    app.use(express.json());
+    setupAppRoutes(app, {
+      unitOfWork: dummyUnitOfWork,
+      auditLogger: dummyAuditLogger,
+      dbProvider: dummyDbProvider,
+      env: createTestEnv(),
+    });
+    app.use(errorHandler);
+
+    const response = await request(app).post('/catalog-versions/v1/validation').send({});
+    expect(response.status).toBe(401);
+  });
+
   it('throws an error in production if APP_PUBLIC_URL is not configured', () => {
     const app = express();
     const prodEnv = createTestEnv({
