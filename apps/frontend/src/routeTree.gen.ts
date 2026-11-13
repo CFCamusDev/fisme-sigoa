@@ -26,6 +26,7 @@ import { Route as AppUsuariosIndexRouteImport } from './routes/_app/usuarios/ind
 import { Route as AppUsuariosNuevoRouteImport } from './routes/_app/usuarios/nuevo'
 import { Route as AuthActivarTokenRouteImport } from './routes/_auth/activar.$token'
 import { Route as AuthRestablecerTokenRouteImport } from './routes/_auth/restablecer.$token'
+import { Route as AppCatalogVersionsVersionIdRouteImport } from './routes/_app/catalog/versions.$versionId'
 import { Route as AppRolesRoleIdEditarRouteImport } from './routes/_app/roles/$roleId/editar'
 import { Route as AppRolesRoleIdPermisosRouteImport } from './routes/_app/roles/$roleId/permisos'
 import { Route as AppUsuariosUserIdEditarRouteImport } from './routes/_app/usuarios/$userId/editar'
@@ -116,6 +117,12 @@ const AuthRestablecerTokenRoute = AuthRestablecerTokenRouteImport.update({
   path: '/restablecer/$token',
   getParentRoute: () => AuthRoute,
 } as any)
+const AppCatalogVersionsVersionIdRoute =
+  AppCatalogVersionsVersionIdRouteImport.update({
+    id: '/catalog/versions/$versionId',
+    path: '/catalog/versions/$versionId',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppRolesRoleIdEditarRoute = AppRolesRoleIdEditarRouteImport.update({
   id: '/roles/$roleId/editar',
   path: '/roles/$roleId/editar',
@@ -148,6 +155,7 @@ export interface FileRoutesByFullPath {
   '/restablecer/$token': typeof AuthRestablecerTokenRoute
   '/roles/': typeof AppRolesIndexRoute
   '/usuarios/': typeof AppUsuariosIndexRoute
+  '/catalog/versions/$versionId': typeof AppCatalogVersionsVersionIdRoute
   '/roles/$roleId/editar': typeof AppRolesRoleIdEditarRoute
   '/roles/$roleId/permisos': typeof AppRolesRoleIdPermisosRoute
   '/usuarios/$userId/editar': typeof AppUsuariosUserIdEditarRoute
@@ -168,6 +176,7 @@ export interface FileRoutesByTo {
   '/restablecer/$token': typeof AuthRestablecerTokenRoute
   '/roles': typeof AppRolesIndexRoute
   '/usuarios': typeof AppUsuariosIndexRoute
+  '/catalog/versions/$versionId': typeof AppCatalogVersionsVersionIdRoute
   '/roles/$roleId/editar': typeof AppRolesRoleIdEditarRoute
   '/roles/$roleId/permisos': typeof AppRolesRoleIdPermisosRoute
   '/usuarios/$userId/editar': typeof AppUsuariosUserIdEditarRoute
@@ -191,6 +200,7 @@ export interface FileRoutesById {
   '/_auth/restablecer/$token': typeof AuthRestablecerTokenRoute
   '/_app/roles/': typeof AppRolesIndexRoute
   '/_app/usuarios/': typeof AppUsuariosIndexRoute
+  '/_app/catalog/versions/$versionId': typeof AppCatalogVersionsVersionIdRoute
   '/_app/roles/$roleId/editar': typeof AppRolesRoleIdEditarRoute
   '/_app/roles/$roleId/permisos': typeof AppRolesRoleIdPermisosRoute
   '/_app/usuarios/$userId/editar': typeof AppUsuariosUserIdEditarRoute
@@ -213,6 +223,7 @@ export interface FileRouteTypes {
     | '/restablecer/$token'
     | '/roles/'
     | '/usuarios/'
+    | '/catalog/versions/$versionId'
     | '/roles/$roleId/editar'
     | '/roles/$roleId/permisos'
     | '/usuarios/$userId/editar'
@@ -233,6 +244,7 @@ export interface FileRouteTypes {
     | '/restablecer/$token'
     | '/roles'
     | '/usuarios'
+    | '/catalog/versions/$versionId'
     | '/roles/$roleId/editar'
     | '/roles/$roleId/permisos'
     | '/usuarios/$userId/editar'
@@ -255,6 +267,7 @@ export interface FileRouteTypes {
     | '/_auth/restablecer/$token'
     | '/_app/roles/'
     | '/_app/usuarios/'
+    | '/_app/catalog/versions/$versionId'
     | '/_app/roles/$roleId/editar'
     | '/_app/roles/$roleId/permisos'
     | '/_app/usuarios/$userId/editar'
@@ -387,6 +400,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRestablecerTokenRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/_app/catalog/versions/$versionId': {
+      id: '/_app/catalog/versions/$versionId'
+      path: '/catalog/versions/$versionId'
+      fullPath: '/catalog/versions/$versionId'
+      preLoaderRoute: typeof AppCatalogVersionsVersionIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/roles/$roleId/editar': {
       id: '/_app/roles/$roleId/editar'
       path: '/roles/$roleId/editar'
@@ -422,6 +442,7 @@ interface AppRouteChildren {
   AppUsuariosNuevoRoute: typeof AppUsuariosNuevoRoute
   AppRolesIndexRoute: typeof AppRolesIndexRoute
   AppUsuariosIndexRoute: typeof AppUsuariosIndexRoute
+  AppCatalogVersionsVersionIdRoute: typeof AppCatalogVersionsVersionIdRoute
   AppRolesRoleIdEditarRoute: typeof AppRolesRoleIdEditarRoute
   AppRolesRoleIdPermisosRoute: typeof AppRolesRoleIdPermisosRoute
   AppUsuariosUserIdEditarRoute: typeof AppUsuariosUserIdEditarRoute
@@ -438,6 +459,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppUsuariosNuevoRoute: AppUsuariosNuevoRoute,
   AppRolesIndexRoute: AppRolesIndexRoute,
   AppUsuariosIndexRoute: AppUsuariosIndexRoute,
+  AppCatalogVersionsVersionIdRoute: AppCatalogVersionsVersionIdRoute,
   AppRolesRoleIdEditarRoute: AppRolesRoleIdEditarRoute,
   AppRolesRoleIdPermisosRoute: AppRolesRoleIdPermisosRoute,
   AppUsuariosUserIdEditarRoute: AppUsuariosUserIdEditarRoute,

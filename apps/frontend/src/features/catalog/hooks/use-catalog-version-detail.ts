@@ -6,10 +6,12 @@ import { catalogKeys } from './catalog-keys';
 
 export function useCatalogVersionDetail(
   versionId: string,
+  options: { enabled?: boolean } = {},
 ): UseQueryResult<CatalogVersionDetailDto, ApiError> {
   return useQuery<CatalogVersionDetailDto, ApiError>({
     queryKey: catalogKeys.detail(versionId),
     queryFn: () => getCatalogVersionDetail(versionId),
+    enabled: options.enabled ?? true,
     staleTime: 30_000,
     retry: false,
   });
