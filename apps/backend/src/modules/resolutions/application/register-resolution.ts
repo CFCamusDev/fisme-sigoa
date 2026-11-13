@@ -4,6 +4,7 @@ import type { AuditLogger } from '../../../shared/audit/audit-logger.js';
 import type { UnitOfWork } from '../../../shared/unit-of-work/unit-of-work.js';
 import { Resolution } from '../domain/entities/resolution.js';
 import {
+  InvalidResolutionDataError,
   ResolutionVersionNotFoundError,
   ResolutionVersionNotInValidationError,
 } from '../domain/errors/index.js';
@@ -12,6 +13,15 @@ import type { ResolutionPermissionChecker } from '../domain/ports/resolution-per
 import type { ResolutionRepository } from '../domain/ports/resolution-repository.js';
 import type { RegisterResolutionCommand } from './register-resolution.types.js';
 import { buildResolutionDto } from './resolution-dto.js';
+
+/** `AAAA-MM-DD` real a medianoche UTC; rechaza fechas que el motor desbordaría (30 de febrero). */
+function parseCalendarDate(value: string): Date {
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) {
+    throw new InvalidResolutionDataError('La fecha de la resolución no es válida.');
+  }
+  return date;
+}
 
 export interface RegisterResolutionDependencies {
   readonly versionReader: ResolutionCatalogVersionReader;
@@ -49,7 +59,7 @@ export class RegisterResolutionUseCase {
       id: this.idGenerator(),
       type: command.type,
       number: command.number,
-      issuedOn: new Date(`${command.issuedOn}T00:00:00.000Z`),
+      issuedOn: parseCalendarDate(command.issuedOn),
       catalogVersionId: command.catalogVersionId,
       actorId: command.actorId,
       now: this.clock(),
