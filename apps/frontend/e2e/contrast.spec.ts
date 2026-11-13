@@ -542,8 +542,9 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA)', () => {
         ),
         page.getByRole('button', { name: 'Guardar' }).click(),
       ]);
-      await expect(page.getByText('Modificado')).toBeVisible();
-      await expect(page.getByText('Nuevo', { exact: true })).toBeVisible();
+      const attributeList = page.getByRole('list', { name: 'Atributos del graduado' });
+      await expect(attributeList.getByText(/^Modificado/)).toBeVisible();
+      await expect(attributeList.getByText(/^Nuevo/)).toBeVisible();
       await expectNoContrastViolations(page, { context: 'catalog-editor-draft-desktop' });
 
       await page.setViewportSize(MOBILE);
