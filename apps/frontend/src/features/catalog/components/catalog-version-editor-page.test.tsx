@@ -486,3 +486,131 @@ describe('CatalogVersionEditorPage (HU-014, T-014-17, CA1, CA2, CA3)', () => {
     });
   });
 });
+
+describe('CatalogVersionEditorPage send to validation (HU-015, T-015-09, CA1, CA2)', () => {
+  const sendButton = () => screen.getByRole('button', { name: 'Enviar a validación' });
+
+  it('lists the unmet precondition and disables the send button', async () => {
+    mockVersions(buildCatalogVersionDetail({ attributeCount: 0 }));
+
+    renderEditor();
+
+    const list = await screen.findByRole('list', { name: 'Precondiciones para el envío' });
+    const items = within(list).getAllByRole('listitem');
+    expect(items).toHaveLength(2);
+    expect(items[0]).toHaveTextContent('Al menos un objetivo educacional: cumplida');
+    expect(items[1]).toHaveTextContent('Al menos un atributo del graduado: pendiente');
+    expect(sendButton()).toBeDisabled();
+  });
+
+  it('lists the unmet objectives precondition too', async () => {
+    mockVersions(buildCatalogVersionDetail({ objectiveCount: 0 }));
+
+    renderEditor();
+
+    const list = await screen.findByRole('list', { name: 'Precondiciones para el envío' });
+    expect(within(list).getAllByRole('listitem')[0]).toHaveTextContent(
+      'Al menos un objetivo educacional: pendiente',
+    );
+    expect(sendButton()).toBeDisabled();
+  });
+
+  it('sends the version to validation after confirming', async () => {
+    const user = userEvent.setup();
+    const detail = buildCatalogVersionDetail();
+    let posts = 0;
+    mockVersions(detail);
+    server.use(
+      http.post(`${BASE}/cv-2/validation`, async () => {
+        posts += 1;
+        await delay(30);
+        return HttpResponse.json({ ...detail.version, status: 'IN_VALIDATION' });
+      }),
+    );
+
+    renderEditor();
+    await screen.findByRole('list', { name: 'Precondiciones para el envío' });
+    expect(sendButton()).toBeEnabled();
+    await user.click(sendButton());
+
+    expect(posts).toBe(0);
+    expect(screen.getByText(/los textos quedarán bloqueados/i)).toBeInTheDocument();
+    const confirm = screen.getByRole('button', { name: 'Confirmar envío' });
+    await waitFor(() => expect(confirm).toHaveFocus());
+    await user.click(confirm);
+
+    expect(await screen.findByText(/sus campos están bloqueados/i)).toBeInTheDocument();
+    expect(posts).toBe(1);
+    expect(screen.queryByRole('button', { name: 'Enviar a validación' })).not.toBeInTheDocument();
+  });
+
+  it('cancels the confirmation with the button and with Escape without sending', async () => {
+    const user = userEvent.setup();
+    let posts = 0;
+    mockVersions();
+    server.use(
+      http.post(`${BASE}/cv-2/validation`, () => {
+        posts += 1;
+        return HttpResponse.json(buildCatalogVersion({ id: 'cv-2', status: 'IN_VALIDATION' }));
+      }),
+    );
+
+    renderEditor();
+    await screen.findByRole('list', { name: 'Precondiciones para el envío' });
+    await user.click(sendButton());
+    await user.click(screen.getByRole('button', { name: 'Cancelar' }));
+    expect(sendButton()).toBeEnabled();
+
+    await user.click(sendButton());
+    await user.keyboard('{Escape}');
+
+    expect(screen.queryByRole('button', { name: 'Confirmar envío' })).not.toBeInTheDocument();
+    expect(sendButton()).toBeEnabled();
+    expect(posts).toBe(0);
+  });
+
+  it('shows the server message when the version was already sent (409)', async () => {
+    const user = userEvent.setup();
+    mockVersions();
+    server.use(
+      http.post(`${BASE}/cv-2/validation`, () =>
+        HttpResponse.json(
+          { error: { code: 'CONFLICT', message: 'La transición de estado no está permitida.' } },
+          { status: 409 },
+        ),
+      ),
+    );
+
+    renderEditor();
+    await screen.findByRole('list', { name: 'Precondiciones para el envío' });
+    await user.click(sendButton());
+    await user.click(screen.getByRole('button', { name: 'Confirmar envío' }));
+
+    expect(
+      await screen.findByText('La transición de estado no está permitida.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Confirmar envío' })).not.toBeInTheDocument();
+  });
+
+  it('hides the action without catalogo.editar', async () => {
+    mockVersions();
+
+    renderEditor(readOnly);
+
+    expect(await screen.findByText(/solo lectura: no tienes permiso/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Enviar a validación' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: 'Precondiciones para el envío' })).toBeNull();
+  });
+
+  it.each(['IN_VALIDATION', 'APPROVED'] as const)(
+    'hides the action when the version is %s',
+    async (status) => {
+      mockVersions(buildCatalogVersionDetail({ version: { status } }));
+
+      renderEditor();
+
+      expect(await screen.findByText(/sus campos están bloqueados/i)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Enviar a validación' })).not.toBeInTheDocument();
+    },
+  );
+});
