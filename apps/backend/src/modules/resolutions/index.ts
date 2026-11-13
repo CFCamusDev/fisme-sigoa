@@ -10,3 +10,8 @@ export * from './infrastructure/prisma/prisma-resolution-catalog-version-reader.
 export * from './application/resolution-dto.js';
 export * from './application/register-resolution.js';
 export * from './application/register-resolution.types.js';
+export * from './application/approve-resolution.js';
+export * from './application/approve-resolution.types.js';
+export * from './application/resolution-pdf-rules.js';
+export * from './infrastructure/storage/file-storage-resolution-pdf-storage.js';
+export * from './infrastructure/events/in-process-resolution-event-publisher.js';
