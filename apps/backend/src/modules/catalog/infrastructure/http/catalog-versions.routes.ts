@@ -1,5 +1,6 @@
 import { Router, type RequestHandler } from 'express';
 import {
+  catalogAttributesRequestSchema,
   catalogItemsQuerySchema,
   catalogObjectivesRequestSchema,
   catalogVersionIdParamsSchema,
@@ -70,6 +71,20 @@ export function createCatalogVersionsRouter(deps: CatalogVersionsRouterDependenc
       body: catalogObjectivesRequestSchema,
     }),
     deps.itemsController.editObjectives,
+  );
+
+  // PUT /catalog-versions/:id/attributes (HU-014, T-014-07, CA1-CA3, RF-014, RS-020, RNF-008, RNF-009)
+  // Cadena obligatoria: authenticate -> requirePermission -> validateRequest -> controller
+  router.put(
+    '/:id/attributes',
+    deps.authenticate,
+    deps.requirePermission('catalogo.editar', 'GLOBAL'),
+    validateRequest({
+      params: catalogVersionIdParamsSchema,
+      query: catalogItemsQuerySchema,
+      body: catalogAttributesRequestSchema,
+    }),
+    deps.itemsController.editAttributes,
   );
 
   return router;

@@ -129,6 +129,10 @@ describe('setupAppRoutes', () => {
       .put('/catalog-versions/v1/objectives')
       .send({ operation: 'REORDER', orderedIds: ['a'] });
     expect(response.status).toBe(401);
+    const attributes = await request(app)
+      .put('/catalog-versions/v1/attributes')
+      .send({ operation: 'REORDER', orderedIds: ['a'] });
+    expect(attributes.status).toBe(401);
   });
 
   it('throws an error in production if APP_PUBLIC_URL is not configured', () => {

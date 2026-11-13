@@ -7,6 +7,7 @@ import { GetCatalogVersionDetailUseCase } from './application/get-catalog-versio
 import { ListCatalogVersionsUseCase } from './application/list-catalog-versions.js';
 import { ReorderCatalogItemsUseCase } from './application/reorder-catalog-items.js';
 import { SaveEducationalObjectiveUseCase } from './application/save-educational-objective.js';
+import { SaveGraduateAttributeUseCase } from './application/save-graduate-attribute.js';
 import type { CatalogPermissionChecker } from './domain/ports/catalog-permission-checker.js';
 import { CatalogVersionItemsController } from './infrastructure/http/catalog-version-items.controller.js';
 import { CatalogVersionsController } from './infrastructure/http/catalog-versions.controller.js';
@@ -79,6 +80,16 @@ export function createCatalogVersionsModule(deps?: CatalogModuleDependencies): R
     clock: deps.clock,
   });
 
+  const saveGraduateAttributeUseCase = new SaveGraduateAttributeUseCase({
+    versionRepository,
+    attributeReader: attributeRepository,
+    attributeRepository,
+    permissionChecker: deps.permissionChecker,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+    clock: deps.clock,
+  });
+
   const reorderCatalogItemsUseCase = new ReorderCatalogItemsUseCase({
     versionRepository,
     objectiveReader: objectiveRepository,
@@ -100,6 +111,7 @@ export function createCatalogVersionsModule(deps?: CatalogModuleDependencies): R
 
   const itemsController = new CatalogVersionItemsController({
     saveEducationalObjectiveUseCase,
+    saveGraduateAttributeUseCase,
     reorderCatalogItemsUseCase,
     getCatalogVersionDetailUseCase,
   });
