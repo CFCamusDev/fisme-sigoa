@@ -1,4 +1,5 @@
 import type { EducationalObjective } from '../entities/educational-objective.js';
+import type { ReorderPlanEntry } from '../policies/catalog-item-rules.js';
 
 export interface EducationalObjectiveRepository {
   /**
@@ -14,4 +15,16 @@ export interface EducationalObjectiveRepository {
    * `DuplicateCatalogCodeError` si el código choca con otro de la versión.
    */
   update(item: EducationalObjective): Promise<void>;
+  /**
+   * Exige transacción activa. Fija el orden de los elementos indicados (solo los que cambian) en
+   * dos fases —los desplaza `+1000` y luego les da el valor definitivo— para no chocar con el
+   * índice único `(versionId, order)`. Lanza `CatalogOrderMismatchError` si alguna fila no
+   * pertenece a la versión.
+   */
+  updateOrders(
+    versionId: string,
+    changes: readonly ReorderPlanEntry[],
+    actorId: string,
+    now: Date,
+  ): Promise<void>;
 }

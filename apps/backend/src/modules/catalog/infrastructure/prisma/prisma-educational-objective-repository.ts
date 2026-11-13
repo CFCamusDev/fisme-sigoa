@@ -1,5 +1,10 @@
 import type { DbProvider } from '../../../../shared/prisma/prisma-unit-of-work.js';
-import { CatalogItemNotFoundError, DuplicateCatalogCodeError } from '../../domain/errors/index.js';
+import {
+  CatalogItemNotFoundError,
+  CatalogOrderMismatchError,
+  DuplicateCatalogCodeError,
+} from '../../domain/errors/index.js';
+import type { ReorderPlanEntry } from '../../domain/policies/catalog-item-rules.js';
 import type { EducationalObjective } from '../../domain/entities/educational-objective.js';
 import type { EducationalObjectiveReader } from '../../domain/ports/educational-objective-reader.js';
 import type { EducationalObjectiveRepository } from '../../domain/ports/educational-objective-repository.js';
@@ -7,6 +12,9 @@ import {
   mapPrismaEducationalObjectiveRowToDomain,
   type PrismaEducationalObjectiveRow,
 } from './prisma-educational-objective-mapper.js';
+
+/** Desplazamiento temporal de la fase 1; mayor que el tope de elementos por versión. */
+const ORDER_SHIFT = 1000;
 
 function isUniqueViolation(error: unknown): boolean {
   return !!error && typeof error === 'object' && (error as { code?: string }).code === 'P2002';
@@ -119,6 +127,42 @@ export class PrismaEducationalObjectiveRepository
     }
     if (affected !== 1) {
       throw new CatalogItemNotFoundError();
+    }
+  }
+
+  async updateOrders(
+    versionId: string,
+    changes: readonly ReorderPlanEntry[],
+    actorId: string,
+    now: Date,
+  ): Promise<void> {
+    const inTx = this.dbProvider.isInTransaction?.() ?? false;
+    if (!inTx) {
+      throw new Error(
+        'updateOrders solo puede ejecutarse dentro de una transacción activa (UnitOfWork).',
+      );
+    }
+    if (changes.length === 0) {
+      return;
+    }
+    const db = this.dbProvider.get();
+    // Fase 1: libera las posiciones para que la fase 2 no choque con el índice único.
+    const shifted = await db.educationalObjective.updateMany({
+      where: { versionId, id: { in: changes.map((change) => change.id) } },
+      data: { order: { increment: ORDER_SHIFT } },
+    });
+    if (shifted.count !== changes.length) {
+      throw new CatalogOrderMismatchError();
+    }
+    // Fase 2: valor definitivo de cada elemento.
+    for (const change of changes) {
+      const result = await db.educationalObjective.updateMany({
+        where: { id: change.id, versionId },
+        data: { order: change.order, updatedBy: actorId, updatedAt: now },
+      });
+      if (result.count !== 1) {
+        throw new CatalogOrderMismatchError();
+      }
     }
   }
 }
