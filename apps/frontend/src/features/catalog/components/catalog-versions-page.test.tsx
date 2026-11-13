@@ -36,9 +36,11 @@ describe('CatalogVersionsPage Component (HU-013, T-013-23, CA1, CA2)', () => {
       }),
     );
 
-    renderWithProviders(<CatalogVersionsPage />, { withRouter: false });
+    renderWithProviders(<CatalogVersionsPage />, {});
 
-    expect(screen.getAllByText(/cargando versiones del catálogo/i).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(/cargando versiones del catálogo/i)).length).toBeGreaterThan(
+      0,
+    );
     release();
     expect(await screen.findByRole('table')).toBeInTheDocument();
   });
@@ -48,7 +50,7 @@ describe('CatalogVersionsPage Component (HU-013, T-013-23, CA1, CA2)', () => {
       http.get(BASE, () => HttpResponse.json(buildCatalogVersionsResponse({ open: 'DRAFT' }))),
     );
 
-    renderWithProviders(<CatalogVersionsPage />, { withRouter: false, permissions: readOnly });
+    renderWithProviders(<CatalogVersionsPage />, { permissions: readOnly });
 
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Versiones del catálogo' }),
@@ -60,7 +62,7 @@ describe('CatalogVersionsPage Component (HU-013, T-013-23, CA1, CA2)', () => {
       within(table)
         .getAllByRole('columnheader')
         .map((header) => header.textContent),
-    ).toEqual(['Versión', 'Estado', 'Basada en', 'OE', 'AG', 'Creada']);
+    ).toEqual(['Versión', 'Estado', 'Basada en', 'OE', 'AG', 'Creada', 'Acciones']);
     const rows = within(table).getAllByRole('row').slice(1);
     expect(rows).toHaveLength(2);
     const [draftRow, currentRow] = rows.map((row) => within(row).getAllByRole('cell'));
@@ -71,6 +73,7 @@ describe('CatalogVersionsPage Component (HU-013, T-013-23, CA1, CA2)', () => {
       '4',
       '12',
       '12/11/2026',
+      'Ver',
     ]);
     expect(currentRow?.map((cell) => cell.textContent)).toEqual([
       'V1',
@@ -79,6 +82,7 @@ describe('CatalogVersionsPage Component (HU-013, T-013-23, CA1, CA2)', () => {
       '4',
       '12',
       '01/11/2026',
+      'Ver',
     ]);
   });
 
@@ -89,7 +93,7 @@ describe('CatalogVersionsPage Component (HU-013, T-013-23, CA1, CA2)', () => {
       ),
     );
 
-    renderWithProviders(<CatalogVersionsPage />, { withRouter: false, permissions: readOnly });
+    renderWithProviders(<CatalogVersionsPage />, { permissions: readOnly });
 
     expect(await screen.findByText('En validación')).toBeInTheDocument();
   });
@@ -97,7 +101,7 @@ describe('CatalogVersionsPage Component (HU-013, T-013-23, CA1, CA2)', () => {
   it('renders the empty state, with the action only for who can edit', async () => {
     server.use(http.get(BASE, () => HttpResponse.json({ items: [] })));
 
-    renderWithProviders(<CatalogVersionsPage />, { withRouter: false, permissions: editor });
+    renderWithProviders(<CatalogVersionsPage />, { permissions: editor });
 
     expect(await screen.findByText('Aún no hay versiones del catálogo')).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: 'Nueva versión' })).toBeInTheDocument();
@@ -107,7 +111,7 @@ describe('CatalogVersionsPage Component (HU-013, T-013-23, CA1, CA2)', () => {
   it('hides the new version button for a user without catalogo.editar (read only)', async () => {
     server.use(http.get(BASE, () => HttpResponse.json(buildCatalogVersionsResponse())));
 
-    renderWithProviders(<CatalogVersionsPage />, { withRouter: false, permissions: readOnly });
+    renderWithProviders(<CatalogVersionsPage />, { permissions: readOnly });
 
     expect(await screen.findByRole('table')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Nueva versión' })).not.toBeInTheDocument();
@@ -128,7 +132,7 @@ describe('CatalogVersionsPage Component (HU-013, T-013-23, CA1, CA2)', () => {
     );
     const user = userEvent.setup();
 
-    renderWithProviders(<CatalogVersionsPage />, { withRouter: false, permissions: readOnly });
+    renderWithProviders(<CatalogVersionsPage />, { permissions: readOnly });
 
     expect(await screen.findByText('Error al cargar las versiones')).toBeInTheDocument();
     expect(screen.getByText(/problema del servidor/i)).toBeInTheDocument();
@@ -146,7 +150,7 @@ describe('CatalogVersionsPage Component (HU-013, T-013-23, CA1, CA2)', () => {
       ),
     );
 
-    renderWithProviders(<CatalogVersionsPage />, { withRouter: false, permissions: readOnly });
+    renderWithProviders(<CatalogVersionsPage />, { permissions: readOnly });
 
     expect(await screen.findByText('Acceso denegado')).toBeInTheDocument();
   });
@@ -164,7 +168,7 @@ describe('CatalogVersionsPage Component (HU-013, T-013-23, CA1, CA2)', () => {
     );
     const user = userEvent.setup();
 
-    renderWithProviders(<CatalogVersionsPage />, { withRouter: false, permissions: editor });
+    renderWithProviders(<CatalogVersionsPage />, { permissions: editor });
 
     await user.click(await screen.findByRole('button', { name: 'Nueva versión' }));
 
@@ -185,7 +189,7 @@ describe('CatalogVersionsPage Component (HU-013, T-013-23, CA1, CA2)', () => {
     );
     const user = userEvent.setup();
 
-    renderWithProviders(<CatalogVersionsPage />, { withRouter: false, permissions: editor });
+    renderWithProviders(<CatalogVersionsPage />, { permissions: editor });
 
     const button = await screen.findByRole('button', { name: 'Nueva versión' });
     await waitFor(() => expect(button).toHaveAttribute('aria-disabled', 'true'));
@@ -204,7 +208,7 @@ describe('CatalogVersionsPage Component (HU-013, T-013-23, CA1, CA2)', () => {
       ),
     );
 
-    renderWithProviders(<CatalogVersionsPage />, { withRouter: false, permissions: editor });
+    renderWithProviders(<CatalogVersionsPage />, { permissions: editor });
 
     expect(
       await screen.findByText(/Ya existe la versión 2 en En validación; ciérrala o apruébala/),
@@ -234,7 +238,7 @@ describe('CatalogVersionsPage Component (HU-013, T-013-23, CA1, CA2)', () => {
     );
     const user = userEvent.setup();
 
-    renderWithProviders(<CatalogVersionsPage />, { withRouter: false, permissions: editor });
+    renderWithProviders(<CatalogVersionsPage />, { permissions: editor });
 
     await user.click(await screen.findByRole('button', { name: 'Nueva versión' }));
 
@@ -262,7 +266,7 @@ describe('CatalogVersionsPage Component (HU-013, T-013-23, CA1, CA2)', () => {
       <StrictMode>
         <CatalogVersionsPage />
       </StrictMode>,
-      { withRouter: false, permissions: editor },
+      { permissions: editor },
     );
 
     const button = await screen.findByRole('button', { name: 'Nueva versión' });
@@ -283,7 +287,7 @@ describe('CatalogVersionsPage Component (HU-013, T-013-23, CA1, CA2)', () => {
       }),
     );
 
-    renderWithProviders(<CatalogVersionsPage />, { withRouter: false, permissions: editor });
+    renderWithProviders(<CatalogVersionsPage />, { permissions: editor });
 
     const button = await screen.findByRole('button', { name: 'Nueva versión' });
     button.click();

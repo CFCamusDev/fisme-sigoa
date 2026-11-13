@@ -67,3 +67,51 @@ export async function createCatalogFixture(
 
   return { programId, currentVersionId: version.id };
 }
+
+export interface DraftCatalogVersionOptions {
+  /** Estado de la versión creada; por defecto `DRAFT`. */
+  status?: 'DRAFT' | 'IN_VALIDATION';
+  /** Número de la versión; por defecto 2. */
+  number?: number;
+  objectiveCount?: number;
+  attributeCount?: number;
+}
+
+/**
+ * Crea una versión abierta (por defecto Borrador) con copias de OE (`OEP1…`) y AG (`AG-C01…`)
+ * sobre un programa que ya tiene la versión vigente (HU-014).
+ */
+export async function createDraftCatalogVersion(
+  prisma: PrismaClient,
+  fixture: CatalogFixture,
+  options: DraftCatalogVersionOptions = {},
+): Promise<string> {
+  const objectiveCount = options.objectiveCount ?? 4;
+  const attributeCount = options.attributeCount ?? 12;
+  const draft = await prisma.catalogVersion.create({
+    data: {
+      programId: fixture.programId,
+      number: options.number ?? 2,
+      status: options.status ?? 'DRAFT',
+      basedOnVersionId: fixture.currentVersionId,
+      createdBy: 'SEED',
+      updatedBy: 'SEED',
+      objectives: {
+        create: Array.from({ length: objectiveCount }, (_, index) => ({
+          code: `OEP${index + 1}`,
+          statement: `Enunciado del objetivo ${index + 1}.`,
+          order: index + 1,
+        })),
+      },
+      attributes: {
+        create: Array.from({ length: attributeCount }, (_, index) => ({
+          code: `AG-C${String(index + 1).padStart(2, '0')}`,
+          name: `Atributo ${index + 1}`,
+          statement: `Enunciado del atributo ${index + 1}.`,
+          order: index + 1,
+        })),
+      },
+    },
+  });
+  return draft.id;
+}

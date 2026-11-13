@@ -5055,6 +5055,514 @@
           }
         }
       }
+    },
+    "/catalog-versions/{id}": {
+      "get": {
+        "tags": ["CatalogVersions"],
+        "summary": "Consultar una versión del catálogo con sus OE y AG",
+        "description": "Retorna la versión con su estado, sus objetivos educacionales y sus atributos del graduado ordenados por posición. No expone datos de quién creó o editó cada elemento. No admite parámetros de consulta. Requiere el permiso 'catalogo.ver' con alcance GLOBAL (HU-014, RF-014, RN-020, RS-002).",
+        "operationId": "getCatalogVersionDetail",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "description": "Identificador de la versión del catálogo."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Versión con sus objetivos y atributos.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché HTTP."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogVersionDetailDto"
+                },
+                "example": {
+                  "version": {
+                    "id": "cm0catalogversion0002",
+                    "programId": "cm0programepis000001",
+                    "number": 2,
+                    "status": "DRAFT",
+                    "basedOnVersionId": "cm0catalogversion0001",
+                    "objectiveCount": 4,
+                    "attributeCount": 12,
+                    "createdAt": "2026-11-12T15:00:00.000Z"
+                  },
+                  "objectives": [
+                    {
+                      "id": "cm0objective000002",
+                      "code": "OEP2",
+                      "statement": "Enunciado del objetivo educacional OEP2.",
+                      "order": 2,
+                      "updatedAt": "2026-11-12T15:00:00.000Z"
+                    }
+                  ],
+                  "attributes": [
+                    {
+                      "id": "cm0attribute000003",
+                      "code": "AG-C03",
+                      "name": "Diseño y desarrollo de soluciones",
+                      "statement": "Enunciado oficial del atributo AG-C03.",
+                      "order": 3,
+                      "updatedAt": "2026-11-12T15:00:00.000Z"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "El identificador o la consulta no cumplen el contrato.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "La solicitud contiene errores de validación",
+                    "requestId": "req_cv_detail_400",
+                    "details": [
+                      {
+                        "path": "query",
+                        "message": "Unrecognized key: \"x\""
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o token de acceso inválido o expirado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado",
+                    "requestId": "req_cv_detail_401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere el permiso 'catalogo.ver'.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para realizar esta acción",
+                    "requestId": "req_cv_detail_403"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La versión no existe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "Versión del catálogo no encontrada.",
+                    "requestId": "req_cv_detail_404"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/catalog-versions/{id}/objectives": {
+      "put": {
+        "tags": ["CatalogVersions"],
+        "summary": "Agregar, editar u ordenar los objetivos educacionales de una versión",
+        "description": "Operación `SAVE`: agrega un objetivo (sin `id`) o edita código y enunciado (con `id`). Operación `REORDER`: fija el orden con la lista completa de ids en el orden nuevo. Solo la versión en Borrador es editable; en otro estado responde 409 y los campos quedan bloqueados. El código es único dentro de la versión. No se elimina ningún objetivo. Una edición sin cambios no escribe ni audita. La versión se bloquea en la transacción y la auditoría (antes y después) se confirma con el cambio. Requiere el permiso 'catalogo.editar' con alcance GLOBAL (HU-014, RF-014, RN-020, RS-002, RS-020).",
+        "operationId": "editCatalogObjectives",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "description": "Identificador de la versión del catálogo."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogObjectivesRequest"
+              },
+              "examples": {
+                "save": {
+                  "summary": "Editar el enunciado de un objetivo",
+                  "value": {
+                    "operation": "SAVE",
+                    "id": "cm0objective000002",
+                    "code": "OEP2",
+                    "statement": "Enunciado corregido del objetivo."
+                  }
+                },
+                "reorder": {
+                  "summary": "Ordenar los objetivos",
+                  "value": {
+                    "operation": "REORDER",
+                    "orderedIds": ["cm0objective000002", "cm0objective000001"]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Lista completa y ordenada de objetivos de la versión tras la operación.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché HTTP."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogObjectivesResponse"
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "cm0objective000002",
+                      "code": "OEP2",
+                      "statement": "Enunciado del objetivo educacional OEP2.",
+                      "order": 2,
+                      "updatedAt": "2026-11-12T15:00:00.000Z"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "El identificador, el cuerpo o la consulta no cumplen el contrato (operación desconocida, campos extra, código inválido, textos vacíos o demasiado largos, lista de orden vacía, repetida o de más de 100).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "La solicitud contiene errores de validación",
+                    "requestId": "req_cv_objective_400",
+                    "details": [
+                      {
+                        "path": "body.code",
+                        "message": "El código debe tener de 2 a 20 caracteres"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o token de acceso inválido o expirado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado",
+                    "requestId": "req_cv_objective_401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere el permiso 'catalogo.editar'.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para realizar esta acción",
+                    "requestId": "req_cv_objective_403"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La versión o el elemento a editar no existe en la versión.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "Versión del catálogo no encontrada.",
+                    "requestId": "req_cv_objective_404"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "La versión no está en Borrador (campos bloqueados), el código ya existe en la versión, la lista de orden quedó desfasada o se alcanzó el máximo de 100 elementos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "Solo se puede editar una versión del catálogo en Borrador. Esta versión está bloqueada.",
+                    "requestId": "req_cv_objective_409"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/catalog-versions/{id}/attributes": {
+      "put": {
+        "tags": ["CatalogVersions"],
+        "summary": "Agregar, editar u ordenar los atributos del graduado de una versión",
+        "description": "Operación `SAVE`: agrega un atributo (sin `id`) o edita código, nombre y enunciado (con `id`). Operación `REORDER`: fija el orden con la lista completa de ids en el orden nuevo. Solo la versión en Borrador es editable; en otro estado responde 409 y los campos quedan bloqueados. El código es único dentro de la versión. No se elimina ningún atributo. Una edición sin cambios no escribe ni audita. La versión se bloquea en la transacción y la auditoría (antes y después) se confirma con el cambio. Requiere el permiso 'catalogo.editar' con alcance GLOBAL (HU-014, RF-014, RN-020, RN-022, RS-002, RS-020).",
+        "operationId": "editCatalogAttributes",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "description": "Identificador de la versión del catálogo."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogAttributesRequest"
+              },
+              "examples": {
+                "save": {
+                  "summary": "Editar el enunciado de un atributo",
+                  "value": {
+                    "operation": "SAVE",
+                    "id": "cm0attribute000003",
+                    "code": "AG-C03",
+                    "name": "Diseño y desarrollo de soluciones",
+                    "statement": "Nuevo enunciado oficial del atributo."
+                  }
+                },
+                "reorder": {
+                  "summary": "Ordenar los atributos",
+                  "value": {
+                    "operation": "REORDER",
+                    "orderedIds": ["cm0attribute000003", "cm0attribute000001"]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Lista completa y ordenada de atributos de la versión tras la operación.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché HTTP."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogAttributesResponse"
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "cm0attribute000003",
+                      "code": "AG-C03",
+                      "name": "Diseño y desarrollo de soluciones",
+                      "statement": "Enunciado oficial del atributo AG-C03.",
+                      "order": 3,
+                      "updatedAt": "2026-11-12T15:00:00.000Z"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "El identificador, el cuerpo o la consulta no cumplen el contrato (operación desconocida, campos extra, código inválido, textos vacíos o demasiado largos, lista de orden vacía, repetida o de más de 100).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "La solicitud contiene errores de validación",
+                    "requestId": "req_cv_attribute_400",
+                    "details": [
+                      {
+                        "path": "body.code",
+                        "message": "El código debe tener de 2 a 20 caracteres"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o token de acceso inválido o expirado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado",
+                    "requestId": "req_cv_attribute_401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere el permiso 'catalogo.editar'.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para realizar esta acción",
+                    "requestId": "req_cv_attribute_403"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La versión o el elemento a editar no existe en la versión.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "Versión del catálogo no encontrada.",
+                    "requestId": "req_cv_attribute_404"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "La versión no está en Borrador (campos bloqueados), el código ya existe en la versión, la lista de orden quedó desfasada o se alcanzó el máximo de 100 elementos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "Solo se puede editar una versión del catálogo en Borrador. Esta versión está bloqueada.",
+                    "requestId": "req_cv_attribute_409"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -6343,6 +6851,217 @@
         "additionalProperties": false,
         "properties": {},
         "description": "Cuerpo vacío: el servidor resuelve el programa y copia la versión vigente. Se acepta ausente."
+      },
+      "CatalogObjectiveDto": {
+        "type": "object",
+        "required": ["id", "code", "statement", "order", "updatedAt"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "code": {
+            "type": "string"
+          },
+          "statement": {
+            "type": "string"
+          },
+          "order": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CatalogAttributeDto": {
+        "type": "object",
+        "required": ["id", "code", "name", "statement", "order", "updatedAt"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "statement": {
+            "type": "string"
+          },
+          "order": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CatalogVersionDetailDto": {
+        "type": "object",
+        "required": ["version", "objectives", "attributes"],
+        "additionalProperties": false,
+        "properties": {
+          "version": {
+            "$ref": "#/components/schemas/CatalogVersionDto"
+          },
+          "objectives": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalogObjectiveDto"
+            }
+          },
+          "attributes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalogAttributeDto"
+            }
+          }
+        }
+      },
+      "SaveCatalogObjectiveRequest": {
+        "type": "object",
+        "required": ["operation", "code", "statement"],
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "type": "string",
+            "const": "SAVE"
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "Si se envía, edita ese objetivo; si no, agrega uno nuevo."
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9-]{1,19}$",
+            "description": "De 2 a 20 caracteres: mayúsculas, números y guion, empezando por una letra."
+          },
+          "statement": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          }
+        }
+      },
+      "SaveCatalogAttributeRequest": {
+        "type": "object",
+        "required": ["operation", "code", "name", "statement"],
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "type": "string",
+            "const": "SAVE"
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "Si se envía, edita ese atributo; si no, agrega uno nuevo."
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9-]{1,19}$",
+            "description": "De 2 a 20 caracteres: mayúsculas, números y guion, empezando por una letra."
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "statement": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          }
+        }
+      },
+      "ReorderCatalogItemsRequest": {
+        "type": "object",
+        "required": ["operation", "orderedIds"],
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "type": "string",
+            "const": "REORDER"
+          },
+          "orderedIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "minItems": 1,
+            "maxItems": 100,
+            "uniqueItems": true,
+            "description": "Lista completa de ids en el orden nuevo; debe coincidir con los elementos actuales."
+          }
+        }
+      },
+      "CatalogObjectivesRequest": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/SaveCatalogObjectiveRequest"
+          },
+          {
+            "$ref": "#/components/schemas/ReorderCatalogItemsRequest"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "operation"
+        }
+      },
+      "CatalogAttributesRequest": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/SaveCatalogAttributeRequest"
+          },
+          {
+            "$ref": "#/components/schemas/ReorderCatalogItemsRequest"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "operation"
+        }
+      },
+      "CatalogObjectivesResponse": {
+        "type": "object",
+        "required": ["items"],
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalogObjectiveDto"
+            }
+          }
+        }
+      },
+      "CatalogAttributesResponse": {
+        "type": "object",
+        "required": ["items"],
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalogAttributeDto"
+            }
+          }
+        }
       }
     },
     "securitySchemes": {

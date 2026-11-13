@@ -71,6 +71,68 @@ export class GraduateAttribute {
     return this.props.updatedAt;
   }
 
+  /** Alta de un AG nuevo en una versión (HU-014). */
+  public static createNew(input: {
+    id: string;
+    versionId: string;
+    code: string;
+    name: string;
+    statement: string;
+    order: number;
+    actorId: string;
+    now: Date;
+  }): GraduateAttribute {
+    return GraduateAttribute.create({
+      id: input.id,
+      versionId: input.versionId,
+      code: input.code,
+      name: input.name,
+      statement: input.statement,
+      order: input.order,
+      createdBy: input.actorId,
+      updatedBy: input.actorId,
+      createdAt: input.now,
+      updatedAt: input.now,
+    });
+  }
+
+  /** Devuelve un AG nuevo con código, nombre y enunciado editados; conserva id, versión y orden. */
+  public edit(input: {
+    code: string;
+    name: string;
+    statement: string;
+    actorId: string;
+    now: Date;
+  }): GraduateAttribute {
+    return GraduateAttribute.create({
+      ...this.props,
+      code: input.code,
+      name: input.name,
+      statement: input.statement,
+      updatedBy: input.actorId,
+      updatedAt: input.now,
+    });
+  }
+
+  /** Devuelve un AG nuevo con otro orden. */
+  public withOrder(order: number, actorId: string, now: Date): GraduateAttribute {
+    return GraduateAttribute.create({
+      ...this.props,
+      order,
+      updatedBy: actorId,
+      updatedAt: now,
+    });
+  }
+
+  /** `true` si código, nombre y enunciado ya valen lo indicado (edición sin cambios). */
+  public hasSameContent(input: { code: string; name: string; statement: string }): boolean {
+    return (
+      this.props.code === validateCatalogCode(input.code) &&
+      this.props.name === validateCatalogName(input.name) &&
+      this.props.statement === validateCatalogStatement(input.statement)
+    );
+  }
+
   /** Copia el AG a otra versión conservando código, nombre, texto y orden. */
   public copyTo(
     newId: string,

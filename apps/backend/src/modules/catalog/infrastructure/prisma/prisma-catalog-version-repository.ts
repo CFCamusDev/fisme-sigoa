@@ -74,6 +74,20 @@ export class PrismaCatalogVersionRepository
       .$queryRawUnsafe('SELECT "id" FROM "programs" WHERE "id" = $1 FOR UPDATE', programId);
   }
 
+  async lockForEdit(versionId: string): Promise<CatalogVersion | null> {
+    const inTx = this.dbProvider.isInTransaction?.() ?? false;
+    if (!inTx) {
+      throw new Error(
+        'lockForEdit solo puede ejecutarse dentro de una transacción activa (UnitOfWork).',
+      );
+    }
+    await this.dbProvider
+      .get()
+      .$queryRawUnsafe('SELECT "id" FROM "catalog_versions" WHERE "id" = $1 FOR UPDATE', versionId);
+    // Se lee después del bloqueo para ver el estado confirmado por la última transacción.
+    return await this.findById(versionId);
+  }
+
   async save(version: CatalogVersion): Promise<void> {
     try {
       await this.dbProvider.get().catalogVersion.create({

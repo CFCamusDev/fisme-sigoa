@@ -240,6 +240,64 @@ describe('PrismaCatalogVersionRepository Integration (PostgreSQL real, T-013-19)
     expect(numbers).toEqual([1, 2, 3, 4, 5]);
   }, 15_000);
 
+  it('refuses lockForEdit outside a transaction', async () => {
+    await program('p1');
+    await seedVersion('v1', 'p1', 1, 'DRAFT');
+
+    await expect(repository.lockForEdit('v1')).rejects.toThrow(/transacción activa/);
+  }, 15_000);
+
+  it('locks an existing version and returns null for a missing one', async () => {
+    await program('p1');
+    await seedVersion('v1', 'p1', 1, 'DRAFT');
+
+    const [found, missing] = await uow.run(async () => [
+      await repository.lockForEdit('v1'),
+      await repository.lockForEdit('missing'),
+    ]);
+
+    expect(found?.status).toBe('DRAFT');
+    expect(missing).toBeNull();
+  }, 15_000);
+
+  it('serializes concurrent edit locks on the same version', async () => {
+    await program('p1');
+    await seedVersion('v1', 'p1', 1, 'DRAFT');
+    let firstHasLock!: () => void;
+    const firstLocked = new Promise<void>((resolve) => (firstHasLock = resolve));
+    let releaseFirst!: () => void;
+    const firstMayCommit = new Promise<void>((resolve) => (releaseFirst = resolve));
+
+    const first = uow.run(async () => {
+      await repository.lockForEdit('v1');
+      firstHasLock();
+      await firstMayCommit;
+      await uow
+        .get()
+        .catalogVersion.update({ where: { id: 'v1' }, data: { status: 'IN_VALIDATION' } });
+    });
+    await firstLocked;
+
+    const second = uow.run(async () => (await repository.lockForEdit('v1'))?.status);
+
+    // La segunda transacción debe quedar esperando el bloqueo de fila de la primera.
+    const deadline = Date.now() + 10_000;
+    let waiting = 0;
+    while (waiting === 0 && Date.now() < deadline) {
+      const rows = await prisma.$queryRaw<Array<{ total: number }>>`
+        SELECT count(*)::int AS total FROM pg_stat_activity
+        WHERE datname = current_database() AND wait_event_type = 'Lock'
+      `;
+      waiting = rows[0]?.total ?? 0;
+    }
+    expect(waiting).toBeGreaterThan(0);
+
+    releaseFirst();
+    await first;
+    // Tras esperar, la segunda ve el estado confirmado por la primera, no el que había antes.
+    expect(await second).toBe('IN_VALIDATION');
+  }, 20_000);
+
   it('returns null when there is no program', async () => {
     expect(await programReader.getCurrentProgramId()).toBeNull();
   }, 15_000);

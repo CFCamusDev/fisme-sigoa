@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router';
 import type { CatalogVersionDto } from '@sigoa/shared';
 import { StatusBadge } from '@/components/common/status-badge';
 import {
@@ -8,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { usePermission } from '@/hooks/use-permission';
 import { formatDate } from '@/lib/date';
 
 export interface CatalogVersionsTableProps {
@@ -20,6 +22,7 @@ export function formatVersionLabel(number: number): string {
 }
 
 export function CatalogVersionsTable({ versions }: CatalogVersionsTableProps) {
+  const { allowed: canEdit } = usePermission('catalogo.editar', 'GLOBAL');
   const numberById = new Map(versions.map((version) => [version.id, version.number]));
 
   return (
@@ -44,6 +47,7 @@ export function CatalogVersionsTable({ versions }: CatalogVersionsTableProps) {
               <TableHead scope="col">OE</TableHead>
               <TableHead scope="col">AG</TableHead>
               <TableHead scope="col">Creada</TableHead>
+              <TableHead scope="col">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -68,6 +72,16 @@ export function CatalogVersionsTable({ versions }: CatalogVersionsTableProps) {
                   <TableCell className="text-foreground">{version.objectiveCount}</TableCell>
                   <TableCell className="text-foreground">{version.attributeCount}</TableCell>
                   <TableCell className="text-foreground">{formatDate(version.createdAt)}</TableCell>
+                  <TableCell>
+                    <Link
+                      to="/catalog/versions/$versionId"
+                      params={{ versionId: version.id }}
+                      aria-label={`${canEdit && version.status === 'DRAFT' ? 'Editar' : 'Ver'} ${formatVersionLabel(version.number)}`}
+                      className="font-semibold text-primary underline-offset-4 hover:underline"
+                    >
+                      {canEdit && version.status === 'DRAFT' ? 'Editar' : 'Ver'}
+                    </Link>
+                  </TableCell>
                 </TableRow>
               );
             })}

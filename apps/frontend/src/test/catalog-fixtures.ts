@@ -1,4 +1,10 @@
-import type { CatalogVersionDto, ListCatalogVersionsResponse } from '@sigoa/shared';
+import type {
+  CatalogAttributeDto,
+  CatalogObjectiveDto,
+  CatalogVersionDetailDto,
+  CatalogVersionDto,
+  ListCatalogVersionsResponse,
+} from '@sigoa/shared';
 
 export function buildCatalogVersion(overrides: Partial<CatalogVersionDto> = {}): CatalogVersionDto {
   return {
@@ -33,5 +39,70 @@ export function buildCatalogVersionsResponse(
       }),
       current,
     ],
+  };
+}
+
+export function buildCatalogObjective(
+  order: number,
+  overrides: Partial<CatalogObjectiveDto> = {},
+): CatalogObjectiveDto {
+  return {
+    id: `oe-${order}`,
+    code: `OEP${order}`,
+    statement: `Enunciado del objetivo ${order}.`,
+    order,
+    updatedAt: '2026-11-01T15:00:00.000Z',
+    ...overrides,
+  };
+}
+
+export function buildCatalogAttribute(
+  order: number,
+  overrides: Partial<CatalogAttributeDto> = {},
+): CatalogAttributeDto {
+  const suffix = String(order).padStart(2, '0');
+  return {
+    id: `ag-${order}`,
+    code: `AG-C${suffix}`,
+    name: `Atributo ${order}`,
+    statement: `Enunciado del atributo ${order}.`,
+    order,
+    updatedAt: '2026-11-01T15:00:00.000Z',
+    ...overrides,
+  };
+}
+
+/** Detalle con `objectiveCount` OE y `attributeCount` AG; por defecto pocos para pruebas ágiles. */
+export function buildCatalogVersionDetail(
+  options: {
+    version?: Partial<CatalogVersionDto>;
+    objectiveCount?: number;
+    attributeCount?: number;
+    objectives?: CatalogObjectiveDto[];
+    attributes?: CatalogAttributeDto[];
+  } = {},
+): CatalogVersionDetailDto {
+  const objectives =
+    options.objectives ??
+    Array.from({ length: options.objectiveCount ?? 3 }, (_, index) =>
+      buildCatalogObjective(index + 1),
+    );
+  const attributes =
+    options.attributes ??
+    Array.from({ length: options.attributeCount ?? 3 }, (_, index) =>
+      buildCatalogAttribute(index + 1),
+    );
+  return {
+    version: buildCatalogVersion({
+      id: 'cv-2',
+      number: 2,
+      status: 'DRAFT',
+      basedOnVersionId: 'cv-1',
+      objectiveCount: objectives.length,
+      attributeCount: attributes.length,
+      ...options.version,
+    }),
+    objectives,
+    attributes,
   };
 }

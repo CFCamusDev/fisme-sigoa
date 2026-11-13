@@ -1,6 +1,7 @@
 import { test, expect } from './support/test';
 import type { Page } from '@playwright/test';
 import { expectNoContrastViolations } from './support/contrast';
+import { resetCatalog, seedCurrentCatalog } from './support/catalog-data';
 import { loginAsTestUser, seedUser } from './support/seed-user';
 
 /**
@@ -487,5 +488,89 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA)', () => {
     ).toBeVisible();
     await expect(page.getByRole('button', { name: 'Nueva versión' })).toHaveCount(0);
     await expectNoContrastViolations(page, { context: 'catalog-versions-readonly-desktop' });
+  });
+
+  test('catalog version editor has no contrast violations in draft and read-only states', async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    await page.setViewportSize(DESKTOP);
+    await loginAsTestUser(page, {
+      email: `contrast-member-catalog-editor-${Date.now()}@example.test`,
+      roles: ['COMMITTEE_MEMBER'],
+    });
+    resetCatalog();
+    seedCurrentCatalog();
+
+    try {
+      // Crear el Borrador desde la interfaz y abrir su editor
+      await waitForApi(page, '/catalog-versions', () => page.goto('/catalogo/versiones'));
+      await Promise.all([
+        page.waitForResponse(
+          (res) =>
+            res.url().endsWith('/catalog-versions') &&
+            res.request().method() === 'POST' &&
+            res.status() === 201,
+        ),
+        page.getByRole('button', { name: 'Nueva versión' }).click(),
+      ]);
+      await Promise.all([
+        page.waitForResponse(
+          (res) =>
+            //catalog-versions/[^/]+$/.test(res.url()) &&
+            res.request().method() === 'GET' && res.status() === 200,
+        ),
+        page.getByRole('link', { name: 'Editar V2' }).click(),
+      ]);
+
+      // Un AG modificado y uno nuevo muestran las dos insignias de cambio
+      await page.getByRole('button', { name: 'Editar AG-C01' }).click();
+      await page.getByLabel('Enunciado').fill('Enunciado modificado para la prueba de contraste.');
+      await Promise.all([
+        page.waitForResponse(
+          (res) => res.url().endsWith('/attributes') && res.request().method() === 'PUT',
+        ),
+        page.getByRole('button', { name: 'Guardar' }).click(),
+      ]);
+      await page.getByRole('button', { name: 'Agregar atributo' }).click();
+      await page.getByLabel('Código').fill('AG-C99');
+      await page.getByLabel('Nombre').fill('Atributo nuevo');
+      await page.getByLabel('Enunciado').fill('Enunciado del atributo nuevo.');
+      await Promise.all([
+        page.waitForResponse(
+          (res) => res.url().endsWith('/attributes') && res.request().method() === 'PUT',
+        ),
+        page.getByRole('button', { name: 'Guardar' }).click(),
+      ]);
+      const attributeList = page.getByRole('list', { name: 'Atributos del graduado' });
+      await expect(attributeList.getByText(/^Modificado/)).toBeVisible();
+      await expect(attributeList.getByText(/^Nuevo/)).toBeVisible();
+      await expectNoContrastViolations(page, { context: 'catalog-editor-draft-desktop' });
+
+      await page.setViewportSize(MOBILE);
+      await expect(page.getByRole('list', { name: 'Atributos del graduado' })).toBeVisible();
+      await expectNoContrastViolations(page, { context: 'catalog-editor-draft-mobile' });
+
+      // La versión vigente se ve bloqueada, con los campos deshabilitados
+      await page.setViewportSize(DESKTOP);
+      await waitForApi(page, '/catalog-versions', () => page.goto('/catalogo/versiones'));
+      await Promise.all([
+        page.waitForResponse(
+          (res) =>
+            //catalog-versions/[^/]+$/.test(res.url()) &&
+            res.request().method() === 'GET' && res.status() === 200,
+        ),
+        page.getByRole('link', { name: 'Ver V1' }).click(),
+      ]);
+      await expect(page.getByText(/sus campos están bloqueados/)).toBeVisible();
+      await expect(page.getByLabel('Enunciado').first()).toBeDisabled();
+      await expectNoContrastViolations(page, { context: 'catalog-editor-readonly-desktop' });
+
+      await page.setViewportSize(MOBILE);
+      await expect(page.getByLabel('Enunciado').first()).toBeDisabled();
+      await expectNoContrastViolations(page, { context: 'catalog-editor-readonly-mobile' });
+    } finally {
+      resetCatalog();
+    }
   });
 });
