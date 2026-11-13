@@ -8,6 +8,7 @@ import { getRequestContext } from '../../../../shared/audit/request-context.js';
 import { UnauthorizedError } from '../../../../shared/errors/app-error.js';
 import type { GetCatalogVersionDetailUseCase } from '../../application/get-catalog-version-detail.js';
 import type { ReorderCatalogItemsUseCase } from '../../application/reorder-catalog-items.js';
+import type { SendCatalogVersionToValidationUseCase } from '../../application/send-catalog-version-to-validation.js';
 import type { SaveGraduateAttributeUseCase } from '../../application/save-graduate-attribute.js';
 import type { SaveEducationalObjectiveUseCase } from '../../application/save-educational-objective.js';
 
@@ -16,6 +17,7 @@ export interface CatalogVersionItemsControllerDependencies {
   readonly saveGraduateAttributeUseCase: SaveGraduateAttributeUseCase;
   readonly reorderCatalogItemsUseCase: ReorderCatalogItemsUseCase;
   readonly getCatalogVersionDetailUseCase: GetCatalogVersionDetailUseCase;
+  readonly sendCatalogVersionToValidationUseCase: SendCatalogVersionToValidationUseCase;
 }
 
 function resolveActor(req: Request): { actorId: string; ip: string } {
@@ -34,8 +36,10 @@ export class CatalogVersionItemsController {
   private readonly saveGraduateAttributeUseCase: SaveGraduateAttributeUseCase;
   private readonly reorderCatalogItemsUseCase: ReorderCatalogItemsUseCase;
   private readonly getCatalogVersionDetailUseCase: GetCatalogVersionDetailUseCase;
+  private readonly sendCatalogVersionToValidationUseCase: SendCatalogVersionToValidationUseCase;
 
   constructor(deps: CatalogVersionItemsControllerDependencies) {
+    this.sendCatalogVersionToValidationUseCase = deps.sendCatalogVersionToValidationUseCase;
     this.getCatalogVersionDetailUseCase = deps.getCatalogVersionDetailUseCase;
     this.saveGraduateAttributeUseCase = deps.saveGraduateAttributeUseCase;
     this.saveEducationalObjectiveUseCase = deps.saveEducationalObjectiveUseCase;
@@ -48,6 +52,23 @@ export class CatalogVersionItemsController {
       const { id: versionId } = req.params as CatalogVersionIdParams;
 
       const response = await this.getCatalogVersionDetailUseCase.execute({ actorId, versionId });
+
+      res.setHeader('Cache-Control', 'no-store').status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  sendToValidation: RequestHandler = async (req, res, next) => {
+    try {
+      const { actorId, ip } = resolveActor(req);
+      const { id: versionId } = req.params as CatalogVersionIdParams;
+
+      const response = await this.sendCatalogVersionToValidationUseCase.execute({
+        actorId,
+        ip,
+        versionId,
+      });
 
       res.setHeader('Cache-Control', 'no-store').status(200).json(response);
     } catch (error) {

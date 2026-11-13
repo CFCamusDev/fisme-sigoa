@@ -5563,6 +5563,165 @@
           }
         }
       }
+    },
+    "/catalog-versions/{id}/validation": {
+      "post": {
+        "tags": ["CatalogVersions"],
+        "summary": "Enviar una versión del catálogo a validación",
+        "description": "Pasa la versión de Borrador a En validación, de modo que queda disponible para las encuestas de validación de los procesos 6.1.1, 6.1.3 y 6.2.1. Exige al menos un objetivo educacional y un atributo del graduado; si falta alguno responde 409 con la precondición incumplida. Una vez en validación los textos quedan bloqueados. El cuerpo es vacío (se acepta ausente). La versión se bloquea y el estado se actualiza de forma condicional en la misma transacción que la auditoría del cambio de estado: de dos envíos simultáneos solo uno gana y el otro recibe 409. Un reenvío de una versión que ya no está en Borrador también responde 409 y no cambia nada. Requiere el permiso 'catalogo.editar' con alcance GLOBAL (HU-015, RF-015, RS-002, RS-020, RS-023).",
+        "operationId": "sendCatalogVersionToValidation",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "description": "Identificador de la versión del catálogo."
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendCatalogVersionToValidationRequest"
+              },
+              "example": {}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Versión enviada a validación exitosamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché HTTP."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogVersionDto"
+                },
+                "example": {
+                  "id": "cm0catalogversion0002",
+                  "programId": "cm0programepis000001",
+                  "number": 2,
+                  "status": "IN_VALIDATION",
+                  "basedOnVersionId": "cm0catalogversion0001",
+                  "objectiveCount": 4,
+                  "attributeCount": 12,
+                  "createdAt": "2026-11-12T15:00:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "El identificador, el cuerpo o la consulta no son válidos (campos desconocidos o identificador demasiado largo).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "La solicitud contiene errores de validación",
+                    "requestId": "req_cv_validation_400",
+                    "details": [
+                      {
+                        "path": "body",
+                        "message": "Unrecognized key: \"status\""
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o token de acceso inválido o expirado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado",
+                    "requestId": "req_cv_validation_401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere el permiso 'catalogo.editar'.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para realizar esta acción",
+                    "requestId": "req_cv_validation_403"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La versión del catálogo no existe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "Versión del catálogo no encontrada.",
+                    "requestId": "req_cv_validation_404"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "La versión no está en Borrador o no cumple las precondiciones (al menos un objetivo educacional y un atributo del graduado).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "La versión necesita al menos un objetivo educacional y un atributo del graduado para pasar a validación.",
+                    "requestId": "req_cv_validation_409"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -6851,6 +7010,12 @@
         "additionalProperties": false,
         "properties": {},
         "description": "Cuerpo vacío: el servidor resuelve el programa y copia la versión vigente. Se acepta ausente."
+      },
+      "SendCatalogVersionToValidationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {},
+        "description": "Cuerpo vacío: la versión se indica en la ruta. Se acepta ausente."
       },
       "CatalogObjectiveDto": {
         "type": "object",

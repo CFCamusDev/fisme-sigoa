@@ -27,6 +27,18 @@ export const createCatalogVersionRequestSchema = z.preprocess(
 );
 export type CreateCatalogVersionRequest = z.infer<typeof createCatalogVersionRequestSchema>;
 
+/**
+ * Enviar a validación no lleva datos (HU-015, RF-015): la versión viene en la ruta. El cuerpo
+ * ausente equivale a `{}`; cualquier campo extra se rechaza.
+ */
+export const sendCatalogVersionToValidationRequestSchema = z.preprocess(
+  (value) => (value === undefined ? {} : value),
+  z.object({}).strict(),
+);
+export type SendCatalogVersionToValidationRequest = z.infer<
+  typeof sendCatalogVersionToValidationRequestSchema
+>;
+
 /** El listado no admite parámetros: rechaza cualquier query. */
 export const listCatalogVersionsQuerySchema = z.object({}).strict();
 export type ListCatalogVersionsQuery = z.infer<typeof listCatalogVersionsQuerySchema>;

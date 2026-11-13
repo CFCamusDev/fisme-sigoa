@@ -1,4 +1,4 @@
-import type { CatalogVersionStatus } from '../entities/catalog-version.js';
+import type { CatalogVersionStatus } from '../entities/catalog-version-status.js';
 import { InvalidCatalogTransitionError } from '../errors/invalid-catalog-transition-error.js';
 
 /** Permiso que exige cada transición; `null` = efecto de otra transición, sin permiso propio. */

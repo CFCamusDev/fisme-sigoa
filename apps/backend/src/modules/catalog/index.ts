@@ -8,6 +8,7 @@ import { ListCatalogVersionsUseCase } from './application/list-catalog-versions.
 import { ReorderCatalogItemsUseCase } from './application/reorder-catalog-items.js';
 import { SaveEducationalObjectiveUseCase } from './application/save-educational-objective.js';
 import { SaveGraduateAttributeUseCase } from './application/save-graduate-attribute.js';
+import { SendCatalogVersionToValidationUseCase } from './application/send-catalog-version-to-validation.js';
 import type { CatalogPermissionChecker } from './domain/ports/catalog-permission-checker.js';
 import { CatalogVersionItemsController } from './infrastructure/http/catalog-version-items.controller.js';
 import { CatalogVersionsController } from './infrastructure/http/catalog-versions.controller.js';
@@ -109,7 +110,18 @@ export function createCatalogVersionsModule(deps?: CatalogModuleDependencies): R
     permissionChecker: deps.permissionChecker,
   });
 
+  const sendCatalogVersionToValidationUseCase = new SendCatalogVersionToValidationUseCase({
+    versionRepository,
+    objectiveReader: objectiveRepository,
+    attributeReader: attributeRepository,
+    permissionChecker: deps.permissionChecker,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+    clock: deps.clock,
+  });
+
   const itemsController = new CatalogVersionItemsController({
+    sendCatalogVersionToValidationUseCase,
     saveEducationalObjectiveUseCase,
     saveGraduateAttributeUseCase,
     reorderCatalogItemsUseCase,
@@ -151,6 +163,8 @@ export * from './application/save-graduate-attribute.js';
 export * from './application/save-graduate-attribute.types.js';
 export * from './application/reorder-catalog-items.js';
 export * from './application/reorder-catalog-items.types.js';
+export * from './application/send-catalog-version-to-validation.js';
+export * from './application/send-catalog-version-to-validation.types.js';
 export * from './infrastructure/prisma/seed/catalog-seed-data.js';
 export * from './infrastructure/prisma/seed/catalog-version-seed.js';
 export * from './infrastructure/http/catalog-versions.controller.js';

@@ -1,12 +1,9 @@
 import { InvalidCatalogDataError } from '../errors/invalid-catalog-data-error.js';
+import { assertTransition } from '../policies/catalog-version-state-machine.js';
 
-export const CATALOG_VERSION_STATUSES = [
-  'DRAFT',
-  'IN_VALIDATION',
-  'APPROVED',
-  'HISTORICAL',
-] as const;
-export type CatalogVersionStatus = (typeof CATALOG_VERSION_STATUSES)[number];
+import { CATALOG_VERSION_STATUSES, type CatalogVersionStatus } from './catalog-version-status.js';
+
+export { CATALOG_VERSION_STATUSES, type CatalogVersionStatus };
 
 export interface CatalogVersionProperties {
   readonly id: string;
@@ -36,6 +33,13 @@ export type CatalogVersionSnapshot = {
   readonly status: CatalogVersionStatus;
   readonly basedOnVersionId: string | null;
 };
+
+export interface SendToValidationInput {
+  objectiveCount: number;
+  attributeCount: number;
+  actorId: string;
+  now?: Date;
+}
 
 export class CatalogVersion {
   private constructor(private readonly props: CatalogVersionProperties) {}
@@ -108,6 +112,26 @@ export class CatalogVersion {
   /** Abierta = Borrador o En validación; solo puede haber una por programa (RF-013). */
   public isOpen(): boolean {
     return this.props.status === 'DRAFT' || this.props.status === 'IN_VALIDATION';
+  }
+
+  /**
+   * Borrador → En validación (RF-015, RS-020): exige al menos 1 OE y 1 AG. Devuelve una versión
+   * nueva; la actual no cambia. Lanza `InvalidCatalogTransitionError` si no se cumple.
+   */
+  public sendToValidation(input: SendToValidationInput): CatalogVersion {
+    assertTransition({
+      from: this.props.status,
+      to: 'IN_VALIDATION',
+      objectiveCount: input.objectiveCount,
+      attributeCount: input.attributeCount,
+      approvedResolution: false,
+    });
+    return CatalogVersion.create({
+      ...this.props,
+      status: 'IN_VALIDATION',
+      updatedBy: input.actorId,
+      updatedAt: input.now ?? new Date(),
+    });
   }
 
   public snapshot(): CatalogVersionSnapshot {

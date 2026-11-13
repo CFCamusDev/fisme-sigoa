@@ -11,6 +11,7 @@ import { useCatalogVersions } from '../hooks/use-catalog-versions';
 import { getCatalogErrorMessage } from '../lib/catalog-error-message';
 import { formatVersionLabel } from './catalog-versions-table';
 import { CatalogItemSection } from './catalog-item-section';
+import { CatalogSendToValidation } from './catalog-send-to-validation';
 
 export interface CatalogVersionEditorPageProps {
   readonly versionId: string;
@@ -123,6 +124,14 @@ export function CatalogVersionEditorPage({ versionId }: CatalogVersionEditorPage
         currentItems={current?.attributes ?? []}
         editable={editable}
       />
+
+      {editable && (
+        <CatalogSendToValidation
+          versionId={version.id}
+          objectiveCount={version.objectiveCount}
+          attributeCount={version.attributeCount}
+        />
+      )}
     </div>
   );
 }

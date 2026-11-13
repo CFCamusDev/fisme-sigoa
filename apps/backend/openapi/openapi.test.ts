@@ -49,6 +49,7 @@ import {
   responseScalesResponseSchema,
   scaleLevelDtoSchema,
   catalogVersionDtoSchema,
+  sendCatalogVersionToValidationRequestSchema,
   listCatalogVersionsResponseSchema,
   createCatalogVersionRequestSchema,
   catalogObjectivesRequestSchema,
@@ -2032,6 +2033,29 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
       }
     });
 
+    it('documents the send to validation operation with bearerAuth and status codes (HU-015, T-015-04)', () => {
+      const op = spec.paths['/catalog-versions/{id}/validation'].post;
+      expect(op.operationId).toBe('sendCatalogVersionToValidation');
+      expect(op.tags).toContain('CatalogVersions');
+      expect(op.security).toEqual([{ bearerAuth: [] }]);
+      expect(op.parameters[0]).toMatchObject({ name: 'id', in: 'path', required: true });
+      expect(Object.keys(op.responses).sort()).toEqual(['200', '400', '401', '403', '404', '409']);
+      expect(op.responses['200'].headers['Cache-Control'].example).toBe('no-store');
+      expect(op.requestBody.required).toBe(false);
+      expect(
+        sendCatalogVersionToValidationRequestSchema.safeParse(
+          op.requestBody.content['application/json'].example,
+        ).success,
+      ).toBe(true);
+      const example = op.responses['200'].content['application/json'].example;
+      const parsed = catalogVersionDtoSchema.safeParse(example);
+      expect(parsed.success).toBe(true);
+      expect(example.status).toBe('IN_VALIDATION');
+      expect(
+        spec.components.schemas['SendCatalogVersionToValidationRequest'].additionalProperties,
+      ).toBe(false);
+    });
+
     it('keeps the item edit examples valid against the shared schemas (HU-014, T-014-08)', () => {
       const objectives = spec.paths['/catalog-versions/{id}/objectives'].put;
       for (const example of Object.values(
@@ -2096,6 +2120,7 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
           editObjectives: vi.fn(),
           editAttributes: vi.fn(),
           getVersionDetail: vi.fn(),
+          sendToValidation: vi.fn(),
         } as unknown as CatalogVersionItemsController,
         authenticate: vi.fn(),
         requirePermission: vi.fn(() => vi.fn()),
@@ -2117,6 +2142,7 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
         'get /catalog-versions',
         'get /catalog-versions/:id',
         'post /catalog-versions',
+        'post /catalog-versions/:id/validation',
         'put /catalog-versions/:id/attributes',
         'put /catalog-versions/:id/objectives',
       ]);
