@@ -1,13 +1,9 @@
 import { InvalidCatalogDataError } from '../errors/invalid-catalog-data-error.js';
 import { assertTransition } from '../policies/catalog-version-state-machine.js';
 
-export const CATALOG_VERSION_STATUSES = [
-  'DRAFT',
-  'IN_VALIDATION',
-  'APPROVED',
-  'HISTORICAL',
-] as const;
-export type CatalogVersionStatus = (typeof CATALOG_VERSION_STATUSES)[number];
+import { CATALOG_VERSION_STATUSES, type CatalogVersionStatus } from './catalog-version-status.js';
+
+export { CATALOG_VERSION_STATUSES, type CatalogVersionStatus };
 
 export interface CatalogVersionProperties {
   readonly id: string;
