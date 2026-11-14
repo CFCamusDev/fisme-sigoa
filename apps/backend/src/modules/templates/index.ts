@@ -17,3 +17,4 @@ export * from './application/publish-template.js';
 export * from './application/publish-template.types.js';
 export * from './application/list-templates.js';
 export * from './application/list-templates.types.js';
+export * from './application/get-template-detail.js';
