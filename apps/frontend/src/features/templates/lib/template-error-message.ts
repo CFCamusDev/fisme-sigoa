@@ -1,9 +1,11 @@
+import { TEMPLATE_CONTENT_MAX_LENGTH } from '@sigoa/shared';
 import type { ApiError } from '@/lib/api-error';
 
 const GENERIC = 'Ha ocurrido un error inesperado. Por favor, intenta de nuevo.';
 const SERVER_DOWN =
   'No se pudo completar la operación por un problema del servidor. Intenta de nuevo en unos minutos.';
 const GENERIC_VALIDATION = 'La solicitud contiene errores de validación';
+const MAX_LABEL = new Intl.NumberFormat('es-PE').format(TEMPLATE_CONTENT_MAX_LENGTH);
 
 function serverMessage(error: Partial<ApiError>): string | null {
   return typeof error.message === 'string' && error.message.trim().length > 0
@@ -24,7 +26,7 @@ export function getTemplateErrorMessage(error: unknown): string {
       // La política de contenido explica la causa (etiqueta, enlace o variable no permitidos).
       return message && message !== GENERIC_VALIDATION
         ? message
-        : 'Revisa el contenido: no puede estar vacío ni superar los 40 000 caracteres.';
+        : `Revisa el contenido: no puede estar vacío ni superar los ${MAX_LABEL} caracteres.`;
     case 403:
       return 'No tienes permiso para esta operación de plantillas.';
     case 404:

@@ -97,6 +97,21 @@ export function TemplateEditor({
     }
   }, [confirming]);
 
+  // Escape cancela la confirmación mientras no haya una publicación en vuelo.
+  const publishing = publishMutation.isPending;
+  useEffect(() => {
+    if (!confirming || publishing) {
+      return undefined;
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setConfirming(false);
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [confirming, publishing]);
+
   function insertVariable(key: string) {
     const element = textareaRef.current;
     const current = getValues('content');
@@ -235,16 +250,7 @@ export function TemplateEditor({
 
         {confirming && draft && (
           <div ref={confirmRef} tabIndex={-1} className="outline-none focus-visible:outline-2">
-            <Alert
-              variant="warning"
-              role="alertdialog"
-              aria-label="Confirmar la publicación"
-              onKeyDown={(event) => {
-                if (event.key === 'Escape' && !publishMutation.isPending) {
-                  setConfirming(false);
-                }
-              }}
-            >
+            <Alert variant="warning" role="alertdialog" aria-label="Confirmar la publicación">
               <CircleAlert aria-hidden="true" />
               <AlertDescription>
                 <p>{confirmText}</p>
