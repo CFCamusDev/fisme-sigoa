@@ -2503,6 +2503,7 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
       expect(routerEndpoints.sort()).toEqual([
         'get /templates',
         'get /templates/:id',
+        'post /templates/:id/preview',
         'post /templates/:id/publish',
         'put /templates/:id/draft',
       ]);
