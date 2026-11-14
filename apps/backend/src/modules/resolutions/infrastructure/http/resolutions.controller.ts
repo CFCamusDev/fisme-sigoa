@@ -1,13 +1,19 @@
 import type { Request, RequestHandler } from 'express';
-import type { RegisterResolutionRequest, ResolutionIdParams } from '@sigoa/shared';
+import type {
+  ListResolutionsQuery,
+  RegisterResolutionRequest,
+  ResolutionIdParams,
+} from '@sigoa/shared';
 import { getRequestContext } from '../../../../shared/audit/request-context.js';
 import { UnauthorizedError } from '../../../../shared/errors/app-error.js';
 import type { ApproveResolutionUseCase } from '../../application/approve-resolution.js';
+import type { ListResolutionsUseCase } from '../../application/list-resolutions.js';
 import type { RegisterResolutionUseCase } from '../../application/register-resolution.js';
 
 export interface ResolutionsControllerDependencies {
   readonly registerResolutionUseCase: RegisterResolutionUseCase;
   readonly approveResolutionUseCase: ApproveResolutionUseCase;
+  readonly listResolutionsUseCase: ListResolutionsUseCase;
 }
 
 function resolveActor(req: Request): { actorId: string; ip: string } {
@@ -24,10 +30,12 @@ function resolveActor(req: Request): { actorId: string; ip: string } {
 export class ResolutionsController {
   private readonly registerResolutionUseCase: RegisterResolutionUseCase;
   private readonly approveResolutionUseCase: ApproveResolutionUseCase;
+  private readonly listResolutionsUseCase: ListResolutionsUseCase;
 
   constructor(deps: ResolutionsControllerDependencies) {
     this.registerResolutionUseCase = deps.registerResolutionUseCase;
     this.approveResolutionUseCase = deps.approveResolutionUseCase;
+    this.listResolutionsUseCase = deps.listResolutionsUseCase;
   }
 
   registerResolution: RequestHandler = async (req, res, next) => {
@@ -65,6 +73,26 @@ export class ResolutionsController {
         file: Buffer.isBuffer(content)
           ? { content, originalName: `resolution-${resolutionId}.pdf`, mimeType }
           : null,
+      });
+
+      res.setHeader('Cache-Control', 'no-store').status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  listResolutions: RequestHandler = async (req, res, next) => {
+    try {
+      const { actorId } = resolveActor(req);
+      const query = req.query as unknown as ListResolutionsQuery;
+
+      const response = await this.listResolutionsUseCase.execute({
+        actorId,
+        type: query.type,
+        status: query.status,
+        catalogVersionId: query.catalogVersionId,
+        page: query.page,
+        pageSize: query.pageSize,
       });
 
       res.setHeader('Cache-Control', 'no-store').status(200).json(response);

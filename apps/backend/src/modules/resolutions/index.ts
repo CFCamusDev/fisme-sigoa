@@ -6,6 +6,7 @@ import {
   ApproveResolutionUseCase,
   type ApproveResolutionLogger,
 } from './application/approve-resolution.js';
+import { ListResolutionsUseCase } from './application/list-resolutions.js';
 import { RegisterResolutionUseCase } from './application/register-resolution.js';
 import type { ResolutionApprovedSubscriber } from './domain/ports/resolution-event-publisher.js';
 import type { ResolutionPermissionChecker } from './domain/ports/resolution-permission-checker.js';
@@ -65,9 +66,15 @@ export function createResolutionsModule(deps?: ResolutionsModuleDependencies): R
     clock: deps.clock,
   });
 
+  const listResolutionsUseCase = new ListResolutionsUseCase({
+    resolutionReader: resolutionRepository,
+    permissionChecker: deps.permissionChecker,
+  });
+
   const controller = new ResolutionsController({
     registerResolutionUseCase,
     approveResolutionUseCase,
+    listResolutionsUseCase,
   });
 
   return createResolutionsRouter({
@@ -91,6 +98,8 @@ export * from './application/register-resolution.js';
 export * from './application/register-resolution.types.js';
 export * from './application/approve-resolution.js';
 export * from './application/approve-resolution.types.js';
+export * from './application/list-resolutions.js';
+export * from './application/list-resolutions.types.js';
 export * from './application/resolution-pdf-rules.js';
 export * from './infrastructure/storage/file-storage-resolution-pdf-storage.js';
 export * from './infrastructure/events/in-process-resolution-event-publisher.js';

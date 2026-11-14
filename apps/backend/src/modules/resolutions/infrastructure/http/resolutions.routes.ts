@@ -1,5 +1,9 @@
 import { Router, type RequestHandler } from 'express';
-import { registerResolutionRequestSchema, resolutionIdParamsSchema } from '@sigoa/shared';
+import {
+  listResolutionsQuerySchema,
+  registerResolutionRequestSchema,
+  resolutionIdParamsSchema,
+} from '@sigoa/shared';
 import { validateRequest } from '../../../../shared/middleware/validate-request.js';
 import { resolutionPdfBody } from './resolution-pdf-body.js';
 import type { ResolutionsController } from './resolutions.controller.js';
@@ -38,6 +42,16 @@ export function createResolutionsRouter(deps: ResolutionsRouterDependencies): Ro
     resolutionPdfBody(),
     validateRequest({ params: resolutionIdParamsSchema }),
     deps.controller.approveResolution,
+  );
+
+  // GET /resolutions (HU-048, T-048-11, RF-048, RS-002, RNF-008, RNF-009)
+  // Cadena obligatoria: authenticate -> requirePermission -> validateRequest -> controller
+  router.get(
+    '/',
+    deps.authenticate,
+    deps.requirePermission('resolucion.ver', 'GLOBAL'),
+    validateRequest({ query: listResolutionsQuerySchema }),
+    deps.controller.listResolutions,
   );
 
   return router;
