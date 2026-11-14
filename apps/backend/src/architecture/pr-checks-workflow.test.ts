@@ -40,4 +40,10 @@ describe('pr-checks.yml structure (HU-080)', () => {
       /pnpm build:shared && pnpm db:generate/,
     );
   });
+
+  it('decouples e2e from quality jobs without downloading artifacts', () => {
+    const e2eBlock = extractJobBlock(workflow, 'e2e');
+    expect(e2eBlock).toMatch(/^\s{4}needs:\s*convenciones\s*$/m);
+    expect(e2eBlock).not.toMatch(/download-artifact/);
+  });
 });

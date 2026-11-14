@@ -211,7 +211,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     if: github.base_ref == 'develop' || (github.base_ref == 'main' && startsWith(github.head_ref, 'release/'))
-    needs: [estaticas, unitarias, integracion]
+    needs: convenciones
     services:
       postgres:
         image: postgres:16
