@@ -19,6 +19,7 @@ import { usePublishTemplate } from '../hooks/use-publish-template';
 import { useSaveTemplateDraft } from '../hooks/use-save-template-draft';
 import { getTemplateErrorMessage } from '../lib/template-error-message';
 import { formatVersionLabel } from '../lib/template-labels';
+import { TemplatePreviewPanel } from './template-preview-panel';
 import { TemplateVariablesPanel } from './template-variables-panel';
 
 export interface TemplateEditorProps {
@@ -177,143 +178,147 @@ export function TemplateEditor({
       : `Publicar la versión ${draft?.number} la dejará como la versión vigente. Esta acción no se puede deshacer.`;
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
-      <form
-        onSubmit={handleSubmit(onSubmit)}
-        noValidate
-        aria-label={`Editar la plantilla ${detail.code}`}
-        className="space-y-4 rounded-lg border border-border bg-card p-4 text-card-foreground sm:p-6"
-      >
-        <div className="space-y-1">
-          <h3 className="text-base font-semibold text-foreground">
-            {detail.code} · {detail.name}
-          </h3>
-          <p id={helpId} className="text-sm text-muted-foreground">
-            {!canEdit
-              ? 'Solo lectura: no tienes permiso para editar plantillas.'
-              : draft
-                ? `Editando el borrador ${formatVersionLabel(draft.number)}.`
-                : `Editando una copia de la versión vigente. Al guardar se crea el borrador ${formatVersionLabel(editingNumber)}.`}
-          </p>
-        </div>
-
-        {serverError && (
-          <div ref={errorRef} tabIndex={-1} className="outline-none focus-visible:outline-2">
-            <Alert variant="danger" role="alert">
-              <CircleAlert aria-hidden="true" />
-              <AlertDescription>{serverError}</AlertDescription>
-            </Alert>
-          </div>
-        )}
-
-        <div className="space-y-2">
-          <Label htmlFor={textareaId}>Contenido HTML</Label>
-          <Textarea
-            id={textareaId}
-            {...contentField}
-            ref={(element) => {
-              registerRef(element);
-              textareaRef.current = element;
-            }}
-            readOnly={!canEdit}
-            spellCheck={false}
-            rows={18}
-            className="font-mono text-sm"
-            aria-describedby={[helpId, counterId, contentError ? errorId : null]
-              .filter(Boolean)
-              .join(' ')}
-            aria-invalid={contentError ? true : undefined}
-            onChange={(event) => {
-              setConfirming(false);
-              void contentField.onChange(event);
-            }}
-          />
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p
-              id={counterId}
-              className={overLimit ? 'text-sm text-destructive' : 'text-sm text-muted-foreground'}
-            >
-              {COUNT_FORMAT.format(content.length)} / {MAX_LABEL} caracteres
+    <div className="space-y-4">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          noValidate
+          aria-label={`Editar la plantilla ${detail.code}`}
+          className="space-y-4 rounded-lg border border-border bg-card p-4 text-card-foreground sm:p-6"
+        >
+          <div className="space-y-1">
+            <h3 className="text-base font-semibold text-foreground">
+              {detail.code} · {detail.name}
+            </h3>
+            <p id={helpId} className="text-sm text-muted-foreground">
+              {!canEdit
+                ? 'Solo lectura: no tienes permiso para editar plantillas.'
+                : draft
+                  ? `Editando el borrador ${formatVersionLabel(draft.number)}.`
+                  : `Editando una copia de la versión vigente. Al guardar se crea el borrador ${formatVersionLabel(editingNumber)}.`}
             </p>
-            {canEdit && dirty && (
-              <p role="status" className="text-sm font-semibold text-foreground">
-                Tienes cambios sin guardar
+          </div>
+
+          {serverError && (
+            <div ref={errorRef} tabIndex={-1} className="outline-none focus-visible:outline-2">
+              <Alert variant="danger" role="alert">
+                <CircleAlert aria-hidden="true" />
+                <AlertDescription>{serverError}</AlertDescription>
+              </Alert>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor={textareaId}>Contenido HTML</Label>
+            <Textarea
+              id={textareaId}
+              {...contentField}
+              ref={(element) => {
+                registerRef(element);
+                textareaRef.current = element;
+              }}
+              readOnly={!canEdit}
+              spellCheck={false}
+              rows={18}
+              className="font-mono text-sm"
+              aria-describedby={[helpId, counterId, contentError ? errorId : null]
+                .filter(Boolean)
+                .join(' ')}
+              aria-invalid={contentError ? true : undefined}
+              onChange={(event) => {
+                setConfirming(false);
+                void contentField.onChange(event);
+              }}
+            />
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p
+                id={counterId}
+                className={overLimit ? 'text-sm text-destructive' : 'text-sm text-muted-foreground'}
+              >
+                {COUNT_FORMAT.format(content.length)} / {MAX_LABEL} caracteres
+              </p>
+              {canEdit && dirty && (
+                <p role="status" className="text-sm font-semibold text-foreground">
+                  Tienes cambios sin guardar
+                </p>
+              )}
+            </div>
+            {contentError && (
+              <p id={errorId} role="alert" className="text-sm text-destructive">
+                {contentError}
               </p>
             )}
           </div>
-          {contentError && (
-            <p id={errorId} role="alert" className="text-sm text-destructive">
-              {contentError}
-            </p>
+
+          {confirming && draft && (
+            <div ref={confirmRef} tabIndex={-1} className="outline-none focus-visible:outline-2">
+              <Alert variant="warning" role="alertdialog" aria-label="Confirmar la publicación">
+                <CircleAlert aria-hidden="true" />
+                <AlertDescription>
+                  <p>{confirmText}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      onClick={() => void confirmPublish()}
+                      disabled={publishMutation.isPending}
+                    >
+                      {publishMutation.isPending ? 'Publicando…' : 'Confirmar'}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setConfirming(false)}
+                      disabled={publishMutation.isPending}
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            </div>
           )}
-        </div>
 
-        {confirming && draft && (
-          <div ref={confirmRef} tabIndex={-1} className="outline-none focus-visible:outline-2">
-            <Alert variant="warning" role="alertdialog" aria-label="Confirmar la publicación">
-              <CircleAlert aria-hidden="true" />
-              <AlertDescription>
-                <p>{confirmText}</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    onClick={() => void confirmPublish()}
-                    disabled={publishMutation.isPending}
-                  >
-                    {publishMutation.isPending ? 'Publicando…' : 'Confirmar'}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setConfirming(false)}
-                    disabled={publishMutation.isPending}
-                  >
-                    Cancelar
-                  </Button>
-                </div>
-              </AlertDescription>
-            </Alert>
-          </div>
-        )}
-
-        <div className="flex flex-wrap gap-2">
-          <Can permission="plantilla.editar" scope="GLOBAL">
-            <Button type="submit" disabled={!dirty || pending}>
-              {saveMutation.isPending ? 'Guardando…' : 'Guardar borrador'}
-            </Button>
-            {dirty && (
-              <Button
-                type="button"
-                variant="outline"
-                disabled={pending}
-                onClick={() => {
-                  reset({ content: savedContent });
-                  setServerError(null);
-                }}
-              >
-                Descartar cambios
+          <div className="flex flex-wrap gap-2">
+            <Can permission="plantilla.editar" scope="GLOBAL">
+              <Button type="submit" disabled={!dirty || pending}>
+                {saveMutation.isPending ? 'Guardando…' : 'Guardar borrador'}
               </Button>
-            )}
-          </Can>
-          {draft && (
-            <Can permission="plantilla.publicar" scope="GLOBAL">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={dirty || waitingForRefresh || pending || confirming}
-                onClick={() => setConfirming(true)}
-              >
-                {`Publicar versión ${draft.number}`}
-              </Button>
+              {dirty && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={pending}
+                  onClick={() => {
+                    reset({ content: savedContent });
+                    setServerError(null);
+                  }}
+                >
+                  Descartar cambios
+                </Button>
+              )}
             </Can>
-          )}
-        </div>
-      </form>
+            {draft && (
+              <Can permission="plantilla.publicar" scope="GLOBAL">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={dirty || waitingForRefresh || pending || confirming}
+                  onClick={() => setConfirming(true)}
+                >
+                  {`Publicar versión ${draft.number}`}
+                </Button>
+              </Can>
+            )}
+          </div>
+        </form>
 
-      <TemplateVariablesPanel
-        variables={detail.variables}
-        onInsert={canEdit ? insertVariable : undefined}
-      />
+        <TemplateVariablesPanel
+          variables={detail.variables}
+          onInsert={canEdit ? insertVariable : undefined}
+        />
+      </div>
+
+      <TemplatePreviewPanel templateId={detail.id} content={content} />
     </div>
   );
 }
