@@ -137,6 +137,7 @@ describe('AppLayout Component', () => {
       <AppLayout>
         <p>Dashboard</p>
       </AppLayout>,
+      { permissions: [{ code: 'resolucion.ver', scope: 'GLOBAL' }] },
     );
 
     const resolutionsLink = await screen.findByRole('link', { name: /Resoluciones/i });
