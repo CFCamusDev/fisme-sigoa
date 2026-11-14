@@ -48,6 +48,19 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
     return;
   }
 
+  // Cuerpo JSON mayor al límite de `express.json()`: error del cliente, no del servidor
+  if ((err as { type?: unknown } | null)?.type === 'entity.too.large') {
+    const body: ApiErrorResponse = {
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'El cuerpo de la solicitud excede el tamaño máximo permitido.',
+        ...(requestId ? { requestId } : {}),
+      },
+    };
+    res.status(400).json(body);
+    return;
+  }
+
   // Error inesperado: registrar traza en logger y responder genérico 500
   if (req.log) {
     req.log.error(err, 'Error no controlado procesando la solicitud');
