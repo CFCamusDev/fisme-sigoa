@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { http, HttpResponse, delay } from 'msw';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { catalogKeys } from '@/features/catalog';
 import { server } from '@/test/msw/server';
 import { buildApprovedResolution, buildResolutionsResponse } from '@/test/resolution-fixtures';
 import { resolutionKeys } from './resolution-keys';
@@ -36,6 +37,22 @@ describe('useApproveResolution (T-048-13, CA2)', () => {
     });
 
     expect(queryClient.getQueryState(resolutionKeys.list())?.isInvalidated).toBe(true);
+  });
+
+  it('refreshes the catalog versions after approving', async () => {
+    server.use(
+      http.post(`${BASE}/res-1/approve`, () => HttpResponse.json(buildApprovedResolution())),
+    );
+    const { queryClient, Wrapper } = createWrapper();
+    await queryClient.prefetchQuery({ queryKey: catalogKeys.list(), queryFn: async () => ({}) });
+    expect(queryClient.getQueryState(catalogKeys.list())?.isInvalidated).toBe(false);
+    const { result } = renderHook(() => useApproveResolution(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({ resolutionId: 'res-1', file: pdf() });
+    });
+
+    expect(queryClient.getQueryState(catalogKeys.list())?.isInvalidated).toBe(true);
   });
 
   it('sends one request for several simultaneous calls', async () => {

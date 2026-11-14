@@ -101,6 +101,27 @@ test.describe('HU-048 — Registrar y aprobar resoluciones E2E', () => {
     await expect(row.getByText('Adjunto')).toBeVisible();
     await expect(page.getByRole('button', { name: /Aprobar resolución RD-012/ })).toHaveCount(0);
 
+    // HU-016: al aprobarse la resolución, la versión pasa a vigente y la anterior a histórica.
+    await Promise.all([
+      page.waitForResponse(
+        (res) =>
+          res.url().endsWith('/catalog-versions') &&
+          res.request().method() === 'GET' &&
+          res.status() === 200,
+      ),
+      page.goto('/catalogo/versiones'),
+    ]);
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Versiones del catálogo' }),
+    ).toBeVisible();
+    const versions = page.getByRole('table', {
+      name: /Versiones del catálogo de objetivos educacionales/,
+    });
+    await expect(
+      versions.getByRole('row', { name: /^V2\b/ }).getByText('Aprobada (vigente)'),
+    ).toBeVisible();
+    await expect(versions.getByRole('row', { name: /^V1\b/ }).getByText('Histórica')).toBeVisible();
+
     expect(errors).toEqual([]);
   });
 });

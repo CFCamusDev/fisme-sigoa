@@ -107,6 +107,46 @@ describe('CatalogVersion', () => {
     );
   });
 
+  it('activates a version in validation', () => {
+    const inValidation = CatalogVersion.create({
+      id: 'v2',
+      programId: 'p1',
+      number: 2,
+      status: 'IN_VALIDATION',
+      basedOnVersionId: 'v1',
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+    });
+    const now = new Date('2026-11-13T12:00:00.000Z');
+    const activated = inValidation.activate({ actorId: 'user-1', now });
+
+    expect(activated.status).toBe('APPROVED');
+    expect(activated.updatedBy).toBe('user-1');
+    expect(activated.updatedAt).toEqual(now);
+    expect(inValidation.status).toBe('IN_VALIDATION');
+  });
+
+  it('supersedes an approved version', () => {
+    const approved = CatalogVersion.create({
+      id: 'v1',
+      programId: 'p1',
+      number: 1,
+      status: 'APPROVED',
+      basedOnVersionId: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const superseded = approved.supersede({ actorId: 'user-1' });
+
+    expect(superseded.status).toBe('HISTORICAL');
+    expect(superseded.updatedBy).toBe('user-1');
+    expect(approved.status).toBe('APPROVED');
+  });
+
+  it('rejects activating a draft', () => {
+    expect(() => draft().activate({ actorId: 'user-1' })).toThrow(InvalidCatalogTransitionError);
+  });
+
   it('counts draft and in validation as open, approved and historical as closed', () => {
     const openByStatus = Object.fromEntries(
       CATALOG_VERSION_STATUSES.map((status) => [

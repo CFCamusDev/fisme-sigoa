@@ -25,7 +25,10 @@ import {
   createRolesModule,
   createUserAccessModule,
 } from './modules/authorization/index.js';
-import { createCatalogVersionsModule } from './modules/catalog/index.js';
+import {
+  createCatalogActivationSubscriber,
+  createCatalogVersionsModule,
+} from './modules/catalog/index.js';
 import {
   createResolutionsModule,
   type ResolutionApprovedSubscriber,
@@ -242,7 +245,16 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
       requirePermission: authorizationServices.requirePermission,
       permissionChecker: authorizationServices.authorizer,
       fileStorage: deps.fileStorage ?? createFileStorage(deps.env),
-      resolutionApprovedSubscribers: deps.resolutionApprovedSubscribers ?? [],
+      resolutionApprovedSubscribers: [
+        createCatalogActivationSubscriber({
+          unitOfWork: deps.unitOfWork,
+          auditLogger: deps.auditLogger,
+          dbProvider: deps.dbProvider,
+          permissionChecker: authorizationServices.authorizer,
+          clock: deps.clock,
+        }),
+        ...(deps.resolutionApprovedSubscribers ?? []),
+      ],
       logger: deps.logger,
       clock: deps.clock,
     }),
