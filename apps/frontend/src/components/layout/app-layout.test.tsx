@@ -132,6 +132,18 @@ describe('AppLayout Component', () => {
     expect(catalogLink).toHaveAttribute('href', '/catalogo/versiones');
   });
 
+  it('renders navigation item "Resoluciones" linking to /resoluciones (HU-048, T-048-14)', async () => {
+    renderWithProviders(
+      <AppLayout>
+        <p>Dashboard</p>
+      </AppLayout>,
+    );
+
+    const resolutionsLink = await screen.findByRole('link', { name: /Resoluciones/i });
+    expect(resolutionsLink).toBeInTheDocument();
+    expect(resolutionsLink).toHaveAttribute('href', '/resoluciones');
+  });
+
   it('controls mobile sidebar visibility with accessible aria-expanded button', async () => {
     const user = userEvent.setup();
 

@@ -3,6 +3,7 @@ import {
   BookMarked,
   Building2,
   CalendarRange,
+  FileCheck,
   LayoutDashboard,
   ListChecks,
   ShieldCheck,
@@ -64,5 +65,11 @@ export const MAIN_NAV_ITEMS: readonly NavItem[] = [
     href: '/catalogo/versiones',
     icon: BookMarked,
     permission: 'catalogo.ver',
+  },
+  {
+    title: 'Resoluciones',
+    href: '/resoluciones',
+    icon: FileCheck,
+    permission: 'resolucion.ver',
   },
 ] as const;

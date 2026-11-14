@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as AppResolucionesRouteImport } from './routes/_app/resoluciones'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as AuthRecuperarContrasenaRouteImport } from './routes/_auth/recuperar-contrasena'
 import { Route as EncuestaTokenRouteImport } from './routes/encuesta/$token'
@@ -42,6 +43,11 @@ const AuthRoute = AuthRouteImport.update({
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppResolucionesRoute = AppResolucionesRouteImport.update({
+  id: '/resoluciones',
+  path: '/resoluciones',
   getParentRoute: () => AppRoute,
 } as any)
 const AuthLoginRoute = AuthLoginRouteImport.update({
@@ -141,6 +147,7 @@ const AppUsuariosUserIdEditarRoute = AppUsuariosUserIdEditarRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
+  '/resoluciones': typeof AppResolucionesRoute
   '/login': typeof AuthLoginRoute
   '/recuperar-contrasena': typeof AuthRecuperarContrasenaRoute
   '/encuesta/$token': typeof EncuestaTokenRoute
@@ -162,6 +169,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
+  '/resoluciones': typeof AppResolucionesRoute
   '/login': typeof AuthLoginRoute
   '/recuperar-contrasena': typeof AuthRecuperarContrasenaRoute
   '/encuesta/$token': typeof EncuestaTokenRoute
@@ -185,6 +193,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/_auth': typeof AuthRouteWithChildren
+  '/_app/resoluciones': typeof AppResolucionesRoute
   '/_auth/login': typeof AuthLoginRoute
   '/_auth/recuperar-contrasena': typeof AuthRecuperarContrasenaRoute
   '/encuesta/$token': typeof EncuestaTokenRoute
@@ -209,6 +218,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/resoluciones'
     | '/login'
     | '/recuperar-contrasena'
     | '/encuesta/$token'
@@ -230,6 +240,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/resoluciones'
     | '/login'
     | '/recuperar-contrasena'
     | '/encuesta/$token'
@@ -252,6 +263,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_app'
     | '/_auth'
+    | '/_app/resoluciones'
     | '/_auth/login'
     | '/_auth/recuperar-contrasena'
     | '/encuesta/$token'
@@ -300,6 +312,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/resoluciones': {
+      id: '/_app/resoluciones'
+      path: '/resoluciones'
+      fullPath: '/resoluciones'
+      preLoaderRoute: typeof AppResolucionesRouteImport
       parentRoute: typeof AppRoute
     }
     '/_auth/login': {
@@ -432,6 +451,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
+  AppResolucionesRoute: typeof AppResolucionesRoute
   AppIndexRoute: typeof AppIndexRoute
   AppCatalogoVersionesRoute: typeof AppCatalogoVersionesRoute
   AppConfiguracionEscalasRoute: typeof AppConfiguracionEscalasRoute
@@ -449,6 +469,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppResolucionesRoute: AppResolucionesRoute,
   AppIndexRoute: AppIndexRoute,
   AppCatalogoVersionesRoute: AppCatalogoVersionesRoute,
   AppConfiguracionEscalasRoute: AppConfiguracionEscalasRoute,
