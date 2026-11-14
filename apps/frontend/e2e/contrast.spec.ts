@@ -726,11 +726,11 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA)', () => {
       await expect(
         page.getByRole('heading', { level: 1, name: 'Plantillas oficiales' }),
       ).toBeVisible();
-      await expect(page.getByRole('cell', { name: 'FO-E2E' })).toBeVisible();
+      await expect(page.getByRole('cell', { name: 'FO-E2E', exact: true })).toBeVisible();
       await expectNoContrastViolations(page, { context: 'templates-list-desktop' });
 
       await page.setViewportSize(MOBILE);
-      await expect(page.getByRole('cell', { name: 'FO-E2E' })).toBeVisible();
+      await expect(page.getByRole('cell', { name: 'FO-E2E', exact: true })).toBeVisible();
       await expectNoContrastViolations(page, { context: 'templates-list-mobile' });
 
       // Plantilla abierta en edición, con su borrador y las variables
