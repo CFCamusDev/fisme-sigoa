@@ -62,6 +62,9 @@ jobs:
   integracion:
     env:
       DATABASE_URL: postgresql://test
+  aislamiento:
+    env:
+      DATABASE_URL: postgresql://test
   e2e-shards:
     env:
       DATABASE_URL: postgresql://test
@@ -195,6 +198,9 @@ jobs:
     steps:
       - run: pnpm test:coverage
   integracion:
+    env:
+      DATABASE_URL: postgresql://test
+  aislamiento:
     env:
       DATABASE_URL: postgresql://test
   e2e-shards:

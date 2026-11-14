@@ -159,7 +159,7 @@ jobs:
       - name: Pruebas de integración (shard ${{ matrix.shard }}/2)
         run: |
           mkdir -p tmp/integration-blobs
-          pnpm --filter backend exec vitest run --project integration --shard=${{ matrix.shard }}/2 --reporter=blob --outputFile=${{ github.workspace }}/tmp/integration-blobs/blob-${{ matrix.shard }}.json
+          pnpm --filter backend exec vitest run --project integration --shard=${{ matrix.shard }}/2 --exclude src/architecture/worker-isolation.integration.test.ts --reporter=blob --outputFile=${{ github.workspace }}/tmp/integration-blobs/blob-${{ matrix.shard }}.json
       - name: Estabilidad del PDF con Chromium (3 pasadas)
         if: matrix.shard == 1
         run: |
@@ -179,7 +179,7 @@ jobs:
     name: Calidad · Informe de integración
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: integracion
+    needs: [integracion, aislamiento]
     if: ${{ !cancelled() }}
     env:
       DATABASE_URL: postgresql://test:test@localhost:5432/oeag_test
@@ -200,12 +200,76 @@ jobs:
           pattern: integration-blob-*
           path: tmp/integration-blobs
           merge-multiple: true
+      - name: Descargar informe de aislamiento de integración
+        uses: actions/download-artifact@v5
+        with:
+          name: isolation-integration-report
+          path: tmp/ci-reports
       - name: Combinar informes de integración y verificar completitud
         run: |
           mkdir -p tmp/ci-reports
           pnpm --filter backend exec vitest --merge-reports=${{ github.workspace }}/tmp/integration-blobs --reporter=default --reporter=json --outputFile.json=${{ github.workspace }}/tmp/ci-reports/integration-report.json
           pnpm --filter backend exec vitest list --project integration --json > tmp/ci-reports/integration-expected.json
-          node scripts/ci/check-shard-completeness.mjs --tool vitest --expected tmp/ci-reports/integration-expected.json --actual tmp/ci-reports/integration-report.json
+          node scripts/ci/check-shard-completeness.mjs --tool vitest --expected tmp/ci-reports/integration-expected.json --actual tmp/ci-reports/integration-report.json --extra tmp/ci-reports/isolation-integration.json
+
+  aislamiento:
+    name: Calidad y E2E · Aislamiento de workers
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: convenciones
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: oeag_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U test" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5432/oeag_test
+      NODE_ENV: test
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Preparar paquetes compartidos y cliente Prisma
+        run: pnpm build:shared && pnpm db:generate
+      - name: Migraciones desde cero
+        run: pnpm --filter backend prisma migrate deploy
+      - name: Prueba de aislamiento de workers (integración)
+        run: |
+          mkdir -p tmp/ci-reports
+          pnpm --filter backend exec vitest run --project integration src/architecture/worker-isolation.integration.test.ts --reporter=default --reporter=json --outputFile.json=${{ github.workspace }}/tmp/ci-reports/isolation-integration.json
+      - name: Subir informe de aislamiento de integración
+        uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: isolation-integration-report
+          path: tmp/ci-reports/isolation-integration.json
+          retention-days: 7
+      - name: Instalar navegadores de Playwright con dependencias
+        if: github.base_ref == 'develop' || (github.base_ref == 'main' && startsWith(github.head_ref, 'release/'))
+        run: pnpm --filter frontend exec playwright install --with-deps chromium
+      - name: Prueba de aislamiento de workers (E2E)
+        if: github.base_ref == 'develop' || (github.base_ref == 'main' && startsWith(github.head_ref, 'release/'))
+        env:
+          E2E_WORKERS: 2
+          PLAYWRIGHT_JSON_OUTPUT_NAME: ${{ github.workspace }}/tmp/ci-reports/isolation-e2e.json
+        run: pnpm test:e2e e2e/worker-isolation.spec.ts --reporter=list,json
+      - name: Subir informe de aislamiento E2E
+        uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() && (github.base_ref == 'develop' || (github.base_ref == 'main' && startsWith(github.head_ref, 'release/'))) }}
+        with:
+          name: isolation-e2e-report
+          path: tmp/ci-reports/isolation-e2e.json
+          retention-days: 7
 
   seguridad:
     name: Auditoría de dependencias
@@ -257,7 +321,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: always()
-    needs: [convenciones, estaticas, unitarias, integracion, integracion-informe]
+    needs: [convenciones, estaticas, unitarias, integracion, integracion-informe, aislamiento]
     steps:
       - name: Verificar estado de jobs requeridos de calidad
         env:
@@ -311,7 +375,7 @@ jobs:
       - name: Instalar navegadores de Playwright con dependencias
         run: pnpm --filter frontend exec playwright install --with-deps chromium
       - name: Ejecutar pruebas E2E (shard ${{ matrix.shard }}/3)
-        run: pnpm test:e2e --shard=${{ matrix.shard }}/${{ env.SHARDS }} --reporter=blob
+        run: pnpm test:e2e --shard=${{ matrix.shard }}/${{ env.SHARDS }} --grep-invert "Worker isolation" --reporter=blob
       - name: Subir informe blob del shard E2E
         uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
@@ -331,7 +395,7 @@ jobs:
     name: E2E · Informe combinado
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: e2e-shards
+    needs: [e2e-shards, aislamiento]
     if: ${{ !cancelled() && (github.base_ref == 'develop' || (github.base_ref == 'main' && startsWith(github.head_ref, 'release/'))) }}
     env:
       DATABASE_URL: postgresql://test:test@localhost:5432/oeag_test
@@ -350,6 +414,11 @@ jobs:
           pattern: e2e-blob-*
           path: all-blob-reports
           merge-multiple: true
+      - name: Descargar informe de aislamiento E2E
+        uses: actions/download-artifact@v5
+        with:
+          name: isolation-e2e-report
+          path: tmp/ci-reports
       - name: Combinar informes E2E y verificar completitud de shards
         env:
           PLAYWRIGHT_JSON_OUTPUT_NAME: ${{ github.workspace }}/tmp/ci-reports/e2e-report.json
@@ -358,7 +427,7 @@ jobs:
           mkdir -p tmp/ci-reports
           pnpm --filter frontend exec playwright merge-reports --reporter=html --reporter=json ../../all-blob-reports
           pnpm --filter frontend exec playwright test --list --reporter=json > tmp/ci-reports/e2e-expected.json
-          node scripts/ci/check-shard-completeness.mjs --tool playwright --expected tmp/ci-reports/e2e-expected.json --actual tmp/ci-reports/e2e-report.json
+          node scripts/ci/check-shard-completeness.mjs --tool playwright --expected tmp/ci-reports/e2e-expected.json --actual tmp/ci-reports/e2e-report.json --extra tmp/ci-reports/isolation-e2e.json
       - name: Subir reporte HTML combinado de Playwright
         uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
@@ -372,7 +441,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: always() && (github.base_ref == 'develop' || (github.base_ref == 'main' && startsWith(github.head_ref, 'release/')))
-    needs: [e2e-shards, e2e-informe]
+    needs: [e2e-shards, e2e-informe, aislamiento]
     steps:
       - name: Verificar estado de jobs E2E
         env:

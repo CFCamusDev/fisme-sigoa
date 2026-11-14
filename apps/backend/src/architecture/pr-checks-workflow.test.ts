@@ -52,7 +52,7 @@ describe('pr-checks.yml structure (HU-080)', () => {
     expect(calidadBlock).toMatch(/name:\s*Lint, tipos, pruebas y build/);
     expect(calidadBlock).toMatch(/if:\s*always\(\)/);
     expect(calidadBlock).toMatch(
-      /needs:\s*\[convenciones,\s*estaticas,\s*unitarias,\s*integracion,\s*integracion-informe\]/,
+      /needs:\s*\[convenciones,\s*estaticas,\s*unitarias,\s*integracion,\s*integracion-informe,\s*aislamiento\]/,
     );
     expect(calidadBlock).toMatch(
       /NEEDS_RESULTS:\s*\$\{\{\s*join\(needs\.\*\.result,\s*' '\)\s*\}\}/,
@@ -64,13 +64,13 @@ describe('pr-checks.yml structure (HU-080)', () => {
     expect(integracionBlock).toMatch(/--shard=\$\{\{\s*matrix\.shard\s*\}\}\/2/);
 
     const integracionInformeBlock = extractJobBlock(workflow, 'integracion-informe');
-    expect(integracionInformeBlock).toMatch(/needs:\s*integracion/);
+    expect(integracionInformeBlock).toMatch(/needs:\s*\[integracion,\s*aislamiento\]/);
     expect(integracionInformeBlock).toMatch(/--merge-reports/);
     expect(integracionInformeBlock).toMatch(/check-shard-completeness\.mjs/);
 
     const e2eBlock = extractJobBlock(workflow, 'e2e');
     expect(e2eBlock).toMatch(/name:\s*Pruebas end-to-end \(Playwright\)/);
-    expect(e2eBlock).toMatch(/needs:\s*\[e2e-shards,\s*e2e-informe\]/);
+    expect(e2eBlock).toMatch(/needs:\s*\[e2e-shards,\s*e2e-informe,\s*aislamiento\]/);
     expect(e2eBlock).toMatch(/NEEDS_RESULTS:\s*\$\{\{\s*join\(needs\.\*\.result,\s*' '\)\s*\}\}/);
 
     const e2eShardsBlock = extractJobBlock(workflow, 'e2e-shards');
@@ -94,5 +94,21 @@ describe('pr-checks.yml structure (HU-080)', () => {
 
     expect(e2eShardsBlock).toContain(baseCondition);
     expect(e2eBlock).toContain(`always() && (${baseCondition})`);
+  });
+
+  it('runs worker isolation tests in their own job outside the shards', () => {
+    const integracionBlock = extractJobBlock(workflow, 'integracion');
+    expect(integracionBlock).toMatch(
+      /--exclude src\/architecture\/worker-isolation\.integration\.test\.ts/,
+    );
+
+    const e2eShardsBlock = extractJobBlock(workflow, 'e2e-shards');
+    expect(e2eShardsBlock).toMatch(/--grep-invert "Worker isolation"/);
+
+    const aislamientoBlock = extractJobBlock(workflow, 'aislamiento');
+    expect(aislamientoBlock).toMatch(/^\s{4}needs:\s*convenciones\s*$/m);
+    expect(aislamientoBlock).toMatch(/worker-isolation\.integration\.test\.ts/);
+    expect(aislamientoBlock).toMatch(/e2e\/worker-isolation\.spec\.ts/);
+    expect(aislamientoBlock).toMatch(/E2E_WORKERS:\s*2/);
   });
 });
