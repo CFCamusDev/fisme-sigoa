@@ -5217,6 +5217,227 @@
         }
       }
     },
+    "/catalog-versions/{baseId}/compare/{targetId}": {
+      "get": {
+        "tags": ["CatalogVersions"],
+        "summary": "Comparar dos versiones del catálogo",
+        "description": "Compara dos versiones del mismo programa por código de OE y AG: cada elemento se marca como agregado, quitado, modificado o sin cambios, con las diferencias del texto por palabras, y se incluye la resolución y las fechas de vigencia de cada versión. No expone datos de quién creó o aprobó. Requiere dos identificadores distintos y no admite parámetros de consulta. Requiere el permiso 'catalogo.ver' con alcance GLOBAL (HU-017, RF-017, RN-021, RS-002).",
+        "operationId": "compareCatalogVersions",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "baseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "description": "Versión de partida de la comparación."
+          },
+          {
+            "name": "targetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "description": "Versión de destino; debe ser distinta de la base y del mismo programa."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Comparación con las diferencias resaltadas.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché HTTP."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogComparisonDto"
+                },
+                "example": {
+                  "base": {
+                    "version": {
+                      "id": "cm0catalogversion0001",
+                      "programId": "cm0programepis000001",
+                      "number": 1,
+                      "status": "HISTORICAL",
+                      "basedOnVersionId": null,
+                      "objectiveCount": 1,
+                      "attributeCount": 0,
+                      "createdAt": "2024-02-20T15:00:00.000Z"
+                    },
+                    "history": {
+                      "validFrom": "2024-03-01T10:00:00.000Z",
+                      "validUntil": "2026-05-10T09:00:00.000Z",
+                      "resolutions": [
+                        {
+                          "id": "cm0resolution000001",
+                          "type": "EDUCATIONAL_OBJECTIVE",
+                          "number": "128-2024",
+                          "issuedOn": "2024-02-20",
+                          "status": "APPROVED",
+                          "approvedAt": "2024-03-01T10:00:00.000Z",
+                          "hasPdf": true
+                        }
+                      ]
+                    }
+                  },
+                  "target": {
+                    "version": {
+                      "id": "cm0catalogversion0002",
+                      "programId": "cm0programepis000001",
+                      "number": 2,
+                      "status": "APPROVED",
+                      "basedOnVersionId": "cm0catalogversion0001",
+                      "objectiveCount": 2,
+                      "attributeCount": 0,
+                      "createdAt": "2026-04-01T15:00:00.000Z"
+                    },
+                    "history": {
+                      "validFrom": "2026-05-10T09:00:00.000Z",
+                      "validUntil": null,
+                      "resolutions": []
+                    }
+                  },
+                  "summary": {
+                    "added": 1,
+                    "removed": 0,
+                    "modified": 1,
+                    "unchanged": 0
+                  },
+                  "objectives": [
+                    {
+                      "code": "OEP1",
+                      "change": "MODIFIED",
+                      "base": {
+                        "statement": "Formar ingenieros éticos."
+                      },
+                      "target": {
+                        "statement": "Formar ingenieros líderes."
+                      },
+                      "nameSegments": [],
+                      "statementSegments": [
+                        {
+                          "type": "EQUAL",
+                          "text": "Formar ingenieros "
+                        },
+                        {
+                          "type": "REMOVED",
+                          "text": "éticos."
+                        },
+                        {
+                          "type": "ADDED",
+                          "text": "líderes."
+                        }
+                      ]
+                    },
+                    {
+                      "code": "OEP2",
+                      "change": "ADDED",
+                      "base": null,
+                      "target": {
+                        "statement": "Promover la investigación."
+                      },
+                      "nameSegments": [],
+                      "statementSegments": [
+                        {
+                          "type": "ADDED",
+                          "text": "Promover la investigación."
+                        }
+                      ]
+                    }
+                  ],
+                  "attributes": []
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Los identificadores o la consulta no cumplen el contrato, son el mismo o pertenecen a programas distintos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Elige dos versiones distintas para compararlas.",
+                    "requestId": "req_cv_compare_400"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o token de acceso inválido o expirado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado",
+                    "requestId": "req_cv_compare_401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere el permiso 'catalogo.ver'.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tienes permiso para realizar esta acción",
+                    "requestId": "req_cv_compare_403"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Alguna de las versiones no existe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "Versión del catálogo no encontrada.",
+                    "requestId": "req_cv_compare_404"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/catalog-versions/{id}/objectives": {
       "put": {
         "tags": ["CatalogVersions"],
@@ -7657,6 +7878,133 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CatalogAttributeDto"
+            }
+          }
+        }
+      },
+      "WordDiffSegmentDto": {
+        "type": "object",
+        "required": ["type", "text"],
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["EQUAL", "ADDED", "REMOVED"],
+            "description": "Igual, agregado (solo en el destino) o quitado (solo en la base)."
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "CatalogItemSideDto": {
+        "type": "object",
+        "required": ["statement"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Solo los atributos del graduado tienen nombre."
+          },
+          "statement": {
+            "type": "string"
+          }
+        }
+      },
+      "CatalogItemDiffDto": {
+        "type": "object",
+        "required": ["code", "change", "base", "target", "nameSegments", "statementSegments"],
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "change": {
+            "type": "string",
+            "enum": ["ADDED", "REMOVED", "MODIFIED", "UNCHANGED"],
+            "description": "Agregado, quitado, modificado o sin cambios entre la base y el destino."
+          },
+          "base": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/CatalogItemSideDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "target": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/CatalogItemSideDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "nameSegments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WordDiffSegmentDto"
+            }
+          },
+          "statementSegments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WordDiffSegmentDto"
+            }
+          }
+        }
+      },
+      "CatalogComparedVersionDto": {
+        "type": "object",
+        "required": ["version", "history"],
+        "additionalProperties": false,
+        "properties": {
+          "version": {
+            "$ref": "#/components/schemas/CatalogVersionDto"
+          },
+          "history": {
+            "$ref": "#/components/schemas/CatalogVersionHistoryDto"
+          }
+        }
+      },
+      "CatalogComparisonDto": {
+        "type": "object",
+        "required": ["base", "target", "summary", "objectives", "attributes"],
+        "additionalProperties": false,
+        "properties": {
+          "base": {
+            "$ref": "#/components/schemas/CatalogComparedVersionDto"
+          },
+          "target": {
+            "$ref": "#/components/schemas/CatalogComparedVersionDto"
+          },
+          "summary": {
+            "type": "object",
+            "required": ["added", "removed", "modified", "unchanged"],
+            "additionalProperties": false,
+            "properties": {
+              "added": { "type": "integer", "minimum": 0 },
+              "removed": { "type": "integer", "minimum": 0 },
+              "modified": { "type": "integer", "minimum": 0 },
+              "unchanged": { "type": "integer", "minimum": 0 }
+            }
+          },
+          "objectives": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalogItemDiffDto"
+            }
+          },
+          "attributes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalogItemDiffDto"
             }
           }
         }

@@ -56,6 +56,7 @@ import {
   catalogAttributesRequestSchema,
   catalogObjectivesResponseSchema,
   catalogAttributesResponseSchema,
+  catalogComparisonDtoSchema,
   catalogVersionDetailDtoSchema,
   listResolutionsResponseSchema,
   registerResolutionRequestSchema,
@@ -2115,6 +2116,44 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
       expect(schemas['SaveCatalogObjectiveRequest'].properties.name).toBeUndefined();
     });
 
+    it('documents the comparison operation and the history field (HU-017, T-017-05)', () => {
+      const op = spec.paths['/catalog-versions/{baseId}/compare/{targetId}'].get;
+      expect(op.operationId).toBe('compareCatalogVersions');
+      expect(op.tags).toContain('CatalogVersions');
+      expect(op.security).toEqual([{ bearerAuth: [] }]);
+      expect(op.parameters.map((parameter: { name: string }) => parameter.name)).toEqual([
+        'baseId',
+        'targetId',
+      ]);
+      for (const parameter of op.parameters) {
+        expect(parameter).toMatchObject({ in: 'path', required: true });
+      }
+      expect(Object.keys(op.responses).sort()).toEqual(['200', '400', '401', '403', '404']);
+      expect(op.responses['200'].headers['Cache-Control'].example).toBe('no-store');
+      expect(
+        catalogComparisonDtoSchema.safeParse(
+          op.responses['200'].content['application/json'].example,
+        ).success,
+      ).toBe(true);
+
+      const schemas = spec.components.schemas;
+      for (const name of [
+        'CatalogComparisonDto',
+        'CatalogComparedVersionDto',
+        'CatalogItemDiffDto',
+        'CatalogItemSideDto',
+        'WordDiffSegmentDto',
+        'CatalogVersionHistoryDto',
+        'CatalogVersionResolutionDto',
+      ]) {
+        expect(schemas[name].additionalProperties, name).toBe(false);
+      }
+      expect(schemas['CatalogVersionDetailDto'].required).toContain('history');
+      expect(Object.keys(schemas['CatalogComparisonDto'].properties).sort()).toEqual(
+        Object.keys(catalogComparisonDtoSchema.shape).sort(),
+      );
+    });
+
     it('has bidirectional parity between openapi spec and createCatalogVersionsRouter', () => {
       const router = createCatalogVersionsRouter({
         controller: {
@@ -2125,6 +2164,7 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
           editObjectives: vi.fn(),
           editAttributes: vi.fn(),
           getVersionDetail: vi.fn(),
+          compareVersions: vi.fn(),
           sendToValidation: vi.fn(),
         } as unknown as CatalogVersionItemsController,
         authenticate: vi.fn(),
@@ -2145,6 +2185,7 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
       const key = (e: { method: string; path: string }) => e.method + ' ' + e.path;
       expect(routerEndpoints.map(key).sort()).toEqual([
         'get /catalog-versions',
+        'get /catalog-versions/:baseId/compare/:targetId',
         'get /catalog-versions/:id',
         'post /catalog-versions',
         'post /catalog-versions/:id/validation',
