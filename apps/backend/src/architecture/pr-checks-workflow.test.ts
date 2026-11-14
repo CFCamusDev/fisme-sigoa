@@ -81,7 +81,7 @@ describe('pr-checks.yml structure (HU-080)', () => {
     );
 
     const e2eInformeBlock = extractJobBlock(workflow, 'e2e-informe');
-    expect(e2eInformeBlock).toMatch(/needs:\s*e2e-shards/);
+    expect(e2eInformeBlock).toMatch(/needs:\s*\[e2e-shards,\s*aislamiento\]/);
     expect(e2eInformeBlock).toMatch(/playwright merge-reports/);
     expect(e2eInformeBlock).toMatch(/check-shard-completeness\.mjs/);
   });
