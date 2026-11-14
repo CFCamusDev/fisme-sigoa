@@ -7,3 +7,5 @@ export * from './domain/ports/index.js';
 export * from './application/template-dto.js';
 export * from './infrastructure/prisma/prisma-template-mapper.js';
 export * from './infrastructure/prisma/prisma-template-repository.js';
+export * from './infrastructure/prisma/prisma-template-version-mapper.js';
+export * from './infrastructure/prisma/prisma-template-version-repository.js';
