@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { Link } from '@tanstack/react-router';
 import type { CatalogVersionHistoryDto, CatalogVersionStatusValue } from '@sigoa/shared';
 import { StatusBadge } from '@/components/common/status-badge';
@@ -40,11 +41,17 @@ export function CatalogVersionHistoryPanel({
   headingLevel = 2,
 }: CatalogVersionHistoryPanelProps) {
   const Heading = headingLevel === 2 ? 'h2' : 'h3';
+  const headingId = useId();
   const hasResolutions = history.resolutions.length > 0;
 
   return (
-    <section className="rounded-lg border border-border bg-card p-4 text-card-foreground shadow-sm sm:p-6">
-      <Heading className="text-base font-semibold text-foreground">{heading}</Heading>
+    <section
+      aria-labelledby={headingId}
+      className="rounded-lg border border-border bg-card p-4 text-card-foreground shadow-sm sm:p-6"
+    >
+      <Heading id={headingId} className="text-base font-semibold text-foreground">
+        {heading}
+      </Heading>
 
       {!hasResolutions && (
         <p className="mt-2 text-sm text-muted-foreground">Sin resolución registrada</p>
