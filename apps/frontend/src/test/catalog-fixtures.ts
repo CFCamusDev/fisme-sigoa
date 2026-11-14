@@ -1,5 +1,6 @@
 import type {
   CatalogAttributeDto,
+  CatalogComparisonDto,
   CatalogObjectiveDto,
   CatalogVersionDetailDto,
   CatalogVersionDto,
@@ -107,5 +108,89 @@ export function buildCatalogVersionDetail(
     history: options.history ?? { validFrom: null, validUntil: null, resolutions: [] },
     objectives,
     attributes,
+  };
+}
+
+/** Comparación de la versión 1 (Histórica) con la 2 (vigente): un OE de cada tipo de cambio. */
+export function buildCatalogComparison(
+  overrides: Partial<CatalogComparisonDto> = {},
+): CatalogComparisonDto {
+  return {
+    base: {
+      version: buildCatalogVersion({
+        id: 'cv-1',
+        number: 1,
+        status: 'HISTORICAL',
+        objectiveCount: 3,
+        attributeCount: 0,
+      }),
+      history: {
+        validFrom: '2024-03-01T10:00:00.000Z',
+        validUntil: '2026-05-10T09:00:00.000Z',
+        resolutions: [
+          {
+            id: 'res-1',
+            type: 'EDUCATIONAL_OBJECTIVE',
+            number: '128-2024',
+            issuedOn: '2024-02-20',
+            status: 'APPROVED',
+            approvedAt: '2024-03-01T10:00:00.000Z',
+            hasPdf: true,
+          },
+        ],
+      },
+    },
+    target: {
+      version: buildCatalogVersion({
+        id: 'cv-2',
+        number: 2,
+        status: 'APPROVED',
+        basedOnVersionId: 'cv-1',
+        objectiveCount: 3,
+        attributeCount: 0,
+      }),
+      history: { validFrom: null, validUntil: null, resolutions: [] },
+    },
+    summary: { added: 1, removed: 1, modified: 1, unchanged: 1 },
+    objectives: [
+      {
+        code: 'OEP1',
+        change: 'MODIFIED',
+        base: { statement: 'Formar ingenieros éticos.' },
+        target: { statement: 'Formar ingenieros líderes.' },
+        nameSegments: [],
+        statementSegments: [
+          { type: 'EQUAL', text: 'Formar ingenieros ' },
+          { type: 'REMOVED', text: 'éticos.' },
+          { type: 'ADDED', text: 'líderes.' },
+        ],
+      },
+      {
+        code: 'OEP2',
+        change: 'UNCHANGED',
+        base: { statement: 'Texto estable.' },
+        target: { statement: 'Texto estable.' },
+        nameSegments: [],
+        statementSegments: [{ type: 'EQUAL', text: 'Texto estable.' }],
+      },
+      {
+        code: 'OEP5',
+        change: 'ADDED',
+        base: null,
+        target: { statement: 'Fomentar el emprendimiento.' },
+        nameSegments: [],
+        statementSegments: [{ type: 'ADDED', text: 'Fomentar el emprendimiento.' }],
+      },
+      {
+        code: 'OEP4',
+        change: 'REMOVED',
+        base: { statement: 'Promover la investigación.' },
+        target: null,
+        nameSegments: [],
+        statementSegments: [{ type: 'REMOVED', text: 'Promover la investigación.' }],
+      },
+    ],
+    attributes: [],
+    ...overrides,
   };
 }
