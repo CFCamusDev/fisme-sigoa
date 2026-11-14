@@ -5,6 +5,7 @@ import { PrismaBootstrapAdminRepository } from './modules/users/infrastructure/p
 import { seedAuthorization } from './modules/authorization/infrastructure/prisma/seed/authorization-seed.js';
 import { seedCatalogVersionDefaults } from './modules/catalog/infrastructure/prisma/seed/catalog-version-seed.js';
 import { seedProgram } from './modules/parameters/infrastructure/prisma/seed/program-seed.js';
+import { seedTemplateDefaults } from './modules/templates/infrastructure/prisma/seed/template-seed.js';
 import { seedParameterDefaults } from './modules/parameters/infrastructure/prisma/seed/parameter-seed.js';
 import { seedResponseScaleDefaults } from './modules/parameters/infrastructure/prisma/seed/response-scale-seed.js';
 import type { PrismaClient } from './shared/prisma/generated/client.js';
@@ -63,6 +64,12 @@ export async function runDatabaseSeed(options: RunDatabaseSeedOptions): Promise<
       id: 'catalog-version-1',
       run: async (tx) => {
         await seedCatalogVersionDefaults(tx);
+      },
+    },
+    {
+      id: 'templates-v1',
+      run: async (tx) => {
+        await seedTemplateDefaults(tx);
       },
     },
     {
