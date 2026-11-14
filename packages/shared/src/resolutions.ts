@@ -11,6 +11,9 @@ export const RESOLUTION_STATUSES = ['REGISTERED', 'APPROVED'] as const;
 export const RESOLUTION_NUMBER_MAX_LENGTH = 40;
 export const RESOLUTION_NUMBER_PATTERN = /^[A-Za-z0-9\-/. ]+$/;
 export const RESOLUTION_ID_MAX_LENGTH = 64;
+/** Límite técnico del PDF firmado (10 MiB) y su tipo; cliente y servidor usan el mismo valor. */
+export const RESOLUTION_PDF_MAX_BYTES = 10 * 1024 * 1024;
+export const RESOLUTION_PDF_MIME_TYPE = 'application/pdf';
 export const RESOLUTIONS_PAGE_MAX = 10_000;
 export const RESOLUTIONS_PAGE_SIZE_MAX = 100;
 export const RESOLUTIONS_PAGE_SIZE_DEFAULT = 20;

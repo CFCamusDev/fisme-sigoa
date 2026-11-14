@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  RESOLUTION_PDF_MAX_BYTES,
+  RESOLUTION_PDF_MIME_TYPE,
   listResolutionsQuerySchema,
   listResolutionsResponseSchema,
   registerResolutionRequestSchema,
@@ -188,5 +190,10 @@ describe('resolution schemas (T-048-08, RF-048)', () => {
       expect(listResolutionsResponseSchema.safeParse({ ...page, extra: 1 }).success).toBe(false);
       expect(listResolutionsResponseSchema.safeParse({ ...page, total: -1 }).success).toBe(false);
     });
+  });
+
+  it('fixes the pdf limit at 10 MiB and the pdf media type', () => {
+    expect(RESOLUTION_PDF_MAX_BYTES).toBe(10_485_760);
+    expect(RESOLUTION_PDF_MIME_TYPE).toBe('application/pdf');
   });
 });
