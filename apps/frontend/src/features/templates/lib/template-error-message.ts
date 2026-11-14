@@ -47,3 +47,14 @@ export function getTemplateErrorMessage(error: unknown): string {
 
   return GENERIC;
 }
+
+/** Mensaje al usuario para errores al generar la vista previa en PDF (HU-019). */
+export function getTemplatePreviewErrorMessage(error: unknown): string {
+  if (error && typeof error === 'object') {
+    const apiErr = error as Partial<ApiError>;
+    if (apiErr.status === 409) {
+      return serverMessage(apiErr) ?? 'Ya hay una vista previa en curso. Espera a que termine.';
+    }
+  }
+  return getTemplateErrorMessage(error);
+}
