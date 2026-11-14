@@ -454,4 +454,21 @@ describe('PuppeteerPdfGenerator (RS-063, RNF-021)', () => {
       await generator.close();
     });
   });
+
+  it('forwards preferCSSPageSize to page.pdf when specified', async () => {
+    const { launcher, pagesCreated } = createMockLauncher();
+    const generator = new PuppeteerPdfGenerator({ launcher });
+
+    await generator.render({ html: '<p>Test</p>', options: { preferCSSPageSize: true } });
+    await generator.render({ html: '<p>Default</p>' });
+
+    expect(pagesCreated[0]?.pdf).toHaveBeenCalledWith(
+      expect.objectContaining({ preferCSSPageSize: true }),
+    );
+    expect(pagesCreated[1]?.pdf).toHaveBeenCalledWith(
+      expect.objectContaining({ preferCSSPageSize: undefined }),
+    );
+
+    await generator.close();
+  });
 });

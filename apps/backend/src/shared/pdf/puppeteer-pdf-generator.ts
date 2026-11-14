@@ -252,6 +252,7 @@ export class PuppeteerPdfGenerator implements PdfGenerator {
           headerTemplate: input.options?.headerTemplate,
           footerTemplate: input.options?.footerTemplate,
           displayHeaderFooter: input.options?.displayHeaderFooter ?? false,
+          preferCSSPageSize: input.options?.preferCSSPageSize,
         });
 
         return Buffer.from(pdfBytes);
