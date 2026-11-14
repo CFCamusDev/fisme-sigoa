@@ -26,7 +26,10 @@ import {
   createUserAccessModule,
 } from './modules/authorization/index.js';
 import { createCatalogVersionsModule } from './modules/catalog/index.js';
-import { createResolutionsModule } from './modules/resolutions/index.js';
+import {
+  createResolutionsModule,
+  type ResolutionApprovedSubscriber,
+} from './modules/resolutions/index.js';
 import { createUsersModule, EmailActivationSender } from './modules/users/index.js';
 import {
   LoginAttemptsParameterProvider,
@@ -46,6 +49,8 @@ export interface AppRoutesDependencies {
   env: Env;
   emailSender?: EmailSender;
   fileStorage?: FileStorage;
+  /** Suscriptores de `ResolutionApproved` (HU-016 registra el suyo aquí, D6 del tramo 2 de HU-048). */
+  resolutionApprovedSubscribers?: readonly ResolutionApprovedSubscriber[];
   logger?: Logger;
   clock?: () => Date;
   detachedTaskRunner?: DetachedTaskRunner;
@@ -237,6 +242,7 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
       requirePermission: authorizationServices.requirePermission,
       permissionChecker: authorizationServices.authorizer,
       fileStorage: deps.fileStorage ?? createFileStorage(deps.env),
+      resolutionApprovedSubscribers: deps.resolutionApprovedSubscribers ?? [],
       logger: deps.logger,
       clock: deps.clock,
     }),
