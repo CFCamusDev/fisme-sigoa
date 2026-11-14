@@ -33,6 +33,7 @@ import {
   createResolutionsModule,
   type ResolutionApprovedSubscriber,
 } from './modules/resolutions/index.js';
+import { createTemplatesModule } from './modules/templates/index.js';
 import { createUsersModule, EmailActivationSender } from './modules/users/index.js';
 import {
   LoginAttemptsParameterProvider,
@@ -256,6 +257,18 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
         ...(deps.resolutionApprovedSubscribers ?? []),
       ],
       logger: deps.logger,
+      clock: deps.clock,
+    }),
+  );
+  app.use(
+    '/templates',
+    createTemplatesModule({
+      unitOfWork: deps.unitOfWork,
+      auditLogger: deps.auditLogger,
+      dbProvider: deps.dbProvider,
+      authenticate: authServices.authenticate,
+      requirePermission: authorizationServices.requirePermission,
+      permissionChecker: authorizationServices.authorizer,
       clock: deps.clock,
     }),
   );
