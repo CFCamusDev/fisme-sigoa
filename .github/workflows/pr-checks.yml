@@ -120,7 +120,15 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Pruebas con cobertura (umbral 80 % en vitest.config)
-        run: pnpm test:coverage
+        run: |
+          mkdir -p tmp/ci-reports
+          pnpm build:shared && pnpm db:generate
+          pnpm --filter backend test:coverage --reporter=default --reporter=json --outputFile.json=${{ github.workspace }}/tmp/ci-reports/unit-backend.json
+          pnpm --filter frontend test:coverage --reporter=default --reporter=json --outputFile.json=${{ github.workspace }}/tmp/ci-reports/unit-frontend.json
+          pnpm --filter @sigoa/shared --if-present test:coverage
+      - name: Publicar resumen de pruebas más lentas (unitarias)
+        if: ${{ !cancelled() }}
+        run: node scripts/ci/ci-summary.mjs --mode tests --vitest tmp/ci-reports/unit-backend.json,tmp/ci-reports/unit-frontend.json
 
   integracion:
     name: Calidad · Integración (shard ${{ matrix.shard }}/2)
@@ -211,6 +219,9 @@ jobs:
           pnpm --filter backend exec vitest --merge-reports=${{ github.workspace }}/tmp/integration-blobs --reporter=default --reporter=json --outputFile.json=${{ github.workspace }}/tmp/ci-reports/integration-report.json
           pnpm --filter backend exec vitest list --project integration --json > tmp/ci-reports/integration-expected.json
           node scripts/ci/check-shard-completeness.mjs --tool vitest --expected tmp/ci-reports/integration-expected.json --actual tmp/ci-reports/integration-report.json --extra tmp/ci-reports/isolation-integration.json
+      - name: Publicar resumen de pruebas más lentas (integración)
+        if: ${{ !cancelled() }}
+        run: node scripts/ci/ci-summary.mjs --mode tests --vitest tmp/ci-reports/integration-report.json
 
   aislamiento:
     name: Calidad y E2E · Aislamiento de workers
@@ -320,9 +331,17 @@ jobs:
     name: Lint, tipos, pruebas y build
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      actions: read
     if: always()
     needs: [convenciones, estaticas, unitarias, integracion, integracion-informe, aislamiento]
     steps:
+      - uses: actions/checkout@v7
+      - name: Publicar tiempos por job en el resumen del PR
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/ci/ci-summary.mjs --mode jobs --run-id ${{ github.run_id }}
       - name: Verificar estado de jobs requeridos de calidad
         env:
           NEEDS_RESULTS: ${{ join(needs.*.result, ' ') }}
@@ -428,6 +447,9 @@ jobs:
           pnpm --filter frontend exec playwright merge-reports --reporter=html --reporter=json ../../all-blob-reports
           pnpm --filter frontend exec playwright test --list --reporter=json > tmp/ci-reports/e2e-expected.json
           node scripts/ci/check-shard-completeness.mjs --tool playwright --expected tmp/ci-reports/e2e-expected.json --actual tmp/ci-reports/e2e-report.json --extra tmp/ci-reports/isolation-e2e.json
+      - name: Publicar resumen de pruebas más lentas y reintentadas (E2E)
+        if: ${{ !cancelled() }}
+        run: node scripts/ci/ci-summary.mjs --mode tests --playwright tmp/ci-reports/e2e-report.json
       - name: Subir reporte HTML combinado de Playwright
         uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
@@ -440,9 +462,17 @@ jobs:
     name: Pruebas end-to-end (Playwright)
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      actions: read
     if: always() && (github.base_ref == 'develop' || (github.base_ref == 'main' && startsWith(github.head_ref, 'release/')))
     needs: [e2e-shards, e2e-informe, aislamiento]
     steps:
+      - uses: actions/checkout@v7
+      - name: Publicar tiempos por job E2E en el resumen del PR
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/ci/ci-summary.mjs --mode jobs --run-id ${{ github.run_id }}
       - name: Verificar estado de jobs E2E
         env:
           NEEDS_RESULTS: ${{ join(needs.*.result, ' ') }}

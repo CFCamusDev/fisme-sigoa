@@ -1135,6 +1135,10 @@ export const WORKFLOW_EXCLUSIONS = [
     pattern: /check-shard-completeness\.mjs/,
     reason: 'Verificación de completitud entre shards del CI.',
   },
+  {
+    pattern: /ci-summary\.mjs/,
+    reason: 'Publicación del resumen de pruebas lentas y tiempos por job en GitHub Actions.',
+  },
 ];
 
 /**
