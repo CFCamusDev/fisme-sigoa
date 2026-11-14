@@ -255,16 +255,27 @@ export function formatReport(summary, baseline = null) {
   return lines.join('\n');
 }
 
+function wrapGhError(err, args) {
+  if (err && (err.code === 'ENOENT' || /ENOENT/i.test(String(err.message)))) {
+    return new Error(
+      'GitHub CLI (gh) no está instalado o no está en PATH. Instálalo y autentícate con `gh auth login`.',
+    );
+  }
+  if (err instanceof Error && err.message.startsWith('GitHub CLI (gh)')) {
+    return err;
+  }
+  return new Error(`Error al ejecutar gh ${args.join(' ')}: ${err?.message ?? err}`);
+}
+
 async function defaultExecGh(args) {
+  return execFile('gh', args, { maxBuffer: 20 * 1024 * 1024 });
+}
+
+async function runGh(execGh, args) {
   try {
-    return await execFile('gh', args, { maxBuffer: 20 * 1024 * 1024 });
+    return await execGh(args);
   } catch (err) {
-    if (err && (err.code === 'ENOENT' || /ENOENT/i.test(String(err.message)))) {
-      throw new Error(
-        'GitHub CLI (gh) no está instalado o no está en PATH. Instálalo y autentícate con `gh auth login`.',
-      );
-    }
-    throw new Error(`Error al ejecutar gh ${args.join(' ')}: ${err?.message ?? err}`);
+    throw wrapGhError(err, args);
   }
 }
 
@@ -278,7 +289,7 @@ export async function fetchWorkflowRuns({
   baseBranch,
   execGh = defaultExecGh,
 }) {
-  const listRes = await execGh([
+  const listRes = await runGh(execGh, [
     'api',
     `/repos/{owner}/{repo}/actions/workflows/${workflow}/runs?event=pull_request&status=completed&per_page=100`,
   ]);
@@ -289,7 +300,7 @@ export async function fetchWorkflowRuns({
 
   const detailed = [];
   for (const run of matching) {
-    const jobsRes = await execGh([
+    const jobsRes = await runGh(execGh, [
       'api',
       '--paginate',
       `/repos/{owner}/{repo}/actions/runs/${run.id}/jobs?filter=latest&per_page=100`,
