@@ -17,8 +17,10 @@ function jsString(value: string): string {
  * borrar versiones publicadas (RN-007): las pruebas comparten la base de su worker.
  */
 export function resetTemplates(): void {
+  // Evita `$` literal en la línea de comandos: en Linux `/bin/sh` expande `$executeRawUnsafe` dentro de `"..."`.
   runBackendScript([
-    'await prisma.$executeRawUnsafe(\'TRUNCATE TABLE "template_versions", "templates" CASCADE\');',
+    'const execRaw = String.fromCharCode(36) + "executeRawUnsafe";',
+    'await prisma[execRaw](\'TRUNCATE TABLE "template_versions", "templates" CASCADE\');',
   ]);
 }
 
