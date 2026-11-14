@@ -12,6 +12,7 @@ import {
   type EmailSenderLogger,
 } from './shared/email/index.js';
 import { LogoUrlResolver } from './shared/branding/logo-url-resolver.js';
+import { PuppeteerPdfGenerator, type PdfGenerator } from './shared/pdf/index.js';
 import {
   createAuthModule,
   createAuthServices,
@@ -53,6 +54,7 @@ export interface AppRoutesDependencies {
   env: Env;
   emailSender?: EmailSender;
   fileStorage?: FileStorage;
+  pdfGenerator?: PdfGenerator;
   /** Suscriptores de `ResolutionApproved` (HU-016 registra el suyo aquí, D6 del tramo 2 de HU-048). */
   resolutionApprovedSubscribers?: readonly ResolutionApprovedSubscriber[];
   logger?: Logger;
@@ -260,6 +262,7 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
       clock: deps.clock,
     }),
   );
+  const pdfGenerator = deps.pdfGenerator ?? new PuppeteerPdfGenerator({ logger: deps.logger });
   app.use(
     '/templates',
     createTemplatesModule({
@@ -269,6 +272,7 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
       authenticate: authServices.authenticate,
       requirePermission: authorizationServices.requirePermission,
       permissionChecker: authorizationServices.authorizer,
+      pdfGenerator,
       clock: deps.clock,
     }),
   );

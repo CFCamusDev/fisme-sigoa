@@ -1,6 +1,7 @@
 import { Router, type RequestHandler } from 'express';
 import {
   listTemplatesQuerySchema,
+  previewTemplateRequestSchema,
   publishTemplateRequestSchema,
   saveTemplateDraftRequestSchema,
   templateIdParamsSchema,
@@ -59,6 +60,15 @@ export function createTemplatesRouter(deps: TemplatesRouterDependencies): Router
     deps.requirePermission('plantilla.publicar', 'GLOBAL'),
     validateRequest({ params: templateIdParamsSchema, body: publishTemplateRequestSchema }),
     deps.controller.publishTemplate,
+  );
+
+  // POST /templates/:id/preview (HU-019, T-019-04, CA1, CA2, RF-019, RS-002, RNF-008, RNF-009)
+  router.post(
+    '/:id/preview',
+    deps.authenticate,
+    deps.requirePermission('plantilla.editar', 'GLOBAL'),
+    validateRequest({ params: templateIdParamsSchema, body: previewTemplateRequestSchema }),
+    deps.controller.previewTemplate,
   );
 
   return router;

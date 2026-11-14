@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { InvalidTemplateDataError } from '../errors/index.js';
-import { validateTemplateContent } from './template-content-policy.js';
+import { validateTemplateContent, validateTemplateStructure } from './template-content-policy.js';
 
 const KEYS = ['program.name', 'logo.url', 'minutes.number'];
 
@@ -168,6 +168,17 @@ describe('validateTemplateContent (T-018-21, D8)', () => {
     it('rejects every variable when the template declares none', () => {
       rejects('<p>{{program.name}}</p>', []);
       accepts('<p>sin variables</p>', []);
+    });
+  });
+
+  describe('validateTemplateStructure', () => {
+    it('validates structure without checking variables', () => {
+      expect(() =>
+        validateTemplateStructure('<p>{{unknown.key}} {{}} {{sinCerrar</p>'),
+      ).not.toThrow();
+      expect(() => validateTemplateStructure('<script>alert(1)</script>')).toThrow(
+        InvalidTemplateDataError,
+      );
     });
   });
 });

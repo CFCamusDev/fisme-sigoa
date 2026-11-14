@@ -12,6 +12,7 @@ export interface PdfRenderOptions {
   headerTemplate?: string;
   footerTemplate?: string;
   displayHeaderFooter?: boolean;
+  preferCSSPageSize?: boolean;
 }
 
 export interface PdfRenderInput {

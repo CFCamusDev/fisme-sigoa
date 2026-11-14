@@ -1,5 +1,5 @@
-import { TEMPLATE_VARIABLE_KEY_PATTERN } from '@sigoa/shared';
 import { InvalidTemplateDataError } from '../errors/invalid-template-data-error.js';
+import { detectUnrecognizedVariables } from './unrecognized-variable-detector.js';
 
 /**
  * Política de contenido seguro de una plantilla (HU-018, RS-063). Rechaza, no sanea: el
@@ -46,7 +46,6 @@ const OPEN_TAG_PATTERN =
 const CLOSE_TAG_PATTERN = /<\/[a-zA-Z][a-zA-Z0-9:-]*\s*>/g;
 const ATTRIBUTE_PATTERN = /([^\s"'<>/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'<>=`]+)))?/g;
 const STYLE_BLOCK_PATTERN = /<style\b[^>]*>([\s\S]*?)<\/style\s*>/gi;
-const VARIABLE_PATTERN = /\{\{([\s\S]*?)\}\}/g;
 const SAFE_DATA_IMAGE_PATTERN = /^data:image\/(png|jpeg|gif|webp);base64,[a-z0-9+/=]+$/;
 const WHOLE_VARIABLE_PATTERN = /^\{\{[^{}]+\}\}$/;
 
@@ -194,21 +193,22 @@ function assertSafeStructure(content: string): void {
 }
 
 function assertAllowedVariables(content: string, allowedKeys: readonly string[]): void {
-  const allowed = new Set(allowedKeys);
-  const unknown: string[] = [];
-  for (const match of content.matchAll(VARIABLE_PATTERN)) {
-    const key = match[1] ?? '';
-    if (!TEMPLATE_VARIABLE_KEY_PATTERN.test(key) || !allowed.has(key)) {
-      unknown.push(key.trim() === '' ? '(vacía)' : key.trim());
-    }
-  }
-  if (unknown.length > 0) {
-    const shown = [...new Set(unknown)].slice(0, 5).join(', ');
+  const { unrecognized, hasUnclosed } = detectUnrecognizedVariables(content, allowedKeys);
+  if (unrecognized.length > 0) {
+    const shown = unrecognized.slice(0, 5).join(', ');
     fail(`El contenido usa variables que la plantilla no permite: ${shown}.`);
   }
-  if (content.replace(VARIABLE_PATTERN, '').includes('{{')) {
+  if (hasUnclosed) {
     fail('El contenido tiene una variable sin cerrar ({{ sin }}).');
   }
+}
+
+/**
+ * Valida únicamente la estructura HTML/CSS y enlaces del contenido sin comprobar variables.
+ * Útil en vista previa, donde las variables desconocidas se avisan pero no bloquean.
+ */
+export function validateTemplateStructure(content: string): void {
+  assertSafeStructure(content);
 }
 
 /**
@@ -216,6 +216,6 @@ function assertAllowedVariables(content: string, allowedKeys: readonly string[])
  * en español ante etiquetas, atributos, enlaces o variables no permitidos.
  */
 export function validateTemplateContent(content: string, allowedKeys: readonly string[]): void {
-  assertSafeStructure(content);
+  validateTemplateStructure(content);
   assertAllowedVariables(content, allowedKeys);
 }

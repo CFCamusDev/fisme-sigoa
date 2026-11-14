@@ -66,7 +66,7 @@ export const templateVariablesSchema = z
     'Las claves de las variables no pueden repetirse',
   );
 
-const templateContentSchema = z
+export const templateContentSchema = z
   .string()
   .max(
     TEMPLATE_CONTENT_MAX_LENGTH,
@@ -171,3 +171,20 @@ export const listTemplatesResponseSchema = z
   })
   .strict();
 export type ListTemplatesResponse = z.infer<typeof listTemplatesResponseSchema>;
+
+export const templatePreviewWarningSchema = z
+  .object({ variable: z.string().min(1).max(80) })
+  .strict();
+export type TemplatePreviewWarning = z.infer<typeof templatePreviewWarningSchema>;
+
+/** Previsualizar una plantilla (HU-019): envía el HTML actual del editor. */
+export const previewTemplateRequestSchema = z.object({ content: templateContentSchema }).strict();
+export type PreviewTemplateRequest = z.infer<typeof previewTemplateRequestSchema>;
+
+export const previewTemplateResponseSchema = z
+  .object({
+    pdfBase64: z.string().min(1),
+    warnings: z.array(templatePreviewWarningSchema).max(100),
+  })
+  .strict();
+export type PreviewTemplateResponse = z.infer<typeof previewTemplateResponseSchema>;

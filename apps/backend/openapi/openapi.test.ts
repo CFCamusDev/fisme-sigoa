@@ -62,9 +62,12 @@ import {
   registerResolutionRequestSchema,
   resolutionDtoSchema,
   listTemplatesResponseSchema,
+  previewTemplateRequestSchema,
+  previewTemplateResponseSchema,
   publishTemplateRequestSchema,
   saveTemplateDraftRequestSchema,
   templateDetailDtoSchema,
+  templatePreviewWarningSchema,
   templateSummaryDtoSchema,
   templateVariableSchema,
   templateVersionDtoSchema,
@@ -2350,6 +2353,12 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
           'publishTemplate',
           ['200', '400', '401', '403', '404', '409'],
         ],
+        [
+          '/templates/{id}/preview',
+          'post',
+          'previewTemplate',
+          ['200', '400', '401', '403', '404', '409'],
+        ],
       ];
       for (const [route, method, operationId, codes] of expectations) {
         const op = spec.paths[route][method];
@@ -2395,6 +2404,18 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
       expect(templateVersionDtoSchema.safeParse(published).success).toBe(true);
       expect(published.status).toBe('PUBLISHED');
       expect(published.publishedAt).not.toBeNull();
+
+      const preview = spec.paths['/templates/{id}/preview'].post;
+      expect(
+        previewTemplateRequestSchema.safeParse(
+          preview.requestBody.content['application/json'].example,
+        ).success,
+      ).toBe(true);
+      expect(
+        previewTemplateResponseSchema.safeParse(
+          preview.responses['200'].content['application/json'].example,
+        ).success,
+      ).toBe(true);
     });
 
     it('documents the id parameter, the list filters and the pagination limits', () => {
@@ -2402,6 +2423,7 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
         ['/templates/{id}', 'get'],
         ['/templates/{id}/draft', 'put'],
         ['/templates/{id}/publish', 'post'],
+        ['/templates/{id}/preview', 'post'],
       ] as const) {
         expect(spec.paths[route][method].parameters[0]).toMatchObject({
           name: 'id',
@@ -2432,6 +2454,9 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
         ['ListTemplatesResponse', listTemplatesResponseSchema],
         ['SaveTemplateDraftRequest', saveTemplateDraftRequestSchema],
         ['PublishTemplateRequest', publishTemplateRequestSchema],
+        ['PreviewTemplateRequest', previewTemplateRequestSchema],
+        ['TemplatePreviewWarning', templatePreviewWarningSchema],
+        ['PreviewTemplateResponse', previewTemplateResponseSchema],
       ];
       for (const [name, zodSchema] of pairs) {
         const schema = spec.components.schemas[name];
@@ -2458,6 +2483,7 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
           getTemplate: vi.fn(),
           saveDraft: vi.fn(),
           publishTemplate: vi.fn(),
+          previewTemplate: vi.fn(),
         } as unknown as TemplatesController,
         authenticate: vi.fn(),
         requirePermission: vi.fn(() => vi.fn()),
@@ -2477,6 +2503,7 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
       expect(routerEndpoints.sort()).toEqual([
         'get /templates',
         'get /templates/:id',
+        'post /templates/:id/preview',
         'post /templates/:id/publish',
         'put /templates/:id/draft',
       ]);

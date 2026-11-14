@@ -7114,6 +7114,159 @@
           }
         }
       }
+    },
+    "/templates/{id}/preview": {
+      "post": {
+        "tags": ["Templates"],
+        "summary": "Previsualizar una plantilla en PDF con datos de ejemplo",
+        "description": "Genera la vista previa en PDF (Puppeteer) del contenido enviado en el cuerpo usando datos ficticios de ejemplo y el pie de página de documento no oficial. Las variables no reconocidas se devuelven como avisos sin bloquear la generación; las etiquetas o enlaces inseguros siguen rechazándose con 400. No persiste ni audita porque no modifica estado. Limita a una vista previa en vuelo por usuario (409). Requiere el permiso 'plantilla.editar' con alcance GLOBAL (HU-019, RF-019, RS-002, RS-063).",
+        "operationId": "previewTemplate",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "description": "Identificador de la plantilla."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewTemplateRequest"
+              },
+              "example": {
+                "content": "<p>{{program.name}} {{unknown.key}}</p>"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "PDF generado con datos de ejemplo y lista de avisos de variables no reconocidas.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché HTTP."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreviewTemplateResponse"
+                },
+                "example": {
+                  "pdfBase64": "JVBERi0xLjQK...",
+                  "warnings": [
+                    {
+                      "variable": "unknown.key"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Contenido vacío, excede 40 000 caracteres, campo desconocido, identificador inválido o HTML no permitido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Los datos de la solicitud no son válidos.",
+                    "requestId": "req_tpl_preview_400"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o token de acceso inválido o expirado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado",
+                    "requestId": "req_tpl_preview_401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere el permiso 'plantilla.editar' con alcance GLOBAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tiene permisos para realizar esta acción",
+                    "requestId": "req_tpl_preview_403"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La plantilla no existe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "Plantilla no encontrada.",
+                    "requestId": "req_tpl_preview_404"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "El usuario ya tiene una vista previa en curso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "Ya hay una vista previa en curso. Espera a que termine.",
+                    "requestId": "req_tpl_preview_409"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -9190,6 +9343,52 @@
             "type": "string",
             "format": "date-time",
             "description": "Fecha de última actualización del Borrador cuando se revisó."
+          }
+        }
+      },
+      "PreviewTemplateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["content"],
+        "properties": {
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40000,
+            "description": "HTML actual del editor a previsualizar; no puede ser solo espacios."
+          }
+        }
+      },
+      "TemplatePreviewWarning": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["variable"],
+        "properties": {
+          "variable": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "description": "Variable no reconocida encontrada en el contenido."
+          }
+        }
+      },
+      "PreviewTemplateResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["pdfBase64", "warnings"],
+        "properties": {
+          "pdfBase64": {
+            "type": "string",
+            "minLength": 1,
+            "description": "PDF generado en base64."
+          },
+          "warnings": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "$ref": "#/components/schemas/TemplatePreviewWarning"
+            },
+            "description": "Avisos de variables no reconocidas."
           }
         }
       }

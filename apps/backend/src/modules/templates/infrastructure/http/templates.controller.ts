@@ -1,6 +1,7 @@
 import type { Request, RequestHandler } from 'express';
 import type {
   ListTemplatesQuery,
+  PreviewTemplateRequest,
   PublishTemplateRequest,
   SaveTemplateDraftRequest,
   TemplateIdParams,
@@ -11,6 +12,7 @@ import { getValidated } from '../../../../shared/middleware/validate-request.js'
 import type { EditTemplateUseCase } from '../../application/edit-template.js';
 import type { GetTemplateDetailUseCase } from '../../application/get-template-detail.js';
 import type { ListTemplatesUseCase } from '../../application/list-templates.js';
+import type { PreviewTemplateUseCase } from '../../application/preview-template.js';
 import type { PublishTemplateUseCase } from '../../application/publish-template.js';
 
 export interface TemplatesControllerDependencies {
@@ -18,6 +20,7 @@ export interface TemplatesControllerDependencies {
   readonly getTemplateDetailUseCase: GetTemplateDetailUseCase;
   readonly editTemplateUseCase: EditTemplateUseCase;
   readonly publishTemplateUseCase: PublishTemplateUseCase;
+  readonly previewTemplateUseCase: PreviewTemplateUseCase;
 }
 
 function resolveActorId(req: Request): string {
@@ -39,12 +42,14 @@ export class TemplatesController {
   private readonly getTemplateDetailUseCase: GetTemplateDetailUseCase;
   private readonly editTemplateUseCase: EditTemplateUseCase;
   private readonly publishTemplateUseCase: PublishTemplateUseCase;
+  private readonly previewTemplateUseCase: PreviewTemplateUseCase;
 
   constructor(deps: TemplatesControllerDependencies) {
     this.listTemplatesUseCase = deps.listTemplatesUseCase;
     this.getTemplateDetailUseCase = deps.getTemplateDetailUseCase;
     this.editTemplateUseCase = deps.editTemplateUseCase;
     this.publishTemplateUseCase = deps.publishTemplateUseCase;
+    this.previewTemplateUseCase = deps.previewTemplateUseCase;
   }
 
   /** `201` si se creó el Borrador; `200` si se actualizó o no cambió (idempotente, D1). */
@@ -115,6 +120,24 @@ export class TemplatesController {
       const { id: templateId } = req.params as TemplateIdParams;
 
       const response = await this.getTemplateDetailUseCase.execute({ actorId, templateId });
+
+      res.setHeader('Cache-Control', 'no-store').status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  previewTemplate: RequestHandler = async (req, res, next) => {
+    try {
+      const actorId = resolveActorId(req);
+      const { id: templateId } = req.params as TemplateIdParams;
+      const body = req.body as PreviewTemplateRequest;
+
+      const response = await this.previewTemplateUseCase.execute({
+        actorId,
+        templateId,
+        content: body.content,
+      });
 
       res.setHeader('Cache-Control', 'no-store').status(200).json(response);
     } catch (error) {
