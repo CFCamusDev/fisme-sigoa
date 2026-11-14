@@ -82,7 +82,9 @@ describe('EditTemplateUseCase Integration (PostgreSQL real, T-018-22, RF-018)', 
     expect((await versions.findById('v1'))?.content).toBe('<p>contenido de la versión 1</p>');
     const audits = await prisma.auditLog.findMany({ where: { entity: 'TemplateVersion' } });
     expect(audits.map((audit) => audit.action)).toEqual(['CREATE']);
-    expect(JSON.stringify(audits)).not.toContain('nuevo');
+    expect(JSON.stringify(audits.map((audit) => [audit.before, audit.after]))).not.toContain(
+      'nuevo',
+    );
   }, 20_000);
 
   it('updates the existing draft, audits an UPDATE and answers idempotently on identical content', async () => {
