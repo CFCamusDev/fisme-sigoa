@@ -302,6 +302,32 @@ const PROTECTED_ENDPOINTS: readonly ProtectedEndpointSpec[] = [
     requestPath: '/resolutions/resolution_target_1/approve',
     requiredPermission: 'resolucion.aprobar',
   },
+  {
+    method: 'get',
+    openApiPath: '/templates',
+    requestPath: '/templates',
+    requiredPermission: 'plantilla.ver',
+  },
+  {
+    method: 'get',
+    openApiPath: '/templates/{id}',
+    requestPath: '/templates/template_target_1',
+    requiredPermission: 'plantilla.ver',
+  },
+  {
+    method: 'put',
+    openApiPath: '/templates/{id}/draft',
+    requestPath: '/templates/template_target_1/draft',
+    requiredPermission: 'plantilla.editar',
+    sampleBody: { content: '<p>Contenido de muestra</p>' },
+  },
+  {
+    method: 'post',
+    openApiPath: '/templates/{id}/publish',
+    requestPath: '/templates/template_target_1/publish',
+    requiredPermission: 'plantilla.publicar',
+    sampleBody: { versionId: 'version_target_1', expectedUpdatedAt: '2026-11-05T10:00:00.000Z' },
+  },
 ];
 
 describe('Protected Endpoints 403 Coverage & OpenAPI Drift Guard (PostgreSQL real, HU-008, T-008-06, CA1, RF-008, RNF-009, D11)', () => {
