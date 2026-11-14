@@ -41,6 +41,11 @@ export interface SendToValidationInput {
   now?: Date;
 }
 
+export interface LifecycleInput {
+  actorId: string;
+  now?: Date;
+}
+
 export class CatalogVersion {
   private constructor(private readonly props: CatalogVersionProperties) {}
 
@@ -129,6 +134,43 @@ export class CatalogVersion {
     return CatalogVersion.create({
       ...this.props,
       status: 'IN_VALIDATION',
+      updatedBy: input.actorId,
+      updatedAt: input.now ?? new Date(),
+    });
+  }
+
+  /**
+   * En validación → Aprobada (vigente) al aprobarse su resolución (RF-016). Devuelve una versión
+   * nueva; lanza `InvalidCatalogTransitionError` si el estado no lo permite.
+   */
+  public activate(input: LifecycleInput): CatalogVersion {
+    assertTransition({
+      from: this.props.status,
+      to: 'APPROVED',
+      objectiveCount: 0,
+      attributeCount: 0,
+      approvedResolution: true,
+    });
+    return CatalogVersion.create({
+      ...this.props,
+      status: 'APPROVED',
+      updatedBy: input.actorId,
+      updatedAt: input.now ?? new Date(),
+    });
+  }
+
+  /** Aprobada → Histórica cuando otra versión pasa a ser la vigente (RF-016). */
+  public supersede(input: LifecycleInput): CatalogVersion {
+    assertTransition({
+      from: this.props.status,
+      to: 'HISTORICAL',
+      objectiveCount: 0,
+      attributeCount: 0,
+      approvedResolution: false,
+    });
+    return CatalogVersion.create({
+      ...this.props,
+      status: 'HISTORICAL',
       updatedBy: input.actorId,
       updatedAt: input.now ?? new Date(),
     });
