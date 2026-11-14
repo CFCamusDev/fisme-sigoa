@@ -1,4 +1,4 @@
-import type { TemplateVariable } from '@sigoa/shared';
+import type { TemplateVariableDto } from '@sigoa/shared';
 import type { TemplateRenderData } from './template-renderer.js';
 
 const SAMPLE_COLLECTION_SIZE = 3;
@@ -42,7 +42,7 @@ function extractSrcVariableKeys(content: string): Set<string> {
  */
 export function buildTemplateSampleData(
   content: string,
-  variables: readonly TemplateVariable[],
+  variables: readonly TemplateVariableDto[],
 ): TemplateRenderData {
   const collectionNames = extractCollectionNames(content);
   const srcKeys = extractSrcVariableKeys(content);
