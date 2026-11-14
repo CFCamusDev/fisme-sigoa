@@ -11,6 +11,7 @@ import {
 } from '@/test/template-fixtures';
 import { getTemplate } from './get-template';
 import { getTemplates } from './get-templates';
+import { previewTemplate } from './preview-template';
 import { publishTemplate } from './publish-template';
 import { saveTemplateDraft } from './save-template-draft';
 
@@ -174,5 +175,36 @@ describe('publishTemplate (T-018-18, RF-018, CA2)', () => {
     await expect(
       publishTemplate('tpl-1', { versionId: 'ver-2', expectedUpdatedAt: DRAFT_UPDATED_AT }),
     ).rejects.toMatchObject({ status: 409 });
+  });
+});
+
+describe('previewTemplate (T-019-06, RF-019)', () => {
+  it('posts content and parses the pdf base64 and warnings', async () => {
+    let body: unknown;
+    server.use(
+      http.post(`${BASE}/tpl-1/preview`, async ({ request }) => {
+        body = await request.json();
+        return HttpResponse.json({
+          pdfBase64: 'JVBERi0xLjQK',
+          warnings: [{ variable: 'unknown.key' }],
+        });
+      }),
+    );
+
+    const preview = await previewTemplate('tpl-1', { content: '<p>{{unknown.key}}</p>' });
+
+    expect(body).toEqual({ content: '<p>{{unknown.key}}</p>' });
+    expect(preview).toEqual({
+      pdfBase64: 'JVBERi0xLjQK',
+      warnings: [{ variable: 'unknown.key' }],
+    });
+  });
+
+  it('rejects a response that does not match the preview schema', async () => {
+    server.use(
+      http.post(`${BASE}/tpl-1/preview`, () => HttpResponse.json({ pdfBase64: '', warnings: [] })),
+    );
+
+    await expect(previewTemplate('tpl-1', { content: '<p>ok</p>' })).rejects.toThrow();
   });
 });
