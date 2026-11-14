@@ -94,6 +94,77 @@ describe('GetCatalogVersionDetailUseCase (HU-014, D8, RF-014)', () => {
     expect(JSON.stringify(detail)).not.toContain('user-9');
   });
 
+  it('includes the resolution and validity dates of a historical version', async () => {
+    const historical = CatalogVersion.create({
+      id: 'v1',
+      programId: 'p1',
+      number: 1,
+      status: 'HISTORICAL',
+      basedOnVersionId: null,
+      createdAt: NOW,
+      updatedAt: NOW,
+    });
+    const current = CatalogVersion.create({
+      id: 'v2',
+      programId: 'p1',
+      number: 2,
+      status: 'APPROVED',
+      basedOnVersionId: 'v1',
+      createdAt: NOW,
+      updatedAt: NOW,
+    });
+    versionReader.findById.mockResolvedValue(historical);
+    versionReader.list.mockResolvedValue([current, historical]);
+    historyReader.listForProgram.mockResolvedValue(
+      new Map([
+        [
+          'v1',
+          [
+            {
+              id: 'r1',
+              type: 'EDUCATIONAL_OBJECTIVE' as const,
+              number: '128-2024',
+              issuedOn: new Date('2024-02-20T00:00:00.000Z'),
+              status: 'APPROVED' as const,
+              approvedAt: new Date('2024-03-01T10:00:00.000Z'),
+              hasPdf: false,
+            },
+          ],
+        ],
+        [
+          'v2',
+          [
+            {
+              id: 'r2',
+              type: 'GRADUATE_ATTRIBUTE' as const,
+              number: '210-2026',
+              issuedOn: new Date('2026-05-02T00:00:00.000Z'),
+              status: 'APPROVED' as const,
+              approvedAt: new Date('2026-05-10T09:00:00.000Z'),
+              hasPdf: true,
+            },
+          ],
+        ],
+      ]),
+    );
+
+    const detail = await useCase.execute({ actorId: 'user-1', versionId: 'v1' });
+
+    expect(detail.history.validFrom).toBe('2024-03-01T10:00:00.000Z');
+    expect(detail.history.validUntil).toBe('2026-05-10T09:00:00.000Z');
+    expect(detail.history.resolutions).toEqual([
+      {
+        id: 'r1',
+        type: 'EDUCATIONAL_OBJECTIVE',
+        number: '128-2024',
+        issuedOn: '2024-02-20',
+        status: 'APPROVED',
+        approvedAt: '2024-03-01T10:00:00.000Z',
+        hasPdf: false,
+      },
+    ]);
+  });
+
   it('answers not found for a version that does not exist', async () => {
     versionReader.findById.mockResolvedValue(null);
 
