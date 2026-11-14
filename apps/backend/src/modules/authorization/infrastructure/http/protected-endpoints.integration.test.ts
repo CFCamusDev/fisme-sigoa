@@ -328,6 +328,13 @@ const PROTECTED_ENDPOINTS: readonly ProtectedEndpointSpec[] = [
     requiredPermission: 'plantilla.publicar',
     sampleBody: { versionId: 'version_target_1', expectedUpdatedAt: '2026-11-05T10:00:00.000Z' },
   },
+  {
+    method: 'post',
+    openApiPath: '/templates/{id}/preview',
+    requestPath: '/templates/template_target_1/preview',
+    requiredPermission: 'plantilla.editar',
+    sampleBody: { content: '<p>Contenido de muestra</p>' },
+  },
 ];
 
 describe('Protected Endpoints 403 Coverage & OpenAPI Drift Guard (PostgreSQL real, HU-008, T-008-06, CA1, RF-008, RNF-009, D11)', () => {
