@@ -103,8 +103,16 @@ export type ListTemplatesQuery = z.infer<typeof listTemplatesQuerySchema>;
 export const saveTemplateDraftRequestSchema = z.object({ content: templateContentSchema }).strict();
 export type SaveTemplateDraftRequest = z.infer<typeof saveTemplateDraftRequestSchema>;
 
-/** Publicar lleva el borrador que el administrador vio (D7): si cambió, el servidor responde 409. */
-export const publishTemplateRequestSchema = z.object({ versionId: templateIdSchema }).strict();
+/**
+ * Publicar lleva el borrador que el administrador vio (D7) y la fecha de su última actualización:
+ * si el contenido cambió desde entonces, el servidor responde 409.
+ */
+export const publishTemplateRequestSchema = z
+  .object({
+    versionId: templateIdSchema,
+    expectedUpdatedAt: z.string().datetime({ message: 'La fecha esperada debe ser una fecha ISO' }),
+  })
+  .strict();
 export type PublishTemplateRequest = z.infer<typeof publishTemplateRequestSchema>;
 
 /** `publishedAt` es nulo mientras la versión es Borrador, como en la base de datos. */

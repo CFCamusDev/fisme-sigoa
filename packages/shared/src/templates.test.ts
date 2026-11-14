@@ -138,19 +138,36 @@ describe('template schemas (T-018-13, RF-018)', () => {
   });
 
   describe('publish request', () => {
-    it('accepts a version id and trims it', () => {
-      expect(publishTemplateRequestSchema.parse({ versionId: ' v2 ' })).toEqual({
-        versionId: 'v2',
-      });
+    const publish = { versionId: 'v2', expectedUpdatedAt: ISO };
+
+    it('accepts a version id with the expected update time and trims the id', () => {
+      expect(publishTemplateRequestSchema.parse({ ...publish, versionId: ' v2 ' })).toEqual(
+        publish,
+      );
     });
 
     it('rejects an empty or oversized version id, a missing one and unknown fields', () => {
-      expect(publishTemplateRequestSchema.safeParse({ versionId: '' }).success).toBe(false);
-      expect(publishTemplateRequestSchema.safeParse({ versionId: 'a'.repeat(65) }).success).toBe(
+      expect(publishTemplateRequestSchema.safeParse({ ...publish, versionId: '' }).success).toBe(
         false,
       );
-      expect(publishTemplateRequestSchema.safeParse({ versionId: 'v', x: 1 }).success).toBe(false);
-      expect(publishTemplateRequestSchema.safeParse({}).success).toBe(false);
+      expect(
+        publishTemplateRequestSchema.safeParse({ ...publish, versionId: 'a'.repeat(65) }).success,
+      ).toBe(false);
+      expect(publishTemplateRequestSchema.safeParse({ ...publish, x: 1 }).success).toBe(false);
+      expect(publishTemplateRequestSchema.safeParse({ expectedUpdatedAt: ISO }).success).toBe(
+        false,
+      );
+    });
+
+    it('requires the expected update time as an ISO date', () => {
+      expect(publishTemplateRequestSchema.safeParse({ versionId: 'v2' }).success).toBe(false);
+      expect(
+        publishTemplateRequestSchema.safeParse({ ...publish, expectedUpdatedAt: '14/11/2026' })
+          .success,
+      ).toBe(false);
+      expect(
+        publishTemplateRequestSchema.safeParse({ ...publish, expectedUpdatedAt: '' }).success,
+      ).toBe(false);
     });
   });
 
