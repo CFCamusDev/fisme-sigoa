@@ -3,6 +3,8 @@ import {
   TEMPLATE_CONTENT_MAX_LENGTH,
   listTemplatesQuerySchema,
   listTemplatesResponseSchema,
+  previewTemplateRequestSchema,
+  previewTemplateResponseSchema,
   publishTemplateRequestSchema,
   saveTemplateDraftRequestSchema,
   templateDetailDtoSchema,
@@ -226,6 +228,65 @@ describe('template schemas (T-018-13, RF-018)', () => {
       expect(listTemplatesResponseSchema.safeParse(response).success).toBe(true);
       expect(listTemplatesResponseSchema.safeParse({ ...response, total: -1 }).success).toBe(false);
       expect(listTemplatesResponseSchema.safeParse({ ...response, page: 0 }).success).toBe(false);
+    });
+  });
+
+  describe('preview template schemas (T-019-03, RF-019)', () => {
+    it('validates preview request limits and rejects unknown fields', () => {
+      expect(
+        previewTemplateRequestSchema.safeParse({
+          content: 'a'.repeat(TEMPLATE_CONTENT_MAX_LENGTH),
+        }).success,
+      ).toBe(true);
+      expect(
+        previewTemplateRequestSchema.safeParse({
+          content: 'a'.repeat(TEMPLATE_CONTENT_MAX_LENGTH + 1),
+        }).success,
+      ).toBe(false);
+      expect(previewTemplateRequestSchema.safeParse({ content: '   ' }).success).toBe(false);
+      expect(
+        previewTemplateRequestSchema.safeParse({ content: '<p>ok</p>', extra: true }).success,
+      ).toBe(false);
+    });
+
+    it('validates preview response with warnings and rejects out-of-bounds payloads', () => {
+      expect(
+        previewTemplateResponseSchema.safeParse({
+          pdfBase64: 'JVBERi0xLjQ=',
+          warnings: [],
+        }).success,
+      ).toBe(true);
+      expect(
+        previewTemplateResponseSchema.safeParse({
+          pdfBase64: 'JVBERi0xLjQ=',
+          warnings: [{ variable: 'unknown.key' }],
+        }).success,
+      ).toBe(true);
+      expect(
+        previewTemplateResponseSchema.safeParse({
+          pdfBase64: '',
+          warnings: [],
+        }).success,
+      ).toBe(false);
+      expect(
+        previewTemplateResponseSchema.safeParse({
+          pdfBase64: 'JVBERi0xLjQ=',
+          warnings: [{ variable: 'x'.repeat(81) }],
+        }).success,
+      ).toBe(false);
+      expect(
+        previewTemplateResponseSchema.safeParse({
+          pdfBase64: 'JVBERi0xLjQ=',
+          warnings: Array.from({ length: 101 }, (_, i) => ({ variable: `v${i}` })),
+        }).success,
+      ).toBe(false);
+      expect(
+        previewTemplateResponseSchema.safeParse({
+          pdfBase64: 'JVBERi0xLjQ=',
+          warnings: [],
+          extra: 1,
+        }).success,
+      ).toBe(false);
     });
   });
 });
