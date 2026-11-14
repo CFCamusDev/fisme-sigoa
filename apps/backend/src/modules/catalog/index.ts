@@ -2,6 +2,7 @@ import { Router, type RequestHandler } from 'express';
 import type { AuditLogger } from '../../shared/audit/audit-logger.js';
 import type { DbProvider } from '../../shared/prisma/prisma-unit-of-work.js';
 import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
+import { CompareCatalogVersionsUseCase } from './application/compare-catalog-versions.js';
 import { CreateCatalogVersionUseCase } from './application/create-catalog-version.js';
 import { GetCatalogVersionDetailUseCase } from './application/get-catalog-version-detail.js';
 import { ListCatalogVersionsUseCase } from './application/list-catalog-versions.js';
@@ -116,6 +117,14 @@ export function createCatalogVersionsModule(deps?: CatalogModuleDependencies): R
     permissionChecker: deps.permissionChecker,
   });
 
+  const compareCatalogVersionsUseCase = new CompareCatalogVersionsUseCase({
+    versionReader: versionRepository,
+    objectiveReader: objectiveRepository,
+    attributeReader: attributeRepository,
+    historyReader,
+    permissionChecker: deps.permissionChecker,
+  });
+
   const sendCatalogVersionToValidationUseCase = new SendCatalogVersionToValidationUseCase({
     versionRepository,
     objectiveReader: objectiveRepository,
@@ -132,6 +141,7 @@ export function createCatalogVersionsModule(deps?: CatalogModuleDependencies): R
     saveGraduateAttributeUseCase,
     reorderCatalogItemsUseCase,
     getCatalogVersionDetailUseCase,
+    compareCatalogVersionsUseCase,
   });
 
   return createCatalogVersionsRouter({

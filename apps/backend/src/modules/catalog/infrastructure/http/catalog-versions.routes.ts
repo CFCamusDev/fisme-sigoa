@@ -1,6 +1,8 @@
 import { Router, type RequestHandler } from 'express';
 import {
   catalogAttributesRequestSchema,
+  catalogComparisonParamsSchema,
+  catalogComparisonQuerySchema,
   catalogItemsQuerySchema,
   catalogObjectivesRequestSchema,
   catalogVersionIdParamsSchema,
@@ -58,6 +60,16 @@ export function createCatalogVersionsRouter(deps: CatalogVersionsRouterDependenc
     deps.requirePermission('catalogo.ver', 'GLOBAL'),
     validateRequest({ params: catalogVersionIdParamsSchema, query: catalogItemsQuerySchema }),
     deps.itemsController.getVersionDetail,
+  );
+
+  // GET /catalog-versions/:baseId/compare/:targetId (HU-017, T-017-04, CA1, RF-017, RS-002, RNF-008, RNF-009)
+  // Cadena obligatoria: authenticate -> requirePermission -> validateRequest -> controller
+  router.get(
+    '/:baseId/compare/:targetId',
+    deps.authenticate,
+    deps.requirePermission('catalogo.ver', 'GLOBAL'),
+    validateRequest({ params: catalogComparisonParamsSchema, query: catalogComparisonQuerySchema }),
+    deps.itemsController.compareVersions,
   );
 
   // PUT /catalog-versions/:id/objectives (HU-014, T-014-06, CA1-CA3, RF-014, RS-020, RNF-008, RNF-009)
