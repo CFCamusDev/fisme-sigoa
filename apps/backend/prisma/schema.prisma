@@ -154,6 +154,8 @@ model StoredFile {
   sha256    String
   createdAt DateTime @default(now())
 
+  resolution Resolution?
+
   @@unique([provider, publicId])
   @@map("stored_files")
 }
@@ -453,11 +455,12 @@ model CatalogVersion {
   createdAt        DateTime             @default(now())
   updatedAt        DateTime             @updatedAt
 
-  program         Program          @relation(fields: [programId], references: [id], onDelete: Restrict)
-  basedOnVersion  CatalogVersion?  @relation("CatalogVersionOrigin", fields: [basedOnVersionId], references: [id], onDelete: Restrict)
-  derivedVersions CatalogVersion[] @relation("CatalogVersionOrigin")
+  program         Program                @relation(fields: [programId], references: [id], onDelete: Restrict)
+  basedOnVersion  CatalogVersion?        @relation("CatalogVersionOrigin", fields: [basedOnVersionId], references: [id], onDelete: Restrict)
+  derivedVersions CatalogVersion[]       @relation("CatalogVersionOrigin")
   objectives      EducationalObjective[]
   attributes      GraduateAttribute[]
+  resolutions     Resolution[]
 
   @@unique([programId, number])
   @@index([programId, status])
@@ -501,4 +504,42 @@ model GraduateAttribute {
   @@unique([versionId, order])
   @@index([versionId])
   @@map("graduate_attributes")
+}
+
+// ==============================================================================
+// RESOLUCIONES (HU-048, RF-048, RN-063, RN-064)
+// ==============================================================================
+
+enum ResolutionType {
+  EDUCATIONAL_OBJECTIVE
+  GRADUATE_ATTRIBUTE
+  IMPROVEMENT_PLAN
+}
+
+enum ResolutionStatus {
+  REGISTERED
+  APPROVED
+}
+
+model Resolution {
+  id               String           @id @default(cuid())
+  type             ResolutionType
+  number           String
+  issuedOn         DateTime         @db.Date
+  status           ResolutionStatus @default(REGISTERED)
+  catalogVersionId String?
+  pdfFileId        String?          @unique
+  approvedAt       DateTime?
+  approvedBy       String?
+  createdBy        String
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  catalogVersion CatalogVersion? @relation(fields: [catalogVersionId], references: [id], onDelete: Restrict)
+  pdfFile        StoredFile?     @relation(fields: [pdfFileId], references: [id], onDelete: Restrict)
+
+  @@unique([number, type])
+  @@unique([catalogVersionId, type])
+  @@index([status])
+  @@map("resolutions")
 }

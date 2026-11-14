@@ -11,3 +11,4 @@ export * from './parameter.js';
 export * from './response-scale.js';
 export * from './catalog-version.js';
 export * from './catalog-items.js';
+export * from './resolutions.js';

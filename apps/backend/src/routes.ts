@@ -4,6 +4,8 @@ import type { UnitOfWork } from './shared/unit-of-work/unit-of-work.js';
 import type { DbProvider } from './shared/prisma/prisma-unit-of-work.js';
 import type { Env } from './config/env.js';
 import type { Logger } from './shared/logger/logger.js';
+import { createFileStorage } from './shared/storage/create-file-storage.js';
+import type { FileStorage } from './shared/storage/file-storage.js';
 import {
   createEmailSender,
   type EmailSender,
@@ -24,6 +26,10 @@ import {
   createUserAccessModule,
 } from './modules/authorization/index.js';
 import { createCatalogVersionsModule } from './modules/catalog/index.js';
+import {
+  createResolutionsModule,
+  type ResolutionApprovedSubscriber,
+} from './modules/resolutions/index.js';
 import { createUsersModule, EmailActivationSender } from './modules/users/index.js';
 import {
   LoginAttemptsParameterProvider,
@@ -42,6 +48,9 @@ export interface AppRoutesDependencies {
   dbProvider: DbProvider;
   env: Env;
   emailSender?: EmailSender;
+  fileStorage?: FileStorage;
+  /** Suscriptores de `ResolutionApproved` (HU-016 registra el suyo aquí, D6 del tramo 2 de HU-048). */
+  resolutionApprovedSubscribers?: readonly ResolutionApprovedSubscriber[];
   logger?: Logger;
   clock?: () => Date;
   detachedTaskRunner?: DetachedTaskRunner;
@@ -220,6 +229,21 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
       authenticate: authServices.authenticate,
       requirePermission: authorizationServices.requirePermission,
       permissionChecker: authorizationServices.authorizer,
+      clock: deps.clock,
+    }),
+  );
+  app.use(
+    '/resolutions',
+    createResolutionsModule({
+      unitOfWork: deps.unitOfWork,
+      auditLogger: deps.auditLogger,
+      dbProvider: deps.dbProvider,
+      authenticate: authServices.authenticate,
+      requirePermission: authorizationServices.requirePermission,
+      permissionChecker: authorizationServices.authorizer,
+      fileStorage: deps.fileStorage ?? createFileStorage(deps.env),
+      resolutionApprovedSubscribers: deps.resolutionApprovedSubscribers ?? [],
+      logger: deps.logger,
       clock: deps.clock,
     }),
   );
