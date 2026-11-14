@@ -122,6 +122,15 @@ export const TEMPLATE_VARIABLE_LABELS: Readonly<Record<string, string>> = {
   'courses.credits': 'Créditos',
   'courses.mark': 'Marca de alineamiento',
 
+  // Encuestas
+  'scale.levels.label': 'Etiqueta del nivel de la escala de respuesta',
+
+  // Instrumentos de evaluación
+  'evaluation.student': 'Estudiante evaluado',
+  'evaluation.course': 'Asignatura evaluada',
+  'evaluation.date': 'Fecha de evaluación',
+  'evaluation.evaluator': 'Evaluador',
+
   // Anexo 11. Procesamiento de la medición
   'attribute.name': 'Atributo del graduado medido',
   'course.name': 'Asignatura',

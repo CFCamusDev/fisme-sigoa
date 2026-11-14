@@ -13,12 +13,43 @@ const ANNEX_CODES = Array.from(
 );
 
 describe('official template definitions (T-018-11, RN-040)', () => {
-  it('declares unique template codes including the 11 annexes', () => {
+  it('declares the 20 official templates with unique codes (HU-018, CA1)', () => {
     const codes = OFFICIAL_TEMPLATES.map((definition) => definition.code);
     expect(new Set(codes).size).toBe(codes.length);
-    for (const code of ANNEX_CODES) {
-      expect(codes).toContain(code);
-    }
+    expect([...codes].sort()).toEqual(
+      [
+        ...ANNEX_CODES,
+        'ACTA',
+        'ENC-A5',
+        'ENC-A6',
+        'ENC-A9',
+        'ENC-A10',
+        'INS-RUBRIC-TESIS2',
+        'INS-OBS-TESIS2',
+        'INS-CHECK-TESIS2',
+        'INS-RUBRIC-GPTI',
+      ].sort(),
+    );
+  });
+
+  it('assigns the type of each group', () => {
+    const countByType = (type: string) =>
+      OFFICIAL_TEMPLATES.filter((definition) => definition.type === type).length;
+    expect(countByType('ANNEX')).toBe(11);
+    expect(countByType('MINUTES')).toBe(1);
+    expect(countByType('SURVEY')).toBe(4);
+    expect(countByType('INSTRUMENT')).toBe(4);
+  });
+
+  it('seeds the sample instruments with the criteria and scales of the real ones', () => {
+    const html = (code: string) =>
+      OFFICIAL_TEMPLATES.find((definition) => definition.code === code)?.content ?? '';
+    expect(html('INS-RUBRIC-TESIS2')).toContain('Triangulación empírica');
+    expect(html('INS-RUBRIC-TESIS2')).toContain('No evidencia (0)');
+    expect(html('INS-RUBRIC-GPTI')).toContain('Integración con PMBOK 7');
+    expect(html('INS-RUBRIC-GPTI')).toContain('No logrado (2)');
+    expect(html('INS-CHECK-TESIS2')).toContain('/ 20');
+    expect((html('INS-OBS-TESIS2').match(/Aspecto observado \d+/g) ?? []).length).toBe(10);
   });
 
   it.each(OFFICIAL_TEMPLATES.map((definition) => [definition.code, definition] as const))(
