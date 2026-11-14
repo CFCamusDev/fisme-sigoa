@@ -1,11 +1,13 @@
 import type { Request, RequestHandler } from 'express';
-import type { RegisterResolutionRequest } from '@sigoa/shared';
+import type { RegisterResolutionRequest, ResolutionIdParams } from '@sigoa/shared';
 import { getRequestContext } from '../../../../shared/audit/request-context.js';
 import { UnauthorizedError } from '../../../../shared/errors/app-error.js';
+import type { ApproveResolutionUseCase } from '../../application/approve-resolution.js';
 import type { RegisterResolutionUseCase } from '../../application/register-resolution.js';
 
 export interface ResolutionsControllerDependencies {
   readonly registerResolutionUseCase: RegisterResolutionUseCase;
+  readonly approveResolutionUseCase: ApproveResolutionUseCase;
 }
 
 function resolveActor(req: Request): { actorId: string; ip: string } {
@@ -21,9 +23,11 @@ function resolveActor(req: Request): { actorId: string; ip: string } {
 /** Controlador de `/resolutions` (HU-048). */
 export class ResolutionsController {
   private readonly registerResolutionUseCase: RegisterResolutionUseCase;
+  private readonly approveResolutionUseCase: ApproveResolutionUseCase;
 
   constructor(deps: ResolutionsControllerDependencies) {
     this.registerResolutionUseCase = deps.registerResolutionUseCase;
+    this.approveResolutionUseCase = deps.approveResolutionUseCase;
   }
 
   registerResolution: RequestHandler = async (req, res, next) => {
@@ -41,6 +45,29 @@ export class ResolutionsController {
       });
 
       res.setHeader('Cache-Control', 'no-store').status(201).json(response);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  approveResolution: RequestHandler = async (req, res, next) => {
+    try {
+      const { actorId, ip } = resolveActor(req);
+      const { id: resolutionId } = req.params as ResolutionIdParams;
+      // Sin cuerpo o con otro `Content-Type`, `express.raw` no produce un Buffer (CA3, D4).
+      const content: unknown = req.body;
+      const mimeType = (req.headers['content-type'] ?? '').split(';')[0]?.trim() ?? '';
+
+      const response = await this.approveResolutionUseCase.execute({
+        actorId,
+        ip,
+        resolutionId,
+        file: Buffer.isBuffer(content)
+          ? { content, originalName: `resolution-${resolutionId}.pdf`, mimeType }
+          : null,
+      });
+
+      res.setHeader('Cache-Control', 'no-store').status(200).json(response);
     } catch (error) {
       next(error);
     }

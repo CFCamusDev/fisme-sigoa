@@ -163,6 +163,8 @@ describe('setupAppRoutes', () => {
 
     const response = await request(app).post('/resolutions').send({});
     expect(response.status).toBe(401);
+    const approval = await request(app).post('/resolutions/r1/approve').send();
+    expect(approval.status).toBe(401);
   });
 
   it('throws an error in production if APP_PUBLIC_URL is not configured', () => {

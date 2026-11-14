@@ -4,6 +4,8 @@ import type { UnitOfWork } from './shared/unit-of-work/unit-of-work.js';
 import type { DbProvider } from './shared/prisma/prisma-unit-of-work.js';
 import type { Env } from './config/env.js';
 import type { Logger } from './shared/logger/logger.js';
+import { createFileStorage } from './shared/storage/create-file-storage.js';
+import type { FileStorage } from './shared/storage/file-storage.js';
 import {
   createEmailSender,
   type EmailSender,
@@ -43,6 +45,7 @@ export interface AppRoutesDependencies {
   dbProvider: DbProvider;
   env: Env;
   emailSender?: EmailSender;
+  fileStorage?: FileStorage;
   logger?: Logger;
   clock?: () => Date;
   detachedTaskRunner?: DetachedTaskRunner;
@@ -233,6 +236,8 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
       authenticate: authServices.authenticate,
       requirePermission: authorizationServices.requirePermission,
       permissionChecker: authorizationServices.authorizer,
+      fileStorage: deps.fileStorage ?? createFileStorage(deps.env),
+      logger: deps.logger,
       clock: deps.clock,
     }),
   );

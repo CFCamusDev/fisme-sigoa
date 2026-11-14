@@ -2,8 +2,16 @@ import { Router, type RequestHandler } from 'express';
 import type { AuditLogger } from '../../shared/audit/audit-logger.js';
 import type { DbProvider } from '../../shared/prisma/prisma-unit-of-work.js';
 import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
+import {
+  ApproveResolutionUseCase,
+  type ApproveResolutionLogger,
+} from './application/approve-resolution.js';
 import { RegisterResolutionUseCase } from './application/register-resolution.js';
+import type { ResolutionApprovedSubscriber } from './domain/ports/resolution-event-publisher.js';
 import type { ResolutionPermissionChecker } from './domain/ports/resolution-permission-checker.js';
+import type { FileStorage } from '../../shared/storage/file-storage.js';
+import { InProcessResolutionEventPublisher } from './infrastructure/events/in-process-resolution-event-publisher.js';
+import { FileStorageResolutionPdfStorage } from './infrastructure/storage/file-storage-resolution-pdf-storage.js';
 import { ResolutionsController } from './infrastructure/http/resolutions.controller.js';
 import {
   createResolutionsRouter,
@@ -22,6 +30,10 @@ export interface ResolutionsModuleDependencies {
     scope?: ResolutionRoutePermissionScope,
   ) => RequestHandler;
   readonly permissionChecker: ResolutionPermissionChecker;
+  readonly fileStorage: FileStorage;
+  /** Suscriptores de `ResolutionApproved`; HU-016 registra el suyo (D6). */
+  readonly resolutionApprovedSubscribers?: readonly ResolutionApprovedSubscriber[];
+  readonly logger?: ApproveResolutionLogger;
   readonly clock?: () => Date;
 }
 
@@ -42,7 +54,21 @@ export function createResolutionsModule(deps?: ResolutionsModuleDependencies): R
     clock: deps.clock,
   });
 
-  const controller = new ResolutionsController({ registerResolutionUseCase });
+  const approveResolutionUseCase = new ApproveResolutionUseCase({
+    resolutionRepository,
+    pdfStorage: new FileStorageResolutionPdfStorage(deps.fileStorage),
+    eventPublisher: new InProcessResolutionEventPublisher(deps.resolutionApprovedSubscribers ?? []),
+    permissionChecker: deps.permissionChecker,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+    logger: deps.logger,
+    clock: deps.clock,
+  });
+
+  const controller = new ResolutionsController({
+    registerResolutionUseCase,
+    approveResolutionUseCase,
+  });
 
   return createResolutionsRouter({
     controller,
