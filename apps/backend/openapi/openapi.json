@@ -3033,7 +3033,11 @@
         "summary": "Consultar permisos efectivos propios",
         "description": "Retorna la lista de permisos efectivos consolidados del usuario autenticado (con el alcance más amplio entre sus roles activos y asignaciones directas), ordenada alfabéticamente por código y sin exponer nombres de roles ni orígenes (HU-008, T-008-04, RS-011, RS-012, D7).",
         "operationId": "getMyPermissions",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "responses": {
           "200": {
             "description": "Lista de permisos efectivos del usuario autenticado.",
@@ -5722,6 +5726,497 @@
           }
         }
       }
+    },
+    "/resolutions": {
+      "get": {
+        "tags": ["Resolutions"],
+        "summary": "Listar resoluciones",
+        "description": "Devuelve las resoluciones de forma paginada, de la más reciente a la más antigua, con filtros opcionales por tipo, estado y versión del catálogo. Las registradas traen el PDF y los datos de aprobación en nulo. Se rechazan los parámetros desconocidos y los tamaños de página mayores a 100. Requiere el permiso 'resolucion.ver' con alcance GLOBAL (HU-048, RF-048, RS-002).",
+        "operationId": "listResolutions",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["EDUCATIONAL_OBJECTIVE", "GRADUATE_ATTRIBUTE", "IMPROVEMENT_PLAN"]
+            },
+            "description": "Filtrar por tipo de resolución."
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["REGISTERED", "APPROVED"]
+            },
+            "description": "Filtrar por estado."
+          },
+          {
+            "name": "catalogVersionId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "description": "Filtrar por versión del catálogo."
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000,
+              "default": 1
+            },
+            "description": "Número de página."
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "description": "Tamaño de página."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Página de resoluciones.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché HTTP."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResolutionsResponse"
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "cm0resolution000001",
+                      "type": "EDUCATIONAL_OBJECTIVE",
+                      "number": "RD-012/2027-FISME",
+                      "issuedOn": "2026-11-10",
+                      "status": "APPROVED",
+                      "catalogVersionId": "cm0catalogversion0002",
+                      "pdfFileId": "cm0storedfile000001",
+                      "approvedAt": "2026-11-14T09:00:00.000Z",
+                      "approvedBy": "cm0user0000000002",
+                      "createdAt": "2026-11-13T15:00:00.000Z",
+                      "updatedAt": "2026-11-14T09:00:00.000Z"
+                    },
+                    {
+                      "id": "cm0resolution000001",
+                      "type": "EDUCATIONAL_OBJECTIVE",
+                      "number": "RD-012/2027-FISME",
+                      "issuedOn": "2026-11-10",
+                      "status": "REGISTERED",
+                      "catalogVersionId": "cm0catalogversion0002",
+                      "pdfFileId": null,
+                      "approvedAt": null,
+                      "approvedBy": null,
+                      "createdAt": "2026-11-13T15:00:00.000Z",
+                      "updatedAt": "2026-11-13T15:00:00.000Z"
+                    }
+                  ],
+                  "page": 1,
+                  "pageSize": 20,
+                  "total": 2,
+                  "totalPages": 1
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "La consulta no es válida (página o tamaño fuera de rango, filtro inválido o parámetro desconocido).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "La solicitud contiene errores de validación",
+                    "requestId": "req_res_list_400",
+                    "details": [
+                      {
+                        "path": "query.pageSize",
+                        "message": "El tamaño de página no puede exceder 100"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o token de acceso inválido o expirado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado",
+                    "requestId": "req_res_list_401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere el permiso 'resolucion.ver' con alcance GLOBAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tiene permisos para realizar esta acción",
+                    "requestId": "req_res_list_403"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Resolutions"],
+        "summary": "Registrar una resolución",
+        "description": "Registra la resolución del Decano (tipo, número y fecha) vinculada a una versión del catálogo En validación; queda en estado Registrada, sin PDF. El número es único por tipo y una versión admite una sola resolución por tipo; un duplicado responde 409. El tipo IMPROVEMENT_PLAN aún no está disponible y responde 400. El alta y su auditoría (CREATE) se confirman en una sola transacción. Requiere el permiso 'resolucion.registrar' con alcance GLOBAL (HU-048, RF-048, RN-063, RS-002, RS-020).",
+        "operationId": "registerResolution",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterResolutionRequest"
+              },
+              "example": {
+                "type": "EDUCATIONAL_OBJECTIVE",
+                "number": "RD-012/2027-FISME",
+                "issuedOn": "2026-11-10",
+                "catalogVersionId": "cm0catalogversion0002"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Resolución registrada.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché HTTP."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolutionDto"
+                },
+                "example": {
+                  "id": "cm0resolution000001",
+                  "type": "EDUCATIONAL_OBJECTIVE",
+                  "number": "RD-012/2027-FISME",
+                  "issuedOn": "2026-11-10",
+                  "status": "REGISTERED",
+                  "catalogVersionId": "cm0catalogversion0002",
+                  "pdfFileId": null,
+                  "approvedAt": null,
+                  "approvedBy": null,
+                  "createdAt": "2026-11-13T15:00:00.000Z",
+                  "updatedAt": "2026-11-13T15:00:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "El cuerpo no es válido (campo desconocido, número demasiado largo o con símbolos, fecha inexistente, tipo inválido o no disponible).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "La solicitud contiene errores de validación",
+                    "requestId": "req_res_register_400",
+                    "details": [
+                      {
+                        "path": "body.issuedOn",
+                        "message": "La fecha debe ser una fecha válida con formato AAAA-MM-DD"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o token de acceso inválido o expirado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado",
+                    "requestId": "req_res_register_401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere el permiso 'resolucion.registrar' con alcance GLOBAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tiene permisos para realizar esta acción",
+                    "requestId": "req_res_register_403"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La versión del catálogo no existe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "La versión del catálogo indicada no existe.",
+                    "requestId": "req_res_register_404"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "La versión no está En validación, o ya existe una resolución con ese número y tipo o de ese tipo para la versión.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "Solo se puede registrar una resolución para una versión del catálogo En validación.",
+                    "requestId": "req_res_register_409"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/resolutions/{id}/approve": {
+      "post": {
+        "tags": ["Resolutions"],
+        "summary": "Aprobar una resolución con el PDF firmado",
+        "description": "Pasa la resolución de Registrada a Aprobada con el PDF escaneado y firmado por el Decano, enviado como cuerpo binario con `Content-Type: application/pdf` (máximo 10 MiB). El servidor autentica y autoriza antes de leer el cuerpo, valida el tipo, la firma %PDF y el tamaño, sube el archivo (con su hash SHA-256) y, en una sola transacción, bloquea la fila, cambia el estado con una actualización condicional, publica el evento ResolutionApproved a sus suscriptores (que activan la versión del catálogo, RN-064) y audita el cambio (STATE_CHANGE). Si algo falla se revierte todo y el archivo subido se descarta. Sin cuerpo, con otro Content-Type o con un archivo que no es PDF responde 400. De aprobaciones simultáneas solo una gana; la resolución ya aprobada responde 409 sin cambios. Requiere el permiso 'resolucion.aprobar' con alcance GLOBAL (HU-048, RF-048, RN-063, RS-002, RS-020, RS-072).",
+        "operationId": "approveResolution",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "description": "Identificador de la resolución."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/pdf": {
+              "schema": {
+                "type": "string",
+                "format": "binary",
+                "description": "PDF firmado, máximo 10 MiB."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Resolución aprobada.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché HTTP."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolutionDto"
+                },
+                "example": {
+                  "id": "cm0resolution000001",
+                  "type": "EDUCATIONAL_OBJECTIVE",
+                  "number": "RD-012/2027-FISME",
+                  "issuedOn": "2026-11-10",
+                  "status": "APPROVED",
+                  "catalogVersionId": "cm0catalogversion0002",
+                  "pdfFileId": "cm0storedfile000001",
+                  "approvedAt": "2026-11-14T09:00:00.000Z",
+                  "approvedBy": "cm0user0000000002",
+                  "createdAt": "2026-11-13T15:00:00.000Z",
+                  "updatedAt": "2026-11-14T09:00:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Falta el PDF firmado, el Content-Type no es application/pdf, el archivo no es un PDF, está vacío o excede 10 MiB, o el identificador no es válido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Para aprobar la resolución debes adjuntar el PDF firmado.",
+                    "requestId": "req_res_approve_400"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o token de acceso inválido o expirado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado",
+                    "requestId": "req_res_approve_401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere el permiso 'resolucion.aprobar' con alcance GLOBAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tiene permisos para realizar esta acción",
+                    "requestId": "req_res_approve_403"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La resolución no existe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "Resolución no encontrada.",
+                    "requestId": "req_res_approve_404"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "La resolución ya no está Registrada (otra persona la aprobó): no se cambia nada, no se audita y el archivo enviado se descarta.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "La resolución ya está aprobada y no puede modificarse.",
+                    "requestId": "req_res_approve_409"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -7225,6 +7720,133 @@
             "items": {
               "$ref": "#/components/schemas/CatalogAttributeDto"
             }
+          }
+        }
+      },
+      "ResolutionDto": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "type",
+          "number",
+          "issuedOn",
+          "status",
+          "catalogVersionId",
+          "pdfFileId",
+          "approvedAt",
+          "approvedBy",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "type": {
+            "type": "string",
+            "enum": ["EDUCATIONAL_OBJECTIVE", "GRADUATE_ATTRIBUTE", "IMPROVEMENT_PLAN"]
+          },
+          "number": {
+            "type": "string",
+            "minLength": 1
+          },
+          "issuedOn": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Fecha de calendario AAAA-MM-DD."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["REGISTERED", "APPROVED"]
+          },
+          "catalogVersionId": {
+            "type": ["string", "null"],
+            "minLength": 1,
+            "description": "Versión del catálogo que aprueba; nula en el plan de mejora."
+          },
+          "pdfFileId": {
+            "type": ["string", "null"],
+            "minLength": 1,
+            "description": "Archivo del PDF firmado; nulo hasta que la resolución se aprueba."
+          },
+          "approvedAt": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "approvedBy": {
+            "type": ["string", "null"],
+            "minLength": 1
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "RegisterResolutionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "number", "issuedOn", "catalogVersionId"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["EDUCATIONAL_OBJECTIVE", "GRADUATE_ATTRIBUTE", "IMPROVEMENT_PLAN"],
+            "description": "Tipo de resolución. IMPROVEMENT_PLAN aún no está disponible y responde 400."
+          },
+          "number": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40,
+            "pattern": "^[A-Za-z0-9\\-/. ]+$",
+            "description": "Número de la resolución (se recortan los espacios de los extremos)."
+          },
+          "issuedOn": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Fecha de calendario AAAA-MM-DD."
+          },
+          "catalogVersionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "Versión del catálogo En validación que aprueba la resolución."
+          }
+        }
+      },
+      "ListResolutionsResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["items", "page", "pageSize", "total", "totalPages"],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResolutionDto"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "totalPages": {
+            "type": "integer",
+            "minimum": 0
           }
         }
       }

@@ -57,6 +57,9 @@ import {
   catalogObjectivesResponseSchema,
   catalogAttributesResponseSchema,
   catalogVersionDetailDtoSchema,
+  listResolutionsResponseSchema,
+  registerResolutionRequestSchema,
+  resolutionDtoSchema,
 } from '@sigoa/shared';
 import { createAuthRouter } from '../src/modules/auth/infrastructure/http/auth.routes.js';
 import { createUsersRouter } from '../src/modules/users/infrastructure/http/users.routes.js';
@@ -78,6 +81,8 @@ import type { ResponseScalesController } from '../src/modules/parameters/infrast
 import { createCatalogVersionsRouter } from '../src/modules/catalog/infrastructure/http/catalog-versions.routes.js';
 import type { CatalogVersionsController } from '../src/modules/catalog/infrastructure/http/catalog-versions.controller.js';
 import type { CatalogVersionItemsController } from '../src/modules/catalog/infrastructure/http/catalog-version-items.controller.js';
+import { createResolutionsRouter } from '../src/modules/resolutions/infrastructure/http/resolutions.routes.js';
+import type { ResolutionsController } from '../src/modules/resolutions/infrastructure/http/resolutions.controller.js';
 import { createSemestersRouter } from '../src/modules/parameters/infrastructure/http/semesters.routes.js';
 import type { SemestersController } from '../src/modules/parameters/infrastructure/http/semesters.controller.js';
 
@@ -2145,6 +2150,134 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
         'post /catalog-versions/:id/validation',
         'put /catalog-versions/:id/attributes',
         'put /catalog-versions/:id/objectives',
+      ]);
+    });
+  });
+
+  describe('OpenAPI Specification for Resolutions (HU-048, T-048-12, RF-048, RNF-032)', () => {
+    it('documents the three operations with bearerAuth and proper status codes', () => {
+      const expectations: [string, string, string, string[]][] = [
+        ['/resolutions', 'get', 'listResolutions', ['200', '400', '401', '403']],
+        ['/resolutions', 'post', 'registerResolution', ['201', '400', '401', '403', '404', '409']],
+        [
+          '/resolutions/{id}/approve',
+          'post',
+          'approveResolution',
+          ['200', '400', '401', '403', '404', '409'],
+        ],
+      ];
+      for (const [route, method, operationId, codes] of expectations) {
+        const op = spec.paths[route][method];
+        expect(op.operationId).toBe(operationId);
+        expect(op.tags).toContain('Resolutions');
+        expect(op.security).toEqual([{ bearerAuth: [] }]);
+        expect(Object.keys(op.responses).sort()).toEqual(codes);
+        const success = op.responses[codes[0] as string];
+        expect(success.headers['Cache-Control'].example).toBe('no-store');
+      }
+    });
+
+    it('validates the request and response examples against the shared schemas', () => {
+      const register = spec.paths['/resolutions'].post;
+      expect(
+        registerResolutionRequestSchema.safeParse(
+          register.requestBody.content['application/json'].example,
+        ).success,
+      ).toBe(true);
+      const registered = register.responses['201'].content['application/json'].example;
+      expect(resolutionDtoSchema.safeParse(registered).success).toBe(true);
+      expect(registered.status).toBe('REGISTERED');
+      expect(registered.pdfFileId).toBeNull();
+
+      const approved =
+        spec.paths['/resolutions/{id}/approve'].post.responses['200'].content['application/json']
+          .example;
+      expect(resolutionDtoSchema.safeParse(approved).success).toBe(true);
+      expect(approved.status).toBe('APPROVED');
+      expect(approved.pdfFileId).not.toBeNull();
+
+      const list =
+        spec.paths['/resolutions'].get.responses['200'].content['application/json'].example;
+      expect(listResolutionsResponseSchema.safeParse(list).success).toBe(true);
+      expect(list.items.length).toBeGreaterThan(1);
+    });
+
+    it('documents the approval body as a binary pdf and the id parameter', () => {
+      const op = spec.paths['/resolutions/{id}/approve'].post;
+      expect(op.requestBody.required).toBe(true);
+      expect(Object.keys(op.requestBody.content)).toEqual(['application/pdf']);
+      expect(op.requestBody.content['application/pdf'].schema).toMatchObject({
+        type: 'string',
+        format: 'binary',
+      });
+      expect(op.parameters[0]).toMatchObject({ name: 'id', in: 'path', required: true });
+    });
+
+    it('documents the list filters and pagination limits', () => {
+      const params = spec.paths['/resolutions'].get.parameters;
+      expect(params.map((param: { name: string }) => param.name).sort()).toEqual([
+        'catalogVersionId',
+        'page',
+        'pageSize',
+        'status',
+        'type',
+      ]);
+      const pageSize = params.find((param: { name: string }) => param.name === 'pageSize');
+      expect(pageSize.schema.maximum).toBe(100);
+    });
+
+    it('matches components.schemas properties with Zod schemas shape', () => {
+      const dto = spec.components.schemas['ResolutionDto'];
+      expect(Object.keys(dto.properties).sort()).toEqual(
+        Object.keys(resolutionDtoSchema.shape).sort(),
+      );
+      expect([...dto.required].sort()).toEqual(Object.keys(resolutionDtoSchema.shape).sort());
+      expect(dto.additionalProperties).toBe(false);
+      expect(dto.properties.pdfFileId.type).toEqual(['string', 'null']);
+      expect(dto.properties.catalogVersionId.type).toEqual(['string', 'null']);
+      expect(dto.properties.approvedAt.type).toEqual(['string', 'null']);
+      expect(dto.properties.approvedBy.type).toEqual(['string', 'null']);
+      expect(dto.properties.status.enum).toEqual(['REGISTERED', 'APPROVED']);
+
+      const request = spec.components.schemas['RegisterResolutionRequest'];
+      expect(Object.keys(request.properties).sort()).toEqual(
+        Object.keys(registerResolutionRequestSchema.shape).sort(),
+      );
+      expect(request.additionalProperties).toBe(false);
+      expect(request.properties.number.maxLength).toBe(40);
+
+      const list = spec.components.schemas['ListResolutionsResponse'];
+      expect(Object.keys(list.properties).sort()).toEqual(
+        Object.keys(listResolutionsResponseSchema.shape).sort(),
+      );
+    });
+
+    it('has bidirectional parity between openapi spec and createResolutionsRouter', () => {
+      const router = createResolutionsRouter({
+        controller: {
+          registerResolution: vi.fn(),
+          approveResolution: vi.fn(),
+          listResolutions: vi.fn(),
+        } as unknown as ResolutionsController,
+        authenticate: vi.fn(),
+        requirePermission: vi.fn(() => vi.fn()),
+      });
+
+      const routerEndpoints: string[] = [];
+      for (const layer of router.stack) {
+        if (layer.route) {
+          for (const method of Object.keys(layer.route.methods)) {
+            const normalizedPath =
+              '/resolutions' + (layer.route.path === '/' ? '' : layer.route.path);
+            routerEndpoints.push(method.toLowerCase() + ' ' + normalizedPath);
+          }
+        }
+      }
+
+      expect(routerEndpoints.sort()).toEqual([
+        'get /resolutions',
+        'post /resolutions',
+        'post /resolutions/:id/approve',
       ]);
     });
   });
