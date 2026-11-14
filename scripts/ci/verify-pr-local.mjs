@@ -1128,8 +1128,8 @@ export const WORKFLOW_EXCLUSIONS = [
     reason: 'Paso agregador del estado de jobs requeridos en el CI.',
   },
   {
-    pattern: /mkdir -p tmp\/ci-reports/,
-    reason: 'Combinación de informes de shards y verificación de completitud en el CI.',
+    pattern: /mkdir -p tmp\//,
+    reason: 'Preparación de directorios temporales de informes y shards en el CI.',
   },
   {
     pattern: /check-shard-completeness\.mjs/,

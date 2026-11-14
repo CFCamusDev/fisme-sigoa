@@ -52,11 +52,21 @@ describe('pr-checks.yml structure (HU-080)', () => {
     expect(calidadBlock).toMatch(/name:\s*Lint, tipos, pruebas y build/);
     expect(calidadBlock).toMatch(/if:\s*always\(\)/);
     expect(calidadBlock).toMatch(
-      /needs:\s*\[convenciones,\s*estaticas,\s*unitarias,\s*integracion\]/,
+      /needs:\s*\[convenciones,\s*estaticas,\s*unitarias,\s*integracion,\s*integracion-informe\]/,
     );
     expect(calidadBlock).toMatch(
       /NEEDS_RESULTS:\s*\$\{\{\s*join\(needs\.\*\.result,\s*' '\)\s*\}\}/,
     );
+
+    const integracionBlock = extractJobBlock(workflow, 'integracion');
+    expect(integracionBlock).toMatch(/shard:\s*\[1,\s*2\]/);
+    expect(integracionBlock).toMatch(/if:\s*matrix\.shard\s*==\s*1/);
+    expect(integracionBlock).toMatch(/--shard=\$\{\{\s*matrix\.shard\s*\}\}\/2/);
+
+    const integracionInformeBlock = extractJobBlock(workflow, 'integracion-informe');
+    expect(integracionInformeBlock).toMatch(/needs:\s*integracion/);
+    expect(integracionInformeBlock).toMatch(/--merge-reports/);
+    expect(integracionInformeBlock).toMatch(/check-shard-completeness\.mjs/);
 
     const e2eBlock = extractJobBlock(workflow, 'e2e');
     expect(e2eBlock).toMatch(/name:\s*Pruebas end-to-end \(Playwright\)/);
