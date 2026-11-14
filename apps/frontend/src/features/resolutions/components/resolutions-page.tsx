@@ -22,6 +22,7 @@ export function ResolutionsPage() {
   const versionsQuery = useCatalogVersions();
   const [showForm, setShowForm] = useState(false);
   const [registered, setRegistered] = useState<ResolutionDto | null>(null);
+  const [approved, setApproved] = useState<ResolutionDto | null>(null);
   const messageRef = useRef<HTMLDivElement>(null);
 
   const resolutions = data?.items ?? [];
@@ -30,19 +31,26 @@ export function ResolutionsPage() {
   const inValidation = allVersions.filter((version) => version.status === 'IN_VALIDATION');
 
   useEffect(() => {
-    if (registered) {
+    if (registered || approved) {
       messageRef.current?.focus();
     }
-  }, [registered]);
+  }, [registered, approved]);
 
   function openForm() {
     setRegistered(null);
+    setApproved(null);
     setShowForm(true);
   }
 
   function handleRegistered(resolution: ResolutionDto) {
     setShowForm(false);
+    setApproved(null);
     setRegistered(resolution);
+  }
+
+  function handleApproved(resolution: ResolutionDto) {
+    setRegistered(null);
+    setApproved(resolution);
   }
 
   const registerButton = (
@@ -62,14 +70,16 @@ export function ResolutionsPage() {
         actions={registerButton}
       />
 
-      {registered && (
+      {(registered || approved) && (
         <div ref={messageRef} tabIndex={-1} className="outline-none focus-visible:outline-2">
           <Alert variant="success">
             <CircleCheck aria-hidden="true" />
             <AlertDescription>
-              Se registró la resolución {registered.number} de{' '}
-              {formatResolutionType(registered.type).toLowerCase()}. Queda pendiente de aprobación
-              con el PDF firmado.
+              {registered
+                ? `Se registró la resolución ${registered.number} de ${formatResolutionType(registered.type).toLowerCase()}. Queda pendiente de aprobación con el PDF firmado.`
+                : approved
+                  ? `Se aprobó la resolución ${approved.number} con su PDF firmado.`
+                  : null}
             </AlertDescription>
           </Alert>
         </div>
@@ -111,7 +121,11 @@ export function ResolutionsPage() {
       )}
 
       {!isLoading && !isError && resolutions.length > 0 && (
-        <ResolutionsTable resolutions={resolutions} versionNumberById={versionNumberById} />
+        <ResolutionsTable
+          resolutions={resolutions}
+          versionNumberById={versionNumberById}
+          onApproved={handleApproved}
+        />
       )}
     </div>
   );

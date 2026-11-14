@@ -4,3 +4,4 @@ export {
   RegisterResolutionForm,
   type RegisterResolutionFormProps,
 } from './register-resolution-form';
+export { ApproveResolutionForm, type ApproveResolutionFormProps } from './approve-resolution-form';
