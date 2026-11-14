@@ -118,9 +118,9 @@ test.describe('HU-048 — Registrar y aprobar resoluciones E2E', () => {
       name: /Versiones del catálogo de objetivos educacionales/,
     });
     await expect(
-      versions.getByRole('row', { name: /^V2b/ }).getByText('Aprobada (vigente)'),
+      versions.getByRole('row', { name: /^V2\b/ }).getByText('Aprobada (vigente)'),
     ).toBeVisible();
-    await expect(versions.getByRole('row', { name: /^V1b/ }).getByText('Histórica')).toBeVisible();
+    await expect(versions.getByRole('row', { name: /^V1\b/ }).getByText('Histórica')).toBeVisible();
 
     expect(errors).toEqual([]);
   });
