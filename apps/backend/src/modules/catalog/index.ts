@@ -19,6 +19,7 @@ import {
   type CatalogRoutePermissionScope,
 } from './infrastructure/http/catalog-versions.routes.js';
 import { PrismaCatalogProgramReader } from './infrastructure/prisma/prisma-catalog-program-reader.js';
+import { PrismaCatalogVersionHistoryReader } from './infrastructure/prisma/prisma-catalog-version-history-reader.js';
 import { PrismaCatalogVersionRepository } from './infrastructure/prisma/prisma-catalog-version-repository.js';
 import { PrismaEducationalObjectiveRepository } from './infrastructure/prisma/prisma-educational-objective-repository.js';
 import { PrismaGraduateAttributeRepository } from './infrastructure/prisma/prisma-graduate-attribute-repository.js';
@@ -105,10 +106,13 @@ export function createCatalogVersionsModule(deps?: CatalogModuleDependencies): R
     clock: deps.clock,
   });
 
+  const historyReader = new PrismaCatalogVersionHistoryReader(deps.dbProvider);
+
   const getCatalogVersionDetailUseCase = new GetCatalogVersionDetailUseCase({
     versionReader: versionRepository,
     objectiveReader: objectiveRepository,
     attributeReader: attributeRepository,
+    historyReader,
     permissionChecker: deps.permissionChecker,
   });
 

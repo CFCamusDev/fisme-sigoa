@@ -3,6 +3,7 @@ import type {
   CatalogObjectiveDto,
   CatalogVersionDetailDto,
   CatalogVersionDto,
+  CatalogVersionHistoryDto,
   ListCatalogVersionsResponse,
 } from '@sigoa/shared';
 
@@ -80,6 +81,7 @@ export function buildCatalogVersionDetail(
     attributeCount?: number;
     objectives?: CatalogObjectiveDto[];
     attributes?: CatalogAttributeDto[];
+    history?: CatalogVersionHistoryDto;
   } = {},
 ): CatalogVersionDetailDto {
   const objectives =
@@ -102,6 +104,7 @@ export function buildCatalogVersionDetail(
       attributeCount: attributes.length,
       ...options.version,
     }),
+    history: options.history ?? { validFrom: null, validUntil: null, resolutions: [] },
     objectives,
     attributes,
   };

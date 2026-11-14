@@ -5,6 +5,7 @@ import {
   CATALOG_STATEMENT_MAX_LENGTH,
   catalogVersionDtoSchema,
 } from './catalog-version.js';
+import { catalogVersionHistoryDtoSchema } from './catalog-comparison.js';
 
 /** Máximo de OE y de AG por versión (D7); el dominio lo repite y una prueba compara ambos lados. */
 export const CATALOG_MAX_ITEMS = 100;
@@ -79,6 +80,7 @@ export type CatalogAttributeDto = z.infer<typeof catalogAttributeDtoSchema>;
 export const catalogVersionDetailDtoSchema = z
   .object({
     version: catalogVersionDtoSchema,
+    history: catalogVersionHistoryDtoSchema,
     objectives: z.array(catalogObjectiveDtoSchema),
     attributes: z.array(catalogAttributeDtoSchema),
   })

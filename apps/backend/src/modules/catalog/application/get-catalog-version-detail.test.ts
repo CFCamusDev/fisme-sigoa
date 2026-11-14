@@ -6,6 +6,7 @@ import { EducationalObjective } from '../domain/entities/educational-objective.j
 import { GraduateAttribute } from '../domain/entities/graduate-attribute.js';
 import { CatalogVersionNotFoundError } from '../domain/errors/index.js';
 import type { CatalogPermissionChecker } from '../domain/ports/catalog-permission-checker.js';
+import type { CatalogVersionHistoryReader } from '../domain/ports/catalog-version-history-reader.js';
 import type { CatalogVersionReader } from '../domain/ports/catalog-version-reader.js';
 import type { EducationalObjectiveReader } from '../domain/ports/educational-objective-reader.js';
 import type { GraduateAttributeReader } from '../domain/ports/graduate-attribute-reader.js';
@@ -18,6 +19,7 @@ describe('GetCatalogVersionDetailUseCase (HU-014, D8, RF-014)', () => {
   let objectiveReader: MockProxy<EducationalObjectiveReader>;
   let attributeReader: MockProxy<GraduateAttributeReader>;
   let permissionChecker: MockProxy<CatalogPermissionChecker>;
+  let historyReader: MockProxy<CatalogVersionHistoryReader>;
   let useCase: GetCatalogVersionDetailUseCase;
 
   beforeEach(() => {
@@ -61,10 +63,14 @@ describe('GetCatalogVersionDetailUseCase (HU-014, D8, RF-014)', () => {
         updatedAt: NOW,
       }),
     ]);
+    versionReader.list.mockResolvedValue([]);
+    historyReader = mock<CatalogVersionHistoryReader>();
+    historyReader.listForProgram.mockResolvedValue(new Map());
     useCase = new GetCatalogVersionDetailUseCase({
       versionReader,
       objectiveReader,
       attributeReader,
+      historyReader,
       permissionChecker,
     });
   });

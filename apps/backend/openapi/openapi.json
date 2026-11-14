@@ -5112,6 +5112,11 @@
                     "attributeCount": 12,
                     "createdAt": "2026-11-12T15:00:00.000Z"
                   },
+                  "history": {
+                    "validFrom": null,
+                    "validUntil": null,
+                    "resolutions": []
+                  },
                   "objectives": [
                     {
                       "id": "cm0objective000002",
@@ -7567,13 +7572,80 @@
           }
         }
       },
+      "CatalogVersionResolutionDto": {
+        "type": "object",
+        "required": ["id", "type", "number", "issuedOn", "status", "approvedAt", "hasPdf"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "type": {
+            "type": "string",
+            "enum": ["EDUCATIONAL_OBJECTIVE", "GRADUATE_ATTRIBUTE", "IMPROVEMENT_PLAN"],
+            "description": "Tipo de resolución: OE, AG o plan de mejora."
+          },
+          "number": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          },
+          "issuedOn": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Fecha de la resolución (AAAA-MM-DD)."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["REGISTERED", "APPROVED"]
+          },
+          "approvedAt": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "Fecha de aprobación; nula mientras la resolución solo está registrada."
+          },
+          "hasPdf": {
+            "type": "boolean",
+            "description": "Indica si la resolución tiene su PDF firmado cargado."
+          }
+        }
+      },
+      "CatalogVersionHistoryDto": {
+        "type": "object",
+        "required": ["validFrom", "validUntil", "resolutions"],
+        "additionalProperties": false,
+        "properties": {
+          "validFrom": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "Inicio de vigencia: menor fecha de aprobación de sus resoluciones OE/AG; nulo sin resolución."
+          },
+          "validUntil": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "Fin de vigencia de una versión Histórica: inicio de la siguiente versión activada; nulo si no aplica."
+          },
+          "resolutions": {
+            "type": "array",
+            "maxItems": 10,
+            "items": {
+              "$ref": "#/components/schemas/CatalogVersionResolutionDto"
+            }
+          }
+        }
+      },
       "CatalogVersionDetailDto": {
         "type": "object",
-        "required": ["version", "objectives", "attributes"],
+        "required": ["version", "history", "objectives", "attributes"],
         "additionalProperties": false,
         "properties": {
           "version": {
             "$ref": "#/components/schemas/CatalogVersionDto"
+          },
+          "history": {
+            "$ref": "#/components/schemas/CatalogVersionHistoryDto"
           },
           "objectives": {
             "type": "array",
