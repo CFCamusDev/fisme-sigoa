@@ -6,3 +6,4 @@ export * from './educational-objective-reader.js';
 export * from './educational-objective-repository.js';
 export * from './graduate-attribute-reader.js';
 export * from './graduate-attribute-repository.js';
+export * from './catalog-version-history-reader.js';
