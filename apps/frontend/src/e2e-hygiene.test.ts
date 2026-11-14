@@ -138,27 +138,50 @@ const EXPECTED_CONTRAST_CONTEXTS = [
   'users-list-mobile',
 ];
 
-describe('Contrast coverage is preserved when grouping by route (T-078-19, D12)', () => {
-  const source = fs.readFileSync(path.join(e2eDir, 'contrast.spec.ts'), 'utf-8');
-  const contexts = [...source.matchAll(/context:\s*'([^']+)'/g)].map((match) => match[1]);
+const CONTRAST_SPEC_FILES = [
+  'contrast.spec.ts',
+  'contrast-users.spec.ts',
+  'contrast-roles.spec.ts',
+  'contrast-settings.spec.ts',
+  'contrast-catalog.spec.ts',
+  'contrast-resolutions.spec.ts',
+  'contrast-templates.spec.ts',
+];
 
-  it('keeps the exact set of contrast contexts, each checked exactly once', () => {
+describe('Contrast coverage is preserved when grouping by route (T-078-19, T-080-06, D12)', () => {
+  const sources = CONTRAST_SPEC_FILES.map((file) => ({
+    file,
+    content: fs.readFileSync(path.join(e2eDir, file), 'utf-8'),
+  }));
+  const combinedSource = sources.map((entry) => entry.content).join('\n');
+  const supportContrastSource = fs.readFileSync(
+    path.join(e2eDir, 'support', 'contrast.ts'),
+    'utf-8',
+  );
+  const contexts = [...combinedSource.matchAll(/context:\s*'([^']+)'/g)].map((match) => match[1]);
+
+  it('keeps every contrast context across the contrast specs, each checked exactly once', () => {
     expect(new Set(contexts).size).toBe(contexts.length);
     expect([...contexts].sort()).toEqual([...EXPECTED_CONTRAST_CONTEXTS].sort());
   });
 
   it('keeps one contrast check per context, not only the label', () => {
-    const calls = [...source.matchAll(/expectNoContrastViolations\(\s*page,\s*\{\s*context:/g)];
+    const calls = [
+      ...combinedSource.matchAll(/expectNoContrastViolations\(\s*page,\s*\{\s*context:/g),
+    ];
     expect(calls).toHaveLength(EXPECTED_CONTRAST_CONTEXTS.length);
   });
 
   it('sets a mobile viewport before every mobile context and the desktop viewport otherwise', () => {
-    expect(source).toMatch(/const MOBILE = \{ width: 375, height: 812 \}/);
-    expect(source).toMatch(/const DESKTOP = \{ width: 1280, height: 720 \}/);
+    expect(supportContrastSource).toMatch(/export const MOBILE = \{ width: 375, height: 812 \}/);
+    expect(supportContrastSource).toMatch(/export const DESKTOP = \{ width: 1280, height: 720 \}/);
 
     for (const context of EXPECTED_CONTRAST_CONTEXTS.filter((name) => name.includes('mobile'))) {
-      const position = source.indexOf(`context: '${context}'`);
-      const before = source.slice(Math.max(0, position - 400), position);
+      const owner = sources.find((entry) => entry.content.includes(`context: '${context}'`));
+      expect(owner, `${context} debe existir en uno de los specs de contraste`).toBeDefined();
+      const content = owner!.content;
+      const position = content.indexOf(`context: '${context}'`);
+      const before = content.slice(Math.max(0, position - 400), position);
       expect(before, `${context} debe estar precedido por el viewport móvil`).toMatch(
         /setViewportSize\(MOBILE\)/,
       );
@@ -166,8 +189,8 @@ describe('Contrast coverage is preserved when grouping by route (T-078-19, D12)'
   });
 
   it('logs in at most once per route group', () => {
-    const logins = source.match(/loginAsTestUser\(/g) ?? [];
-    const tests = source.match(/^\s{2}test\('/gm) ?? [];
+    const logins = combinedSource.match(/loginAsTestUser\(/g) ?? [];
+    const tests = combinedSource.match(/^\s{2}test\('/gm) ?? [];
     expect(logins.length).toBeLessThanOrEqual(tests.length);
     expect(tests.length).toBeLessThan(25);
   });
