@@ -217,7 +217,7 @@ jobs:
         run: |
           mkdir -p tmp/ci-reports
           pnpm --filter backend exec vitest --merge-reports=${{ github.workspace }}/tmp/integration-blobs --reporter=default --reporter=json --outputFile.json=${{ github.workspace }}/tmp/ci-reports/integration-report.json
-          pnpm --filter backend exec vitest list --project integration --json > tmp/ci-reports/integration-expected.json
+          pnpm --silent --filter backend exec vitest list --project integration --json > tmp/ci-reports/integration-expected.json
           node scripts/ci/check-shard-completeness.mjs --tool vitest --expected tmp/ci-reports/integration-expected.json --actual tmp/ci-reports/integration-report.json --extra tmp/ci-reports/isolation-integration.json
       - name: Publicar resumen de pruebas más lentas (integración)
         if: ${{ !cancelled() }}
@@ -445,7 +445,7 @@ jobs:
         run: |
           mkdir -p tmp/ci-reports
           pnpm --filter frontend exec playwright merge-reports --reporter=html --reporter=json ../../all-blob-reports
-          pnpm --filter frontend exec playwright test --list --reporter=json > tmp/ci-reports/e2e-expected.json
+          PLAYWRIGHT_JSON_OUTPUT_NAME=${{ github.workspace }}/tmp/ci-reports/e2e-expected.json pnpm --silent --filter frontend exec playwright test --list --reporter=json > /dev/null
           node scripts/ci/check-shard-completeness.mjs --tool playwright --expected tmp/ci-reports/e2e-expected.json --actual tmp/ci-reports/e2e-report.json --extra tmp/ci-reports/isolation-e2e.json
       - name: Publicar resumen de pruebas más lentas y reintentadas (E2E)
         if: ${{ !cancelled() }}
