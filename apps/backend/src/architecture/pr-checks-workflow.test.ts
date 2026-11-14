@@ -60,8 +60,20 @@ describe('pr-checks.yml structure (HU-080)', () => {
 
     const e2eBlock = extractJobBlock(workflow, 'e2e');
     expect(e2eBlock).toMatch(/name:\s*Pruebas end-to-end \(Playwright\)/);
-    expect(e2eBlock).toMatch(/needs:\s*\[e2e-shards\]/);
+    expect(e2eBlock).toMatch(/needs:\s*\[e2e-shards,\s*e2e-informe\]/);
     expect(e2eBlock).toMatch(/NEEDS_RESULTS:\s*\$\{\{\s*join\(needs\.\*\.result,\s*' '\)\s*\}\}/);
+
+    const e2eShardsBlock = extractJobBlock(workflow, 'e2e-shards');
+    expect(e2eShardsBlock).toMatch(/shard:\s*\[1,\s*2,\s*3\]/);
+    expect(e2eShardsBlock).toMatch(/fail-fast:\s*false/);
+    expect(e2eShardsBlock).toMatch(
+      /--shard=\$\{\{\s*matrix\.shard\s*\}\}\/\$\{\{\s*env\.SHARDS\s*\}\}/,
+    );
+
+    const e2eInformeBlock = extractJobBlock(workflow, 'e2e-informe');
+    expect(e2eInformeBlock).toMatch(/needs:\s*e2e-shards/);
+    expect(e2eInformeBlock).toMatch(/playwright merge-reports/);
+    expect(e2eInformeBlock).toMatch(/check-shard-completeness\.mjs/);
   });
 
   it('makes the e2e aggregator conditional like the e2e jobs', () => {

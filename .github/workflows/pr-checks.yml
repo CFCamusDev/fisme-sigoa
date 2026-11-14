@@ -230,11 +230,15 @@ jobs:
           done
 
   e2e-shards:
-    name: E2E · Pruebas end-to-end
+    name: E2E · Shard ${{ matrix.shard }}/3
     runs-on: ubuntu-latest
     timeout-minutes: 20
     if: github.base_ref == 'develop' || (github.base_ref == 'main' && startsWith(github.head_ref, 'release/'))
     needs: convenciones
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     services:
       postgres:
         image: postgres:16
@@ -246,6 +250,7 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U test" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
+      SHARDS: 3
       DATABASE_URL: postgresql://test:test@localhost:5432/oeag_test
       NODE_ENV: test
       CI: 'true'
@@ -259,16 +264,61 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Instalar navegadores de Playwright con dependencias
         run: pnpm --filter frontend exec playwright install --with-deps chromium
-      - name: Ejecutar pruebas E2E
-        run: pnpm test:e2e
-      - name: Subir reporte de Playwright en fallo
+      - name: Ejecutar pruebas E2E (shard ${{ matrix.shard }}/3)
+        run: pnpm test:e2e --shard=${{ matrix.shard }}/${{ env.SHARDS }} --reporter=blob
+      - name: Subir informe blob del shard E2E
+        uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: e2e-blob-${{ matrix.shard }}
+          path: apps/frontend/blob-report/
+          retention-days: 7
+      - name: Subir resultados de Playwright en fallo
         uses: actions/upload-artifact@v7
         if: failure()
         with:
+          name: playwright-test-results-${{ matrix.shard }}
+          path: apps/frontend/test-results/
+          retention-days: 7
+
+  e2e-informe:
+    name: E2E · Informe combinado
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: e2e-shards
+    if: ${{ !cancelled() && (github.base_ref == 'develop' || (github.base_ref == 'main' && startsWith(github.head_ref, 'release/'))) }}
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5432/oeag_test
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Descargar informes blob de los shards E2E
+        uses: actions/download-artifact@v5
+        with:
+          pattern: e2e-blob-*
+          path: all-blob-reports
+          merge-multiple: true
+      - name: Combinar informes E2E y verificar completitud de shards
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: ${{ github.workspace }}/tmp/ci-reports/e2e-report.json
+          PLAYWRIGHT_HTML_OUTPUT_DIR: ${{ github.workspace }}/apps/frontend/playwright-report
+        run: |
+          mkdir -p tmp/ci-reports
+          pnpm --filter frontend exec playwright merge-reports --reporter=html --reporter=json ../../all-blob-reports
+          pnpm --filter frontend exec playwright test --list --reporter=json > tmp/ci-reports/e2e-expected.json
+          node scripts/ci/check-shard-completeness.mjs --tool playwright --expected tmp/ci-reports/e2e-expected.json --actual tmp/ci-reports/e2e-report.json
+      - name: Subir reporte HTML combinado de Playwright
+        uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
           name: playwright-report
-          path: |
-            apps/frontend/playwright-report/
-            apps/frontend/test-results/
+          path: apps/frontend/playwright-report/
           retention-days: 7
 
   e2e:
@@ -276,7 +326,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: always() && (github.base_ref == 'develop' || (github.base_ref == 'main' && startsWith(github.head_ref, 'release/')))
-    needs: [e2e-shards]
+    needs: [e2e-shards, e2e-informe]
     steps:
       - name: Verificar estado de jobs E2E
         env:
