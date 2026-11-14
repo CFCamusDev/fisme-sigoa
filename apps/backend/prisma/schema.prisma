@@ -543,3 +543,57 @@ model Resolution {
   @@index([status])
   @@map("resolutions")
 }
+
+// ==============================================================================
+// PLANTILLAS OFICIALES (HU-018, RF-018, RN-004, RN-040, RS-024)
+// ==============================================================================
+
+enum TemplateType {
+  ANNEX
+  MINUTES
+  SURVEY
+  INSTRUMENT
+}
+
+model Template {
+  id        String       @id @default(cuid())
+  code      String       @unique
+  name      String
+  type      TemplateType
+  variables Json         @default("[]")
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  versions TemplateVersion[]
+
+  @@index([type])
+  @@map("templates")
+}
+
+enum TemplateVersionStatus {
+  DRAFT
+  PUBLISHED
+  OBSOLETE
+}
+
+model TemplateVersion {
+  id          String                @id @default(cuid())
+  templateId  String
+  number      Int
+  status      TemplateVersionStatus @default(DRAFT)
+  content     String                @db.Text
+  publishedAt DateTime?
+  publishedBy String?
+  createdBy   String?
+  updatedBy   String?
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  template Template @relation(fields: [templateId], references: [id], onDelete: Restrict)
+
+  @@unique([templateId, number])
+  @@index([templateId, status])
+  @@map("template_versions")
+}

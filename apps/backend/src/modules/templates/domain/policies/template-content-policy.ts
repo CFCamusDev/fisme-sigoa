@@ -1,0 +1,221 @@
+import { TEMPLATE_VARIABLE_KEY_PATTERN } from '@sigoa/shared';
+import { InvalidTemplateDataError } from '../errors/invalid-template-data-error.js';
+
+/**
+ * Política de contenido seguro de una plantilla (HU-018, RS-063). Rechaza, no sanea: el
+ * administrador corrige el aviso. Es una defensa de primera línea basada en patrones; la defensa
+ * de fondo es del renderizado (JavaScript desactivado e intercepción de peticiones en el PDF).
+ */
+
+const FORBIDDEN_TAGS = [
+  'script',
+  'iframe',
+  'frame',
+  'frameset',
+  'object',
+  'embed',
+  'applet',
+  'link',
+  'base',
+  'form',
+  'input',
+  'button',
+  'svg',
+  'math',
+] as const;
+
+const FORBIDDEN_TAG_PATTERN = new RegExp(
+  `<\\s*\\/?\\s*(${FORBIDDEN_TAGS.join('|')})(?![a-zA-Z0-9])`,
+  'i',
+);
+const META_HTTP_EQUIV_PATTERN = /<\s*meta\b[^>]*http-equiv/i;
+
+const URL_ATTRIBUTES = new Set([
+  'src',
+  'href',
+  'srcset',
+  'poster',
+  'action',
+  'formaction',
+  'xlink:href',
+  'background',
+]);
+
+const OPEN_TAG_PATTERN =
+  /<([a-zA-Z][a-zA-Z0-9:-]*)((?:\s+[^\s"'<>/=]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'<>=`]+))?)*)\s*\/?>/g;
+const CLOSE_TAG_PATTERN = /<\/[a-zA-Z][a-zA-Z0-9:-]*\s*>/g;
+const ATTRIBUTE_PATTERN = /([^\s"'<>/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'<>=`]+)))?/g;
+const STYLE_BLOCK_PATTERN = /<style\b[^>]*>([\s\S]*?)<\/style\s*>/gi;
+const VARIABLE_PATTERN = /\{\{([\s\S]*?)\}\}/g;
+const SAFE_DATA_IMAGE_PATTERN = /^data:image\/(png|jpeg|gif|webp);base64,[a-z0-9+/=]+$/;
+const WHOLE_VARIABLE_PATTERN = /^\{\{[^{}]+\}\}$/;
+
+const NAMED_ENTITIES: Readonly<Record<string, string>> = {
+  colon: ':',
+  tab: '\t',
+  newline: '\n',
+  amp: '&',
+  lt: '<',
+  gt: '>',
+  quot: '"',
+  apos: "'",
+  sol: '/',
+  lpar: '(',
+  rpar: ')',
+};
+
+function fail(message: string): never {
+  throw new InvalidTemplateDataError(message);
+}
+
+/** Decodifica entidades, quita espacios y controles y pasa a minúsculas (`jav&#x61;script:`). */
+function normalizeAttributeValue(value: string): string {
+  const decoded = value
+    .replace(/&#x([0-9a-f]+);?/gi, (_m, hex: string) => safeFromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);?/g, (_m, dec: string) => safeFromCodePoint(parseInt(dec, 10)))
+    .replace(/&([a-z]+);/gi, (match, name: string) => NAMED_ENTITIES[name.toLowerCase()] ?? match);
+  return stripSpacesAndControls(decoded).toLowerCase();
+}
+
+function stripSpacesAndControls(value: string): string {
+  let result = '';
+  for (const char of value) {
+    const code = char.codePointAt(0) ?? 0;
+    if (code <= 0x20 || (code >= 0x7f && code <= 0x9f)) {
+      continue;
+    }
+    result += char;
+  }
+  return result;
+}
+
+function safeFromCodePoint(codePoint: number): string {
+  return Number.isInteger(codePoint) && codePoint >= 0 && codePoint <= 0x10ffff
+    ? String.fromCodePoint(codePoint)
+    : '';
+}
+
+function isSafeUrl(rawValue: string): boolean {
+  if (WHOLE_VARIABLE_PATTERN.test(rawValue.trim())) {
+    return true;
+  }
+  const value = normalizeAttributeValue(rawValue);
+  if (value === '' || value.startsWith('#')) {
+    return true;
+  }
+  if (SAFE_DATA_IMAGE_PATTERN.test(value)) {
+    return true;
+  }
+  if (value.startsWith('//') || value.startsWith('\\')) {
+    return false;
+  }
+  const scheme = /^([a-z][a-z0-9+.-]*):/.exec(value);
+  if (scheme) {
+    return scheme[1] === 'mailto' || scheme[1] === 'tel';
+  }
+  return true;
+}
+
+function assertSafeUrlAttribute(name: string, rawValue: string): void {
+  const candidates =
+    name === 'srcset'
+      ? rawValue.split(',').map((part) => part.trim().split(/\s+/)[0] ?? '')
+      : [rawValue];
+  for (const candidate of candidates) {
+    if (!isSafeUrl(candidate)) {
+      fail(
+        `El atributo ${name} contiene un enlace no permitido. Solo se admiten anclas (#), imágenes incrustadas (data:image) y variables.`,
+      );
+    }
+  }
+}
+
+function assertSafeCss(css: string, where: string): void {
+  const normalized = normalizeAttributeValue(css);
+  if (css.includes('\\')) {
+    fail(`El estilo (${where}) no puede usar secuencias de escape.`);
+  }
+  if (normalized.includes('@import') || normalized.includes('expression(')) {
+    fail(`El estilo (${where}) no puede usar @import ni expression().`);
+  }
+  if (normalized.includes('javascript:') || normalized.includes('behavior:')) {
+    fail(`El estilo (${where}) contiene una construcción no permitida.`);
+  }
+  for (const match of normalized.matchAll(/url\(([^)]*)\)/g)) {
+    const target = (match[1] ?? '').replace(/^["']|["']$/g, '');
+    if (!(target.startsWith('#') || SAFE_DATA_IMAGE_PATTERN.test(target))) {
+      fail(`El estilo (${where}) no puede cargar recursos con url(); usa imágenes incrustadas.`);
+    }
+  }
+}
+
+function assertSafeStructure(content: string): void {
+  if (FORBIDDEN_TAG_PATTERN.test(content)) {
+    fail(
+      'El contenido contiene una etiqueta no permitida (script, iframe, object, embed, link, base, form, svg u otra similar).',
+    );
+  }
+  if (META_HTTP_EQUIV_PATTERN.test(content)) {
+    fail('El contenido no puede usar <meta http-equiv>.');
+  }
+
+  for (const block of content.matchAll(STYLE_BLOCK_PATTERN)) {
+    assertSafeCss(block[1] ?? '', '<style>');
+  }
+
+  for (const tag of content.matchAll(OPEN_TAG_PATTERN)) {
+    const attributes = tag[2] ?? '';
+    for (const attribute of attributes.matchAll(ATTRIBUTE_PATTERN)) {
+      const name = (attribute[1] ?? '').toLowerCase();
+      const value = attribute[2] ?? attribute[3] ?? attribute[4] ?? '';
+      if (name.startsWith('on')) {
+        fail(`El atributo ${name} no está permitido: los manejadores de eventos se rechazan.`);
+      }
+      if (name === 'srcdoc') {
+        fail('El atributo srcdoc no está permitido.');
+      }
+      if (URL_ATTRIBUTES.has(name)) {
+        assertSafeUrlAttribute(name, value);
+      }
+      if (name === 'style') {
+        assertSafeCss(value, 'atributo style');
+      }
+    }
+  }
+
+  // Lo que quede tras quitar etiquetas bien formadas no debe parecer una etiqueta.
+  const remainder = content
+    .replace(/<!doctype html>/i, '')
+    .replace(OPEN_TAG_PATTERN, '')
+    .replace(CLOSE_TAG_PATTERN, '');
+  if (/<\s*[a-zA-Z/!?]/.test(remainder)) {
+    fail('El contenido tiene una etiqueta HTML mal formada. Revisa los < y > del texto.');
+  }
+}
+
+function assertAllowedVariables(content: string, allowedKeys: readonly string[]): void {
+  const allowed = new Set(allowedKeys);
+  const unknown: string[] = [];
+  for (const match of content.matchAll(VARIABLE_PATTERN)) {
+    const key = match[1] ?? '';
+    if (!TEMPLATE_VARIABLE_KEY_PATTERN.test(key) || !allowed.has(key)) {
+      unknown.push(key.trim() === '' ? '(vacía)' : key.trim());
+    }
+  }
+  if (unknown.length > 0) {
+    const shown = [...new Set(unknown)].slice(0, 5).join(', ');
+    fail(`El contenido usa variables que la plantilla no permite: ${shown}.`);
+  }
+  if (content.replace(VARIABLE_PATTERN, '').includes('{{')) {
+    fail('El contenido tiene una variable sin cerrar ({{ sin }}).');
+  }
+}
+
+/**
+ * Valida el HTML de una versión de plantilla. Lanza `InvalidTemplateDataError` (400) con un mensaje
+ * en español ante etiquetas, atributos, enlaces o variables no permitidos.
+ */
+export function validateTemplateContent(content: string, allowedKeys: readonly string[]): void {
+  assertSafeStructure(content);
+  assertAllowedVariables(content, allowedKeys);
+}

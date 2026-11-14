@@ -61,6 +61,14 @@ import {
   listResolutionsResponseSchema,
   registerResolutionRequestSchema,
   resolutionDtoSchema,
+  listTemplatesResponseSchema,
+  publishTemplateRequestSchema,
+  saveTemplateDraftRequestSchema,
+  templateDetailDtoSchema,
+  templateSummaryDtoSchema,
+  templateVariableSchema,
+  templateVersionDtoSchema,
+  templateVersionSummaryDtoSchema,
 } from '@sigoa/shared';
 import { createAuthRouter } from '../src/modules/auth/infrastructure/http/auth.routes.js';
 import { createUsersRouter } from '../src/modules/users/infrastructure/http/users.routes.js';
@@ -84,6 +92,8 @@ import type { CatalogVersionsController } from '../src/modules/catalog/infrastru
 import type { CatalogVersionItemsController } from '../src/modules/catalog/infrastructure/http/catalog-version-items.controller.js';
 import { createResolutionsRouter } from '../src/modules/resolutions/infrastructure/http/resolutions.routes.js';
 import type { ResolutionsController } from '../src/modules/resolutions/infrastructure/http/resolutions.controller.js';
+import { createTemplatesRouter } from '../src/modules/templates/infrastructure/http/templates.routes.js';
+import type { TemplatesController } from '../src/modules/templates/infrastructure/http/templates.controller.js';
 import { createSemestersRouter } from '../src/modules/parameters/infrastructure/http/semesters.routes.js';
 import type { SemestersController } from '../src/modules/parameters/infrastructure/http/semesters.controller.js';
 
@@ -2319,6 +2329,156 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
         'get /resolutions',
         'post /resolutions',
         'post /resolutions/:id/approve',
+      ]);
+    });
+  });
+
+  describe('OpenAPI Specification for Templates (HU-018, T-018-17, RF-018, RNF-032)', () => {
+    it('documents the four operations with bearerAuth and proper status codes', () => {
+      const expectations: [string, string, string, string[]][] = [
+        ['/templates', 'get', 'listTemplates', ['200', '400', '401', '403']],
+        ['/templates/{id}', 'get', 'getTemplate', ['200', '400', '401', '403', '404']],
+        [
+          '/templates/{id}/draft',
+          'put',
+          'saveTemplateDraft',
+          ['200', '201', '400', '401', '403', '404', '409'],
+        ],
+        [
+          '/templates/{id}/publish',
+          'post',
+          'publishTemplate',
+          ['200', '400', '401', '403', '404', '409'],
+        ],
+      ];
+      for (const [route, method, operationId, codes] of expectations) {
+        const op = spec.paths[route][method];
+        expect(op.operationId).toBe(operationId);
+        expect(op.tags).toContain('Templates');
+        expect(op.security).toEqual([{ bearerAuth: [] }]);
+        expect(Object.keys(op.responses).sort()).toEqual(codes);
+        const success = op.responses[codes[0] as string];
+        expect(success.headers['Cache-Control'].example).toBe('no-store');
+      }
+    });
+
+    it('validates the request and response examples against the shared schemas', () => {
+      const list =
+        spec.paths['/templates'].get.responses['200'].content['application/json'].example;
+      expect(listTemplatesResponseSchema.safeParse(list).success).toBe(true);
+      expect(list.items[0].draft).not.toBeNull();
+      expect(list.items[1].draft).toBeNull();
+
+      const detail =
+        spec.paths['/templates/{id}'].get.responses['200'].content['application/json'].example;
+      expect(templateDetailDtoSchema.safeParse(detail).success).toBe(true);
+
+      const put = spec.paths['/templates/{id}/draft'].put;
+      expect(
+        saveTemplateDraftRequestSchema.safeParse(
+          put.requestBody.content['application/json'].example,
+        ).success,
+      ).toBe(true);
+      for (const code of ['200', '201']) {
+        const draft = put.responses[code].content['application/json'].example;
+        expect(templateVersionDtoSchema.safeParse(draft).success).toBe(true);
+        expect(draft.status).toBe('DRAFT');
+        expect(draft.publishedAt).toBeNull();
+      }
+
+      const post = spec.paths['/templates/{id}/publish'].post;
+      expect(
+        publishTemplateRequestSchema.safeParse(post.requestBody.content['application/json'].example)
+          .success,
+      ).toBe(true);
+      const published = post.responses['200'].content['application/json'].example;
+      expect(templateVersionDtoSchema.safeParse(published).success).toBe(true);
+      expect(published.status).toBe('PUBLISHED');
+      expect(published.publishedAt).not.toBeNull();
+    });
+
+    it('documents the id parameter, the list filters and the pagination limits', () => {
+      for (const [route, method] of [
+        ['/templates/{id}', 'get'],
+        ['/templates/{id}/draft', 'put'],
+        ['/templates/{id}/publish', 'post'],
+      ] as const) {
+        expect(spec.paths[route][method].parameters[0]).toMatchObject({
+          name: 'id',
+          in: 'path',
+          required: true,
+          schema: { maxLength: 64 },
+        });
+      }
+      const params = spec.paths['/templates'].get.parameters;
+      expect(params.map((param: { name: string }) => param.name).sort()).toEqual([
+        'page',
+        'pageSize',
+        'type',
+      ]);
+      const pageSize = params.find((param: { name: string }) => param.name === 'pageSize');
+      expect(pageSize.schema).toMatchObject({ maximum: 100, default: 50 });
+      const type = params.find((param: { name: string }) => param.name === 'type');
+      expect(type.schema.enum).toEqual(['ANNEX', 'MINUTES', 'SURVEY', 'INSTRUMENT']);
+    });
+
+    it('matches components.schemas properties with the Zod schemas shape', () => {
+      const pairs: [string, { shape: Record<string, unknown> }][] = [
+        ['TemplateVariable', templateVariableSchema],
+        ['TemplateVersionSummaryDto', templateVersionSummaryDtoSchema],
+        ['TemplateVersionDto', templateVersionDtoSchema],
+        ['TemplateSummaryDto', templateSummaryDtoSchema],
+        ['TemplateDetailDto', templateDetailDtoSchema],
+        ['ListTemplatesResponse', listTemplatesResponseSchema],
+        ['SaveTemplateDraftRequest', saveTemplateDraftRequestSchema],
+        ['PublishTemplateRequest', publishTemplateRequestSchema],
+      ];
+      for (const [name, zodSchema] of pairs) {
+        const schema = spec.components.schemas[name];
+        const keys = Object.keys(zodSchema.shape).sort();
+        expect(Object.keys(schema.properties).sort(), name).toEqual(keys);
+        expect([...schema.required].sort(), name).toEqual(keys);
+        expect(schema.additionalProperties, name).toBe(false);
+      }
+      const version = spec.components.schemas['TemplateVersionSummaryDto'];
+      expect(version.properties.publishedAt.type).toEqual(['string', 'null']);
+      expect(version.properties.status.enum).toEqual(['DRAFT', 'PUBLISHED', 'OBSOLETE']);
+      expect(spec.components.schemas['SaveTemplateDraftRequest'].properties.content.maxLength).toBe(
+        40000,
+      );
+      const summary = spec.components.schemas['TemplateSummaryDto'];
+      expect(summary.properties.published.oneOf).toContainEqual({ type: 'null' });
+      expect(summary.properties.draft.oneOf).toContainEqual({ type: 'null' });
+    });
+
+    it('has bidirectional parity between openapi spec and createTemplatesRouter', () => {
+      const router = createTemplatesRouter({
+        controller: {
+          listTemplates: vi.fn(),
+          getTemplate: vi.fn(),
+          saveDraft: vi.fn(),
+          publishTemplate: vi.fn(),
+        } as unknown as TemplatesController,
+        authenticate: vi.fn(),
+        requirePermission: vi.fn(() => vi.fn()),
+      });
+
+      const routerEndpoints: string[] = [];
+      for (const layer of router.stack) {
+        if (layer.route) {
+          for (const method of Object.keys(layer.route.methods)) {
+            const normalizedPath =
+              '/templates' + (layer.route.path === '/' ? '' : layer.route.path);
+            routerEndpoints.push(method.toLowerCase() + ' ' + normalizedPath);
+          }
+        }
+      }
+
+      expect(routerEndpoints.sort()).toEqual([
+        'get /templates',
+        'get /templates/:id',
+        'post /templates/:id/publish',
+        'put /templates/:id/draft',
       ]);
     });
   });

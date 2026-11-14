@@ -6443,6 +6443,677 @@
           }
         }
       }
+    },
+    "/templates": {
+      "get": {
+        "tags": ["Templates"],
+        "summary": "Listar plantillas oficiales",
+        "description": "Devuelve las plantillas oficiales de forma paginada y ordenadas por código, con su versión Publicada y su Borrador (nulos si no existen), sin el contenido. Filtro opcional por tipo (ANNEX, MINUTES, SURVEY, INSTRUMENT); se rechazan los parámetros desconocidos y los tamaños de página mayores a 100. Requiere el permiso 'plantilla.ver' con alcance GLOBAL (HU-018, RF-018, RS-002).",
+        "operationId": "listTemplates",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ANNEX", "MINUTES", "SURVEY", "INSTRUMENT"]
+            },
+            "description": "Filtrar por tipo de plantilla."
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000,
+              "default": 1
+            },
+            "description": "Número de página."
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            },
+            "description": "Tamaño de página."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Página de plantillas.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché HTTP."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListTemplatesResponse"
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "cm0template0000001",
+                      "code": "FO-01",
+                      "name": "Anexo 1. Cronograma",
+                      "type": "ANNEX",
+                      "variables": [
+                        {
+                          "key": "program.name",
+                          "label": "Nombre del programa"
+                        },
+                        {
+                          "key": "logo.url",
+                          "label": "Escudo oficial (dirección de la imagen)"
+                        }
+                      ],
+                      "published": {
+                        "id": "cm0templatever000001",
+                        "number": 1,
+                        "status": "PUBLISHED",
+                        "publishedAt": "2026-11-01T10:00:00.000Z",
+                        "updatedAt": "2026-11-01T10:00:00.000Z"
+                      },
+                      "draft": {
+                        "id": "cm0templatever000002",
+                        "number": 2,
+                        "status": "DRAFT",
+                        "publishedAt": null,
+                        "updatedAt": "2026-11-05T10:00:00.000Z"
+                      }
+                    },
+                    {
+                      "id": "cm0template0000002",
+                      "code": "FO-02",
+                      "name": "Anexo 2. Acta",
+                      "type": "ANNEX",
+                      "variables": [],
+                      "published": {
+                        "id": "cm0templatever000003",
+                        "number": 1,
+                        "status": "PUBLISHED",
+                        "publishedAt": "2026-11-01T10:00:00.000Z",
+                        "updatedAt": "2026-11-01T10:00:00.000Z"
+                      },
+                      "draft": null
+                    }
+                  ],
+                  "page": 1,
+                  "pageSize": 50,
+                  "total": 20,
+                  "totalPages": 1
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetro de consulta inválido o desconocido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Los parámetros de consulta no son válidos.",
+                    "requestId": "req_tpl_list_400"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o token de acceso inválido o expirado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado",
+                    "requestId": "req_tpl_list_401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere el permiso 'plantilla.ver' con alcance GLOBAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tiene permisos para realizar esta acción",
+                    "requestId": "req_tpl_list_403"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/templates/{id}": {
+      "get": {
+        "tags": ["Templates"],
+        "summary": "Obtener el detalle de una plantilla",
+        "description": "Devuelve la plantilla con sus variables permitidas, el historial de versiones (de la más reciente a la más antigua) y el contenido HTML de la versión Publicada y del Borrador, nulos si no existen. Es la lectura que usa el editor. Requiere el permiso 'plantilla.ver' con alcance GLOBAL (HU-018, RF-018, RS-002).",
+        "operationId": "getTemplate",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "description": "Identificador de la plantilla."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detalle de la plantilla.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché HTTP."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateDetailDto"
+                },
+                "example": {
+                  "id": "cm0template0000001",
+                  "code": "FO-01",
+                  "name": "Anexo 1. Cronograma",
+                  "type": "ANNEX",
+                  "variables": [
+                    {
+                      "key": "program.name",
+                      "label": "Nombre del programa"
+                    },
+                    {
+                      "key": "logo.url",
+                      "label": "Escudo oficial (dirección de la imagen)"
+                    }
+                  ],
+                  "versions": [
+                    {
+                      "id": "cm0templatever000002",
+                      "number": 2,
+                      "status": "DRAFT",
+                      "publishedAt": null,
+                      "updatedAt": "2026-11-05T10:00:00.000Z"
+                    },
+                    {
+                      "id": "cm0templatever000001",
+                      "number": 1,
+                      "status": "PUBLISHED",
+                      "publishedAt": "2026-11-01T10:00:00.000Z",
+                      "updatedAt": "2026-11-01T10:00:00.000Z"
+                    }
+                  ],
+                  "published": {
+                    "id": "cm0templatever000001",
+                    "number": 1,
+                    "status": "PUBLISHED",
+                    "publishedAt": "2026-11-01T10:00:00.000Z",
+                    "updatedAt": "2026-11-01T10:00:00.000Z",
+                    "content": "<p>{{program.name}}: contenido de la versión 1</p>"
+                  },
+                  "draft": {
+                    "id": "cm0templatever000002",
+                    "number": 2,
+                    "status": "DRAFT",
+                    "publishedAt": null,
+                    "updatedAt": "2026-11-05T10:00:00.000Z",
+                    "content": "<p>{{program.name}}: contenido de la versión 2</p>"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Identificador inválido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Los parámetros de ruta no son válidos.",
+                    "requestId": "req_tpl_get_400"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o token de acceso inválido o expirado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado",
+                    "requestId": "req_tpl_get_401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere el permiso 'plantilla.ver' con alcance GLOBAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tiene permisos para realizar esta acción",
+                    "requestId": "req_tpl_get_403"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La plantilla no existe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "Plantilla no encontrada.",
+                    "requestId": "req_tpl_get_404"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/templates/{id}/draft": {
+      "put": {
+        "tags": ["Templates"],
+        "summary": "Guardar el borrador de una plantilla",
+        "description": "Guarda el HTML de la plantilla como Borrador: crea la versión siguiente si no hay Borrador (201) o actualiza el existente (200); un contenido idéntico al del Borrador no escribe ni audita y responde 200. El HTML se rechaza con 400 (no se sanea) si trae etiquetas peligrosas (script, iframe, object, embed, link, base, form, svg), manejadores de eventos, enlaces javascript: o recursos externos, o variables {{clave}} que la plantilla no declara; el máximo es de 40 000 caracteres y un cuerpo JSON mayor al límite del servidor responde 400. La creación o actualización y su auditoría (CREATE o UPDATE, sin el HTML) se confirman en una sola transacción, con la plantilla bloqueada para serializar edición y publicación. Requiere el permiso 'plantilla.editar' con alcance GLOBAL (HU-018, RF-018, RN-004, RS-002, RS-020).",
+        "operationId": "saveTemplateDraft",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "description": "Identificador de la plantilla."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveTemplateDraftRequest"
+              },
+              "example": {
+                "content": "<p>{{program.name}}: contenido de la versión 2</p>"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Borrador actualizado, o sin cambios si el contenido era idéntico.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché HTTP."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateVersionDto"
+                },
+                "example": {
+                  "id": "cm0templatever000002",
+                  "number": 2,
+                  "status": "DRAFT",
+                  "publishedAt": null,
+                  "updatedAt": "2026-11-05T10:00:00.000Z",
+                  "content": "<p>{{program.name}}: contenido de la versión 2</p>"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Borrador creado como la versión siguiente de la plantilla.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché HTTP."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateVersionDto"
+                },
+                "example": {
+                  "id": "cm0templatever000002",
+                  "number": 2,
+                  "status": "DRAFT",
+                  "publishedAt": null,
+                  "updatedAt": "2026-11-05T10:00:00.000Z",
+                  "content": "<p>{{program.name}}: contenido de la versión 2</p>"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Contenido vacío, mayor a 40 000 caracteres, con HTML no permitido o con variables desconocidas; campo desconocido; identificador inválido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "El contenido usa variables que la plantilla no permite: variable.desconocida.",
+                    "requestId": "req_tpl_draft_400"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o token de acceso inválido o expirado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado",
+                    "requestId": "req_tpl_draft_401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere el permiso 'plantilla.editar' con alcance GLOBAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tiene permisos para realizar esta acción",
+                    "requestId": "req_tpl_draft_403"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La plantilla no existe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "Plantilla no encontrada.",
+                    "requestId": "req_tpl_draft_404"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "El borrador dejó de ser editable o cambió por una edición simultánea.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "Solo se puede editar una versión de plantilla en Borrador. Esta versión está bloqueada.",
+                    "requestId": "req_tpl_draft_409"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/templates/{id}/publish": {
+      "post": {
+        "tags": ["Templates"],
+        "summary": "Publicar el borrador de una plantilla",
+        "description": "Publica el Borrador que el administrador revisó: deja Obsoleta la versión Publicada anterior (si la hay) y publica la nueva en una sola transacción, con una auditoría STATE_CHANGE por cada cambio de estado. La solicitud lleva el identificador del Borrador y su fecha de última actualización (expectedUpdatedAt): si el contenido cambió desde que se revisó, o el Borrador ya fue publicado, responde 409 sin cambios; el contenido se revalida con las mismas reglas del borrador. El contenido de las versiones anteriores nunca se modifica (RN-007, RS-024). De publicaciones simultáneas solo una gana. Requiere el permiso 'plantilla.publicar' con alcance GLOBAL (HU-018, RF-018, RN-004, RS-002, RS-020, RS-024).",
+        "operationId": "publishTemplate",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "description": "Identificador de la plantilla."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishTemplateRequest"
+              },
+              "example": {
+                "versionId": "cm0templatever000002",
+                "expectedUpdatedAt": "2026-11-05T10:00:00.000Z"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Versión publicada; la anterior quedó Obsoleta.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché HTTP."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateVersionDto"
+                },
+                "example": {
+                  "id": "cm0templatever000002",
+                  "number": 2,
+                  "status": "PUBLISHED",
+                  "publishedAt": "2026-11-14T09:00:00.000Z",
+                  "updatedAt": "2026-11-14T09:00:00.000Z",
+                  "content": "<p>{{program.name}}: contenido de la versión 2</p>"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Falta o es inválido el identificador del borrador o la fecha esperada, campo desconocido, o el contenido ya no cumple las reglas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Los datos de la solicitud no son válidos.",
+                    "requestId": "req_tpl_publish_400"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o token de acceso inválido o expirado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado",
+                    "requestId": "req_tpl_publish_401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permiso insuficiente. Requiere el permiso 'plantilla.publicar' con alcance GLOBAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "No tiene permisos para realizar esta acción",
+                    "requestId": "req_tpl_publish_403"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La plantilla o la versión no existen, o la versión es de otra plantilla.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "Versión de plantilla no encontrada.",
+                    "requestId": "req_tpl_publish_404"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "La versión ya no es un Borrador o su contenido cambió desde que se revisó.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "El borrador cambió desde que lo revisaste. Actualiza la pantalla y revísalo antes de publicar.",
+                    "requestId": "req_tpl_publish_409"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -8267,6 +8938,258 @@
           "totalPages": {
             "type": "integer",
             "minimum": 0
+          }
+        }
+      },
+      "TemplateVariable": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key", "label"],
+        "properties": {
+          "key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60,
+            "pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+            "description": "Clave usada en el HTML como {{clave}}; las colecciones usan coleccion.campo."
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          }
+        }
+      },
+      "TemplateVersionSummaryDto": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "number", "status", "publishedAt", "updatedAt"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "number": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": ["DRAFT", "PUBLISHED", "OBSOLETE"]
+          },
+          "publishedAt": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "Fecha de publicación; nula mientras la versión es Borrador."
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "TemplateVersionDto": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "number", "status", "publishedAt", "updatedAt", "content"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "number": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": ["DRAFT", "PUBLISHED", "OBSOLETE"]
+          },
+          "publishedAt": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "Fecha de publicación; nula mientras la versión es Borrador."
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "description": "HTML de la versión."
+          }
+        }
+      },
+      "TemplateSummaryDto": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "code", "name", "type", "variables", "published", "draft"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Código oficial (FO-01…FO-11, ACTA, ENC-*, INS-*)."
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "type": {
+            "type": "string",
+            "enum": ["ANNEX", "MINUTES", "SURVEY", "INSTRUMENT"]
+          },
+          "variables": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "$ref": "#/components/schemas/TemplateVariable"
+            },
+            "description": "Variables {{clave}} que el HTML puede usar; las claves no se repiten."
+          },
+          "published": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/TemplateVersionSummaryDto"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Versión Publicada; nula si la plantilla aún no tiene una."
+          },
+          "draft": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/TemplateVersionSummaryDto"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Borrador en edición; nulo si no hay."
+          }
+        }
+      },
+      "TemplateDetailDto": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "code", "name", "type", "variables", "versions", "published", "draft"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Código oficial (FO-01…FO-11, ACTA, ENC-*, INS-*)."
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "type": {
+            "type": "string",
+            "enum": ["ANNEX", "MINUTES", "SURVEY", "INSTRUMENT"]
+          },
+          "variables": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "$ref": "#/components/schemas/TemplateVariable"
+            },
+            "description": "Variables {{clave}} que el HTML puede usar; las claves no se repiten."
+          },
+          "versions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TemplateVersionSummaryDto"
+            }
+          },
+          "published": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/TemplateVersionDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "draft": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/TemplateVersionDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "ListTemplatesResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["items", "page", "pageSize", "total", "totalPages"],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TemplateSummaryDto"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "totalPages": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "SaveTemplateDraftRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["content"],
+        "properties": {
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40000,
+            "description": "HTML completo de la versión; no puede ser solo espacios."
+          }
+        }
+      },
+      "PublishTemplateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["versionId", "expectedUpdatedAt"],
+        "properties": {
+          "versionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "Borrador que se publica."
+          },
+          "expectedUpdatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Fecha de última actualización del Borrador cuando se revisó."
           }
         }
       }

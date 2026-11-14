@@ -2,7 +2,7 @@ import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/r
 import type { CatalogVersionDetailDto, CatalogVersionDto } from '@sigoa/shared';
 import type { ApiError } from '@/lib/api-error';
 import { sendCatalogVersionToValidation } from '../api/send-catalog-version-to-validation';
-import { shareInFlight } from '../lib/shared-in-flight';
+import { shareInFlight } from '@/lib/shared-in-flight';
 import { catalogKeys } from './catalog-keys';
 
 /**

@@ -1,6 +1,6 @@
 import { execSync } from 'node:child_process';
 
-function runBackendScript(statements: string[]): void {
+export function runBackendScript(statements: string[]): void {
   const testDbUrl =
     process.env['TEST_DATABASE_URL'] ||
     process.env['DATABASE_URL'] ||

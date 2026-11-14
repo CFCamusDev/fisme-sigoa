@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as AppPlantillasRouteImport } from './routes/_app/plantillas'
 import { Route as AppResolucionesRouteImport } from './routes/_app/resoluciones'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as AuthRecuperarContrasenaRouteImport } from './routes/_auth/recuperar-contrasena'
@@ -44,6 +45,11 @@ const AuthRoute = AuthRouteImport.update({
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPlantillasRoute = AppPlantillasRouteImport.update({
+  id: '/plantillas',
+  path: '/plantillas',
   getParentRoute: () => AppRoute,
 } as any)
 const AppResolucionesRoute = AppResolucionesRouteImport.update({
@@ -153,6 +159,7 @@ const AppUsuariosUserIdEditarRoute = AppUsuariosUserIdEditarRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
+  '/plantillas': typeof AppPlantillasRoute
   '/resoluciones': typeof AppResolucionesRoute
   '/login': typeof AuthLoginRoute
   '/recuperar-contrasena': typeof AuthRecuperarContrasenaRoute
@@ -176,6 +183,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
+  '/plantillas': typeof AppPlantillasRoute
   '/resoluciones': typeof AppResolucionesRoute
   '/login': typeof AuthLoginRoute
   '/recuperar-contrasena': typeof AuthRecuperarContrasenaRoute
@@ -201,6 +209,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/_auth': typeof AuthRouteWithChildren
+  '/_app/plantillas': typeof AppPlantillasRoute
   '/_app/resoluciones': typeof AppResolucionesRoute
   '/_auth/login': typeof AuthLoginRoute
   '/_auth/recuperar-contrasena': typeof AuthRecuperarContrasenaRoute
@@ -227,6 +236,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/plantillas'
     | '/resoluciones'
     | '/login'
     | '/recuperar-contrasena'
@@ -250,6 +260,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/plantillas'
     | '/resoluciones'
     | '/login'
     | '/recuperar-contrasena'
@@ -274,6 +285,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_app'
     | '/_auth'
+    | '/_app/plantillas'
     | '/_app/resoluciones'
     | '/_auth/login'
     | '/_auth/recuperar-contrasena'
@@ -324,6 +336,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/plantillas': {
+      id: '/_app/plantillas'
+      path: '/plantillas'
+      fullPath: '/plantillas'
+      preLoaderRoute: typeof AppPlantillasRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/resoluciones': {
@@ -470,6 +489,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
+  AppPlantillasRoute: typeof AppPlantillasRoute
   AppResolucionesRoute: typeof AppResolucionesRoute
   AppIndexRoute: typeof AppIndexRoute
   AppCatalogoHistorialRoute: typeof AppCatalogoHistorialRoute
@@ -489,6 +509,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppPlantillasRoute: AppPlantillasRoute,
   AppResolucionesRoute: AppResolucionesRoute,
   AppIndexRoute: AppIndexRoute,
   AppCatalogoHistorialRoute: AppCatalogoHistorialRoute,

@@ -1,0 +1,44 @@
+import { runBackendScript } from './catalog-data';
+
+const TEMPLATE_ID = 'e2e-template-1';
+
+/**
+ * Expresión JavaScript que produce `value` sin escribir `<` ni `>` en la línea de comandos: en
+ * Windows el intérprete los tomaría por redirecciones. Se usan marcadores que el script reemplaza
+ * con `String.fromCharCode`.
+ */
+function jsString(value: string): string {
+  const marked = value.replaceAll('<', '~LT~').replaceAll('>', '~GT~');
+  return `${JSON.stringify(marked)}.replaceAll("~LT~", String.fromCharCode(60)).replaceAll("~GT~", String.fromCharCode(62))`;
+}
+
+/**
+ * Deja la base del worker sin plantillas. Usa `TRUNCATE`, que no dispara los triggers que impiden
+ * borrar versiones publicadas (RN-007): las pruebas comparten la base de su worker.
+ */
+export function resetTemplates(): void {
+  // Evita `$` literal en la línea de comandos: en Linux `/bin/sh` expande `$executeRawUnsafe` dentro de `"..."`.
+  runBackendScript([
+    'const execRaw = String.fromCharCode(36) + "executeRawUnsafe";',
+    'await prisma[execRaw](\'TRUNCATE TABLE "template_versions", "templates" CASCADE\');',
+  ]);
+}
+
+/**
+ * Siembra una plantilla ficticia con la versión 1 Publicada y, si `withDraft`, el borrador de la
+ * versión 2. No depende del seed global ni usa datos reales.
+ */
+export function seedTemplate(options: { withDraft?: boolean } = {}): string {
+  const versions = [
+    `{ number: 1, status: "PUBLISHED", content: ${jsString('<p>{{program.name}} versión 1</p>')}, publishedAt: new Date("2026-11-01T10:00:00.000Z"), publishedBy: "SEED", createdBy: "SEED", updatedBy: "SEED" }`,
+    ...(options.withDraft
+      ? [
+          `{ number: 2, status: "DRAFT", content: ${jsString('<p>{{program.name}} borrador de la versión 2</p>')}, createdBy: "SEED", updatedBy: "SEED" }`,
+        ]
+      : []),
+  ];
+  runBackendScript([
+    `await prisma.template.create({ data: { id: "${TEMPLATE_ID}", code: "FO-E2E", name: "Anexo de prueba", type: "ANNEX", variables: [{ key: "program.name", label: "Nombre del programa" }, { key: "schedule.period", label: "Periodo del cronograma" }], createdBy: "SEED", updatedBy: "SEED", versions: { create: [${versions.join(', ')}] } } });`,
+  ]);
+  return TEMPLATE_ID;
+}

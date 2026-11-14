@@ -184,6 +184,23 @@ describe('setupAppRoutes', () => {
     expect(listing.status).toBe(401);
   });
 
+  it('mounts /templates router and rejects unauthenticated requests with 401 (HU-018, T-018-14)', async () => {
+    const app = express();
+    app.use(express.json());
+    setupAppRoutes(app, {
+      unitOfWork: dummyUnitOfWork,
+      auditLogger: dummyAuditLogger,
+      dbProvider: dummyDbProvider,
+      env: createTestEnv(),
+    });
+    app.use(errorHandler);
+
+    const listing = await request(app).get('/templates');
+    expect(listing.status).toBe(401);
+    const detail = await request(app).get('/templates/t1');
+    expect(detail.status).toBe(401);
+  });
+
   it('throws an error in production if APP_PUBLIC_URL is not configured', () => {
     const app = express();
     const prodEnv = createTestEnv({

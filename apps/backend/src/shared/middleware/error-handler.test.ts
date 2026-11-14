@@ -117,6 +117,45 @@ describe('global error-handler middleware', () => {
     expect(parsed.success).toBe(true);
   });
 
+  it('responds 400 instead of 500 when the json body exceeds the size limit', async () => {
+    const app = createApp({
+      env: baseEnv,
+      setupRoutes: (router) => {
+        router.post('/test-large', (_req, res) => {
+          res.status(200).json({ ok: true });
+        });
+      },
+    });
+
+    const response = await request(app)
+      .post('/test-large')
+      .set('Content-Type', 'application/json')
+      .send(JSON.stringify({ content: 'a'.repeat(150_000) }));
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe('VALIDATION_ERROR');
+    expect(response.body.error.message).toBe(
+      'El cuerpo de la solicitud excede el tamaño máximo permitido.',
+    );
+    expect(response.body.error.requestId).toBeDefined();
+    expect(apiErrorResponseSchema.safeParse(response.body).success).toBe(true);
+  });
+
+  it('keeps answering 500 for an error whose type is not a size error', async () => {
+    const app = createApp({
+      env: baseEnv,
+      setupRoutes: (router) => {
+        router.get('/test-typed', () => {
+          throw Object.assign(new Error('otro'), { type: 'other.type' });
+        });
+      },
+    });
+
+    const response = await request(app).get('/test-typed');
+
+    expect(response.status).toBe(500);
+  });
+
   it('includes retryAfterSeconds and sets the Retry-After header when present', async () => {
     class CustomLockedError extends AppError {
       constructor(retryAfterSeconds: number) {

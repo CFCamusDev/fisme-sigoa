@@ -1,6 +1,7 @@
 import * as argon2 from 'argon2';
 import { describe, expect, it } from 'vitest';
 import { Argon2PasswordHasher } from './modules/auth/infrastructure/security/argon2-password-hasher.js';
+import { OFFICIAL_TEMPLATES } from './modules/templates/infrastructure/prisma/seed/template-seed-data.js';
 import { BootstrapAdminConfigError } from './modules/users/domain/errors/bootstrap-admin-config-error.js';
 import { BootstrapAdminConflictError } from './modules/users/domain/errors/bootstrap-admin-conflict-error.js';
 import { runDatabaseSeed } from './seed-database.js';
@@ -60,6 +61,10 @@ describe('Database seed (PostgreSQL real, HU-079)', () => {
       expect(
         await prisma.graduateAttribute.count({ where: { versionId: catalogVersion.id } }),
       ).toBe(12);
+      expect(await prisma.template.count()).toBe(OFFICIAL_TEMPLATES.length);
+      expect(
+        await prisma.templateVersion.count({ where: { number: 1, status: 'PUBLISHED' } }),
+      ).toBe(OFFICIAL_TEMPLATES.length);
 
       const admin = await prisma.user.findUniqueOrThrow({
         where: { email: ADMIN_EMAIL },
@@ -120,6 +125,10 @@ describe('Database seed (PostgreSQL real, HU-079)', () => {
       expect(await prisma.catalogVersion.count()).toBe(1);
       expect(await prisma.educationalObjective.count()).toBe(4);
       expect(await prisma.graduateAttribute.count()).toBe(12);
+
+      // Las plantillas tampoco se duplican
+      expect(await prisma.template.count()).toBe(OFFICIAL_TEMPLATES.length);
+      expect(await prisma.templateVersion.count()).toBe(OFFICIAL_TEMPLATES.length);
 
       // La edición no se revirtió
       const restoredEdit = await prisma.rolePermission.count({
