@@ -55,7 +55,7 @@ describe('GET /catalog-versions/:baseId/compare/:targetId (PostgreSQL real, HU-0
     const v2 = await createDraftCatalogVersion(prisma, fixture);
     await prisma.educationalObjective.updateMany({
       where: { versionId: v2, code: 'OEP1' },
-      data: { statement: 'Enunciado corregido del objetivo 1.' },
+      data: { statement: 'Texto distinto del objetivo 1.' },
     });
     await prisma.educationalObjective.deleteMany({ where: { versionId: v2, code: 'OEP4' } });
     await prisma.educationalObjective.create({
@@ -71,6 +71,16 @@ describe('GET /catalog-versions/:baseId/compare/:targetId (PostgreSQL real, HU-0
       .set('Authorization', `Bearer ${token}`);
 
   async function approveResolution(versionId: string, number: string, approvedAt: string) {
+    const file = await prisma.storedFile.create({
+      data: {
+        provider: 'memory',
+        publicId: `comparison-test/${number}`,
+        url: `memory://comparison-test/${number}`,
+        mimeType: 'application/pdf',
+        sizeBytes: 64,
+        sha256: 'c'.repeat(64),
+      },
+    });
     await prisma.resolution.create({
       data: {
         type: 'EDUCATIONAL_OBJECTIVE',
@@ -79,6 +89,7 @@ describe('GET /catalog-versions/:baseId/compare/:targetId (PostgreSQL real, HU-0
         status: 'APPROVED',
         approvedAt: new Date(approvedAt),
         approvedBy: 'SEED',
+        pdfFileId: file.id,
         catalogVersionId: versionId,
         createdBy: 'SEED',
       },
@@ -134,7 +145,7 @@ describe('GET /catalog-versions/:baseId/compare/:targetId (PostgreSQL real, HU-0
           issuedOn: '2024-02-20',
           status: 'APPROVED',
           approvedAt: '2024-03-01T10:00:00.000Z',
-          hasPdf: false,
+          hasPdf: true,
         },
       ]);
 
