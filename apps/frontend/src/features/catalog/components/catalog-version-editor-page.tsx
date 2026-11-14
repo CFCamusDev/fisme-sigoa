@@ -12,6 +12,7 @@ import { getCatalogErrorMessage } from '../lib/catalog-error-message';
 import { formatVersionLabel } from './catalog-versions-table';
 import { CatalogItemSection } from './catalog-item-section';
 import { CatalogSendToValidation } from './catalog-send-to-validation';
+import { CatalogVersionHistoryPanel } from './catalog-version-history-panel';
 
 export interface CatalogVersionEditorPageProps {
   readonly versionId: string;
@@ -74,7 +75,7 @@ export function CatalogVersionEditorPage({ versionId }: CatalogVersionEditorPage
     );
   }
 
-  const { version, objectives, attributes } = detailQuery.data;
+  const { version, history, objectives, attributes } = detailQuery.data;
   const isDraft = version.status === 'DRAFT';
   const editable = canEdit && isDraft;
   const current = compareWithCurrent ? currentQuery.data : undefined;
@@ -108,6 +109,10 @@ export function CatalogVersionEditorPage({ versionId }: CatalogVersionEditorPage
           <Lock aria-hidden="true" />
           <AlertDescription>{lockReason}</AlertDescription>
         </Alert>
+      )}
+
+      {(version.status === 'APPROVED' || version.status === 'HISTORICAL') && (
+        <CatalogVersionHistoryPanel history={history} status={version.status} />
       )}
 
       <CatalogItemSection
