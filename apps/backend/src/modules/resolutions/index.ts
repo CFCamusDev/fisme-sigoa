@@ -1,3 +1,56 @@
+import { Router, type RequestHandler } from 'express';
+import type { AuditLogger } from '../../shared/audit/audit-logger.js';
+import type { DbProvider } from '../../shared/prisma/prisma-unit-of-work.js';
+import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
+import { RegisterResolutionUseCase } from './application/register-resolution.js';
+import type { ResolutionPermissionChecker } from './domain/ports/resolution-permission-checker.js';
+import { ResolutionsController } from './infrastructure/http/resolutions.controller.js';
+import {
+  createResolutionsRouter,
+  type ResolutionRoutePermissionScope,
+} from './infrastructure/http/resolutions.routes.js';
+import { PrismaResolutionCatalogVersionReader } from './infrastructure/prisma/prisma-resolution-catalog-version-reader.js';
+import { PrismaResolutionRepository } from './infrastructure/prisma/prisma-resolution-repository.js';
+
+export interface ResolutionsModuleDependencies {
+  readonly unitOfWork: UnitOfWork;
+  readonly auditLogger: AuditLogger;
+  readonly dbProvider: DbProvider;
+  readonly authenticate: RequestHandler;
+  readonly requirePermission: (
+    permission: string,
+    scope?: ResolutionRoutePermissionScope,
+  ) => RequestHandler;
+  readonly permissionChecker: ResolutionPermissionChecker;
+  readonly clock?: () => Date;
+}
+
+export function createResolutionsModule(deps?: ResolutionsModuleDependencies): Router {
+  if (!deps) {
+    return Router();
+  }
+
+  const resolutionRepository = new PrismaResolutionRepository(deps.dbProvider);
+  const versionReader = new PrismaResolutionCatalogVersionReader(deps.dbProvider);
+
+  const registerResolutionUseCase = new RegisterResolutionUseCase({
+    versionReader,
+    resolutionRepository,
+    permissionChecker: deps.permissionChecker,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+    clock: deps.clock,
+  });
+
+  const controller = new ResolutionsController({ registerResolutionUseCase });
+
+  return createResolutionsRouter({
+    controller,
+    authenticate: deps.authenticate,
+    requirePermission: deps.requirePermission,
+  });
+}
+
 export * from './domain/entities/resolution-enums.js';
 export * from './domain/entities/resolution.js';
 export * from './domain/entities/resolution-approved.js';
@@ -15,3 +68,5 @@ export * from './application/approve-resolution.types.js';
 export * from './application/resolution-pdf-rules.js';
 export * from './infrastructure/storage/file-storage-resolution-pdf-storage.js';
 export * from './infrastructure/events/in-process-resolution-event-publisher.js';
+export * from './infrastructure/http/resolutions.controller.js';
+export * from './infrastructure/http/resolutions.routes.js';
