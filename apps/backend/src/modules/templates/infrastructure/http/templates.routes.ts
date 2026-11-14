@@ -1,6 +1,7 @@
 import { Router, type RequestHandler } from 'express';
 import {
   listTemplatesQuerySchema,
+  publishTemplateRequestSchema,
   saveTemplateDraftRequestSchema,
   templateIdParamsSchema,
 } from '@sigoa/shared';
@@ -48,6 +49,16 @@ export function createTemplatesRouter(deps: TemplatesRouterDependencies): Router
     deps.requirePermission('plantilla.editar', 'GLOBAL'),
     validateRequest({ params: templateIdParamsSchema, body: saveTemplateDraftRequestSchema }),
     deps.controller.saveDraft,
+  );
+
+  // POST /templates/:id/publish (HU-018, T-018-16, CA2, CA3, RF-018, RS-002, RS-020, RNF-009)
+  // Cadena obligatoria: authenticate -> requirePermission -> validateRequest -> controller
+  router.post(
+    '/:id/publish',
+    deps.authenticate,
+    deps.requirePermission('plantilla.publicar', 'GLOBAL'),
+    validateRequest({ params: templateIdParamsSchema, body: publishTemplateRequestSchema }),
+    deps.controller.publishTemplate,
   );
 
   return router;

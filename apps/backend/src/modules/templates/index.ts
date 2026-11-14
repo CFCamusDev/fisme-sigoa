@@ -5,6 +5,7 @@ import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
 import { EditTemplateUseCase } from './application/edit-template.js';
 import { GetTemplateDetailUseCase } from './application/get-template-detail.js';
 import { ListTemplatesUseCase } from './application/list-templates.js';
+import { PublishTemplateUseCase } from './application/publish-template.js';
 import type { TemplatePermissionChecker } from './domain/ports/template-permission-checker.js';
 import { TemplatesController } from './infrastructure/http/templates.controller.js';
 import {
@@ -57,11 +58,13 @@ export function createTemplatesModule(deps?: TemplatesModuleDependencies): Route
     clock: deps.clock,
   };
   const editTemplateUseCase = new EditTemplateUseCase(writeDependencies);
+  const publishTemplateUseCase = new PublishTemplateUseCase(writeDependencies);
 
   const controller = new TemplatesController({
     listTemplatesUseCase,
     getTemplateDetailUseCase,
     editTemplateUseCase,
+    publishTemplateUseCase,
   });
 
   return createTemplatesRouter({
