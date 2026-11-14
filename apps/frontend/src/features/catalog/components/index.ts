@@ -7,3 +7,9 @@ export { CatalogItemForm } from './catalog-item-form';
 export { CatalogSendToValidation } from './catalog-send-to-validation';
 export { CatalogChangeBadge } from './catalog-change-badge';
 export { CatalogVersionHistoryPanel } from './catalog-version-history-panel';
+export { CatalogComparisonPage } from './catalog-comparison-page';
+export {
+  CatalogComparisonDiff,
+  CatalogItemChangeBadge,
+  HighlightedText,
+} from './catalog-comparison-diff';

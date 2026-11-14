@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { CircleAlert, CircleCheck, Plus } from 'lucide-react';
+import { Link } from '@tanstack/react-router';
+import { CircleAlert, CircleCheck, GitCompare, Plus } from 'lucide-react';
 import type { CatalogVersionDto } from '@sigoa/shared';
 import { Can } from '@/components/common/can';
 import { EmptyState } from '@/components/common/empty-state';
@@ -74,9 +75,19 @@ export function CatalogVersionsPage() {
         title="Versiones del catálogo"
         description="Versiones de los objetivos educacionales (OE) y atributos del graduado (AG) del programa."
         actions={
-          <Can permission="catalogo.editar" scope="GLOBAL">
-            {newVersionButton}
-          </Can>
+          <div className="flex flex-wrap items-center gap-3">
+            {versions.length >= 2 && (
+              <Button asChild variant="outline">
+                <Link to="/catalogo/historial">
+                  <GitCompare aria-hidden="true" />
+                  Comparar versiones
+                </Link>
+              </Button>
+            )}
+            <Can permission="catalogo.editar" scope="GLOBAL">
+              {newVersionButton}
+            </Can>
+          </div>
         }
       />
 
