@@ -119,4 +119,26 @@ describe('TemplateEditor (T-018-29, HU-018)', () => {
       expect(document.getElementById(id)).not.toBeNull();
     }
   });
+
+  it('previews the current unsaved content from the editor', async () => {
+    const user = userEvent.setup();
+    let capturedBody: unknown;
+    server.use(
+      http.post(`${BASE}/preview`, async ({ request }) => {
+        capturedBody = await request.json();
+        return HttpResponse.json({ pdfBase64: btoa('%PDF-1.4\nDraft'), warnings: [] });
+      }),
+    );
+
+    renderEditor();
+    const textarea = await screen.findByRole('textbox', { name: 'Contenido HTML' });
+    await user.type(textarea, '<p>extra</p>');
+    await user.click(screen.getByRole('button', { name: 'Vista previa' }));
+
+    await waitFor(() => {
+      expect(capturedBody).toEqual({
+        content: `${buildTemplateDetail({ withDraft: true }).draft?.content}<p>extra</p>`,
+      });
+    });
+  });
 });
