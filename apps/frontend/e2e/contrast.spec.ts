@@ -5,6 +5,7 @@ import {
   resetCatalog,
   resetResolutions,
   seedCurrentCatalog,
+  seedHistoricalCatalog,
   seedInValidationCatalogVersion,
   seedResolution,
 } from './support/catalog-data';
@@ -575,6 +576,55 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA)', () => {
       await page.setViewportSize(MOBILE);
       await expect(page.getByLabel('Enunciado').first()).toBeDisabled();
       await expectNoContrastViolations(page, { context: 'catalog-editor-readonly-mobile' });
+    } finally {
+      resetCatalog();
+    }
+  });
+
+  test('catalog history route has no contrast violations in empty and comparison states', async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    await page.setViewportSize(DESKTOP);
+    await loginAsTestUser(page, {
+      email: `contrast-member-catalog-history-${Date.now()}@example.test`,
+      roles: ['COMMITTEE_MEMBER'],
+    });
+    resetCatalog();
+    seedCurrentCatalog();
+
+    try {
+      // Con una sola versión no hay nada que comparar
+      await waitForApi(page, '/catalog-versions', () => page.goto('/catalogo/historial'));
+      await expect(page.getByText('Aún no hay versiones para comparar')).toBeVisible();
+      await expectNoContrastViolations(page, { context: 'catalog-history-empty-desktop' });
+
+      // Con dos versiones se comparan por defecto la anterior y la vigente
+      seedHistoricalCatalog();
+      await waitForApi(page, '/compare/', () => page.goto('/catalogo/historial'));
+      await expect(page.getByRole('heading', { name: 'Resumen de cambios' })).toBeVisible();
+      await expect(page.locator('ins').first()).toBeVisible();
+      await expect(page.getByText('Resolución N.° E2E-128-2024')).toBeVisible();
+      await expectNoContrastViolations(page, { context: 'catalog-history-compare-desktop' });
+
+      await page.setViewportSize(MOBILE);
+      await expect(page.getByRole('heading', { name: 'Resumen de cambios' })).toBeVisible();
+      await expectNoContrastViolations(page, { context: 'catalog-history-compare-mobile' });
+
+      // La versión Histórica muestra su resolución y vigencia en el editor
+      await page.setViewportSize(DESKTOP);
+      await waitForApi(page, '/catalog-versions', () => page.goto('/catalogo/versiones'));
+      await Promise.all([
+        page.waitForResponse(
+          (res) =>
+            /\/catalog-versions\/[^/?]+$/.test(res.url()) &&
+            res.request().method() === 'GET' &&
+            res.status() === 200,
+        ),
+        page.getByRole('link', { name: 'Ver V1' }).click(),
+      ]);
+      await expect(page.getByRole('region', { name: 'Resolución y vigencia' })).toBeVisible();
+      await expectNoContrastViolations(page, { context: 'catalog-editor-history-desktop' });
     } finally {
       resetCatalog();
     }
