@@ -1,10 +1,12 @@
 import { Router, type RequestHandler } from 'express';
 import type { AuditLogger } from '../../shared/audit/audit-logger.js';
+import type { PdfGenerator } from '../../shared/pdf/pdf-generator.js';
 import type { DbProvider } from '../../shared/prisma/prisma-unit-of-work.js';
 import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
 import { EditTemplateUseCase } from './application/edit-template.js';
 import { GetTemplateDetailUseCase } from './application/get-template-detail.js';
 import { ListTemplatesUseCase } from './application/list-templates.js';
+import { PreviewTemplateUseCase } from './application/preview-template.js';
 import { PublishTemplateUseCase } from './application/publish-template.js';
 import type { TemplatePermissionChecker } from './domain/ports/template-permission-checker.js';
 import { TemplatesController } from './infrastructure/http/templates.controller.js';
@@ -25,6 +27,7 @@ export interface TemplatesModuleDependencies {
     scope?: TemplateRoutePermissionScope,
   ) => RequestHandler;
   readonly permissionChecker: TemplatePermissionChecker;
+  readonly pdfGenerator: PdfGenerator;
   readonly clock?: () => Date;
 }
 
@@ -59,12 +62,18 @@ export function createTemplatesModule(deps?: TemplatesModuleDependencies): Route
   };
   const editTemplateUseCase = new EditTemplateUseCase(writeDependencies);
   const publishTemplateUseCase = new PublishTemplateUseCase(writeDependencies);
+  const previewTemplateUseCase = new PreviewTemplateUseCase({
+    templateReader: templateRepository,
+    permissionChecker: deps.permissionChecker,
+    pdfGenerator: deps.pdfGenerator,
+  });
 
   const controller = new TemplatesController({
     listTemplatesUseCase,
     getTemplateDetailUseCase,
     editTemplateUseCase,
     publishTemplateUseCase,
+    previewTemplateUseCase,
   });
 
   return createTemplatesRouter({
