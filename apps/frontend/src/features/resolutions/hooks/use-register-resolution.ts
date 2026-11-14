@@ -2,7 +2,7 @@ import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/r
 import type { RegisterResolutionRequest, ResolutionDto } from '@sigoa/shared';
 import type { ApiError } from '@/lib/api-error';
 import { registerResolution } from '../api/register-resolution';
-import { shareInFlight } from '../lib/shared-in-flight';
+import { shareInFlight } from '@/lib/shared-in-flight';
 import { resolutionKeys } from './resolution-keys';
 
 /**

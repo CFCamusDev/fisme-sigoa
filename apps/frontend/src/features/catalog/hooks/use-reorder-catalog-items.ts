@@ -6,7 +6,7 @@ import type {
 } from '@sigoa/shared';
 import type { ApiError } from '@/lib/api-error';
 import { reorderCatalogItems, type CatalogItemKind } from '../api/reorder-catalog-items';
-import { shareInFlight } from '../lib/shared-in-flight';
+import { shareInFlight } from '@/lib/shared-in-flight';
 import { catalogKeys } from './catalog-keys';
 import { applyItemsToDetail } from './use-save-catalog-item';
 

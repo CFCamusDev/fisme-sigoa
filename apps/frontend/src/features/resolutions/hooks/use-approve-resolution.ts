@@ -3,7 +3,7 @@ import type { ResolutionDto } from '@sigoa/shared';
 import { catalogKeys } from '@/features/catalog';
 import type { ApiError } from '@/lib/api-error';
 import { approveResolution } from '../api/approve-resolution';
-import { shareInFlight } from '../lib/shared-in-flight';
+import { shareInFlight } from '@/lib/shared-in-flight';
 import { resolutionKeys } from './resolution-keys';
 
 export interface ApproveResolutionVariables {

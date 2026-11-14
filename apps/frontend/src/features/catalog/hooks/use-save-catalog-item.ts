@@ -14,7 +14,7 @@ import {
   saveCatalogObjective,
   type SaveCatalogObjectiveInput,
 } from '../api/save-catalog-objective';
-import { shareInFlight } from '../lib/shared-in-flight';
+import { shareInFlight } from '@/lib/shared-in-flight';
 import { catalogKeys } from './catalog-keys';
 
 type SaveVariables<K extends CatalogItemKind> = K extends 'OBJECTIVES'
