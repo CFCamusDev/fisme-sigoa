@@ -1,1 +1,9 @@
-export {};
+export * from './domain/entities/template.js';
+export * from './domain/entities/template-version.js';
+export * from './domain/entities/template-limits.js';
+export * from './domain/policies/template-version-state-machine.js';
+export * from './domain/errors/index.js';
+export * from './domain/ports/index.js';
+export * from './application/template-dto.js';
+export * from './infrastructure/prisma/prisma-template-mapper.js';
+export * from './infrastructure/prisma/prisma-template-repository.js';
