@@ -6,3 +6,4 @@ export * from './template-version-not-editable-error.js';
 export * from './template-draft-exists-error.js';
 export * from './template-published-exists-error.js';
 export * from './template-version-number-conflict-error.js';
+export * from './template-draft-changed-error.js';

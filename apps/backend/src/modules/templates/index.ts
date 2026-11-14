@@ -13,3 +13,5 @@ export * from './domain/policies/template-content-policy.js';
 export * from './application/edit-template.js';
 export * from './application/edit-template.types.js';
 export * from './application/template-audit.js';
+export * from './application/publish-template.js';
+export * from './application/publish-template.types.js';
