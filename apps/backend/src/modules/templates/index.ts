@@ -9,3 +9,7 @@ export * from './infrastructure/prisma/prisma-template-mapper.js';
 export * from './infrastructure/prisma/prisma-template-repository.js';
 export * from './infrastructure/prisma/prisma-template-version-mapper.js';
 export * from './infrastructure/prisma/prisma-template-version-repository.js';
+export * from './domain/policies/template-content-policy.js';
+export * from './application/edit-template.js';
+export * from './application/edit-template.types.js';
+export * from './application/template-audit.js';
