@@ -72,21 +72,11 @@ jobs:
           fi
           echo "Convenciones correctas."
 
-  calidad:
-    name: Lint, tipos, pruebas y build
+  estaticas:
+    name: Calidad · Estáticas
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: convenciones
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: oeag_test
-        ports: ['5432:5432']
-        options: >-
-          --health-cmd "pg_isready -U test" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       DATABASE_URL: postgresql://test:test@localhost:5432/oeag_test
       NODE_ENV: test
@@ -110,6 +100,56 @@ jobs:
         run: pnpm typecheck
       - name: Arquitectura hexagonal (dependency-cruiser)
         run: pnpm depcruise
+      - name: Build
+        run: pnpm build
+
+  unitarias:
+    name: Calidad · Unitarias con cobertura
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: convenciones
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5432/oeag_test
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Pruebas con cobertura (umbral 80 % en vitest.config)
+        run: pnpm test:coverage
+
+  integracion:
+    name: Calidad · Integración y PDF
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: convenciones
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: oeag_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U test" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5432/oeag_test
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Preparar paquetes compartidos y cliente Prisma
+        run: pnpm build:shared && pnpm db:generate
       - name: Migraciones desde cero
         run: pnpm --filter backend prisma migrate deploy
       - name: Pruebas de integración
@@ -120,10 +160,6 @@ jobs:
             echo "==> Pasada $i de 3: prueba de integración del PDF con Chromium real..."
             pnpm --filter backend exec vitest run --project integration src/shared/pdf
           done
-      - name: Pruebas con cobertura (umbral 80 % en vitest.config)
-        run: pnpm test:coverage
-      - name: Build
-        run: pnpm build
 
   seguridad:
     name: Auditoría de dependencias
@@ -175,7 +211,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     if: github.base_ref == 'develop' || (github.base_ref == 'main' && startsWith(github.head_ref, 'release/'))
-    needs: calidad
+    needs: [estaticas, unitarias, integracion]
     services:
       postgres:
         image: postgres:16
