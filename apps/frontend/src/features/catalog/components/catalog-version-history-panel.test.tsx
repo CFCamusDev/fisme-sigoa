@@ -7,12 +7,12 @@ import { CatalogVersionHistoryPanel } from './catalog-version-history-panel';
 const comparison = buildCatalogComparison();
 
 describe('CatalogVersionHistoryPanel Component (HU-017, T-017-11, CA2, RN-021)', () => {
-  it('shows the resolution and validity dates of a historical version', () => {
+  it('shows the resolution and validity dates of a historical version', async () => {
     renderWithProviders(
       <CatalogVersionHistoryPanel history={comparison.base.history} status="HISTORICAL" />,
     );
 
-    const panel = screen.getByRole('region', { name: 'Resolución y vigencia' });
+    const panel = await screen.findByRole('region', { name: 'Resolución y vigencia' });
     expect(within(panel).getByText('Vigente desde').nextElementSibling).toHaveTextContent(
       '01/03/2024',
     );
@@ -26,7 +26,7 @@ describe('CatalogVersionHistoryPanel Component (HU-017, T-017-11, CA2, RN-021)',
     expect(within(panel).getByText('PDF firmado disponible')).toBeInTheDocument();
   });
 
-  it('says the current version is in force and has no end date', () => {
+  it('says the current version is in force and has no end date', async () => {
     renderWithProviders(
       <CatalogVersionHistoryPanel
         history={{ ...comparison.base.history, validUntil: null }}
@@ -34,23 +34,23 @@ describe('CatalogVersionHistoryPanel Component (HU-017, T-017-11, CA2, RN-021)',
       />,
     );
 
-    expect(screen.getByText('Vigente hasta').nextElementSibling).toHaveTextContent(
+    expect((await screen.findByText('Vigente hasta')).nextElementSibling).toHaveTextContent(
       'Vigente actualmente',
     );
   });
 
-  it('flags a version without resolution and shows empty dates', () => {
+  it('flags a version without resolution and shows empty dates', async () => {
     renderWithProviders(
       <CatalogVersionHistoryPanel history={comparison.target.history} status="HISTORICAL" />,
     );
 
-    expect(screen.getByText('Sin resolución registrada')).toBeInTheDocument();
+    expect(await screen.findByText('Sin resolución registrada')).toBeInTheDocument();
     expect(screen.getByText('Vigente desde').nextElementSibling).toHaveTextContent('—');
     expect(screen.getByText('Vigente hasta').nextElementSibling).toHaveTextContent('—');
     expect(screen.queryByText(/Resolución N\./)).not.toBeInTheDocument();
   });
 
-  it('shows a registered resolution that has no signed PDF yet', () => {
+  it('shows a registered resolution that has no signed PDF yet', async () => {
     renderWithProviders(
       <CatalogVersionHistoryPanel
         status="HISTORICAL"
@@ -72,18 +72,18 @@ describe('CatalogVersionHistoryPanel Component (HU-017, T-017-11, CA2, RN-021)',
       />,
     );
 
-    expect(screen.getByText('Registrada')).toBeInTheDocument();
+    expect(await screen.findByText('Registrada')).toBeInTheDocument();
     expect(screen.getByText('Sin PDF firmado')).toBeInTheDocument();
     expect(screen.getByText('Atributos del graduado')).toBeInTheDocument();
     expect(screen.queryByText('Sin resolución registrada')).not.toBeInTheDocument();
   });
 
-  it('links to the resolutions screen', () => {
+  it('links to the resolutions screen', async () => {
     renderWithProviders(
       <CatalogVersionHistoryPanel history={comparison.base.history} status="HISTORICAL" />,
     );
 
-    expect(screen.getByRole('link', { name: 'Ver las resoluciones' })).toHaveAttribute(
+    expect(await screen.findByRole('link', { name: 'Ver las resoluciones' })).toHaveAttribute(
       'href',
       '/resoluciones',
     );
