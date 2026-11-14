@@ -4,6 +4,7 @@ import {
   Building2,
   CalendarRange,
   FileCheck,
+  FileText,
   LayoutDashboard,
   ListChecks,
   ShieldCheck,
@@ -71,5 +72,11 @@ export const MAIN_NAV_ITEMS: readonly NavItem[] = [
     href: '/resoluciones',
     icon: FileCheck,
     permission: 'resolucion.ver',
+  },
+  {
+    title: 'Plantillas',
+    href: '/plantillas',
+    icon: FileText,
+    permission: 'plantilla.ver',
   },
 ] as const;

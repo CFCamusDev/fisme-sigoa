@@ -145,6 +145,31 @@ describe('AppLayout Component', () => {
     expect(resolutionsLink).toHaveAttribute('href', '/resoluciones');
   });
 
+  it('renders navigation item "Plantillas" linking to /plantillas (HU-018, T-018-19)', async () => {
+    renderWithProviders(
+      <AppLayout>
+        <p>Dashboard</p>
+      </AppLayout>,
+      { permissions: [{ code: 'plantilla.ver', scope: 'GLOBAL' }] },
+    );
+
+    const templatesLink = await screen.findByRole('link', { name: /Plantillas/i });
+    expect(templatesLink).toBeInTheDocument();
+    expect(templatesLink).toHaveAttribute('href', '/plantillas');
+  });
+
+  it('hides the "Plantillas" item without the plantilla.ver permission (HU-018, T-018-19)', async () => {
+    renderWithProviders(
+      <AppLayout>
+        <p>Dashboard</p>
+      </AppLayout>,
+      { permissions: [{ code: 'resolucion.ver', scope: 'GLOBAL' }] },
+    );
+
+    await screen.findByRole('link', { name: /Resoluciones/i });
+    expect(screen.queryByRole('link', { name: /Plantillas/i })).not.toBeInTheDocument();
+  });
+
   it('controls mobile sidebar visibility with accessible aria-expanded button', async () => {
     const user = userEvent.setup();
 
