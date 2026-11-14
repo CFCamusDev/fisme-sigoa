@@ -2,6 +2,7 @@ import { Router, type RequestHandler } from 'express';
 import type { AuditLogger } from '../../shared/audit/audit-logger.js';
 import type { DbProvider } from '../../shared/prisma/prisma-unit-of-work.js';
 import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
+import { EditTemplateUseCase } from './application/edit-template.js';
 import { GetTemplateDetailUseCase } from './application/get-template-detail.js';
 import { ListTemplatesUseCase } from './application/list-templates.js';
 import type { TemplatePermissionChecker } from './domain/ports/template-permission-checker.js';
@@ -46,7 +47,22 @@ export function createTemplatesModule(deps?: TemplatesModuleDependencies): Route
     permissionChecker: deps.permissionChecker,
   });
 
-  const controller = new TemplatesController({ listTemplatesUseCase, getTemplateDetailUseCase });
+  const writeDependencies = {
+    templateRepository,
+    versionReader: versionRepository,
+    versionRepository,
+    permissionChecker: deps.permissionChecker,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+    clock: deps.clock,
+  };
+  const editTemplateUseCase = new EditTemplateUseCase(writeDependencies);
+
+  const controller = new TemplatesController({
+    listTemplatesUseCase,
+    getTemplateDetailUseCase,
+    editTemplateUseCase,
+  });
 
   return createTemplatesRouter({
     controller,
