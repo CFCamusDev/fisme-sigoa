@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query';
 import type { ResolutionDto } from '@sigoa/shared';
+import { catalogKeys } from '@/features/catalog';
 import type { ApiError } from '@/lib/api-error';
 import { approveResolution } from '../api/approve-resolution';
 import { shareInFlight } from '../lib/shared-in-flight';
@@ -31,6 +32,8 @@ export function useApproveResolution(): UseMutationResult<
     retry: false,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: resolutionKeys.all });
+      // Aprobar la resolución activa la versión del catálogo (HU-016): evita mostrar la anterior como vigente.
+      void queryClient.invalidateQueries({ queryKey: catalogKeys.all });
     },
     onError: (error) => {
       if (error.status === 404 || error.status === 409) {
