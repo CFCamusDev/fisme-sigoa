@@ -1,5 +1,6 @@
 import { StrictMode } from 'react';
 import { screen, waitFor, within } from '@testing-library/react';
+import { QueryClient } from '@tanstack/react-query';
 import userEvent from '@testing-library/user-event';
 import { delay, http, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
@@ -26,7 +27,13 @@ function renderEditor() {
     <StrictMode>
       <TemplateEditor detail={buildTemplateDetail({ withDraft: true })} {...handlers} />
     </StrictMode>,
-    { permissions: administrator, withRouter: false },
+    {
+      permissions: administrator,
+      queryClient: new QueryClient({
+        defaultOptions: { queries: { retry: false, gcTime: Number.POSITIVE_INFINITY } },
+      }),
+      withRouter: false,
+    },
   );
   return handlers;
 }
@@ -80,13 +87,15 @@ describe('TemplateEditor (T-018-29, HU-018)', () => {
     renderEditor();
     const textarea = await screen.findByRole('textbox', { name: 'Contenido HTML' });
 
-    expect(screen.getByText(/33 \/ 40\s?000 caracteres/)).toBeInTheDocument();
+    const initial = buildTemplateDetail({ withDraft: true }).draft?.content.length ?? 0;
+    const format = new Intl.NumberFormat('es-PE');
+    expect(screen.getByText(`${initial} / 40,000 caracteres`)).toBeInTheDocument();
 
     await user.click(textarea);
     await user.paste('a'.repeat(40_000));
 
-    const counter = await screen.findByText(/\/ 40\s?000 caracteres/);
-    expect(counter.textContent).toMatch(/^40\s?033 \/ 40\s?000 caracteres$/);
+    const counter = await screen.findByText(/\/ 40,000 caracteres/);
+    expect(counter.textContent).toBe(`${format.format(initial + 40_000)} / 40,000 caracteres`);
     expect(counter).toHaveClass('text-destructive');
   });
 

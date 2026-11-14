@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { screen, waitFor, within } from '@testing-library/react';
+import { QueryClient } from '@tanstack/react-query';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
@@ -120,9 +121,20 @@ function Harness({ initialId }: { initialId?: string }) {
   return <TemplatesPage selectedId={selectedId} onSelectedChange={setSelectedId} />;
 }
 
+/**
+ * El editor monta después de cargar el detalle y es quien consulta los permisos: con el `gcTime: 0`
+ * del cliente de pruebas por defecto, los permisos sembrados se descartarían antes de leerse.
+ */
+function createQueryClient() {
+  return new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: Number.POSITIVE_INFINITY } },
+  });
+}
+
 function renderPage(permissions = administrator, initialId?: string) {
   return renderWithProviders(<Harness initialId={initialId} />, {
     permissions,
+    queryClient: createQueryClient(),
     withRouter: false,
   });
 }
@@ -261,7 +273,7 @@ describe('TemplatesPage (T-018-29, HU-018, CA1, CA2)', () => {
       );
       expect(screen.getByRole('button', { name: 'Insertar {{program.name}}' })).toBeInTheDocument();
       expect(screen.getByRole('heading', { name: 'Historial de versiones' })).toBeInTheDocument();
-      expect(screen.getByText(/0 \/ 40 000|[0-9]+ \/ 40 000 caracteres/)).toBeInTheDocument();
+      expect(screen.getByText(/^\d+ \/ 40,000 caracteres$/)).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /^Publicar versión/ })).not.toBeInTheDocument();
     });
 
