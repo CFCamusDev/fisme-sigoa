@@ -1,2 +1,2 @@
-/** Máximo de caracteres del HTML de una versión (cabe en el límite de `express.json`). */
-export const TEMPLATE_CONTENT_MAX_LENGTH = 40_000;
+/** Máximo de caracteres del HTML de una versión; el valor lo define el contrato compartido. */
+export { TEMPLATE_CONTENT_MAX_LENGTH } from '@sigoa/shared';

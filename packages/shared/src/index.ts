@@ -13,3 +13,4 @@ export * from './catalog-version.js';
 export * from './catalog-items.js';
 export * from './resolutions.js';
 export * from './catalog-comparison.js';
+export * from './templates.js';
