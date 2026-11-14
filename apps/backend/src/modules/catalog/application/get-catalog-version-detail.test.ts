@@ -6,6 +6,7 @@ import { EducationalObjective } from '../domain/entities/educational-objective.j
 import { GraduateAttribute } from '../domain/entities/graduate-attribute.js';
 import { CatalogVersionNotFoundError } from '../domain/errors/index.js';
 import type { CatalogPermissionChecker } from '../domain/ports/catalog-permission-checker.js';
+import type { CatalogVersionHistoryReader } from '../domain/ports/catalog-version-history-reader.js';
 import type { CatalogVersionReader } from '../domain/ports/catalog-version-reader.js';
 import type { EducationalObjectiveReader } from '../domain/ports/educational-objective-reader.js';
 import type { GraduateAttributeReader } from '../domain/ports/graduate-attribute-reader.js';
@@ -18,6 +19,7 @@ describe('GetCatalogVersionDetailUseCase (HU-014, D8, RF-014)', () => {
   let objectiveReader: MockProxy<EducationalObjectiveReader>;
   let attributeReader: MockProxy<GraduateAttributeReader>;
   let permissionChecker: MockProxy<CatalogPermissionChecker>;
+  let historyReader: MockProxy<CatalogVersionHistoryReader>;
   let useCase: GetCatalogVersionDetailUseCase;
 
   beforeEach(() => {
@@ -61,10 +63,14 @@ describe('GetCatalogVersionDetailUseCase (HU-014, D8, RF-014)', () => {
         updatedAt: NOW,
       }),
     ]);
+    versionReader.list.mockResolvedValue([]);
+    historyReader = mock<CatalogVersionHistoryReader>();
+    historyReader.listForProgram.mockResolvedValue(new Map());
     useCase = new GetCatalogVersionDetailUseCase({
       versionReader,
       objectiveReader,
       attributeReader,
+      historyReader,
       permissionChecker,
     });
   });
@@ -86,6 +92,77 @@ describe('GetCatalogVersionDetailUseCase (HU-014, D8, RF-014)', () => {
       updatedAt: NOW.toISOString(),
     });
     expect(JSON.stringify(detail)).not.toContain('user-9');
+  });
+
+  it('includes the resolution and validity dates of a historical version', async () => {
+    const historical = CatalogVersion.create({
+      id: 'v1',
+      programId: 'p1',
+      number: 1,
+      status: 'HISTORICAL',
+      basedOnVersionId: null,
+      createdAt: NOW,
+      updatedAt: NOW,
+    });
+    const current = CatalogVersion.create({
+      id: 'v2',
+      programId: 'p1',
+      number: 2,
+      status: 'APPROVED',
+      basedOnVersionId: 'v1',
+      createdAt: NOW,
+      updatedAt: NOW,
+    });
+    versionReader.findById.mockResolvedValue(historical);
+    versionReader.list.mockResolvedValue([current, historical]);
+    historyReader.listForProgram.mockResolvedValue(
+      new Map([
+        [
+          'v1',
+          [
+            {
+              id: 'r1',
+              type: 'EDUCATIONAL_OBJECTIVE' as const,
+              number: '128-2024',
+              issuedOn: new Date('2024-02-20T00:00:00.000Z'),
+              status: 'APPROVED' as const,
+              approvedAt: new Date('2024-03-01T10:00:00.000Z'),
+              hasPdf: false,
+            },
+          ],
+        ],
+        [
+          'v2',
+          [
+            {
+              id: 'r2',
+              type: 'GRADUATE_ATTRIBUTE' as const,
+              number: '210-2026',
+              issuedOn: new Date('2026-05-02T00:00:00.000Z'),
+              status: 'APPROVED' as const,
+              approvedAt: new Date('2026-05-10T09:00:00.000Z'),
+              hasPdf: true,
+            },
+          ],
+        ],
+      ]),
+    );
+
+    const detail = await useCase.execute({ actorId: 'user-1', versionId: 'v1' });
+
+    expect(detail.history.validFrom).toBe('2024-03-01T10:00:00.000Z');
+    expect(detail.history.validUntil).toBe('2026-05-10T09:00:00.000Z');
+    expect(detail.history.resolutions).toEqual([
+      {
+        id: 'r1',
+        type: 'EDUCATIONAL_OBJECTIVE',
+        number: '128-2024',
+        issuedOn: '2024-02-20',
+        status: 'APPROVED',
+        approvedAt: '2024-03-01T10:00:00.000Z',
+        hasPdf: false,
+      },
+    ]);
   });
 
   it('answers not found for a version that does not exist', async () => {

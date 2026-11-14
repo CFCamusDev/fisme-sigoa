@@ -252,6 +252,12 @@ const PROTECTED_ENDPOINTS: readonly ProtectedEndpointSpec[] = [
     requiredPermission: 'catalogo.ver',
   },
   {
+    method: 'get',
+    openApiPath: '/catalog-versions/{baseId}/compare/{targetId}',
+    requestPath: '/catalog-versions/version_base_1/compare/version_target_1',
+    requiredPermission: 'catalogo.ver',
+  },
+  {
     method: 'put',
     openApiPath: '/catalog-versions/{id}/objectives',
     requestPath: '/catalog-versions/version_target_1/objectives',

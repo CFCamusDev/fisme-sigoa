@@ -2,6 +2,7 @@ import { Router, type RequestHandler } from 'express';
 import type { AuditLogger } from '../../shared/audit/audit-logger.js';
 import type { DbProvider } from '../../shared/prisma/prisma-unit-of-work.js';
 import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
+import { CompareCatalogVersionsUseCase } from './application/compare-catalog-versions.js';
 import { CreateCatalogVersionUseCase } from './application/create-catalog-version.js';
 import { GetCatalogVersionDetailUseCase } from './application/get-catalog-version-detail.js';
 import { ListCatalogVersionsUseCase } from './application/list-catalog-versions.js';
@@ -19,6 +20,7 @@ import {
   type CatalogRoutePermissionScope,
 } from './infrastructure/http/catalog-versions.routes.js';
 import { PrismaCatalogProgramReader } from './infrastructure/prisma/prisma-catalog-program-reader.js';
+import { PrismaCatalogVersionHistoryReader } from './infrastructure/prisma/prisma-catalog-version-history-reader.js';
 import { PrismaCatalogVersionRepository } from './infrastructure/prisma/prisma-catalog-version-repository.js';
 import { PrismaEducationalObjectiveRepository } from './infrastructure/prisma/prisma-educational-objective-repository.js';
 import { PrismaGraduateAttributeRepository } from './infrastructure/prisma/prisma-graduate-attribute-repository.js';
@@ -105,10 +107,21 @@ export function createCatalogVersionsModule(deps?: CatalogModuleDependencies): R
     clock: deps.clock,
   });
 
+  const historyReader = new PrismaCatalogVersionHistoryReader(deps.dbProvider);
+
   const getCatalogVersionDetailUseCase = new GetCatalogVersionDetailUseCase({
     versionReader: versionRepository,
     objectiveReader: objectiveRepository,
     attributeReader: attributeRepository,
+    historyReader,
+    permissionChecker: deps.permissionChecker,
+  });
+
+  const compareCatalogVersionsUseCase = new CompareCatalogVersionsUseCase({
+    versionReader: versionRepository,
+    objectiveReader: objectiveRepository,
+    attributeReader: attributeRepository,
+    historyReader,
     permissionChecker: deps.permissionChecker,
   });
 
@@ -128,6 +141,7 @@ export function createCatalogVersionsModule(deps?: CatalogModuleDependencies): R
     saveGraduateAttributeUseCase,
     reorderCatalogItemsUseCase,
     getCatalogVersionDetailUseCase,
+    compareCatalogVersionsUseCase,
   });
 
   return createCatalogVersionsRouter({
@@ -149,6 +163,7 @@ export * from './domain/ports/index.js';
 export * from './infrastructure/prisma/prisma-catalog-version-mapper.js';
 export * from './infrastructure/prisma/prisma-catalog-version-repository.js';
 export * from './infrastructure/prisma/prisma-catalog-program-reader.js';
+export * from './infrastructure/prisma/prisma-catalog-version-history-reader.js';
 export * from './infrastructure/prisma/prisma-educational-objective-mapper.js';
 export * from './infrastructure/prisma/prisma-educational-objective-repository.js';
 export * from './infrastructure/prisma/prisma-graduate-attribute-mapper.js';
@@ -170,6 +185,11 @@ export * from './application/activate-catalog-version.js';
 export * from './application/activate-catalog-version.types.js';
 export * from './application/send-catalog-version-to-validation.js';
 export * from './application/send-catalog-version-to-validation.types.js';
+export * from './application/compare-catalog-versions.js';
+export * from './application/catalog-version-history-dto.js';
+export * from './domain/policies/word-diff.js';
+export * from './domain/policies/catalog-comparison.js';
+export * from './domain/policies/catalog-version-validity.js';
 export * from './infrastructure/prisma/seed/catalog-seed-data.js';
 export * from './infrastructure/prisma/seed/catalog-version-seed.js';
 export * from './infrastructure/http/catalog-versions.controller.js';

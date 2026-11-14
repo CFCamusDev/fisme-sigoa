@@ -125,10 +125,29 @@ describe('catalog item edit schemas (T-014-05, RF-014, RNF-008)', () => {
           attributeCount: 0,
           createdAt: '2026-11-12T10:00:00.000Z',
         },
+        history: { validFrom: null, validUntil: null, resolutions: [] },
         objectives: [],
         attributes: [],
       };
       expect(catalogVersionDetailDtoSchema.safeParse(detail).success).toBe(true);
+    });
+
+    it('requires the history of the version in the detail', () => {
+      const detail = {
+        version: {
+          id: 'v2',
+          programId: 'p1',
+          number: 2,
+          status: 'DRAFT',
+          basedOnVersionId: 'v1',
+          objectiveCount: 0,
+          attributeCount: 0,
+          createdAt: '2026-11-12T10:00:00.000Z',
+        },
+        objectives: [],
+        attributes: [],
+      };
+      expect(catalogVersionDetailDtoSchema.safeParse(detail).success).toBe(false);
     });
   });
 });

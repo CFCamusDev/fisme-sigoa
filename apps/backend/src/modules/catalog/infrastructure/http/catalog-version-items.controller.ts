@@ -1,11 +1,13 @@
 import type { Request, RequestHandler } from 'express';
 import type {
   CatalogAttributesRequest,
+  CatalogComparisonParams,
   CatalogObjectivesRequest,
   CatalogVersionIdParams,
 } from '@sigoa/shared';
 import { getRequestContext } from '../../../../shared/audit/request-context.js';
 import { UnauthorizedError } from '../../../../shared/errors/app-error.js';
+import type { CompareCatalogVersionsUseCase } from '../../application/compare-catalog-versions.js';
 import type { GetCatalogVersionDetailUseCase } from '../../application/get-catalog-version-detail.js';
 import type { ReorderCatalogItemsUseCase } from '../../application/reorder-catalog-items.js';
 import type { SendCatalogVersionToValidationUseCase } from '../../application/send-catalog-version-to-validation.js';
@@ -17,6 +19,7 @@ export interface CatalogVersionItemsControllerDependencies {
   readonly saveGraduateAttributeUseCase: SaveGraduateAttributeUseCase;
   readonly reorderCatalogItemsUseCase: ReorderCatalogItemsUseCase;
   readonly getCatalogVersionDetailUseCase: GetCatalogVersionDetailUseCase;
+  readonly compareCatalogVersionsUseCase: CompareCatalogVersionsUseCase;
   readonly sendCatalogVersionToValidationUseCase: SendCatalogVersionToValidationUseCase;
 }
 
@@ -36,11 +39,13 @@ export class CatalogVersionItemsController {
   private readonly saveGraduateAttributeUseCase: SaveGraduateAttributeUseCase;
   private readonly reorderCatalogItemsUseCase: ReorderCatalogItemsUseCase;
   private readonly getCatalogVersionDetailUseCase: GetCatalogVersionDetailUseCase;
+  private readonly compareCatalogVersionsUseCase: CompareCatalogVersionsUseCase;
   private readonly sendCatalogVersionToValidationUseCase: SendCatalogVersionToValidationUseCase;
 
   constructor(deps: CatalogVersionItemsControllerDependencies) {
     this.sendCatalogVersionToValidationUseCase = deps.sendCatalogVersionToValidationUseCase;
     this.getCatalogVersionDetailUseCase = deps.getCatalogVersionDetailUseCase;
+    this.compareCatalogVersionsUseCase = deps.compareCatalogVersionsUseCase;
     this.saveGraduateAttributeUseCase = deps.saveGraduateAttributeUseCase;
     this.saveEducationalObjectiveUseCase = deps.saveEducationalObjectiveUseCase;
     this.reorderCatalogItemsUseCase = deps.reorderCatalogItemsUseCase;
@@ -52,6 +57,23 @@ export class CatalogVersionItemsController {
       const { id: versionId } = req.params as CatalogVersionIdParams;
 
       const response = await this.getCatalogVersionDetailUseCase.execute({ actorId, versionId });
+
+      res.setHeader('Cache-Control', 'no-store').status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  compareVersions: RequestHandler = async (req, res, next) => {
+    try {
+      const { actorId } = resolveActor(req);
+      const { baseId, targetId } = req.params as CatalogComparisonParams;
+
+      const response = await this.compareCatalogVersionsUseCase.execute({
+        actorId,
+        baseId,
+        targetId,
+      });
 
       res.setHeader('Cache-Control', 'no-store').status(200).json(response);
     } catch (error) {

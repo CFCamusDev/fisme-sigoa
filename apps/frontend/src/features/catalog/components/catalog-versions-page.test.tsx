@@ -297,3 +297,25 @@ describe('CatalogVersionsPage Component (HU-013, T-013-23, CA1, CA2)', () => {
     expect(posts).toBe(1);
   });
 });
+
+describe('CatalogVersionsPage compare link (HU-017, T-017-11, CA1)', () => {
+  it('links to the comparison screen when there are at least two versions', async () => {
+    server.use(
+      http.get(BASE, () => HttpResponse.json(buildCatalogVersionsResponse({ open: 'DRAFT' }))),
+    );
+
+    renderWithProviders(<CatalogVersionsPage />, { permissions: readOnly });
+
+    const link = await screen.findByRole('link', { name: 'Comparar versiones' });
+    expect(link).toHaveAttribute('href', '/catalogo/historial');
+  });
+
+  it('does not offer the comparison with a single version', async () => {
+    server.use(http.get(BASE, () => HttpResponse.json(buildCatalogVersionsResponse())));
+
+    renderWithProviders(<CatalogVersionsPage />, { permissions: readOnly });
+
+    expect(await screen.findByRole('table')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Comparar versiones' })).not.toBeInTheDocument();
+  });
+});
