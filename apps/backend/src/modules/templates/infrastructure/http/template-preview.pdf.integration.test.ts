@@ -5,7 +5,7 @@ import { PuppeteerPdfGenerator } from '../../../../shared/pdf/puppeteer-pdf-gene
 import { PREVIEW_FOOTER_TEMPLATE } from '../../application/preview-template.js';
 import { renderTemplateHtml } from '../../domain/policies/template-renderer.js';
 import { buildTemplateSampleData } from '../../domain/policies/template-sample-data.js';
-import { SEED_TEMPLATES } from '../prisma/seed/template-seed-data.js';
+import { OFFICIAL_TEMPLATES } from '../prisma/seed/template-seed-data.js';
 
 const WARMUP_TIMEOUT_MS = 60_000;
 const RENDER_BUDGET_MS = 10_000;
@@ -61,9 +61,9 @@ describe('Template preview PDF integration (Chromium real, HU-019, T-019-10)', (
   });
 
   it('renders every seeded template without leaving placeholders', () => {
-    expect(SEED_TEMPLATES.length).toBeGreaterThanOrEqual(20);
+    expect(OFFICIAL_TEMPLATES.length).toBeGreaterThanOrEqual(20);
 
-    for (const template of SEED_TEMPLATES) {
+    for (const template of OFFICIAL_TEMPLATES) {
       const sampleData = buildTemplateSampleData(template.content, template.variables);
       const rendered = renderTemplateHtml(template.content, sampleData);
       expect(rendered).not.toMatch(/\{\{[\s\S]*?\}\}/);
@@ -73,7 +73,7 @@ describe('Template preview PDF integration (Chromium real, HU-019, T-019-10)', (
   it(
     'renders a seeded annex as a real pdf within the time budget',
     async () => {
-      const annex = SEED_TEMPLATES.find((item) => item.code === 'FO-01');
+      const annex = OFFICIAL_TEMPLATES.find((item) => item.code === 'FO-01');
       expect(annex).toBeDefined();
 
       const sampleData = buildTemplateSampleData(annex!.content, annex!.variables);
@@ -101,7 +101,7 @@ describe('Template preview PDF integration (Chromium real, HU-019, T-019-10)', (
   it(
     'keeps the landscape page size of the schedule annex',
     async () => {
-      const schedule = SEED_TEMPLATES.find((item) => item.code === 'FO-01');
+      const schedule = OFFICIAL_TEMPLATES.find((item) => item.code === 'FO-01');
       expect(schedule).toBeDefined();
 
       const sampleData = buildTemplateSampleData(schedule!.content, schedule!.variables);

@@ -89,9 +89,9 @@ describe('POST /templates/:id/preview (PostgreSQL real, HU-019, T-019-10, RF-019
 
   it('answers 200 with a pdf for a draft template', async () => {
     await seedTemplate();
-    const admin = await createActor(['ADMINISTRADOR']);
+    const admin = await createActor(['ADMINISTRATOR']);
 
-    const response = await post(admin.accessToken, 't1', {
+    const response = await post(admin.token, 't1', {
       content: '<p>{{program.name}}</p>',
     });
 
@@ -106,9 +106,9 @@ describe('POST /templates/:id/preview (PostgreSQL real, HU-019, T-019-10, RF-019
 
   it('reports unrecognized variables as warnings', async () => {
     await seedTemplate();
-    const admin = await createActor(['ADMINISTRADOR']);
+    const admin = await createActor(['ADMINISTRATOR']);
 
-    const response = await post(admin.accessToken, 't1', {
+    const response = await post(admin.token, 't1', {
       content: '<p>{{program.name}} {{missing.field}}</p>',
     });
 
@@ -121,9 +121,9 @@ describe('POST /templates/:id/preview (PostgreSQL real, HU-019, T-019-10, RF-019
 
   it('accepts incomplete but valid input for a template without variables and plain text content', async () => {
     await seedTemplate('t-plain', []);
-    const admin = await createActor(['ADMINISTRADOR']);
+    const admin = await createActor(['ADMINISTRATOR']);
 
-    const response = await post(admin.accessToken, 't-plain', {
+    const response = await post(admin.token, 't-plain', {
       content: '<p>Contenido fijo sin variables</p>',
     });
 
@@ -134,31 +134,31 @@ describe('POST /templates/:id/preview (PostgreSQL real, HU-019, T-019-10, RF-019
 
   it('rejects out-of-bounds payloads and unknown fields with 400', async () => {
     await seedTemplate();
-    const admin = await createActor(['ADMINISTRADOR']);
+    const admin = await createActor(['ADMINISTRATOR']);
 
-    const tooLong = await post(admin.accessToken, 't1', {
+    const tooLong = await post(admin.token, 't1', {
       content: 'a'.repeat(TEMPLATE_CONTENT_MAX_LENGTH + 1),
     });
     expect(tooLong.status).toBe(400);
 
-    const empty = await post(admin.accessToken, 't1', { content: '   ' });
+    const empty = await post(admin.token, 't1', { content: '   ' });
     expect(empty.status).toBe(400);
 
-    const unknownField = await post(admin.accessToken, 't1', {
+    const unknownField = await post(admin.token, 't1', {
       content: '<p>ok</p>',
       extra: true,
     });
     expect(unknownField.status).toBe(400);
 
-    const longId = await post(admin.accessToken, 'a'.repeat(65), { content: '<p>ok</p>' });
+    const longId = await post(admin.token, 'a'.repeat(65), { content: '<p>ok</p>' });
     expect(longId.status).toBe(400);
   });
 
   it('rejects unsafe html with 400', async () => {
     await seedTemplate();
-    const admin = await createActor(['ADMINISTRADOR']);
+    const admin = await createActor(['ADMINISTRATOR']);
 
-    const response = await post(admin.accessToken, 't1', {
+    const response = await post(admin.token, 't1', {
       content: '<p>hola</p><script>alert(1)</script>',
     });
 
@@ -174,14 +174,14 @@ describe('POST /templates/:id/preview (PostgreSQL real, HU-019, T-019-10, RF-019
       .send({ content: '<p>ok</p>' });
     expect(unauthenticated.status).toBe(401);
 
-    const readerOnly = await createActor(['PRESIDENTE_COMITE']);
-    const forbidden = await post(readerOnly.accessToken, 't1', { content: '<p>ok</p>' });
+    const readerOnly = await createActor(['COMMITTEE_PRESIDENT']);
+    const forbidden = await post(readerOnly.token, 't1', { content: '<p>ok</p>' });
     expect(forbidden.status).toBe(403);
   });
 
   it('answers 404 for an unknown template', async () => {
-    const admin = await createActor(['ADMINISTRADOR']);
-    const response = await post(admin.accessToken, 'non-existent', {
+    const admin = await createActor(['ADMINISTRATOR']);
+    const response = await post(admin.token, 'non-existent', {
       content: '<p>ok</p>',
     });
 
@@ -190,7 +190,7 @@ describe('POST /templates/:id/preview (PostgreSQL real, HU-019, T-019-10, RF-019
 
   it('answers 409 to a second simultaneous preview from the same user', async () => {
     await seedTemplate();
-    const admin = await createActor(['ADMINISTRADOR']);
+    const admin = await createActor(['ADMINISTRATOR']);
 
     let releaseFirst!: () => void;
     renderMock.mockImplementationOnce(
@@ -200,7 +200,7 @@ describe('POST /templates/:id/preview (PostgreSQL real, HU-019, T-019-10, RF-019
         }),
     );
 
-    const firstPromise = post(admin.accessToken, 't1', {
+    const firstPromise = post(admin.token, 't1', {
       content: '<p>{{program.name}}</p>',
     }).then((res) => res);
 
@@ -208,7 +208,7 @@ describe('POST /templates/:id/preview (PostgreSQL real, HU-019, T-019-10, RF-019
       expect(renderMock).toHaveBeenCalledTimes(1);
     });
 
-    const secondResponse = await post(admin.accessToken, 't1', {
+    const secondResponse = await post(admin.token, 't1', {
       content: '<p>{{program.name}}</p>',
     });
     expect(secondResponse.status).toBe(409);
