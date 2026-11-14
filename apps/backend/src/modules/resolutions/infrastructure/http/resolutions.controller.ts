@@ -6,6 +6,7 @@ import type {
 } from '@sigoa/shared';
 import { getRequestContext } from '../../../../shared/audit/request-context.js';
 import { UnauthorizedError } from '../../../../shared/errors/app-error.js';
+import { getValidated } from '../../../../shared/middleware/validate-request.js';
 import type { ApproveResolutionUseCase } from '../../application/approve-resolution.js';
 import type { ListResolutionsUseCase } from '../../application/list-resolutions.js';
 import type { RegisterResolutionUseCase } from '../../application/register-resolution.js';
@@ -84,7 +85,8 @@ export class ResolutionsController {
   listResolutions: RequestHandler = async (req, res, next) => {
     try {
       const { actorId } = resolveActor(req);
-      const query = req.query as unknown as ListResolutionsQuery;
+      // `validateRequest` deja la consulta ya parseada (números y valores por defecto) en `res.locals`.
+      const query = getValidated<unknown, unknown, ListResolutionsQuery>(res).query;
 
       const response = await this.listResolutionsUseCase.execute({
         actorId,
