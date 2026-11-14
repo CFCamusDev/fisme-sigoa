@@ -24,8 +24,8 @@ function extractJobBlock(content: string, jobId: string): string {
 describe('pr-checks.yml structure (HU-080)', () => {
   const workflow = fs.readFileSync(workflowPath, 'utf8');
 
-  it('splits quality into independent jobs that declare env per job', () => {
-    for (const jobId of ['estaticas', 'unitarias', 'integracion']) {
+  it('declares env per job so the env parity rule can read it', () => {
+    for (const jobId of ['estaticas', 'unitarias', 'integracion', 'e2e-shards']) {
       const block = extractJobBlock(workflow, jobId);
       expect(block).not.toBe('');
       expect(block).toMatch(/^\s{4}needs:\s*convenciones\s*$/m);
@@ -41,9 +41,36 @@ describe('pr-checks.yml structure (HU-080)', () => {
     );
   });
 
-  it('decouples e2e from quality jobs without downloading artifacts', () => {
-    const e2eBlock = extractJobBlock(workflow, 'e2e');
+  it('decouples e2e-shards from quality jobs without downloading artifacts', () => {
+    const e2eBlock = extractJobBlock(workflow, 'e2e-shards');
     expect(e2eBlock).toMatch(/^\s{4}needs:\s*convenciones\s*$/m);
     expect(e2eBlock).not.toMatch(/download-artifact/);
+  });
+
+  it('keeps the required check names as aggregators that need every job', () => {
+    const calidadBlock = extractJobBlock(workflow, 'calidad');
+    expect(calidadBlock).toMatch(/name:\s*Lint, tipos, pruebas y build/);
+    expect(calidadBlock).toMatch(/if:\s*always\(\)/);
+    expect(calidadBlock).toMatch(
+      /needs:\s*\[convenciones,\s*estaticas,\s*unitarias,\s*integracion\]/,
+    );
+    expect(calidadBlock).toMatch(
+      /NEEDS_RESULTS:\s*\$\{\{\s*join\(needs\.\*\.result,\s*' '\)\s*\}\}/,
+    );
+
+    const e2eBlock = extractJobBlock(workflow, 'e2e');
+    expect(e2eBlock).toMatch(/name:\s*Pruebas end-to-end \(Playwright\)/);
+    expect(e2eBlock).toMatch(/needs:\s*\[e2e-shards\]/);
+    expect(e2eBlock).toMatch(/NEEDS_RESULTS:\s*\$\{\{\s*join\(needs\.\*\.result,\s*' '\)\s*\}\}/);
+  });
+
+  it('makes the e2e aggregator conditional like the e2e jobs', () => {
+    const e2eShardsBlock = extractJobBlock(workflow, 'e2e-shards');
+    const e2eBlock = extractJobBlock(workflow, 'e2e');
+    const baseCondition =
+      "github.base_ref == 'develop' || (github.base_ref == 'main' && startsWith(github.head_ref, 'release/'))";
+
+    expect(e2eShardsBlock).toContain(baseCondition);
+    expect(e2eBlock).toContain(`always() && (${baseCondition})`);
   });
 });

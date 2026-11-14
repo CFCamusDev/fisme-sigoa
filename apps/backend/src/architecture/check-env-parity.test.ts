@@ -62,7 +62,7 @@ jobs:
   integracion:
     env:
       DATABASE_URL: postgresql://test
-  e2e:
+  e2e-shards:
     env:
       DATABASE_URL: postgresql://test
 `,
@@ -197,7 +197,7 @@ jobs:
   integracion:
     env:
       DATABASE_URL: postgresql://test
-  e2e:
+  e2e-shards:
     env:
       DATABASE_URL: postgresql://test
 `, // falta DATABASE_URL en unitarias

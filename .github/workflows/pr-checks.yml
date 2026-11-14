@@ -206,8 +206,31 @@ jobs:
           echo "Sysctl unprivileged user namespaces:"
           sysctl kernel.unprivileged_userns_clone kernel.apparmor_restrict_unprivileged_userns 2>/dev/null || true
 
-  e2e:
-    name: Pruebas end-to-end (Playwright)
+  calidad:
+    name: Lint, tipos, pruebas y build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: always()
+    needs: [convenciones, estaticas, unitarias, integracion]
+    steps:
+      - name: Verificar estado de jobs requeridos de calidad
+        env:
+          NEEDS_RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          # Verificar estado agregado de jobs requeridos (NEEDS_RESULTS)
+          if [ -z "${NEEDS_RESULTS:-}" ]; then
+            echo "::error::Sin resultados de dependencias."
+            exit 1
+          fi
+          for r in $NEEDS_RESULTS; do
+            if [ "$r" != "success" ]; then
+              echo "::error::Uno o más jobs requeridos de calidad fallaron o fueron cancelados ($NEEDS_RESULTS)."
+              exit 1
+            fi
+          done
+
+  e2e-shards:
+    name: E2E · Pruebas end-to-end
     runs-on: ubuntu-latest
     timeout-minutes: 20
     if: github.base_ref == 'develop' || (github.base_ref == 'main' && startsWith(github.head_ref, 'release/'))
@@ -247,3 +270,26 @@ jobs:
             apps/frontend/playwright-report/
             apps/frontend/test-results/
           retention-days: 7
+
+  e2e:
+    name: Pruebas end-to-end (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: always() && (github.base_ref == 'develop' || (github.base_ref == 'main' && startsWith(github.head_ref, 'release/')))
+    needs: [e2e-shards]
+    steps:
+      - name: Verificar estado de jobs E2E
+        env:
+          NEEDS_RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          # Verificar estado agregado de jobs requeridos (NEEDS_RESULTS)
+          if [ -z "${NEEDS_RESULTS:-}" ]; then
+            echo "::error::Sin resultados de dependencias."
+            exit 1
+          fi
+          for r in $NEEDS_RESULTS; do
+            if [ "$r" != "success" ]; then
+              echo "::error::Uno o más jobs E2E fallaron o fueron cancelados ($NEEDS_RESULTS)."
+              exit 1
+            fi
+          done

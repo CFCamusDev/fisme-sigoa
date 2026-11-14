@@ -1123,6 +1123,10 @@ export const WORKFLOW_EXCLUSIONS = [
     pattern: /DIAGNÓSTICO DEL ENTORNO/,
     reason: 'Diagnóstico condicional de Docker ante fallos.',
   },
+  {
+    pattern: /NEEDS_RESULTS/,
+    reason: 'Paso agregador del estado de jobs requeridos en el CI.',
+  },
 ];
 
 /**

@@ -334,7 +334,7 @@ export function checkEnvParity(inputs) {
 
   // Regla C4: Variables requeridas sin defaults en jobs de CI (pr-checks.yml)
   const calidadJobs = ['estaticas', 'unitarias', 'integracion'];
-  const e2eJobs = ['e2e'];
+  const e2eJobs = ['e2e-shards'];
 
   for (const jobId of [...calidadJobs, ...e2eJobs]) {
     const jobEnvs = extractJobEnvs(inputs.prChecksContent, jobId);
