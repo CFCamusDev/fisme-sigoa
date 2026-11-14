@@ -44,7 +44,7 @@ describe('check-shard-completeness script (T-080-07, T-080-08)', () => {
       suites: [
         {
           title: 'e2e/login.spec.ts',
-          specs: expectedPlaywright.suites[0].specs,
+          specs: expectedPlaywright.suites[0]?.specs ?? [],
         },
         {
           title: 'e2e/users.spec.ts',
