@@ -15,6 +15,10 @@
     {
       "file": "src/features/auth/lib/session-hint.test.ts",
       "reason": "Uses browser localStorage API directly"
+    },
+    {
+      "file": "src/features/auth/lib/restore-session.test.ts",
+      "reason": "Uses browser localStorage via session-hint"
     }
   ]
 }

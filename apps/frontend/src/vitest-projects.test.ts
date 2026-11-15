@@ -68,7 +68,11 @@ describe('vitest projects configuration', () => {
     for (const relativeFile of filesToCheck) {
       const content = fs.readFileSync(path.join(frontendRoot, relativeFile), 'utf8');
       for (const forbidden of FORBIDDEN_NODE_IMPORTS) {
-        expect(content, `${relativeFile} must not import ${forbidden}`).not.toContain(forbidden);
+        const escaped = forbidden.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const importPattern = new RegExp(
+          `(?:from|import|require)\\s*\\(?\\s*['"]${escaped}(?:/[^'"]*)?['"]`,
+        );
+        expect(content, `${relativeFile} must not import ${forbidden}`).not.toMatch(importPattern);
       }
     }
 
