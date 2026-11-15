@@ -14,6 +14,7 @@ const WORKER_ENV_KEYS = [
   'DATABASE_URL',
   'E2E_API_URL',
   'E2E_WEB_URL',
+  'E2E_WORKER_INDEX',
 ] as const;
 
 function readDatabases(): DatabasesFile {
@@ -54,6 +55,7 @@ export const test = base.extend<object, { workerStack: WorkerStack }>({
       process.env['DATABASE_URL'] = databaseUrl;
       process.env['E2E_API_URL'] = stack.apiUrl;
       process.env['E2E_WEB_URL'] = stack.webUrl;
+      process.env['E2E_WORKER_INDEX'] = String(workerInfo.parallelIndex);
       try {
         await provide(stack);
       } finally {

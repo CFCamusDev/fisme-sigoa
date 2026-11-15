@@ -6,6 +6,7 @@
     "src/design-contrast.test.ts",
     "src/design-tokens.test.ts",
     "src/e2e-hygiene.test.ts",
+    "src/e2e-seed-cache.test.ts",
     "src/e2e-workers.test.ts",
     "src/index-html.test.ts",
     "src/session.test.ts",
