@@ -61,7 +61,7 @@ describe('pr-checks.yml structure (HU-080)', () => {
     expect(calidadBlock).toMatch(/check-shard-completeness\.mjs/);
 
     const integracionBlock = extractJobBlock(workflow, 'integracion');
-    expect(integracionBlock).toMatch(/shard:\s*\[1,\s*2\]/);
+    expect(integracionBlock).toMatch(/shard:\s*\[1\]/);
     expect(integracionBlock).toMatch(/if:\s*matrix\.shard\s*==\s*1/);
     expect(integracionBlock).toMatch(
       /--shard=\$\{\{\s*matrix\.shard\s*\}\}\/\$\{\{\s*env\.SHARDS\s*\}\}/,

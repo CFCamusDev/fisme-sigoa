@@ -133,14 +133,14 @@ jobs:
         run: node scripts/ci/check-perf-budget.mjs --tier unit --vitest tmp/ci-reports/unit-backend.json,tmp/ci-reports/unit-frontend.json
 
   integracion:
-    name: Calidad · Integración (shard ${{ matrix.shard }}/2)
+    name: Calidad · Integración (shard ${{ matrix.shard }}/1)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: convenciones
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2]
+        shard: [1]
     services:
       postgres:
         image: postgres:16
@@ -152,7 +152,7 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U test" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
-      SHARDS: 2
+      SHARDS: 1
       DATABASE_URL: postgresql://test:test@localhost:5432/oeag_test
       NODE_ENV: test
     steps:
@@ -167,7 +167,7 @@ jobs:
         run: pnpm build:shared && pnpm db:generate
       - name: Migraciones desde cero
         run: pnpm --filter backend prisma migrate deploy
-      - name: Pruebas de integración (shard ${{ matrix.shard }}/2)
+      - name: Pruebas de integración (shard ${{ matrix.shard }}/1)
         run: |
           mkdir -p tmp/integration-blobs
           pnpm --filter backend exec vitest run --project integration --shard=${{ matrix.shard }}/${{ env.SHARDS }} --exclude src/test/db/worker-isolation.integration.test.ts --reporter=blob --outputFile=${{ github.workspace }}/tmp/integration-blobs/blob-${{ matrix.shard }}.json
