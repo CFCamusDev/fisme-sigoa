@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import { test as base, expect } from '@playwright/test';
+import { closeWorkerSeeder, initWorkerSeeder } from './seeder';
 import { startWorkerStack, type WorkerStack } from './worker-stack';
 
 interface DatabasesFile {
@@ -46,6 +47,8 @@ export const test = base.extend<object, { workerStack: WorkerStack }>({
         runId: process.env['E2E_RUN_ID'] ?? String(process.pid),
       });
 
+      await initWorkerSeeder(databaseUrl);
+
       const previous = new Map(WORKER_ENV_KEYS.map((key) => [key, process.env[key]]));
       process.env['TEST_DATABASE_URL'] = databaseUrl;
       process.env['DATABASE_URL'] = databaseUrl;
@@ -58,6 +61,7 @@ export const test = base.extend<object, { workerStack: WorkerStack }>({
           if (value === undefined) delete process.env[key];
           else process.env[key] = value;
         }
+        await closeWorkerSeeder();
         await stack.stop();
       }
     },

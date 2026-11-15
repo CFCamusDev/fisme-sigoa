@@ -1,41 +1,10 @@
-import { execSync } from 'node:child_process';
 import { expect, type Page } from '@playwright/test';
+import { getWorkerSeeder, type ActivationTokenSeedOptions, type SeedUserOptions } from './seeder';
 
-export interface ActivationTokenSeedOptions {
-  token: string;
-  expiresAt?: string | Date;
-  used?: boolean;
-}
+export type { ActivationTokenSeedOptions, SeedUserOptions };
 
-export interface SeedUserOptions {
-  email: string;
-  password?: string;
-  names?: string;
-  firstSurname?: string;
-  secondSurname?: string | null;
-  dni?: string | null;
-  roles?: string[];
-  status?: 'ACTIVE' | 'INACTIVE' | 'PENDING_ACTIVATION';
-  failedLoginAttempts?: number;
-  lockedUntil?: string | null;
-  activationToken?: ActivationTokenSeedOptions;
-}
-
-export function seedUser(options: SeedUserOptions): void {
-  const testDbUrl =
-    process.env['TEST_DATABASE_URL'] ||
-    process.env['DATABASE_URL'] ||
-    'postgresql://postgres:postgres@localhost:5432/sigoa_test?schema=public';
-
-  execSync('pnpm --filter backend run seed:e2e-user', {
-    stdio: 'pipe',
-    env: {
-      ...process.env,
-      TEST_DATABASE_URL: testDbUrl,
-      DATABASE_URL: testDbUrl,
-      SEED_USER_DATA: JSON.stringify(options),
-    },
-  });
+export async function seedUser(options: SeedUserOptions): Promise<{ id: string; email: string }> {
+  return getWorkerSeeder().seedUser(options);
 }
 
 export async function loginAsTestUser(
@@ -45,7 +14,7 @@ export async function loginAsTestUser(
   const email = overrides?.email ?? `e2e-auth-${Date.now()}@example.test`;
   const password = overrides?.password ?? 'Password123!';
 
-  seedUser({
+  await seedUser({
     email,
     password,
     names: 'Usuario',
@@ -65,17 +34,17 @@ export async function loginAsTestUser(
   return { email, password };
 }
 
-export function seedPendingUser(options: {
+export async function seedPendingUser(options: {
   email?: string;
   token?: string;
   expiresAt?: string | Date;
   used?: boolean;
-}): { email: string; token: string } {
+}): Promise<{ email: string; token: string }> {
   const timestamp = Date.now();
   const email = options.email ?? `e2e-pending-${timestamp}@example.test`;
   const token = options.token ?? `e2e-token-${timestamp}-1234567890abcdef1234567890abcdef`;
 
-  seedUser({
+  await seedUser({
     email,
     names: 'Usuario',
     firstSurname: 'Pendiente',
@@ -90,19 +59,19 @@ export function seedPendingUser(options: {
   return { email, token };
 }
 
-export function seedRecoveryUser(options: {
+export async function seedRecoveryUser(options: {
   email?: string;
   token?: string;
   password?: string;
   expiresAt?: string | Date;
   used?: boolean;
-}): { email: string; token: string; password: string } {
+}): Promise<{ email: string; token: string; password: string }> {
   const timestamp = Date.now();
   const email = options.email ?? `e2e-recovery-${timestamp}@example.test`;
   const token = options.token ?? `e2e-recovery-token-${timestamp}-1234567890abcdef1234567890`;
   const password = options.password ?? 'OldPassword123!';
 
-  seedUser({
+  await seedUser({
     email,
     password,
     names: 'Usuario',
