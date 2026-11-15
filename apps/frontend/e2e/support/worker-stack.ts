@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
+import { copyWebBuildWithApiUrl } from './e2e-web-copy';
 
 /** Plazo para que cada servidor de un worker responda (la compilación del frontend va aparte). */
 const STARTUP_TIMEOUT_MS = 90_000;
@@ -117,6 +118,7 @@ export interface StartWorkerStackOptions {
   index: number;
   databaseUrl: string;
   runId: string;
+  webBaseDir?: string;
 }
 
 async function tryStart(options: StartWorkerStackOptions): Promise<WorkerStack> {
@@ -132,11 +134,15 @@ async function tryStart(options: StartWorkerStackOptions): Promise<WorkerStack> 
   };
 
   try {
-    // El frontend fija VITE_API_URL al compilar: cada worker compila su propia salida.
-    await runToCompletion(
-      `pnpm --filter frontend exec vite build --outDir "${outDir}" --emptyOutDir`,
-      { ...process.env, VITE_API_URL: apiUrl },
-    );
+    const webBaseDir = options.webBaseDir ?? process.env['E2E_WEB_BASE_DIR'];
+    if (webBaseDir) {
+      copyWebBuildWithApiUrl(webBaseDir, outDir, apiUrl);
+    } else {
+      await runToCompletion(
+        `pnpm --filter frontend exec vite build --outDir "${outDir}" --emptyOutDir`,
+        { ...process.env, VITE_API_URL: apiUrl },
+      );
+    }
 
     const backend = startProcess('pnpm --filter backend exec tsx src/server.ts', {
       ...process.env,
