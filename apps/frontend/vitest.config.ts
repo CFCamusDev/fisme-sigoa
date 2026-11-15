@@ -48,6 +48,8 @@ export default defineConfig({
         test: {
           name: 'dom',
           environment: 'jsdom',
+          pool: 'threads',
+          isolate: false,
           setupFiles: ['src/test/setup.ts'],
           include: allTestInclude,
           exclude: nodeTestFiles,
