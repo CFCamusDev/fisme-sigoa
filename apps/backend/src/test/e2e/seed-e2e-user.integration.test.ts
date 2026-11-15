@@ -64,4 +64,22 @@ describe('seedE2EUser with activationToken (T-004-17, RF-004, RNF-005)', () => {
     expect(tokenRecord.usedAt).not.toBeNull();
     expect(tokenRecord.expiresAt.getTime()).toBeLessThan(Date.now());
   }, 30_000);
+
+  it('seeds an active user with roles using fast authorization seeding', async () => {
+    const email = `admin-${Date.now()}@example.test`;
+
+    const result = await seedE2EUser({
+      email,
+      roles: ['ADMINISTRATOR'],
+    });
+
+    const user = await prisma.user.findUnique({
+      where: { id: result.id },
+      include: { userRoles: { include: { role: true } } },
+    });
+
+    expect(user?.status).toBe('ACTIVE');
+    expect(user?.passwordHash).not.toBeNull();
+    expect(user?.userRoles.map((ur) => ur.role.code)).toContain('ADMINISTRATOR');
+  }, 30_000);
 });
