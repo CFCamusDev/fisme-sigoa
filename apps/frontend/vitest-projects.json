@@ -2,6 +2,7 @@
   "nodeInclude": [
     "src/lib/**/*.{test,spec}.ts",
     "src/features/*/{lib,schemas,api}/**/*.{test,spec}.ts",
+    "src/test/templates/**/*.{test,spec}.ts",
     "scripts/**/*.{test,spec}.mjs",
     "src/design-contrast.test.ts",
     "src/design-tokens.test.ts",
