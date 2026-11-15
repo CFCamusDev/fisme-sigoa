@@ -122,9 +122,10 @@
       "decision": "adopted"
     },
     "v3WithConcurrencyAndTestDbWorkers2": {
-      "commit": "0e9516c",
+      "commit": "0e9516c / 9ee005b",
       "description": "V3 + concurrency (cancel-in-progress only for pull_request) + TEST_DB_WORKERS=2 in Calidad · Integración (keeping 3x src/shared/pdf repetition)",
       "jobs": 11,
+      "note": "5 corridas de la configuración final (43746134457 intentos 1–3 y 43748350462 intentos 1–2).",
       "runs": [
         {
           "runId": "43746134457",
@@ -133,6 +134,7 @@
           "exactMachineMinutes": 18.93,
           "billedMachineMinutes": 26,
           "integracionSeconds": 212,
+          "unitariasSeconds": 73,
           "conclusion": "success"
         },
         {
@@ -142,6 +144,7 @@
           "exactMachineMinutes": 20.42,
           "billedMachineMinutes": 26,
           "integracionSeconds": 208,
+          "unitariasSeconds": 91,
           "conclusion": "success"
         },
         {
@@ -151,19 +154,42 @@
           "exactMachineMinutes": 24.22,
           "billedMachineMinutes": 30,
           "integracionSeconds": 201,
+          "unitariasSeconds": 340,
+          "outlierReason": "Calidad · Unitarias con cobertura tardó 340 s (6 min facturados) frente a 59–91 s en las otras 4 corridas.",
+          "conclusion": "success"
+        },
+        {
+          "runId": "43748350462",
+          "attempt": 1,
+          "flowSeconds": 312,
+          "exactMachineMinutes": 19.07,
+          "billedMachineMinutes": 26,
+          "integracionSeconds": 191,
+          "unitariasSeconds": 59,
+          "conclusion": "success"
+        },
+        {
+          "runId": "43748350462",
+          "attempt": 2,
+          "flowSeconds": 323,
+          "exactMachineMinutes": 20.8,
+          "billedMachineMinutes": 27,
+          "integracionSeconds": 236,
+          "unitariasSeconds": 82,
           "conclusion": "success"
         }
       ],
       "averages": {
-        "flowSeconds": 330.3,
-        "exactMachineMinutes": 21.19,
-        "billedMachineMinutes": 27.33,
-        "integracionSeconds": 207.0,
+        "flowSeconds": 325.2,
+        "exactMachineMinutes": 20.69,
+        "billedMachineMinutes": 27.0,
+        "integracionSeconds": 209.6,
+        "unitariasSeconds": 129.0,
         "failures": 0,
         "flakes": 0
       },
       "decision": "kept",
-      "reason": "Las 3 corridas consecutivas con TEST_DB_WORKERS=2 pasaron en verde sin intermitencias y Calidad · Integración quedó bajo ~225 s en todas ellas (212 s, 208 s, 201 s)."
+      "reason": "Las 5 corridas pasaron en verde sin intermitencias; el valor atípico de unitarias en 43746134457 intento 3 (340 s) no se repitió en las corridas 4 y 5 (59 s y 82 s). Calidad · Integración promedió 209.6 s (frente a 249.8 s), aunque el promedio facturado global quedó en 27.0 min."
     }
   },
   "localVerification": {
