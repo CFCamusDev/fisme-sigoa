@@ -28,6 +28,12 @@
       "reason": "Ejecuta un subconjunto real de Vitest en paralelo con bases de datos clonadas para validar el aislamiento de workers."
     },
     {
+      "file": "apps/backend/src/shared/pdf/puppeteer-pdf-generator.integration.test.ts",
+      "test": "starts chromium within the cold start limit",
+      "ms": 45000,
+      "reason": "Mide el arranque en frío de Chromium real en runner de CI (contrato de hasta 45000 ms)."
+    },
+    {
       "file": "apps/frontend/e2e/contrast-catalog.spec.ts",
       "ms": 35000,
       "reason": "Recorre las rutas y viewports de catálogo con axe-core para validar contraste WCAG 2.1 AA."

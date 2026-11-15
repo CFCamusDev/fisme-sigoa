@@ -224,9 +224,9 @@ jobs:
           node scripts/ci/check-shard-completeness.mjs --tool vitest --expected tmp/ci-reports/integration-expected.json --actual tmp/ci-reports/integration-report.json --extra tmp/ci-reports/isolation-integration.json
       - name: Publicar resumen de pruebas más lentas (integración)
         if: ${{ !cancelled() }}
-        run: node scripts/ci/ci-summary.mjs --mode tests --vitest tmp/ci-reports/integration-report.json
+        run: node scripts/ci/ci-summary.mjs --mode tests --vitest tmp/ci-reports/integration-report.json,tmp/ci-reports/isolation-integration.json
       - name: Verificar presupuesto por prueba (integración)
-        run: node scripts/ci/check-perf-budget.mjs --tier integration --vitest tmp/ci-reports/integration-report.json
+        run: node scripts/ci/check-perf-budget.mjs --tier integration --vitest tmp/ci-reports/integration-report.json,tmp/ci-reports/isolation-integration.json
 
   aislamiento:
     name: Calidad y E2E · Aislamiento de workers

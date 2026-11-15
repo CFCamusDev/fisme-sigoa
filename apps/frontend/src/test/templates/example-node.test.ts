@@ -13,6 +13,6 @@ import { formatDate } from '@/lib/date';
 
 describe('Template: unitaria sin DOM en proyecto node', () => {
   it('formats an ISO date without touching the DOM', () => {
-    expect(formatDate('2026-11-15T00:00:00.000Z')).toBe('15/11/2026');
+    expect(formatDate('2026-11-15T15:00:00.000Z')).toBe('15/11/2026');
   });
 });
