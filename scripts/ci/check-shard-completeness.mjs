@@ -68,30 +68,29 @@ export function extractPlaywrightTests(report) {
 }
 
 /**
- * Extrae la lista de identificadores de prueba desde un JSON de Vitest (`vitest list --json` o `--reporter=json`).
+ * Extrae la lista única de archivos de prueba desde un JSON de Vitest (`vitest list --json` o `--reporter=json`).
+ * Vitest reparte los shards por archivo y `vitest list` no expande `describe.each`/`it.each` ni interpolaciones,
+ * por lo que la completitud de Vitest se verifica a nivel de archivo normalizado.
  * @param {object | Array<object>} report
  * @returns {string[]}
  */
 export function extractVitestTests(report) {
+  const files = new Set();
   if (Array.isArray(report)) {
-    return report.map((item) => {
-      const file = normalizeTestFilePath(item.file ?? '');
-      const title = item.fullName ?? item.name ?? '';
-      return `${file} :: ${title}`;
-    });
+    for (const item of report) {
+      const file = normalizeTestFilePath(item?.file ?? '');
+      if (file) files.add(file);
+    }
+    return [...files];
   }
 
-  const entries = [];
   for (const testFile of report?.testResults ?? []) {
-    const file = normalizeTestFilePath(testFile.name ?? '');
-    for (const assertion of testFile.assertionResults ?? []) {
-      const title =
-        assertion.fullName ??
-        [...(assertion.ancestorTitles ?? []), assertion.title].filter(Boolean).join(' > ');
-      entries.push(`${file} :: ${title}`);
+    const file = normalizeTestFilePath(testFile?.name ?? '');
+    if (file && Array.isArray(testFile.assertionResults) && testFile.assertionResults.length > 0) {
+      files.add(file);
     }
   }
-  return entries;
+  return [...files];
 }
 
 /**

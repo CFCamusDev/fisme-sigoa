@@ -136,8 +136,8 @@ describe('pr-checks.yml structure (HU-080)', () => {
       const block = extractJobBlock(workflow, jobId);
       const matrixMatch = block.match(/shard:\s*\[([^\]]+)\]/);
       const envMatch = block.match(/^\s{6}SHARDS:\s*(\d+)/m);
-      const nameMatch = block.match(/^\s{4}name:.*\/(\d+)\s*$/m);
-      const stepMatch = block.match(/^\s{6}-\s+name:.*\/(\d+)\s*$/m);
+      const nameMatch = block.match(/^\s{4}name:.*\/(\d+)\)?\s*$/m);
+      const stepMatch = block.match(/^\s{6}-\s+name:.*\/(\d+)\)?\s*$/m);
 
       const matrixList = matrixMatch?.[1] ?? '';
       expect(matrixList).not.toBe('');

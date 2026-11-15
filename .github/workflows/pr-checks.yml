@@ -338,6 +338,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       actions: read
+      contents: read
     if: always()
     needs: [convenciones, estaticas, unitarias, integracion, integracion-informe, aislamiento]
     steps:
@@ -471,6 +472,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       actions: read
+      contents: read
     if: always() && (github.base_ref == 'develop' || (github.base_ref == 'main' && startsWith(github.head_ref, 'release/')))
     needs: [e2e-shards, e2e-informe, aislamiento]
     steps:

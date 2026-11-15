@@ -123,4 +123,38 @@ describe('check-shard-completeness script (T-080-07, T-080-08)', () => {
       omitted: [],
     });
   });
+
+  it('handles vitest dynamic each cases by comparing normalized test files', () => {
+    const expected = extractVitestTests([
+      {
+        file: 'src/shared/email/email-sender.integration.test.ts',
+        name: 'EmailSender Contract: ${adapterName} > delivers',
+      },
+      {
+        file: 'src/shared/email/email-sender.integration.test.ts',
+        name: 'EmailSender Contract: ${adapterName} > uses port',
+      },
+    ]);
+    const actual = extractVitestTests({
+      testResults: [
+        {
+          name: '/home/runner/work/repo/apps/backend/src/shared/email/email-sender.integration.test.ts',
+          assertionResults: [
+            { fullName: 'EmailSender Contract: NoopEmailSender delivers' },
+            { fullName: 'EmailSender Contract: ResendEmailSender delivers' },
+            { fullName: 'EmailSender Contract: NoopEmailSender uses port' },
+            { fullName: 'EmailSender Contract: ResendEmailSender uses port' },
+          ],
+        },
+      ],
+    });
+
+    expect(checkShardCompleteness(expected, actual)).toEqual({
+      ok: true,
+      expectedCount: 1,
+      actualCount: 1,
+      repeated: [],
+      omitted: [],
+    });
+  });
 });
