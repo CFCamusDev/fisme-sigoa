@@ -22,7 +22,7 @@ async function openVersionsPage(page: Page) {
 test.describe('HU-014 — Editar OE y AG de una versión E2E', () => {
   test.setTimeout(90_000);
 
-  test.afterEach(() => {
+  test.afterEach(async () => {
     await resetCatalog();
   });
 

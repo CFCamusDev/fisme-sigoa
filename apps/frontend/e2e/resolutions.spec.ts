@@ -26,7 +26,7 @@ async function openResolutionsPage(page: Page) {
 test.describe('HU-048 — Registrar y aprobar resoluciones E2E', () => {
   test.setTimeout(90_000);
 
-  test.afterEach(() => {
+  test.afterEach(async () => {
     await resetCatalog();
   });
 
