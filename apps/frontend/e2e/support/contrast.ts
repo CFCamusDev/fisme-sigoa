@@ -1,5 +1,16 @@
 import AxeBuilder from '@axe-core/playwright';
-import { test, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+
+export const DESKTOP = { width: 1280, height: 720 };
+export const MOBILE = { width: 375, height: 812 };
+
+export async function waitForApi(page: Page, fragment: string, goTo: () => Promise<unknown>) {
+  const [response] = await Promise.all([
+    page.waitForResponse((res) => res.url().includes(fragment) && res.status() === 200),
+    goTo(),
+  ]);
+  expect(response.ok()).toBe(true);
+}
 
 export interface ContrastOptions {
   /**

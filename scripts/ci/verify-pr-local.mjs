@@ -1123,6 +1123,26 @@ export const WORKFLOW_EXCLUSIONS = [
     pattern: /DIAGNÓSTICO DEL ENTORNO/,
     reason: 'Diagnóstico condicional de Docker ante fallos.',
   },
+  {
+    pattern: /NEEDS_RESULTS/,
+    reason: 'Paso agregador del estado de jobs requeridos en el CI.',
+  },
+  {
+    pattern: /mkdir -p tmp\//,
+    reason: 'Preparación de directorios temporales de informes y shards en el CI.',
+  },
+  {
+    pattern: /check-shard-completeness\.mjs/,
+    reason: 'Verificación de completitud entre shards del CI.',
+  },
+  {
+    pattern: /ci-summary\.mjs/,
+    reason: 'Publicación del resumen de pruebas lentas y tiempos por job en GitHub Actions.',
+  },
+  {
+    pattern: /check-perf-budget\.mjs/,
+    reason: 'Presupuesto por prueba sobre informes JSON del CI (el verificador local reporta presupuestos sin fallar).',
+  },
 ];
 
 /**

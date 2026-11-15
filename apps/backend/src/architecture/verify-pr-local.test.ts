@@ -1571,6 +1571,19 @@ describe('verify-pr-local time budgets (T-078-17)', () => {
       const parsed = parsePerfBudget('{"groups":{"e2e":150},"total":{"full":480}}');
       expect(parsed.warning).toBeUndefined();
       expect(parsed.budget.groups.e2e).toBe(150);
+
+      const withPerTest = parsePerfBudget(
+        JSON.stringify({
+          groups: { e2e: 150 },
+          total: { full: 480 },
+          perTest: { unit: 2000, integration: 5000, e2e: 20000 },
+          exceptions: [
+            { file: 'apps/frontend/e2e/contrast-users.spec.ts', ms: 35000, reason: 'WCAG' },
+          ],
+        }),
+      );
+      expect(withPerTest.warning).toBeUndefined();
+      expect(withPerTest.budget).toEqual({ groups: { e2e: 150 }, total: { full: 480 } });
     });
   });
 });

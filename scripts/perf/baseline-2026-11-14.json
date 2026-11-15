@@ -1,0 +1,21 @@
+{
+  "date": "2026-11-14",
+  "source": "Línea base medida el 14/11/2026 sobre develop (HU-080)",
+  "ci": {
+    "totalSeconds": 948.9,
+    "billedMachineMinutes": 21.3,
+    "jobs": {
+      "calidad": 641,
+      "e2e": 299
+    }
+  },
+  "groups": {
+    "backend-unit": { "seconds": null, "tests": 2051 },
+    "backend-integration": { "seconds": 196, "tests": 1117 },
+    "frontend": { "seconds": null, "tests": 1019 },
+    "shared": { "seconds": null, "tests": 393 },
+    "coverage": { "seconds": 291, "tests": null },
+    "e2e": { "seconds": 299, "tests": 68 },
+    "verify-full-repeat-3": { "seconds": 531.8, "tests": 4648 }
+  }
+}

@@ -1,9 +1,9 @@
-import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test, expect } from './support/test';
 import { seedUser } from './support/seed-user';
+import { getWorkerSeeder } from './support/seeder';
 
 /**
  * Aislamiento de los workers de E2E (HU-078, T-078-20, CA8). Con 2 o más workers, estas dos pruebas
@@ -29,31 +29,8 @@ function databaseNameOf(url: string): string {
   return new URL(url).pathname.replace(/^\//, '');
 }
 
-function countUsersWithSurname(surname: string): number {
-  const script = [
-    "import { createPrismaClient } from './src/shared/prisma/prisma-client.ts';",
-    'async function run() {',
-    '  const { prisma, disconnect } = createPrismaClient(process.env.TEST_DATABASE_URL!);',
-    '  try {',
-    '    const count = await prisma.user.count({ where: { firstSurname: process.env.EXPECTED_SURNAME } });',
-    '    console.log(JSON.stringify({ count }));',
-    '  } finally {',
-    '    await disconnect();',
-    '  }',
-    '}',
-    'void run();',
-  ].join(' ');
-
-  const output = execSync(`pnpm --filter backend exec tsx -e ${JSON.stringify(script)}`, {
-    stdio: 'pipe',
-    env: { ...process.env, EXPECTED_SURNAME: surname },
-  }).toString('utf-8');
-  const last = output
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line.startsWith('{') && line.endsWith('}'))
-    .at(-1);
-  return last ? (JSON.parse(last) as { count: number }).count : -1;
+async function countUsersWithSurname(surname: string): Promise<number> {
+  return getWorkerSeeder().countUsersBySurname(surname);
 }
 
 async function exchangeMarkers(own: 'a' | 'b', marker: Marker): Promise<Marker | null> {
@@ -76,7 +53,7 @@ test.describe('Worker isolation', () => {
       workerStack,
     }, testInfo) => {
       const surname = `Aislado${own.toUpperCase()}${Date.now() % 100000}`;
-      seedUser({
+      await seedUser({
         email: `isolation-${own}-${Date.now()}@example.test`,
         names: 'Usuario',
         firstSurname: surname,
@@ -89,7 +66,7 @@ test.describe('Worker isolation', () => {
       expect(process.env['DATABASE_URL']).toBe(workerStack.databaseUrl);
       const databaseName = databaseNameOf(workerStack.databaseUrl);
       expect(databaseName).toMatch(/_test$/);
-      expect(countUsersWithSurname(surname)).toBe(1);
+      expect(await countUsersWithSurname(surname)).toBe(1);
 
       const response = await page.request.get(`${workerStack.apiUrl}/health`);
       expect(response.ok()).toBe(true);
@@ -107,8 +84,8 @@ test.describe('Worker isolation', () => {
       expect(other!.apiUrl).not.toBe(workerStack.apiUrl);
       expect(other!.databaseName).not.toBe(databaseName);
       // Ninguna prueba ve datos de otro worker.
-      expect(countUsersWithSurname(other!.surname)).toBe(0);
-      expect(countUsersWithSurname(surname)).toBe(1);
+      expect(await countUsersWithSurname(other!.surname)).toBe(0);
+      expect(await countUsersWithSurname(surname)).toBe(1);
     });
   }
 

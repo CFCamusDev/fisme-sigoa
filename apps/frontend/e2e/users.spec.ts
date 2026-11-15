@@ -20,7 +20,7 @@ test.describe('HU-003 — Gestión de usuarios E2E', () => {
     const newUserDni = String(30000000 + (timestamp % 10000000));
 
     // 1. Sembrado del administrador y de un usuario docente activo
-    seedUser({
+    await seedUser({
       email: adminEmail,
       password: adminPassword,
       names: 'Administrador',
@@ -32,7 +32,7 @@ test.describe('HU-003 — Gestión de usuarios E2E', () => {
 
     const uniqueDocenteSurname = `Activo${timestamp % 10000}`;
 
-    seedUser({
+    await seedUser({
       email: otherUserEmail,
       password: otherUserPassword,
       names: 'Docente',
@@ -162,7 +162,7 @@ test.describe('HU-003 — Gestión de usuarios E2E', () => {
     const teacherEmail = `docente-sin-permiso-${timestamp}@example.test`;
     const teacherPassword = 'Password123!';
 
-    seedUser({
+    await seedUser({
       email: teacherEmail,
       password: teacherPassword,
       names: 'Docente',

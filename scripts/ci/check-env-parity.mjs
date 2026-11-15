@@ -333,19 +333,17 @@ export function checkEnvParity(inputs) {
   }
 
   // Regla C4: Variables requeridas sin defaults en jobs de CI (pr-checks.yml)
-  const calidadEnvs = extractJobEnvs(inputs.prChecksContent, 'calidad');
-  const e2eEnvs = extractJobEnvs(inputs.prChecksContent, 'e2e');
+  const calidadJobs = ['estaticas', 'unitarias', 'integracion', 'aislamiento'];
+  const e2eJobs = ['e2e-shards', 'aislamiento'];
 
-  for (const variable of inputs.strictRequiredVariables) {
-    if (!calidadEnvs.has(variable)) {
-      errors.push(
-        `[C4] ${variable}: obligatoria sin valor por defecto y ausente en el env del job "calidad" de .github/workflows/pr-checks.yml. Acción: agrega "${variable}: ..." en env: del job.`,
-      );
-    }
-    if (!e2eEnvs.has(variable)) {
-      errors.push(
-        `[C4] ${variable}: obligatoria sin valor por defecto y ausente en el env del job "e2e" de .github/workflows/pr-checks.yml. Acción: agrega "${variable}: ..." en env: del job.`,
-      );
+  for (const jobId of [...calidadJobs, ...e2eJobs]) {
+    const jobEnvs = extractJobEnvs(inputs.prChecksContent, jobId);
+    for (const variable of inputs.strictRequiredVariables) {
+      if (!jobEnvs.has(variable)) {
+        errors.push(
+          `[C4] ${variable}: obligatoria sin valor por defecto y ausente en el env del job "${jobId}" de .github/workflows/pr-checks.yml. Acción: agrega "${variable}: ..." en env: del job.`,
+        );
+      }
     }
   }
 

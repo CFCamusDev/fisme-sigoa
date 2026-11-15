@@ -1,0 +1,27 @@
+{
+  "nodeInclude": [
+    "src/lib/**/*.{test,spec}.ts",
+    "src/features/*/{lib,schemas,api}/**/*.{test,spec}.ts",
+    "src/test/templates/**/*.{test,spec}.ts",
+    "scripts/**/*.{test,spec}.mjs",
+    "src/design-contrast.test.ts",
+    "src/design-tokens.test.ts",
+    "src/e2e-hygiene.test.ts",
+    "src/e2e-seed-cache.test.ts",
+    "src/e2e-web-copy.test.ts",
+    "src/e2e-workers.test.ts",
+    "src/index-html.test.ts",
+    "src/session.test.ts",
+    "src/vitest-projects.test.ts"
+  ],
+  "nodeExceptions": [
+    {
+      "file": "src/features/auth/lib/session-hint.test.ts",
+      "reason": "Uses browser localStorage API directly"
+    },
+    {
+      "file": "src/features/auth/lib/restore-session.test.ts",
+      "reason": "Uses browser localStorage via session-hint"
+    }
+  ]
+}

@@ -53,10 +53,19 @@ VITE_API_URL=https://api.untrm.edu.pe
 `,
     prChecksContent: `
 jobs:
-  calidad:
+  estaticas:
     env:
       DATABASE_URL: postgresql://test
-  e2e:
+  unitarias:
+    env:
+      DATABASE_URL: postgresql://test
+  integracion:
+    env:
+      DATABASE_URL: postgresql://test
+  aislamiento:
+    env:
+      DATABASE_URL: postgresql://test
+  e2e-shards:
     env:
       DATABASE_URL: postgresql://test
 `,
@@ -182,18 +191,27 @@ VITE_API_URL=https://api.untrm.edu.pe
       ...validInputs,
       prChecksContent: `
 jobs:
-  calidad:
-    steps:
-      - run: pnpm test
-  e2e:
+  estaticas:
     env:
       DATABASE_URL: postgresql://test
-`, // falta DATABASE_URL en calidad
+  unitarias:
+    steps:
+      - run: pnpm test:coverage
+  integracion:
+    env:
+      DATABASE_URL: postgresql://test
+  aislamiento:
+    env:
+      DATABASE_URL: postgresql://test
+  e2e-shards:
+    env:
+      DATABASE_URL: postgresql://test
+`, // falta DATABASE_URL en unitarias
     };
 
     const errors: string[] = checkEnvParity(inputs);
     expect(errors.some((e: string) => e.includes('DATABASE_URL') && e.includes('C4'))).toBe(true);
-    expect(errors.some((e: string) => e.includes('pr-checks.yml') && e.includes('calidad'))).toBe(
+    expect(errors.some((e: string) => e.includes('pr-checks.yml') && e.includes('unitarias'))).toBe(
       true,
     );
   });

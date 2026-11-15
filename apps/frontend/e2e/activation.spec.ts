@@ -6,7 +6,7 @@ test.describe('HU-004 — Activar cuenta E2E', () => {
   test.setTimeout(30_000);
 
   test('user activates the account and then signs in (CA1)', async ({ page }) => {
-    const { email, token } = seedPendingUser({});
+    const { email, token } = await seedPendingUser({});
     const newPassword = 'NewStrongPassword123*';
 
     await page.goto(`/activar/${token}`);
@@ -50,7 +50,7 @@ test.describe('HU-004 — Activar cuenta E2E', () => {
   });
 
   test('a used link shows the invalid link state (CA2)', async ({ page }) => {
-    const { token } = seedPendingUser({ used: true });
+    const { token } = await seedPendingUser({ used: true });
 
     await page.goto(`/activar/${token}`);
 
@@ -78,7 +78,7 @@ test.describe('HU-004 — Activar cuenta E2E', () => {
 
   test('an expired link shows the invalid link state (CA2)', async ({ page }) => {
     const pastDate = new Date(Date.now() - 3600 * 1000);
-    const { token } = seedPendingUser({ expiresAt: pastDate });
+    const { token } = await seedPendingUser({ expiresAt: pastDate });
 
     await page.goto(`/activar/${token}`);
 
@@ -105,7 +105,7 @@ test.describe('HU-004 — Activar cuenta E2E', () => {
   });
 
   test('a weak password shows the policy details and sends no request (CA3)', async ({ page }) => {
-    const { token } = seedPendingUser({});
+    const { token } = await seedPendingUser({});
     let requestsCount = 0;
 
     page.on('request', (req) => {
@@ -128,7 +128,7 @@ test.describe('HU-004 — Activar cuenta E2E', () => {
   });
 
   test('activation form has no contrast violations on desktop and mobile', async ({ page }) => {
-    const { token } = seedPendingUser({});
+    const { token } = await seedPendingUser({});
 
     // Desktop
     await page.setViewportSize({ width: 1280, height: 720 });
@@ -142,7 +142,7 @@ test.describe('HU-004 — Activar cuenta E2E', () => {
   });
 
   test('activation policy errors have no contrast violations', async ({ page }) => {
-    const { token } = seedPendingUser({});
+    const { token } = await seedPendingUser({});
 
     await page.goto(`/activar/${token}`);
     await page.getByLabel(/nueva contraseña/i).fill('weak');
@@ -154,7 +154,7 @@ test.describe('HU-004 — Activar cuenta E2E', () => {
   });
 
   test('activation invalid link state has no contrast violations', async ({ page }) => {
-    const { token } = seedPendingUser({ used: true });
+    const { token } = await seedPendingUser({ used: true });
 
     await page.goto(`/activar/${token}`);
     await page.getByLabel(/nueva contraseña/i).fill('StrongPassword123*');
@@ -172,7 +172,7 @@ test.describe('HU-004 — Activar cuenta E2E', () => {
   });
 
   test('activation success state has no contrast violations', async ({ page }) => {
-    const { token } = seedPendingUser({});
+    const { token } = await seedPendingUser({});
 
     await page.goto(`/activar/${token}`);
     await page.getByLabel(/nueva contraseña/i).fill('StrongPassword123*');

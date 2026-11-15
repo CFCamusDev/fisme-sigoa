@@ -91,3 +91,124 @@ node scripts/perf/e2e-stability.mjs --runs 3 --workers 3
 ```
 
 Ejecuta la suite completa varias veces seguidas sin reintentos. Una prueba que solo pasa al reintentar (inestable), una fallida o una omitida cuentan como fallo. No forma parte del CI.
+
+## Variantes de Vitest medidas el 14/11/2026 (T-080-02)
+
+Mediciones en local (Windows, 3 corridas por variante, criterio de adopción: reducción ≥ 10 % en mediana y 3 corridas sin fallos con `--sequence.shuffle`, con y sin `--coverage`).
+
+### (a) Frontend completo (166 archivos, 1 019 pruebas)
+
+| Variante                                 | Comando (`apps/frontend`)                                     | Mediana  | Rango           | Resultado                          |
+| ---------------------------------------- | ------------------------------------------------------------- | -------- | --------------- | ---------------------------------- |
+| Base (`forks` + `isolate`)               | `pnpm exec vitest run`                                        | 113.37 s | 112.16–114.96 s | OK (1 019)                         |
+| `--pool=threads`                         | `pnpm exec vitest run --pool=threads`                         | 115.27 s | 114.11–122.09 s | OK (1 019)                         |
+| `--no-isolate`                           | `pnpm exec vitest run --no-isolate`                           | 19.21 s  | 19.14–19.36 s   | OK (1 019)                         |
+| `--pool=threads --no-isolate`            | `pnpm exec vitest run --pool=threads --no-isolate`            | 18.55 s  | 18.50–18.69 s   | OK (1 019)                         |
+| `happy-dom` (worktree desechable)        | `pnpm exec vitest run --environment=happy-dom`                | 82.93 s  | 78.81–83.48 s   | Falla                              |
+| Base `--coverage`                        | `pnpm exec vitest run --coverage`                             | 126.42 s | 124.22–128.45 s | OK (1 019)                         |
+| `--pool=threads --no-isolate --coverage` | `pnpm exec vitest run --pool=threads --no-isolate --coverage` | 22.25 s  | 21.49–22.81 s   | Falla (a diagnosticar en T-080-14) |
+
+### (b) Subconjunto sin DOM (59 archivos)
+
+| Variante                                         | Comando (`apps/frontend`)                                                           | Mediana | Rango         | Resultado                  |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------- | ------- | ------------- | -------------------------- |
+| Base (`jsdom`)                                   | `pnpm exec vitest run <59 archivos>`                                                | 35.25 s | 34.73–35.50 s | OK (380)                   |
+| `--environment=node` (con `setup.ts`)            | `pnpm exec vitest run --environment=node <59 archivos>`                             | 14.32 s | 14.28–14.85 s | Falla por `setup.ts` (377) |
+| `--environment=node --pool=threads --no-isolate` | `pnpm exec vitest run --environment=node --pool=threads --no-isolate <59 archivos>` | 4.64 s  | 4.47–4.82 s   | Falla por `setup.ts` (377) |
+
+### (c) Unitarias del backend (`--project unit`, 2 068 pruebas)
+
+| Variante                                 | Comando (`apps/backend`)                                                     | Mediana | Rango         | Resultado  |
+| ---------------------------------------- | ---------------------------------------------------------------------------- | ------- | ------------- | ---------- |
+| Base (`forks` + `isolate`)               | `pnpm exec vitest run --project unit`                                        | 22.60 s | 20.29–23.31 s | OK (2 068) |
+| `--pool=threads`                         | `pnpm exec vitest run --project unit --pool=threads`                         | 21.09 s | 20.16–21.24 s | OK (2 068) |
+| `--no-isolate`                           | `pnpm exec vitest run --project unit --no-isolate`                           | 6.24 s  | 5.72–6.60 s   | OK (2 068) |
+| `--pool=threads --no-isolate`            | `pnpm exec vitest run --project unit --pool=threads --no-isolate`            | 5.35 s  | 5.29–5.38 s   | OK (2 068) |
+| Base `--coverage`                        | `pnpm exec vitest run --project unit --coverage`                             | 22.14 s | 22.13–22.85 s | OK (2 068) |
+| `--pool=threads --no-isolate --coverage` | `pnpm exec vitest run --project unit --pool=threads --no-isolate --coverage` | 7.11 s  | 6.93–7.37 s   | OK (2 068) |
+
+**Decisiones adoptadas:**
+
+- **Proyecto `node` del frontend (T-080-12 / T-080-13):** separar en `node` (con `setup-node.ts` sin `window`/Testing Library) y activar `pool: 'threads'` + `isolate: false` (−86.8 % sobre la base `jsdom` del subconjunto).
+- **Proyecto `dom` del frontend (T-080-14):** descartar `happy-dom` (más lento, falla y agrega dependencia); evaluar `threads` + `isolate: false` con `--coverage` y `--sequence.shuffle` antes de adoptarlo.
+- **Unitarias del backend (T-080-15):** adoptar `pool: 'threads'` + `isolate: false` (−76.3 % sin cobertura, −67.9 % con cobertura), sujeto a 3 corridas con `--sequence.shuffle` y verificación de `argon2`.
+
+## Estructura del CI y pruebas rápidas (HU-080)
+
+### Jobs, agregadores y shards (`.github/workflows/pr-checks.yml`)
+
+- **Convenciones (`convenciones`):** valida rama, título de PR, `check:env-parity`, `check:windows-paths` y `check:test-patterns`.
+- **Jobs paralelos tras `convenciones`:**
+  - **Estáticas (`estaticas`):** Prettier, ESLint + `check-design-tokens`, TypeScript (`typecheck`), `depcruise` y `build`.
+  - **Unitarias (`unitarias`):** cobertura >= 80 % en backend, frontend (`node` + `dom`) y shared; genera `unit-backend.json` y `unit-frontend.json`, publica el resumen de lentas y verifica presupuesto por prueba (`--tier unit`).
+  - **Integración (`integracion`, 1 shard):** corre contra PostgreSQL 16 (sin `worker-isolation.integration.test.ts`) y genera un informe blob combinado luego por el agregador `calidad`.
+  - **E2E en 2 shards (`e2e-shards`):** cada shard corre Playwright contra su PostgreSQL 16 (`--grep-invert "Worker isolation"`) y sube su informe blob para que el agregador `e2e` los combine.
+  - **Aislamiento de workers (`aislamiento`):** ejecuta `worker-isolation.integration.test.ts` y `worker-isolation.spec.ts` completos fuera de los shards y de la ruta crítica.
+  - **Seguridad (`seguridad`)** e **Imágenes (`imagenes`)**: auditoría `pnpm audit` y build/smoke de Docker Compose.
+- **Nombres exactos de los checks requeridos (protección de ramas):**
+  - `Rama y título del PR`
+  - `Lint, tipos, pruebas y build` (agregador `calidad`: depende de `convenciones`, `estaticas`, `unitarias`, `integracion`, `aislamiento`; además combina blobs de integración, valida completitud con `check-shard-completeness.mjs` y verifica presupuesto `--tier integration`)
+  - `Auditoría de dependencias`
+  - `Pruebas end-to-end (Playwright)` (agregador `e2e`: depende de `e2e-shards`, `aislamiento`; además combina blobs E2E, valida completitud y verifica presupuesto `--tier e2e`)
+  - Nunca renombres, elimines ni sustituyas estos checks por filtros `paths:` sin actualizar la protección de ramas.
+
+### Cómo medir tiempos del CI y locales
+
+```bash
+pnpm ci:timing --runs 5
+pnpm ci:timing --head-branch feature/HU-080-optimizacion-pruebas-ci --runs 5
+pnpm perf:tests
+```
+
+- `ci:timing` lee ejecuciones reales de GitHub Actions con `gh` y reporta tiempo de espera (mediana/promedio) y minutos de máquina (exactos y facturados).
+- `perf:tests` ejecuta y compara la suite local frente a la línea base.
+
+### Presupuesto por prueba y excepciones (`scripts/ci/perf-budget.json`)
+
+| Nivel         | Presupuesto por prueba | Comando de verificación                                  |
+| ------------- | ---------------------- | -------------------------------------------------------- |
+| `unit`        | 2 000 ms               | `pnpm check:perf-budget --tier unit --vitest ...`        |
+| `integration` | 5 000 ms               | `pnpm check:perf-budget --tier integration --vitest ...` |
+| `e2e`         | 20 000 ms              | `pnpm check:perf-budget --tier e2e --playwright ...`     |
+
+**Qué hacer si una prueba supera su presupuesto:**
+
+1. Baja la prueba en la pirámide si la regla no necesita navegador ni PostgreSQL real.
+2. Usa siembra en proceso (`createE2ESeeder` / `seedAuthorizationFast`), sesión por API (`loginAsTestUser`) y esperas por señal (`waitForResponse` / aserciones web-first).
+3. Solo si la prueba es inherentemente pesada (p. ej. aislamiento con múltiples workers o recorrido completo de contraste WCAG), agrégala en `exceptions` de `scripts/ci/perf-budget.json` con su tope `ms` y un `reason` explícito. Las excepciones obsoletas o superadas también fallan el CI.
+
+### Plantillas copiables y reglas para HU nuevas (`pnpm check:test-patterns`)
+
+| Tipo de prueba            | Plantilla copiable                                                        | Reglas obligatorias                                                                                                                                                                          |
+| ------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unitaria sin DOM (`node`) | `apps/frontend/src/test/templates/example-node.test.ts`                   | Sin `@testing-library/*`, `react-dom`, `window`, `document` ni `localStorage` (`dom-in-node`).                                                                                               |
+| Integración (PostgreSQL)  | `apps/backend/src/test/templates/example-integration.integration.test.ts` | Usar `useTestDatabase()` y `seedAuthorizationFast` (nunca `seedAuthorization` lenta, `slow-seed`), sin pausas fijas (`fixed-pause`).                                                         |
+| E2E (Playwright)          | `apps/frontend/e2e/templates/example-session.spec.ts`                     | Usar `loginAsTestUser(page)` por API (no login por interfaz fuera de specs de auth, `ui-login`), sin `execSync`/`spawnSync` en specs (`e2e-subprocess`) ni `waitForTimeout` (`fixed-pause`). |
+
+### Variantes de CI medidas (T-080-10, 15/11/2026)
+
+- **Línea base oficial del CA11 (T-080-01):** flujo **948.9 s**, máquina **21.3 min** exactos.
+- **Referencia comparativa en `develop` (5 runs previos a HU-080: `43642133673`, `43564650613`, `43556704247`, `43538427967`, `43523244612`):** flujo **984 s**, máquina **21.81 min** exactos / **24.8 min** facturados (redondeo al minuto por job).
+
+| Variante                                                                               | Run ID (PR #45)                              |   Corridas | Jobs | Tiempo de espera | Minutos exactos | Minutos facturados | Decisión                                                                                                                                                                         |
+| -------------------------------------------------------------------------------------- | -------------------------------------------- | ---------: | ---: | ---------------: | --------------: | -----------------: | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **V1** (`0c0b422`): 3 E2E shards + 2 int. shards + jobs de informe separados           | `43739419872`                                |          1 |   14 |            308 s |       23.42 min |             31 min | Descartada (1 corrida; no cumplía CA11 en minutos de máquina)                                                                                                                    |
+| **V2** (`89af2fe`): 2 E2E shards + 2 int. shards + informes absorbidos + Chromium 30 s | `43740815771`                                |          1 |   12 |            304 s |       22.23 min |             29 min | Descartada (1 corrida; no cumplía CA11 en minutos de máquina)                                                                                                                    |
+| **V3** (`368e750`): 2 E2E shards + 1 int. shard + informes absorbidos                  | `43741505391`                                | 1 (piloto) |   11 |            291 s |       20.10 min |             25 min | **Adoptada** (pasa a medición final de 5 corridas en T-080-26)                                                                                                                   |
+| **V3 + `concurrency` + `TEST_DB_WORKERS=2`** (`0e9516c` / `9ee005b`)                   | `43746134457` (#1–#3), `43748350462` (#1–#2) |          5 |   11 |    325.2 s prom. | 20.69 min prom. |     27.0 min prom. | **Conservada** (5/5 en verde; el pico de `387 s` / `24.22 min` del intento 3 fue en `Calidad · Unitarias con cobertura` `340 s` y no se repitió; integración promedió `209.6 s`) |
+
+_Notas:_
+
+- V1 y V2 se midieron con una sola corrida porque ya superaban la línea base en minutos exactos y facturados y no cumplían el CA11.
+- La variante final de `T-080-10` (`0e9516c`) añade `concurrency` con `cancel-in-progress: ${{ github.event_name == 'pull_request' }}` (nunca en `push` a `develop` ni `main`) y `TEST_DB_WORKERS=2` en `Calidad · Integración` manteniendo las 3 pasadas de `src/shared/pdf`.
+
+### Medición final (T-080-26, 15/11/2026)
+
+- **Archivo de registro:** `scripts/perf/final-2026-11-15.json`.
+- **CI (5 corridas consecutivas de V3, `368e750` / `0032e9a`):** `43741505391` (#1: `291 s`, `20.10 min` exactos, `25 min` facturados, integración `239 s`) y `43743280561` (#1: `304 s`, `19.80 min`, `26 min`, integración `267 s`; #2: `312 s`, `21.33 min`, `29 min`, integración `265 s`; #3: `308 s`, `19.92 min`, `26 min`, integración `264 s`; #4: `322 s`, `19.77 min`, `26 min`, integración `214 s`). Todas corresponden a **reruns del mismo commit/workflow**, con **0 fallos y 0 intermitencias**.
+  - **Promedio V3 (5 corridas):** espera **307.4 s** (`-67.6 %` vs `948.9 s`), máquina **20.18 min exactos** (`< 21.3 min`) y **26.4 min facturados**.
+  - **Explicación del `+1.6 min` facturado (`26.4` vs `24.8 min` de `develop`):** aunque V3 consume menos minutos exactos que `develop` (`20.18` vs `21.81 min`), el redondeo al techo por minuto se aplica a **11 jobs frente a 5** y `Calidad · Integración` superó el umbral de **240 s** en 3 de las 5 corridas (`264–267 s`).
+- **CI configuración final (`concurrency` + `TEST_DB_WORKERS=2`, 5 corridas en `43746134457` #1–#3 y `43748350462` #1–#2):** `43746134457` (#1: `302 s`, `18.93 min`, `26 min`, integración `212 s`; #2: `302 s`, `20.42 min`, `26 min`, integración `208 s`; #3: `387 s`, `24.22 min`, `30 min`, integración `201 s` — pico atípico en `Calidad · Unitarias con cobertura` con `340 s`, no repetido después) y `43748350462` (#1: `312 s`, `19.07 min`, `26 min`, integración `191 s`; #2: `323 s`, `20.80 min`, `27 min`, integración `236 s`).
+  - **Promedio configuración final (5 corridas):** espera **325.2 s** (`-65.7 %` vs `948.9 s`), máquina **20.69 min exactos** (`≤ 21.3 min`) y **27.0 min facturados** (`Calidad · Integración` promedió `209.6 s` sin superar `240 s`, pero el promedio facturado global quedó en `27.0 min`).
+- **Puerta local (`pnpm verify:pr:full --repeat 3`):** **395.5 s** frente a `531.8 s` de línea base (meta `≤ 425 s`).
+- **Conteo y cobertura:** **4 698 pruebas** ejecutadas (`≥ 4 648`) y cobertura unitaria **97.09 %** en backend y **93.96 %** en frontend (`≥ 80 %`).

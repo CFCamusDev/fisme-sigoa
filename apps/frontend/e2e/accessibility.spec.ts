@@ -170,7 +170,7 @@ test.describe('Keyboard Navigation and Focus Indicator (WCAG 2.1 AA)', () => {
     const targetEmail = `a11y-target-access-${timestamp}@example.test`;
     const uniqueSurname = `Teclado${timestamp % 10000}`;
 
-    seedUser({
+    await seedUser({
       email: targetEmail,
       names: 'Usuario',
       firstSurname: uniqueSurname,

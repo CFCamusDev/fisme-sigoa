@@ -124,26 +124,54 @@ async function terminateConnections(client: pg.Client, databaseName: string): Pr
   );
 }
 
-async function prepareTemplate(client: pg.Client, baseUrl: string): Promise<string> {
+async function prepareTemplate(
+  client: pg.Client,
+  baseUrl: string,
+  cloneFromBaseUrl?: string,
+): Promise<string> {
   const templateName = templateDatabaseName(databaseNameOf(baseUrl));
   const templateUrl = assertTestDatabase(withDatabaseName(baseUrl, templateName));
+  const expected = `${MIGRATIONS_HASH_MARKER}${hashMigrations()}`;
+
+  const current = await client.query<{ comment: string | null }>(
+    "SELECT shobj_description(oid, 'pg_database') AS comment FROM pg_database WHERE datname = $1",
+    [templateName],
+  );
+  if (current.rows[0]?.comment === expected) {
+    await terminateConnections(client, templateName);
+    return templateName;
+  }
+
+  if (cloneFromBaseUrl) {
+    const sourceTemplateName = templateDatabaseName(databaseNameOf(cloneFromBaseUrl));
+    const sourceComment = await client.query<{ comment: string | null }>(
+      "SELECT shobj_description(oid, 'pg_database') AS comment FROM pg_database WHERE datname = $1",
+      [sourceTemplateName],
+    );
+    if (sourceTemplateName !== templateName && sourceComment.rows[0]?.comment === expected) {
+      await terminateConnections(client, sourceTemplateName);
+      await terminateConnections(client, templateName);
+      await client.query(`DROP DATABASE IF EXISTS ${quoteDatabaseName(templateName)} WITH (FORCE)`);
+      await client.query(
+        `CREATE DATABASE ${quoteDatabaseName(templateName)} TEMPLATE ${quoteDatabaseName(sourceTemplateName)}`,
+      );
+      await client.query(
+        `COMMENT ON DATABASE ${quoteDatabaseName(templateName)} IS '${expected.replace(/'/g, "''")}'`,
+      );
+      await terminateConnections(client, templateName);
+      return templateName;
+    }
+  }
 
   const exists = await client.query('SELECT 1 FROM pg_database WHERE datname = $1', [templateName]);
   if (exists.rowCount === 0) {
     await client.query(`CREATE DATABASE ${quoteDatabaseName(templateName)}`);
   }
 
-  const expected = `${MIGRATIONS_HASH_MARKER}${hashMigrations()}`;
-  const current = await client.query<{ comment: string | null }>(
-    "SELECT shobj_description(oid, 'pg_database') AS comment FROM pg_database WHERE datname = $1",
-    [templateName],
+  migrateDeploy(templateUrl);
+  await client.query(
+    `COMMENT ON DATABASE ${quoteDatabaseName(templateName)} IS '${expected.replace(/'/g, "''")}'`,
   );
-  if (current.rows[0]?.comment !== expected) {
-    migrateDeploy(templateUrl);
-    await client.query(
-      `COMMENT ON DATABASE ${quoteDatabaseName(templateName)} IS '${expected.replace(/'/g, "''")}'`,
-    );
-  }
 
   await terminateConnections(client, templateName);
   return templateName;
@@ -153,7 +181,10 @@ async function prepareTemplate(client: pg.Client, baseUrl: string): Promise<stri
  * Deja migrada la plantilla `<base>_tpl_test` de una base de pruebas y devuelve su URL (HU-078, D6).
  * El verificador local la llama una sola vez por ejecución y clona de ella las bases de sus grupos.
  */
-export async function prepareMigratedTemplate(baseUrl: string): Promise<string> {
+export async function prepareMigratedTemplate(
+  baseUrl: string,
+  options?: { cloneFromBaseUrl?: string },
+): Promise<string> {
   assertTestDatabase(baseUrl);
   const client = new pg.Client({
     connectionString: adminUrlOf(baseUrl),
@@ -165,7 +196,7 @@ export async function prepareMigratedTemplate(baseUrl: string): Promise<string> 
     } catch (error) {
       throw connectionError(baseUrl, error);
     }
-    const templateName = await prepareTemplate(client, baseUrl);
+    const templateName = await prepareTemplate(client, baseUrl, options?.cloneFromBaseUrl);
     return withDatabaseName(baseUrl, templateName);
   } finally {
     await client.end();
@@ -180,6 +211,7 @@ export async function prepareMigratedTemplate(baseUrl: string): Promise<string> 
 export async function prepareWorkerDatabases(
   workerCount: number = resolveWorkerCount(),
   baseUrl?: string,
+  options?: { cloneFromBaseUrl?: string },
 ): Promise<string[]> {
   if (workerCount <= 1 && baseUrl === undefined) {
     return [await prepareTestDatabase()];
@@ -198,7 +230,7 @@ export async function prepareWorkerDatabases(
     } catch (error) {
       throw connectionError(baseUrl, error);
     }
-    const templateName = await prepareTemplate(client, baseUrl);
+    const templateName = await prepareTemplate(client, baseUrl, options?.cloneFromBaseUrl);
 
     for (let index = 1; index <= workerCount; index += 1) {
       const name = workerDatabaseName(baseName, index);

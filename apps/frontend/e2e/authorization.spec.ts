@@ -61,7 +61,7 @@ test.describe('HU-008 — Autorización por permiso y alcance E2E', () => {
     const teacherPassword = 'Password123!';
 
     // 1. Sembrado de Docente (solo tiene permisos OWN de medición directa e indirecta, sin usuario.* ni rol.*)
-    seedUser({
+    await seedUser({
       email: teacherEmail,
       password: teacherPassword,
       names: 'Docente',

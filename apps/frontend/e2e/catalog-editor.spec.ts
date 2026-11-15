@@ -22,8 +22,8 @@ async function openVersionsPage(page: Page) {
 test.describe('HU-014 — Editar OE y AG de una versión E2E', () => {
   test.setTimeout(90_000);
 
-  test.afterEach(() => {
-    resetCatalog();
+  test.afterEach(async () => {
+    await resetCatalog();
   });
 
   test('member edits an attribute statement in a draft version and sees the difference (CA1, CA2, CA3)', async ({
@@ -36,8 +36,8 @@ test.describe('HU-014 — Editar OE y AG de una versión E2E', () => {
       email: `e2e-catalog-editor-${Date.now()}@example.test`,
       roles: ['COMMITTEE_MEMBER'],
     });
-    resetCatalog();
-    seedCurrentCatalog();
+    await resetCatalog();
+    await seedCurrentCatalog();
 
     // Crear el Borrador desde la interfaz (copia de la vigente)
     await openVersionsPage(page);
