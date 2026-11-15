@@ -1,6 +1,5 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 // @ts-expect-error script sin archivo de declaraciones .d.ts
 import * as checkPerfBudgetModule from '../../../../scripts/ci/check-perf-budget.mjs';
@@ -186,9 +185,8 @@ describe('check-perf-budget (HU-080, T-080-22)', () => {
   });
 
   it('validates real perf-budget.json structure', () => {
-    const repoRoot = fileURLToPath(new URL('../../../../', import.meta.url));
     const budget = JSON.parse(
-      fs.readFileSync(path.join(repoRoot, 'scripts', 'ci', 'perf-budget.json'), 'utf-8'),
+      fs.readFileSync(new URL('../../../../scripts/ci/perf-budget.json', import.meta.url), 'utf-8'),
     );
     expect(budget.perTest).toMatchObject({
       unit: expect.any(Number),
