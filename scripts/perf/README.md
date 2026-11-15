@@ -141,15 +141,15 @@ Mediciones en local (Windows, 3 corridas por variante, criterio de adopción: re
 - **Jobs paralelos tras `convenciones`:**
   - **Estáticas (`estaticas`):** Prettier, ESLint + `check-design-tokens`, TypeScript (`typecheck`), `depcruise` y `build`.
   - **Unitarias (`unitarias`):** cobertura >= 80 % en backend, frontend (`node` + `dom`) y shared; genera `unit-backend.json` y `unit-frontend.json`, publica el resumen de lentas y verifica presupuesto por prueba (`--tier unit`).
-  - **Integración en 2 shards (`integracion`) + informe (`integracion-informe`):** cada shard corre contra su PostgreSQL 16 (sin `worker-isolation.integration.test.ts`); `integracion-informe` combina los blobs, valida completitud con `check-shard-completeness.mjs`, publica resumen y verifica presupuesto (`--tier integration`).
-  - **E2E en 3 shards (`e2e-shards`) + informe (`e2e-informe`):** cada shard corre Playwright contra su PostgreSQL 16 (`--grep-invert "Worker isolation"`); `e2e-informe` combina blobs, valida completitud, publica resumen y verifica presupuesto (`--tier e2e`).
+  - **Integración (`integracion`, 1 shard):** corre contra PostgreSQL 16 (sin `worker-isolation.integration.test.ts`) y genera un informe blob combinado luego por el agregador `calidad`.
+  - **E2E en 2 shards (`e2e-shards`):** cada shard corre Playwright contra su PostgreSQL 16 (`--grep-invert "Worker isolation"`) y sube su informe blob para que el agregador `e2e` los combine.
   - **Aislamiento de workers (`aislamiento`):** ejecuta `worker-isolation.integration.test.ts` y `worker-isolation.spec.ts` completos fuera de los shards y de la ruta crítica.
   - **Seguridad (`seguridad`)** e **Imágenes (`imagenes`)**: auditoría `pnpm audit` y build/smoke de Docker Compose.
 - **Nombres exactos de los checks requeridos (protección de ramas):**
   - `Rama y título del PR`
-  - `Lint, tipos, pruebas y build` (agregador `calidad`: depende de `convenciones`, `estaticas`, `unitarias`, `integracion-informe`, `aislamiento`)
+  - `Lint, tipos, pruebas y build` (agregador `calidad`: depende de `convenciones`, `estaticas`, `unitarias`, `integracion`, `aislamiento`; además combina blobs de integración, valida completitud con `check-shard-completeness.mjs` y verifica presupuesto `--tier integration`)
   - `Auditoría de dependencias`
-  - `Pruebas end-to-end (Playwright)` (agregador `e2e`: depende de `e2e-informe`, `aislamiento`)
+  - `Pruebas end-to-end (Playwright)` (agregador `e2e`: depende de `e2e-shards`, `aislamiento`; además combina blobs E2E, valida completitud y verifica presupuesto `--tier e2e`)
   - Nunca renombres, elimines ni sustituyas estos checks por filtros `paths:` sin actualizar la protección de ramas.
 
 ### Cómo medir tiempos del CI y locales
@@ -184,3 +184,16 @@ pnpm perf:tests
 | Unitaria sin DOM (`node`) | `apps/frontend/src/test/templates/example-node.test.ts`                   | Sin `@testing-library/*`, `react-dom`, `window`, `document` ni `localStorage` (`dom-in-node`).                                                                                               |
 | Integración (PostgreSQL)  | `apps/backend/src/test/templates/example-integration.integration.test.ts` | Usar `useTestDatabase()` y `seedAuthorizationFast` (nunca `seedAuthorization` lenta, `slow-seed`), sin pausas fijas (`fixed-pause`).                                                         |
 | E2E (Playwright)          | `apps/frontend/e2e/templates/example-session.spec.ts`                     | Usar `loginAsTestUser(page)` por API (no login por interfaz fuera de specs de auth, `ui-login`), sin `execSync`/`spawnSync` en specs (`e2e-subprocess`) ni `waitForTimeout` (`fixed-pause`). |
+
+### Variantes de CI medidas (T-080-10, 15/11/2026)
+
+- **Línea base oficial del CA11 (T-080-01):** flujo **948.9 s**, máquina **21.3 min** exactos.
+- **Referencia comparativa en `develop` (5 runs previos a HU-080: `43642133673`, `43564650613`, `43556704247`, `43538427967`, `43523244612`):** flujo **984 s**, máquina **21.81 min** exactos / **24.8 min** facturados (redondeo al minuto por job).
+
+| Variante                                                                               | Run ID (PR #45) |   Corridas | Jobs | Tiempo de espera | Minutos exactos | Minutos facturados | Decisión                                                       |
+| -------------------------------------------------------------------------------------- | --------------- | ---------: | ---: | ---------------: | --------------: | -----------------: | -------------------------------------------------------------- |
+| **V1** (`0c0b422`): 3 E2E shards + 2 int. shards + jobs de informe separados           | `43739419872`   |          1 |   14 |            308 s |       23.42 min |             31 min | Descartada (1 corrida; no cumplía CA11 en minutos de máquina)  |
+| **V2** (`89af2fe`): 2 E2E shards + 2 int. shards + informes absorbidos + Chromium 30 s | `43740815771`   |          1 |   12 |            304 s |       22.23 min |             29 min | Descartada (1 corrida; no cumplía CA11 en minutos de máquina)  |
+| **V3** (`368e750`): 2 E2E shards + 1 int. shard + informes absorbidos                  | `43741505391`   | 1 (piloto) |   11 |            296 s |       20.10 min |             25 min | **Adoptada** (pasa a medición final de 5 corridas en T-080-26) |
+
+_Nota:_ V1 y V2 se midieron con una sola corrida porque ya superaban la línea base en minutos exactos y facturados y no cumplían el CA11.
