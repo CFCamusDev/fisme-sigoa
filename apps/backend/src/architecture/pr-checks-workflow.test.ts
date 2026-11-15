@@ -125,9 +125,10 @@ describe('pr-checks.yml structure (HU-080)', () => {
       /vitest run --project integration\s+([^\s]+worker-isolation\.integration\.test\.ts)/,
     );
 
-    expect(excludeMatch?.[1]).toBeDefined();
-    expect(isolationMatch?.[1]).toBe(excludeMatch?.[1]);
-    expect(fs.existsSync(path.join(repoRoot, 'apps', 'backend', excludeMatch![1]))).toBe(true);
+    const excludeFile = excludeMatch?.[1] ?? '';
+    expect(excludeFile).not.toBe('');
+    expect(isolationMatch?.[1]).toBe(excludeFile);
+    expect(fs.existsSync(path.join(repoRoot, 'apps', 'backend', excludeFile))).toBe(true);
   });
 
   it('uses one shard count in matrix, env and job name', () => {
@@ -138,8 +139,9 @@ describe('pr-checks.yml structure (HU-080)', () => {
       const nameMatch = block.match(/^\s{4}name:.*\/(\d+)\s*$/m);
       const stepMatch = block.match(/^\s{6}-\s+name:.*\/(\d+)\s*$/m);
 
-      expect(matrixMatch?.[1]).toBeDefined();
-      const matrixCount = matrixMatch![1].split(',').length;
+      const matrixList = matrixMatch?.[1] ?? '';
+      expect(matrixList).not.toBe('');
+      const matrixCount = matrixList.split(',').length;
       expect(Number(envMatch?.[1])).toBe(matrixCount);
       expect(Number(nameMatch?.[1])).toBe(matrixCount);
       expect(Number(stepMatch?.[1])).toBe(matrixCount);
