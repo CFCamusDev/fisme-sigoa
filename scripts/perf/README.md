@@ -190,10 +190,23 @@ pnpm perf:tests
 - **Línea base oficial del CA11 (T-080-01):** flujo **948.9 s**, máquina **21.3 min** exactos.
 - **Referencia comparativa en `develop` (5 runs previos a HU-080: `43642133673`, `43564650613`, `43556704247`, `43538427967`, `43523244612`):** flujo **984 s**, máquina **21.81 min** exactos / **24.8 min** facturados (redondeo al minuto por job).
 
-| Variante                                                                               | Run ID (PR #45) |   Corridas | Jobs | Tiempo de espera | Minutos exactos | Minutos facturados | Decisión                                                       |
-| -------------------------------------------------------------------------------------- | --------------- | ---------: | ---: | ---------------: | --------------: | -----------------: | -------------------------------------------------------------- |
-| **V1** (`0c0b422`): 3 E2E shards + 2 int. shards + jobs de informe separados           | `43739419872`   |          1 |   14 |            308 s |       23.42 min |             31 min | Descartada (1 corrida; no cumplía CA11 en minutos de máquina)  |
-| **V2** (`89af2fe`): 2 E2E shards + 2 int. shards + informes absorbidos + Chromium 30 s | `43740815771`   |          1 |   12 |            304 s |       22.23 min |             29 min | Descartada (1 corrida; no cumplía CA11 en minutos de máquina)  |
-| **V3** (`368e750`): 2 E2E shards + 1 int. shard + informes absorbidos                  | `43741505391`   | 1 (piloto) |   11 |            296 s |       20.10 min |             25 min | **Adoptada** (pasa a medición final de 5 corridas en T-080-26) |
+| Variante                                                                               | Run ID (PR #45)              |   Corridas | Jobs | Tiempo de espera | Minutos exactos | Minutos facturados | Decisión                                                                                          |
+| -------------------------------------------------------------------------------------- | ---------------------------- | ---------: | ---: | ---------------: | --------------: | -----------------: | ------------------------------------------------------------------------------------------------- |
+| **V1** (`0c0b422`): 3 E2E shards + 2 int. shards + jobs de informe separados           | `43739419872`                |          1 |   14 |            308 s |       23.42 min |             31 min | Descartada (1 corrida; no cumplía CA11 en minutos de máquina)                                     |
+| **V2** (`89af2fe`): 2 E2E shards + 2 int. shards + informes absorbidos + Chromium 30 s | `43740815771`                |          1 |   12 |            304 s |       22.23 min |             29 min | Descartada (1 corrida; no cumplía CA11 en minutos de máquina)                                     |
+| **V3** (`368e750`): 2 E2E shards + 1 int. shard + informes absorbidos                  | `43741505391`                | 1 (piloto) |   11 |            291 s |       20.10 min |             25 min | **Adoptada** (pasa a medición final de 5 corridas en T-080-26)                                    |
+| **V3 + `concurrency` + `TEST_DB_WORKERS=2`** (`0e9516c`)                               | `43746134457` (intentos 1–3) |          3 |   11 |    330.3 s prom. | 21.19 min prom. |    27.33 min prom. | **Conservada** (`Calidad · Integración` en `212 s`, `208 s`, `201 s`, todas `< 225 s` y 0 fallos) |
 
-_Nota:_ V1 y V2 se midieron con una sola corrida porque ya superaban la línea base en minutos exactos y facturados y no cumplían el CA11.
+_Notas:_
+
+- V1 y V2 se midieron con una sola corrida porque ya superaban la línea base en minutos exactos y facturados y no cumplían el CA11.
+- La variante final de `T-080-10` (`0e9516c`) añade `concurrency` con `cancel-in-progress: ${{ github.event_name == 'pull_request' }}` (nunca en `push` a `develop` ni `main`) y `TEST_DB_WORKERS=2` en `Calidad · Integración` manteniendo las 3 pasadas de `src/shared/pdf`.
+
+### Medición final (T-080-26, 15/11/2026)
+
+- **Archivo de registro:** `scripts/perf/final-2026-11-15.json`.
+- **CI (5 corridas consecutivas de V3, `368e750` / `0032e9a`):** `43741505391` (#1: `291 s`, `20.10 min` exactos, `25 min` facturados, integración `239 s`) y `43743280561` (#1: `304 s`, `19.80 min`, `26 min`, integración `267 s`; #2: `312 s`, `21.33 min`, `29 min`, integración `265 s`; #3: `308 s`, `19.92 min`, `26 min`, integración `264 s`; #4: `322 s`, `19.77 min`, `26 min`, integración `214 s`). Todas corresponden a **reruns del mismo commit/workflow**, con **0 fallos y 0 intermitencias**.
+  - **Promedio V3 (5 corridas):** espera **307.4 s** (`-67.6 %` vs `948.9 s`), máquina **20.18 min exactos** (`< 21.3 min`) y **26.4 min facturados**.
+  - **Explicación del `+1.6 min` facturado (`26.4` vs `24.8 min` de `develop`):** aunque V3 consume menos minutos exactos que `develop` (`20.18` vs `21.81 min`), el redondeo al techo por minuto se aplica a **11 jobs frente a 5** y `Calidad · Integración` superó el umbral de **240 s** en 3 de las 5 corridas (`264–267 s`). Con `TEST_DB_WORKERS=2` (`0e9516c`), `Calidad · Integración` bajó a **212 s, 208 s y 201 s** (promedio **207.0 s**, por debajo de `225 s` y `240 s`) en 3 corridas consecutivas en verde.
+- **Puerta local (`pnpm verify:pr:full --repeat 3`):** **395.5 s** frente a `531.8 s` de línea base (meta `≤ 425 s`).
+- **Conteo y cobertura:** **4 698 pruebas** ejecutadas (`≥ 4 648`) y cobertura unitaria **97.09 %** en backend y **93.96 %** en frontend (`≥ 80 %`).
