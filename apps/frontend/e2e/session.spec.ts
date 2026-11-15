@@ -11,7 +11,7 @@ test.describe('HU-002 — Mantener y cerrar sesión E2E', () => {
     const email = `e2e-httponly-${Date.now()}@example.test`;
     const password = 'Password123!';
 
-    seedUser({
+    await seedUser({
       email,
       password,
       names: 'Laura',
@@ -46,7 +46,7 @@ test.describe('HU-002 — Mantener y cerrar sesión E2E', () => {
     const email = `e2e-reload-${Date.now()}@example.test`;
     const password = 'Password123!';
 
-    seedUser({
+    await seedUser({
       email,
       password,
       names: 'Rodrigo',
@@ -77,7 +77,7 @@ test.describe('HU-002 — Mantener y cerrar sesión E2E', () => {
     const email = `e2e-renew-${Date.now()}@example.test`;
     const password = 'Password123!';
 
-    seedUser({
+    await seedUser({
       email,
       password,
       names: 'Elena',
@@ -136,7 +136,7 @@ test.describe('HU-002 — Mantener y cerrar sesión E2E', () => {
     const email = `e2e-logout-${Date.now()}@example.test`;
     const password = 'Password123!';
 
-    seedUser({
+    await seedUser({
       email,
       password,
       names: 'César',

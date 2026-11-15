@@ -38,7 +38,7 @@ test.describe('HU-005 — Recuperar contraseña E2E', () => {
 
     // 3. Sembramos un token conocido en BD para este usuario (D7)
     const resetToken = `e2e-reset-token-${Date.now()}-1234567890abcdef1234567890`;
-    seedUser({
+    await seedUser({
       email,
       password: initialPassword,
       status: 'ACTIVE',
@@ -114,7 +114,7 @@ test.describe('HU-005 — Recuperar contraseña E2E', () => {
   });
 
   test('a used or expired link shows the invalid link state', async ({ page }) => {
-    const { token } = seedRecoveryUser({ used: true });
+    const { token } = await seedRecoveryUser({ used: true });
 
     await page.goto(`/restablecer/${token}`);
 
@@ -142,7 +142,7 @@ test.describe('HU-005 — Recuperar contraseña E2E', () => {
   });
 
   test('a weak password shows the policy details and sends no request', async ({ page }) => {
-    const { token } = seedRecoveryUser({});
+    const { token } = await seedRecoveryUser({});
     let requestsCount = 0;
 
     page.on('request', (req) => {
@@ -186,7 +186,7 @@ test.describe('HU-005 — Recuperar contraseña E2E', () => {
   });
 
   test('a double click on reset sends a single request', async ({ page }) => {
-    const { token } = seedRecoveryUser({});
+    const { token } = await seedRecoveryUser({});
     let requestsCount = 0;
 
     page.on('request', (req) => {
@@ -236,7 +236,7 @@ test.describe('HU-005 — Recuperar contraseña E2E', () => {
     await expectNoContrastViolations(page, { screen: 'forgot-password-success' });
 
     // 5. /restablecer/$token (escritorio y móvil)
-    const { token } = seedRecoveryUser({});
+    const { token } = await seedRecoveryUser({});
     await page.goto(`/restablecer/${token}`);
     await expect(page.getByRole('heading', { name: /restablecer tu contraseña/i })).toBeVisible();
     await expectNoContrastViolations(page, { screen: 'reset-password-desktop' });
@@ -245,7 +245,7 @@ test.describe('HU-005 — Recuperar contraseña E2E', () => {
     await expectNoContrastViolations(page, { screen: 'reset-password-mobile' });
 
     // 6. /restablecer/$token (enlace inválido)
-    const { token: usedToken } = seedRecoveryUser({ used: true });
+    const { token: usedToken } = await seedRecoveryUser({ used: true });
     await page.goto(`/restablecer/${usedToken}`);
     await page.getByLabel(/^nueva contraseña/i).fill('StrongPass123*');
     await page.getByLabel(/^confirmar contraseña/i).fill('StrongPass123*');
@@ -259,7 +259,7 @@ test.describe('HU-005 — Recuperar contraseña E2E', () => {
     await expectNoContrastViolations(page, { screen: 'reset-password-invalid-link' });
 
     // 7. /restablecer/$token (éxito)
-    const { token: successToken } = seedRecoveryUser({});
+    const { token: successToken } = await seedRecoveryUser({});
     await page.setViewportSize({ width: 1280, height: 720 });
     await page.goto(`/restablecer/${successToken}`);
     await page.getByLabel(/^nueva contraseña/i).fill('StrongPass123*');

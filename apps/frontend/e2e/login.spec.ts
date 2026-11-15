@@ -26,7 +26,7 @@ test.describe('HU-001 — Iniciar sesión E2E', () => {
     const email = `e2e-success-${Date.now()}@example.test`;
     const password = 'CorrectPassword123!';
 
-    seedUser({
+    await seedUser({
       email,
       password,
       names: 'Usuario',
@@ -53,7 +53,7 @@ test.describe('HU-001 — Iniciar sesión E2E', () => {
     const email = `e2e-invalid-${Date.now()}@example.test`;
     const password = 'RealPassword123!';
 
-    seedUser({
+    await seedUser({
       email,
       password,
       names: 'Usuario',
@@ -80,7 +80,7 @@ test.describe('HU-001 — Iniciar sesión E2E', () => {
     const email = `e2e-lockout-${Date.now()}@example.test`;
     const password = 'LockoutPassword123!';
 
-    seedUser({
+    await seedUser({
       email,
       password,
       names: 'Usuario',
@@ -118,7 +118,7 @@ test.describe('HU-001 — Iniciar sesión E2E', () => {
     const email = `e2e-inactive-${Date.now()}@example.test`;
     const password = 'InactivePassword123!';
 
-    seedUser({
+    await seedUser({
       email,
       password,
       names: 'Usuario',
