@@ -1,7 +1,7 @@
 {
   "version": 1,
   "unit": "seconds",
-  "description": "Presupuestos de tiempo de verify-pr-local (HU-078). Superarlos solo produce una advertencia en el informe; nunca falla la verificación.",
+  "description": "Presupuestos de tiempo de verify-pr-local (HU-078) y presupuestos por prueba en ms (HU-080).",
   "groups": {
     "convenciones": 10,
     "estaticas": 150,
@@ -14,5 +14,28 @@
     "quick": 90,
     "standard": 420,
     "full": 480
-  }
+  },
+  "perTest": {
+    "unit": 2000,
+    "integration": 5000,
+    "e2e": 20000
+  },
+  "exceptions": [
+    {
+      "file": "apps/backend/src/test/db/worker-isolation.integration.test.ts",
+      "test": "produces the same results with one and four workers",
+      "ms": 60000,
+      "reason": "Ejecuta un subconjunto real de Vitest en paralelo con bases de datos clonadas para validar el aislamiento de workers."
+    },
+    {
+      "file": "apps/frontend/e2e/contrast-catalog.spec.ts",
+      "ms": 35000,
+      "reason": "Recorre las rutas y viewports de catálogo con axe-core para validar contraste WCAG 2.1 AA."
+    },
+    {
+      "file": "apps/frontend/e2e/contrast-users.spec.ts",
+      "ms": 35000,
+      "reason": "Recorre las rutas y viewports de usuarios con axe-core para validar contraste WCAG 2.1 AA."
+    }
+  ]
 }

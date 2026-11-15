@@ -34,6 +34,7 @@
     "perf:api": "node scripts/perf/api-load.mjs",
     "check:windows-paths": "node scripts/ci/check-windows-paths.mjs",
     "check:test-patterns": "node scripts/ci/check-test-patterns.mjs",
+    "check:perf-budget": "node scripts/ci/check-perf-budget.mjs",
     "verify:pr": "node scripts/ci/verify-pr-local.mjs --mode standard",
     "verify:pr:quick": "node scripts/ci/verify-pr-local.mjs --mode quick",
     "verify:pr:full": "node scripts/ci/verify-pr-local.mjs --mode full",

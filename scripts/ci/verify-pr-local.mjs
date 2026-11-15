@@ -1139,6 +1139,10 @@ export const WORKFLOW_EXCLUSIONS = [
     pattern: /ci-summary\.mjs/,
     reason: 'Publicación del resumen de pruebas lentas y tiempos por job en GitHub Actions.',
   },
+  {
+    pattern: /check-perf-budget\.mjs/,
+    reason: 'Presupuesto por prueba sobre informes JSON del CI (el verificador local reporta presupuestos sin fallar).',
+  },
 ];
 
 /**

@@ -129,6 +129,8 @@ jobs:
       - name: Publicar resumen de pruebas más lentas (unitarias)
         if: ${{ !cancelled() }}
         run: node scripts/ci/ci-summary.mjs --mode tests --vitest tmp/ci-reports/unit-backend.json,tmp/ci-reports/unit-frontend.json
+      - name: Verificar presupuesto por prueba (unitarias)
+        run: node scripts/ci/check-perf-budget.mjs --tier unit --vitest tmp/ci-reports/unit-backend.json,tmp/ci-reports/unit-frontend.json
 
   integracion:
     name: Calidad · Integración (shard ${{ matrix.shard }}/2)
@@ -222,6 +224,8 @@ jobs:
       - name: Publicar resumen de pruebas más lentas (integración)
         if: ${{ !cancelled() }}
         run: node scripts/ci/ci-summary.mjs --mode tests --vitest tmp/ci-reports/integration-report.json
+      - name: Verificar presupuesto por prueba (integración)
+        run: node scripts/ci/check-perf-budget.mjs --tier integration --vitest tmp/ci-reports/integration-report.json
 
   aislamiento:
     name: Calidad y E2E · Aislamiento de workers
@@ -450,6 +454,8 @@ jobs:
       - name: Publicar resumen de pruebas más lentas y reintentadas (E2E)
         if: ${{ !cancelled() }}
         run: node scripts/ci/ci-summary.mjs --mode tests --playwright tmp/ci-reports/e2e-report.json
+      - name: Verificar presupuesto por prueba (E2E)
+        run: node scripts/ci/check-perf-budget.mjs --tier e2e --playwright tmp/ci-reports/e2e-report.json
       - name: Subir reporte HTML combinado de Playwright
         uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
