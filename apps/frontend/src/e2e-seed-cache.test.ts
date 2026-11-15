@@ -34,8 +34,9 @@ describe('e2e role account cache (HU-080, T-080-17)', () => {
       workerIndex: 0,
       overrides: { roles: ['TEACHER', 'COORDINATOR'] },
     });
-    await Promise.all([p4, p5]);
     expect(seedFn).toHaveBeenCalledTimes(2);
+    resolveSeed?.();
+    await Promise.all([p4, p5]);
   });
 
   it('gives own accounts to overrides that change the user', async () => {
