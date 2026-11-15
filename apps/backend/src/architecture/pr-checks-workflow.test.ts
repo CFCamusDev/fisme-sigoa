@@ -141,4 +141,10 @@ describe('pr-checks.yml structure (HU-080)', () => {
       expect(Number(stepMatch?.[1])).toBe(matrixCount);
     }
   });
+
+  it('cancels obsolete runs only on pull_request events', () => {
+    expect(workflow).toMatch(
+      /cancel-in-progress:\s*\$\{\{\s*github\.event_name\s*==\s*'pull_request'\s*\}\}/,
+    );
+  });
 });

@@ -13,8 +13,8 @@ permissions:
   pull-requests: read
 
 concurrency:
-  group: pr-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   convenciones:
@@ -153,6 +153,7 @@ jobs:
           --health-cmd "pg_isready -U test" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       SHARDS: 1
+      TEST_DB_WORKERS: 2
       DATABASE_URL: postgresql://test:test@localhost:5432/oeag_test
       NODE_ENV: test
     steps:
