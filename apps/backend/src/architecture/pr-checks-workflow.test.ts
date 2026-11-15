@@ -52,11 +52,13 @@ describe('pr-checks.yml structure (HU-080)', () => {
     expect(calidadBlock).toMatch(/name:\s*Lint, tipos, pruebas y build/);
     expect(calidadBlock).toMatch(/if:\s*always\(\)/);
     expect(calidadBlock).toMatch(
-      /needs:\s*\[convenciones,\s*estaticas,\s*unitarias,\s*integracion,\s*integracion-informe,\s*aislamiento\]/,
+      /needs:\s*\[convenciones,\s*estaticas,\s*unitarias,\s*integracion,\s*aislamiento\]/,
     );
     expect(calidadBlock).toMatch(
       /NEEDS_RESULTS:\s*\$\{\{\s*join\(needs\.\*\.result,\s*' '\)\s*\}\}/,
     );
+    expect(calidadBlock).toMatch(/--merge-reports/);
+    expect(calidadBlock).toMatch(/check-shard-completeness\.mjs/);
 
     const integracionBlock = extractJobBlock(workflow, 'integracion');
     expect(integracionBlock).toMatch(/shard:\s*\[1,\s*2\]/);
@@ -65,27 +67,19 @@ describe('pr-checks.yml structure (HU-080)', () => {
       /--shard=\$\{\{\s*matrix\.shard\s*\}\}\/\$\{\{\s*env\.SHARDS\s*\}\}/,
     );
 
-    const integracionInformeBlock = extractJobBlock(workflow, 'integracion-informe');
-    expect(integracionInformeBlock).toMatch(/needs:\s*\[integracion,\s*aislamiento\]/);
-    expect(integracionInformeBlock).toMatch(/--merge-reports/);
-    expect(integracionInformeBlock).toMatch(/check-shard-completeness\.mjs/);
-
     const e2eBlock = extractJobBlock(workflow, 'e2e');
     expect(e2eBlock).toMatch(/name:\s*Pruebas end-to-end \(Playwright\)/);
-    expect(e2eBlock).toMatch(/needs:\s*\[e2e-shards,\s*e2e-informe,\s*aislamiento\]/);
+    expect(e2eBlock).toMatch(/needs:\s*\[e2e-shards,\s*aislamiento\]/);
     expect(e2eBlock).toMatch(/NEEDS_RESULTS:\s*\$\{\{\s*join\(needs\.\*\.result,\s*' '\)\s*\}\}/);
+    expect(e2eBlock).toMatch(/playwright merge-reports/);
+    expect(e2eBlock).toMatch(/check-shard-completeness\.mjs/);
 
     const e2eShardsBlock = extractJobBlock(workflow, 'e2e-shards');
-    expect(e2eShardsBlock).toMatch(/shard:\s*\[1,\s*2,\s*3\]/);
+    expect(e2eShardsBlock).toMatch(/shard:\s*\[1,\s*2\]/);
     expect(e2eShardsBlock).toMatch(/fail-fast:\s*false/);
     expect(e2eShardsBlock).toMatch(
       /--shard=\$\{\{\s*matrix\.shard\s*\}\}\/\$\{\{\s*env\.SHARDS\s*\}\}/,
     );
-
-    const e2eInformeBlock = extractJobBlock(workflow, 'e2e-informe');
-    expect(e2eInformeBlock).toMatch(/needs:\s*\[e2e-shards,\s*aislamiento\]/);
-    expect(e2eInformeBlock).toMatch(/playwright merge-reports/);
-    expect(e2eInformeBlock).toMatch(/check-shard-completeness\.mjs/);
   });
 
   it('makes the e2e aggregator conditional like the e2e jobs', () => {

@@ -30,8 +30,8 @@
     {
       "file": "apps/backend/src/shared/pdf/puppeteer-pdf-generator.integration.test.ts",
       "test": "starts chromium within the cold start limit",
-      "ms": 45000,
-      "reason": "Mide el arranque en frío de Chromium real en runner de CI (contrato de hasta 45000 ms)."
+      "ms": 30000,
+      "reason": "Mide el arranque en frío de Chromium real en runner de CI (tope ajustado a 30000 ms)."
     },
     {
       "file": "apps/frontend/e2e/contrast-catalog.spec.ts",

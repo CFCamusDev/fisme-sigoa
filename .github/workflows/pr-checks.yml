@@ -186,17 +186,40 @@ jobs:
           path: tmp/integration-blobs/
           retention-days: 7
 
-  integracion-informe:
-    name: Calidad · Informe de integración
+  calidad:
+    name: Lint, tipos, pruebas y build
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [integracion, aislamiento]
-    if: ${{ !cancelled() }}
+    permissions:
+      actions: read
+      contents: read
+    if: always()
+    needs: [convenciones, estaticas, unitarias, integracion, aislamiento]
     env:
       DATABASE_URL: postgresql://test:test@localhost:5432/oeag_test
       NODE_ENV: test
     steps:
       - uses: actions/checkout@v7
+      - name: Publicar tiempos por job en el resumen del PR
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/ci/ci-summary.mjs --mode jobs --run-id ${{ github.run_id }}
+      - name: Verificar estado de jobs requeridos de calidad
+        env:
+          NEEDS_RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          # Verificar estado agregado de jobs requeridos (NEEDS_RESULTS)
+          if [ -z "${NEEDS_RESULTS:-}" ]; then
+            echo "::error::Sin resultados de dependencias."
+            exit 1
+          fi
+          for r in $NEEDS_RESULTS; do
+            if [ "$r" != "success" ]; then
+              echo "::error::Uno o más jobs requeridos de calidad fallaron o fueron cancelados ($NEEDS_RESULTS)."
+              exit 1
+            fi
+          done
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
@@ -332,40 +355,8 @@ jobs:
           echo "Sysctl unprivileged user namespaces:"
           sysctl kernel.unprivileged_userns_clone kernel.apparmor_restrict_unprivileged_userns 2>/dev/null || true
 
-  calidad:
-    name: Lint, tipos, pruebas y build
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      actions: read
-      contents: read
-    if: always()
-    needs: [convenciones, estaticas, unitarias, integracion, integracion-informe, aislamiento]
-    steps:
-      - uses: actions/checkout@v7
-      - name: Publicar tiempos por job en el resumen del PR
-        if: always()
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: node scripts/ci/ci-summary.mjs --mode jobs --run-id ${{ github.run_id }}
-      - name: Verificar estado de jobs requeridos de calidad
-        env:
-          NEEDS_RESULTS: ${{ join(needs.*.result, ' ') }}
-        run: |
-          # Verificar estado agregado de jobs requeridos (NEEDS_RESULTS)
-          if [ -z "${NEEDS_RESULTS:-}" ]; then
-            echo "::error::Sin resultados de dependencias."
-            exit 1
-          fi
-          for r in $NEEDS_RESULTS; do
-            if [ "$r" != "success" ]; then
-              echo "::error::Uno o más jobs requeridos de calidad fallaron o fueron cancelados ($NEEDS_RESULTS)."
-              exit 1
-            fi
-          done
-
   e2e-shards:
-    name: E2E · Shard ${{ matrix.shard }}/3
+    name: E2E · Shard ${{ matrix.shard }}/2
     runs-on: ubuntu-latest
     timeout-minutes: 20
     if: github.base_ref == 'develop' || (github.base_ref == 'main' && startsWith(github.head_ref, 'release/'))
@@ -373,7 +364,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2]
     services:
       postgres:
         image: postgres:16
@@ -385,7 +376,7 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U test" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
-      SHARDS: 3
+      SHARDS: 2
       DATABASE_URL: postgresql://test:test@localhost:5432/oeag_test
       NODE_ENV: test
       CI: 'true'
@@ -399,7 +390,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Instalar navegadores de Playwright con dependencias
         run: pnpm --filter frontend exec playwright install --with-deps chromium
-      - name: Ejecutar pruebas E2E (shard ${{ matrix.shard }}/3)
+      - name: Ejecutar pruebas E2E (shard ${{ matrix.shard }}/2)
         run: pnpm test:e2e --shard=${{ matrix.shard }}/${{ env.SHARDS }} --grep-invert "Worker isolation" --reporter=blob
       - name: Subir informe blob del shard E2E
         uses: actions/upload-artifact@v7
@@ -416,17 +407,40 @@ jobs:
           path: apps/frontend/test-results/
           retention-days: 7
 
-  e2e-informe:
-    name: E2E · Informe combinado
+  e2e:
+    name: Pruebas end-to-end (Playwright)
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
+    if: always() && (github.base_ref == 'develop' || (github.base_ref == 'main' && startsWith(github.head_ref, 'release/')))
     needs: [e2e-shards, aislamiento]
-    if: ${{ !cancelled() && (github.base_ref == 'develop' || (github.base_ref == 'main' && startsWith(github.head_ref, 'release/'))) }}
     env:
       DATABASE_URL: postgresql://test:test@localhost:5432/oeag_test
       NODE_ENV: test
     steps:
       - uses: actions/checkout@v7
+      - name: Publicar tiempos por job E2E en el resumen del PR
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/ci/ci-summary.mjs --mode jobs --run-id ${{ github.run_id }}
+      - name: Verificar estado de jobs E2E
+        env:
+          NEEDS_RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          # Verificar estado agregado de jobs requeridos (NEEDS_RESULTS)
+          if [ -z "${NEEDS_RESULTS:-}" ]; then
+            echo "::error::Sin resultados de dependencias."
+            exit 1
+          fi
+          for r in $NEEDS_RESULTS; do
+            if [ "$r" != "success" ]; then
+              echo "::error::Uno o más jobs E2E fallaron o fueron cancelados ($NEEDS_RESULTS)."
+              exit 1
+            fi
+          done
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
@@ -465,35 +479,3 @@ jobs:
           name: playwright-report
           path: apps/frontend/playwright-report/
           retention-days: 7
-
-  e2e:
-    name: Pruebas end-to-end (Playwright)
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      actions: read
-      contents: read
-    if: always() && (github.base_ref == 'develop' || (github.base_ref == 'main' && startsWith(github.head_ref, 'release/')))
-    needs: [e2e-shards, e2e-informe, aislamiento]
-    steps:
-      - uses: actions/checkout@v7
-      - name: Publicar tiempos por job E2E en el resumen del PR
-        if: always()
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: node scripts/ci/ci-summary.mjs --mode jobs --run-id ${{ github.run_id }}
-      - name: Verificar estado de jobs E2E
-        env:
-          NEEDS_RESULTS: ${{ join(needs.*.result, ' ') }}
-        run: |
-          # Verificar estado agregado de jobs requeridos (NEEDS_RESULTS)
-          if [ -z "${NEEDS_RESULTS:-}" ]; then
-            echo "::error::Sin resultados de dependencias."
-            exit 1
-          fi
-          for r in $NEEDS_RESULTS; do
-            if [ "$r" != "success" ]; then
-              echo "::error::Uno o más jobs E2E fallaron o fueron cancelados ($NEEDS_RESULTS)."
-              exit 1
-            fi
-          done
