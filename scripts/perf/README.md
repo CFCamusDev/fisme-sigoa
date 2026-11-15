@@ -91,3 +91,44 @@ node scripts/perf/e2e-stability.mjs --runs 3 --workers 3
 ```
 
 Ejecuta la suite completa varias veces seguidas sin reintentos. Una prueba que solo pasa al reintentar (inestable), una fallida o una omitida cuentan como fallo. No forma parte del CI.
+
+## Variantes de Vitest medidas el 14/11/2026 (T-080-02)
+
+Mediciones en local (Windows, 3 corridas por variante, criterio de adopción: reducción ≥ 10 % en mediana y 3 corridas sin fallos con `--sequence.shuffle`, con y sin `--coverage`).
+
+### (a) Frontend completo (166 archivos, 1 019 pruebas)
+
+| Variante                                 | Comando (`apps/frontend`)                                     | Mediana  | Rango           | Resultado                          |
+| ---------------------------------------- | ------------------------------------------------------------- | -------- | --------------- | ---------------------------------- |
+| Base (`forks` + `isolate`)               | `pnpm exec vitest run`                                        | 113.37 s | 112.16–114.96 s | OK (1 019)                         |
+| `--pool=threads`                         | `pnpm exec vitest run --pool=threads`                         | 115.27 s | 114.11–122.09 s | OK (1 019)                         |
+| `--no-isolate`                           | `pnpm exec vitest run --no-isolate`                           | 19.21 s  | 19.14–19.36 s   | OK (1 019)                         |
+| `--pool=threads --no-isolate`            | `pnpm exec vitest run --pool=threads --no-isolate`            | 18.55 s  | 18.50–18.69 s   | OK (1 019)                         |
+| `happy-dom` (worktree desechable)        | `pnpm exec vitest run --environment=happy-dom`                | 82.93 s  | 78.81–83.48 s   | Falla                              |
+| Base `--coverage`                        | `pnpm exec vitest run --coverage`                             | 126.42 s | 124.22–128.45 s | OK (1 019)                         |
+| `--pool=threads --no-isolate --coverage` | `pnpm exec vitest run --pool=threads --no-isolate --coverage` | 22.25 s  | 21.49–22.81 s   | Falla (a diagnosticar en T-080-14) |
+
+### (b) Subconjunto sin DOM (59 archivos)
+
+| Variante                                         | Comando (`apps/frontend`)                                                           | Mediana | Rango         | Resultado                  |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------- | ------- | ------------- | -------------------------- |
+| Base (`jsdom`)                                   | `pnpm exec vitest run <59 archivos>`                                                | 35.25 s | 34.73–35.50 s | OK (380)                   |
+| `--environment=node` (con `setup.ts`)            | `pnpm exec vitest run --environment=node <59 archivos>`                             | 14.32 s | 14.28–14.85 s | Falla por `setup.ts` (377) |
+| `--environment=node --pool=threads --no-isolate` | `pnpm exec vitest run --environment=node --pool=threads --no-isolate <59 archivos>` | 4.64 s  | 4.47–4.82 s   | Falla por `setup.ts` (377) |
+
+### (c) Unitarias del backend (`--project unit`, 2 068 pruebas)
+
+| Variante                                 | Comando (`apps/backend`)                                                     | Mediana | Rango         | Resultado  |
+| ---------------------------------------- | ---------------------------------------------------------------------------- | ------- | ------------- | ---------- |
+| Base (`forks` + `isolate`)               | `pnpm exec vitest run --project unit`                                        | 22.60 s | 20.29–23.31 s | OK (2 068) |
+| `--pool=threads`                         | `pnpm exec vitest run --project unit --pool=threads`                         | 21.09 s | 20.16–21.24 s | OK (2 068) |
+| `--no-isolate`                           | `pnpm exec vitest run --project unit --no-isolate`                           | 6.24 s  | 5.72–6.60 s   | OK (2 068) |
+| `--pool=threads --no-isolate`            | `pnpm exec vitest run --project unit --pool=threads --no-isolate`            | 5.35 s  | 5.29–5.38 s   | OK (2 068) |
+| Base `--coverage`                        | `pnpm exec vitest run --project unit --coverage`                             | 22.14 s | 22.13–22.85 s | OK (2 068) |
+| `--pool=threads --no-isolate --coverage` | `pnpm exec vitest run --project unit --pool=threads --no-isolate --coverage` | 7.11 s  | 6.93–7.37 s   | OK (2 068) |
+
+**Decisiones adoptadas:**
+
+- **Proyecto `node` del frontend (T-080-12 / T-080-13):** separar en `node` (con `setup-node.ts` sin `window`/Testing Library) y activar `pool: 'threads'` + `isolate: false` (−86.8 % sobre la base `jsdom` del subconjunto).
+- **Proyecto `dom` del frontend (T-080-14):** descartar `happy-dom` (más lento, falla y agrega dependencia); evaluar `threads` + `isolate: false` con `--coverage` y `--sequence.shuffle` antes de adoptarlo.
+- **Unitarias del backend (T-080-15):** adoptar `pool: 'threads'` + `isolate: false` (−76.3 % sin cobertura, −67.9 % con cobertura), sujeto a 3 corridas con `--sequence.shuffle` y verificación de `argon2`.
