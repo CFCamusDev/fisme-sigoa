@@ -1,4 +1,4 @@
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { getTestDatabaseUrl } from '../db/assert-test-database.js';
 import { useTestDatabase } from '../db/use-test-database.js';
 import { createE2ESeeder, type E2ESeeder } from './e2e-seeder.js';
@@ -16,7 +16,7 @@ describe('createE2ESeeder (HU-080, T-080-16)', () => {
     return seeder;
   }
 
-  afterAll(async () => {
+  afterEach(async () => {
     if (seeder) {
       await seeder.close();
       seeder = null;
@@ -76,6 +76,8 @@ describe('createE2ESeeder (HU-080, T-080-16)', () => {
     await s.resetResolutions();
     expect(await prisma.resolution.count()).toBe(0);
 
+    await s.resetCatalog();
+    await s.seedCurrentCatalog();
     await s.seedHistoricalCatalog();
     expect(await prisma.catalogVersion.count({ where: { status: 'HISTORICAL' } })).toBe(1);
     expect(await prisma.resolution.count({ where: { status: 'APPROVED' } })).toBe(2);
