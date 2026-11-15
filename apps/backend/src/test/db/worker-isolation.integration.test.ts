@@ -9,7 +9,11 @@ import { promisify } from 'node:util';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { assertTestDatabase, getTestDatabaseUrl } from './assert-test-database.js';
-import { dropWorkerDatabases, prepareWorkerDatabases } from './prepare-test-database.js';
+import {
+  dropWorkerDatabases,
+  prepareMigratedTemplate,
+  prepareWorkerDatabases,
+} from './prepare-test-database.js';
 import {
   databaseNameOf,
   templateDatabaseName,
@@ -54,7 +58,9 @@ describe('worker database isolation (T-078-09, CA3)', () => {
   let workerUrls: string[] = [];
 
   beforeAll(async () => {
-    workerUrls = await prepareWorkerDatabases(sandboxWorkers, sandboxUrl);
+    workerUrls = await prepareWorkerDatabases(sandboxWorkers, sandboxUrl, {
+      cloneFromBaseUrl: getTestDatabaseUrl(),
+    });
   }, 120_000);
 
   afterAll(async () => {
@@ -132,8 +138,12 @@ describe('worker database isolation (T-078-09, CA3)', () => {
 });
 
 describe('integration results with one and four workers (T-078-09, CA2)', () => {
-  const compareBaseName = `cmp${crypto.randomBytes(4).toString('hex')}_test`;
-  const compareUrl = withDatabaseName(getTestDatabaseUrl(), compareBaseName);
+  const runSuffix = crypto.randomBytes(4).toString('hex');
+  const compareSingleBaseName = `cmpa${runSuffix}_test`;
+  const compareParallelBaseName = `cmpb${runSuffix}_test`;
+  const baseTestUrl = getTestDatabaseUrl();
+  const compareSingleUrl = withDatabaseName(baseTestUrl, compareSingleBaseName);
+  const compareParallelUrl = withDatabaseName(baseTestUrl, compareParallelBaseName);
   const subset = [
     'src/modules/authorization/infrastructure/prisma/prisma-role-reader.integration.test.ts',
     'src/modules/authorization/infrastructure/prisma/create-role.integration.test.ts',
@@ -146,14 +156,16 @@ describe('integration results with one and four workers (T-078-09, CA2)', () => 
 
   afterAll(async () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
-    await dropDatabases(compareUrl, [
-      ...[1, 2, 3, 4].map((index) => workerDatabaseName(compareBaseName, index)),
-      templateDatabaseName(compareBaseName),
-      compareBaseName,
+    await dropDatabases(compareSingleUrl, [
+      compareSingleBaseName,
+      templateDatabaseName(compareSingleBaseName),
+      ...[1, 2, 3, 4].map((index) => workerDatabaseName(compareParallelBaseName, index)),
+      templateDatabaseName(compareParallelBaseName),
+      compareParallelBaseName,
     ]);
   }, 180_000);
 
-  async function runSubset(workers: number): Promise<Map<string, string>> {
+  async function runSubset(workers: number, targetUrl: string): Promise<Map<string, string>> {
     const outputFile = path.join(tmpDir, `result-${workers}.json`);
     const vitestBin = path.join(
       path.dirname(createRequire(import.meta.url).resolve('vitest/package.json')),
@@ -163,7 +175,7 @@ describe('integration results with one and four workers (T-078-09, CA2)', () => 
     for (const key of Object.keys(env)) {
       if (key.startsWith('VITEST')) delete env[key];
     }
-    env['TEST_DATABASE_URL'] = compareUrl;
+    env['TEST_DATABASE_URL'] = targetUrl;
     env['TEST_DB_WORKERS'] = String(workers);
 
     await execFileAsync(
@@ -197,8 +209,12 @@ describe('integration results with one and four workers (T-078-09, CA2)', () => 
   }
 
   it('produces the same results with one and four workers', async () => {
-    const single = await runSubset(1);
-    const parallel = await runSubset(4);
+    await prepareMigratedTemplate(compareParallelUrl, { cloneFromBaseUrl: baseTestUrl });
+
+    const [single, parallel] = await Promise.all([
+      runSubset(1, compareSingleUrl),
+      runSubset(4, compareParallelUrl),
+    ]);
 
     expect(single.size).toBeGreaterThan(10);
     expect([...single.values()].every((status) => status === 'passed')).toBe(true);
