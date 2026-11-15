@@ -132,3 +132,55 @@ Mediciones en local (Windows, 3 corridas por variante, criterio de adopción: re
 - **Proyecto `node` del frontend (T-080-12 / T-080-13):** separar en `node` (con `setup-node.ts` sin `window`/Testing Library) y activar `pool: 'threads'` + `isolate: false` (−86.8 % sobre la base `jsdom` del subconjunto).
 - **Proyecto `dom` del frontend (T-080-14):** descartar `happy-dom` (más lento, falla y agrega dependencia); evaluar `threads` + `isolate: false` con `--coverage` y `--sequence.shuffle` antes de adoptarlo.
 - **Unitarias del backend (T-080-15):** adoptar `pool: 'threads'` + `isolate: false` (−76.3 % sin cobertura, −67.9 % con cobertura), sujeto a 3 corridas con `--sequence.shuffle` y verificación de `argon2`.
+
+## Estructura del CI y pruebas rápidas (HU-080)
+
+### Jobs, agregadores y shards (`.github/workflows/pr-checks.yml`)
+
+- **Convenciones (`convenciones`):** valida rama, título de PR, `check:env-parity`, `check:windows-paths` y `check:test-patterns`.
+- **Jobs paralelos tras `convenciones`:**
+  - **Estáticas (`estaticas`):** Prettier, ESLint + `check-design-tokens`, TypeScript (`typecheck`), `depcruise` y `build`.
+  - **Unitarias (`unitarias`):** cobertura >= 80 % en backend, frontend (`node` + `dom`) y shared; genera `unit-backend.json` y `unit-frontend.json`, publica el resumen de lentas y verifica presupuesto por prueba (`--tier unit`).
+  - **Integración en 2 shards (`integracion`) + informe (`integracion-informe`):** cada shard corre contra su PostgreSQL 16 (sin `worker-isolation.integration.test.ts`); `integracion-informe` combina los blobs, valida completitud con `check-shard-completeness.mjs`, publica resumen y verifica presupuesto (`--tier integration`).
+  - **E2E en 3 shards (`e2e-shards`) + informe (`e2e-informe`):** cada shard corre Playwright contra su PostgreSQL 16 (`--grep-invert "Worker isolation"`); `e2e-informe` combina blobs, valida completitud, publica resumen y verifica presupuesto (`--tier e2e`).
+  - **Aislamiento de workers (`aislamiento`):** ejecuta `worker-isolation.integration.test.ts` y `worker-isolation.spec.ts` completos fuera de los shards y de la ruta crítica.
+  - **Seguridad (`seguridad`)** e **Imágenes (`imagenes`)**: auditoría `pnpm audit` y build/smoke de Docker Compose.
+- **Nombres exactos de los checks requeridos (protección de ramas):**
+  - `Rama y título del PR`
+  - `Lint, tipos, pruebas y build` (agregador `calidad`: depende de `convenciones`, `estaticas`, `unitarias`, `integracion-informe`, `aislamiento`)
+  - `Auditoría de dependencias`
+  - `Pruebas end-to-end (Playwright)` (agregador `e2e`: depende de `e2e-informe`, `aislamiento`)
+  - Nunca renombres, elimines ni sustituyas estos checks por filtros `paths:` sin actualizar la protección de ramas.
+
+### Cómo medir tiempos del CI y locales
+
+```bash
+pnpm ci:timing --runs 5
+pnpm ci:timing --head-branch feature/HU-080-optimizacion-pruebas-ci --runs 5
+pnpm perf:tests
+```
+
+- `ci:timing` lee ejecuciones reales de GitHub Actions con `gh` y reporta tiempo de espera (mediana/promedio) y minutos de máquina (exactos y facturados).
+- `perf:tests` ejecuta y compara la suite local frente a la línea base.
+
+### Presupuesto por prueba y excepciones (`scripts/ci/perf-budget.json`)
+
+| Nivel         | Presupuesto por prueba | Comando de verificación                                  |
+| ------------- | ---------------------- | -------------------------------------------------------- |
+| `unit`        | 2 000 ms               | `pnpm check:perf-budget --tier unit --vitest ...`        |
+| `integration` | 5 000 ms               | `pnpm check:perf-budget --tier integration --vitest ...` |
+| `e2e`         | 20 000 ms              | `pnpm check:perf-budget --tier e2e --playwright ...`     |
+
+**Qué hacer si una prueba supera su presupuesto:**
+
+1. Baja la prueba en la pirámide si la regla no necesita navegador ni PostgreSQL real.
+2. Usa siembra en proceso (`createE2ESeeder` / `seedAuthorizationFast`), sesión por API (`loginAsTestUser`) y esperas por señal (`waitForResponse` / aserciones web-first).
+3. Solo si la prueba es inherentemente pesada (p. ej. aislamiento con múltiples workers o recorrido completo de contraste WCAG), agrégala en `exceptions` de `scripts/ci/perf-budget.json` con su tope `ms` y un `reason` explícito. Las excepciones obsoletas o superadas también fallan el CI.
+
+### Plantillas copiables y reglas para HU nuevas (`pnpm check:test-patterns`)
+
+| Tipo de prueba            | Plantilla copiable                                                        | Reglas obligatorias                                                                                                                                                                          |
+| ------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unitaria sin DOM (`node`) | `apps/frontend/src/test/templates/example-node.test.ts`                   | Sin `@testing-library/*`, `react-dom`, `window`, `document` ni `localStorage` (`dom-in-node`).                                                                                               |
+| Integración (PostgreSQL)  | `apps/backend/src/test/templates/example-integration.integration.test.ts` | Usar `useTestDatabase()` y `seedAuthorizationFast` (nunca `seedAuthorization` lenta, `slow-seed`), sin pausas fijas (`fixed-pause`).                                                         |
+| E2E (Playwright)          | `apps/frontend/e2e/templates/example-session.spec.ts`                     | Usar `loginAsTestUser(page)` por API (no login por interfaz fuera de specs de auth, `ui-login`), sin `execSync`/`spawnSync` en specs (`e2e-subprocess`) ni `waitForTimeout` (`fixed-pause`). |
