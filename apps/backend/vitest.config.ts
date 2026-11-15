@@ -33,6 +33,8 @@ export default defineConfig({
           name: 'unit',
           globals: true,
           environment: 'node',
+          pool: 'threads',
+          isolate: false,
           include: ['src/**/*.test.ts', 'openapi/**/*.test.ts'],
           exclude: ['src/**/*.integration.test.ts'],
         },
