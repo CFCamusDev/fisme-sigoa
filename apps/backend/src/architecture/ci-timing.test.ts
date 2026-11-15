@@ -181,7 +181,63 @@ describe('ci-timing script (T-080-01)', () => {
       json: true,
       workflow: 'pr-checks.yml',
       baseBranch: 'develop',
+      headBranch: null,
     });
+    expect(parseArgs(['--head-branch', 'chore/HU-080-ab-base']).headBranch).toBe(
+      'chore/HU-080-ab-base',
+    );
+  });
+
+  it('filters runs by head branch', async () => {
+    const runs = [
+      {
+        id: 1,
+        created_at: '2026-11-15T10:00:00Z',
+        updated_at: '2026-11-15T10:05:00Z',
+        head_branch: 'feature/HU-080-optimizacion-pruebas-ci',
+        pull_requests: [
+          {
+            base: { ref: 'develop' },
+            head: { ref: 'feature/HU-080-optimizacion-pruebas-ci' },
+          },
+        ],
+        jobs: [],
+      },
+      {
+        id: 2,
+        created_at: '2026-11-15T11:00:00Z',
+        updated_at: '2026-11-15T11:04:00Z',
+        head_branch: 'chore/HU-080-ab-shards-2',
+        pull_requests: [
+          {
+            base: { ref: 'develop' },
+            head: { ref: 'chore/HU-080-ab-shards-2' },
+          },
+        ],
+        jobs: [],
+      },
+    ];
+
+    const summary = aggregateRuns(runs, {
+      baseBranch: 'develop',
+      headBranch: 'chore/HU-080-ab-shards-2',
+    });
+    expect(summary.runCount).toBe(1);
+    expect(summary.workflow.durationSeconds).toEqual({ avg: 240, min: 240, max: 240 });
+
+    const fetched = await fetchWorkflowRuns({
+      runs: 5,
+      workflow: 'pr-checks.yml',
+      baseBranch: 'develop',
+      headBranch: 'feature/HU-080-optimizacion-pruebas-ci',
+      execGh: async (args: string[]) => {
+        if (args[1]?.includes('/actions/runs/')) {
+          return { stdout: JSON.stringify({ jobs: [] }) };
+        }
+        return { stdout: JSON.stringify({ workflow_runs: runs }) };
+      },
+    });
+    expect(fetched.map((r: { id: number }) => r.id)).toEqual([1]);
   });
 
   it('reports a clear error when gh is not available', async () => {

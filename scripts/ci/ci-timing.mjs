@@ -21,6 +21,7 @@ export function parseArgs(argv) {
     json: false,
     workflow: 'pr-checks.yml',
     baseBranch: 'develop',
+    headBranch: null,
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -47,6 +48,11 @@ export function parseArgs(argv) {
       const raw = argv[i + 1];
       if (!raw || raw.startsWith('--')) throw new Error('--base requiere una rama.');
       result.baseBranch = raw;
+      i += 1;
+    } else if (arg === '--head-branch') {
+      const raw = argv[i + 1];
+      if (!raw || raw.startsWith('--')) throw new Error('--head-branch requiere una rama.');
+      result.headBranch = raw;
       i += 1;
     } else {
       throw new Error(`Argumento desconocido: ${arg}`);
@@ -109,14 +115,25 @@ function extractBaseBranch(run) {
   return run?.pull_requests?.[0]?.base?.ref ?? null;
 }
 
+function extractHeadBranch(run) {
+  if (typeof run?.headBranch === 'string') return run.headBranch;
+  if (typeof run?.head_branch === 'string') return run.head_branch;
+  return run?.pull_requests?.[0]?.head?.ref ?? null;
+}
+
 /**
  * Agrega métricas de cola, duración y minutos de máquina por flujo, job y paso.
  * @param {Array<object>} runsWithJobs
- * @param {{ baseBranch?: string }} [options]
+ * @param {{ baseBranch?: string, headBranch?: string | null }} [options]
  */
 export function aggregateRuns(runsWithJobs, options = {}) {
   const baseBranch = options.baseBranch ?? 'develop';
-  const filtered = runsWithJobs.filter((run) => extractBaseBranch(run) === baseBranch);
+  const headBranch = options.headBranch ?? null;
+  const filtered = runsWithJobs.filter(
+    (run) =>
+      extractBaseBranch(run) === baseBranch &&
+      (!headBranch || extractHeadBranch(run) === headBranch),
+  );
 
   const workflowDurations = [];
   const exactMachineList = [];
@@ -192,6 +209,7 @@ export function aggregateRuns(runsWithJobs, options = {}) {
 
   return {
     baseBranch,
+    headBranch,
     runCount: filtered.length,
     workflow: {
       durationSeconds: computeStats(workflowDurations),
@@ -287,6 +305,7 @@ export async function fetchWorkflowRuns({
   runs,
   workflow,
   baseBranch,
+  headBranch = null,
   execGh = defaultExecGh,
 }) {
   const listRes = await runGh(execGh, [
@@ -295,7 +314,11 @@ export async function fetchWorkflowRuns({
   ]);
   const listData = JSON.parse(listRes.stdout);
   const matching = (listData.workflow_runs ?? [])
-    .filter((run) => extractBaseBranch(run) === baseBranch)
+    .filter(
+      (run) =>
+        extractBaseBranch(run) === baseBranch &&
+        (!headBranch || extractHeadBranch(run) === headBranch),
+    )
     .slice(0, runs);
 
   const detailed = [];
@@ -323,7 +346,7 @@ function loadBaseline(filePath = DEFAULT_BASELINE_PATH) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const runs = await fetchWorkflowRuns(args);
-  const summary = aggregateRuns(runs, { baseBranch: args.baseBranch });
+  const summary = aggregateRuns(runs, { baseBranch: args.baseBranch, headBranch: args.headBranch });
   const baseline = loadBaseline();
 
   if (args.json) {
