@@ -73,8 +73,8 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Catalog', () => {
       email: `contrast-member-catalog-editor-${Date.now()}@example.test`,
       roles: ['COMMITTEE_MEMBER'],
     });
-    resetCatalog();
-    seedCurrentCatalog();
+    await resetCatalog();
+    await seedCurrentCatalog();
 
     try {
       // Crear el Borrador desde la interfaz y abrir su editor
@@ -144,7 +144,7 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Catalog', () => {
       await expect(page.getByLabel('Enunciado').first()).toBeDisabled();
       await expectNoContrastViolations(page, { context: 'catalog-editor-readonly-mobile' });
     } finally {
-      resetCatalog();
+      await resetCatalog();
     }
   });
 
@@ -157,8 +157,8 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Catalog', () => {
       email: `contrast-member-catalog-history-${Date.now()}@example.test`,
       roles: ['COMMITTEE_MEMBER'],
     });
-    resetCatalog();
-    seedCurrentCatalog();
+    await resetCatalog();
+    await seedCurrentCatalog();
 
     try {
       // Con una sola versión no hay nada que comparar
@@ -167,7 +167,7 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Catalog', () => {
       await expectNoContrastViolations(page, { context: 'catalog-history-empty-desktop' });
 
       // Con dos versiones se comparan por defecto la anterior y la vigente
-      seedHistoricalCatalog();
+      await seedHistoricalCatalog();
       await waitForApi(page, '/compare/', () => page.goto('/catalogo/historial'));
       await expect(page.getByRole('heading', { name: 'Resumen de cambios' })).toBeVisible();
       await expect(page.locator('ins').first()).toBeVisible();
@@ -193,7 +193,7 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Catalog', () => {
       await expect(page.getByRole('region', { name: 'Resolución y vigencia' })).toBeVisible();
       await expectNoContrastViolations(page, { context: 'catalog-editor-history-desktop' });
     } finally {
-      resetCatalog();
+      await resetCatalog();
     }
   });
 });

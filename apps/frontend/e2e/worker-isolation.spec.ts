@@ -76,7 +76,7 @@ test.describe('Worker isolation', () => {
       workerStack,
     }, testInfo) => {
       const surname = `Aislado${own.toUpperCase()}${Date.now() % 100000}`;
-      seedUser({
+      await seedUser({
         email: `isolation-${own}-${Date.now()}@example.test`,
         names: 'Usuario',
         firstSurname: surname,

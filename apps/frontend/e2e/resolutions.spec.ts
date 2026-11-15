@@ -27,7 +27,7 @@ test.describe('HU-048 — Registrar y aprobar resoluciones E2E', () => {
   test.setTimeout(90_000);
 
   test.afterEach(() => {
-    resetCatalog();
+    await resetCatalog();
   });
 
   test('president registers and approves an objectives resolution with the signed pdf (CA1, CA2, CA3)', async ({
@@ -45,9 +45,9 @@ test.describe('HU-048 — Registrar y aprobar resoluciones E2E', () => {
       email: `e2e-resolutions-${Date.now()}@example.test`,
       roles: ['COMMITTEE_PRESIDENT'],
     });
-    resetCatalog();
-    seedCurrentCatalog();
-    seedInValidationCatalogVersion();
+    await resetCatalog();
+    await seedCurrentCatalog();
+    await seedInValidationCatalogVersion();
 
     await openResolutionsPage(page);
     await expect(page.getByText('Aún no hay resoluciones registradas')).toBeVisible();

@@ -13,14 +13,14 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Users', () => {
     const accessSurname = `Acceso${suffix}`;
     const draftSurname = `Borrador${suffix}`;
 
-    seedUser({
+    await seedUser({
       email: `contrast-target-${timestamp}@example.test`,
       names: 'Usuario',
       firstSurname: targetSurname,
       roles: ['TEACHER'],
       status: 'ACTIVE',
     });
-    seedUser({
+    await seedUser({
       email: `contrast-edit-target-${timestamp}@example.test`,
       names: 'Editar',
       firstSurname: editSurname,
@@ -29,7 +29,7 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Users', () => {
       roles: ['TEACHER'],
       status: 'ACTIVE',
     });
-    seedUser({
+    await seedUser({
       email: `contrast-target-access-${timestamp}@example.test`,
       names: 'Usuario',
       firstSurname: accessSurname,
@@ -38,7 +38,7 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Users', () => {
       roles: ['TEACHER'],
       status: 'ACTIVE',
     });
-    seedUser({
+    await seedUser({
       email: `contrast-target-access-unsaved-${timestamp}@example.test`,
       names: 'Usuario',
       firstSurname: draftSurname,

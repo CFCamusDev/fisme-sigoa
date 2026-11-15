@@ -14,8 +14,8 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Templates', () => 
       email: `contrast-admin-templates-${Date.now()}@example.test`,
       roles: ['ADMINISTRATOR'],
     });
-    resetTemplates();
-    const templateId = seedTemplate({ withDraft: true });
+    await resetTemplates();
+    const templateId = await seedTemplate({ withDraft: true });
 
     try {
       await waitForApi(page, '/templates', () => page.goto('/plantillas'));
@@ -59,7 +59,7 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Templates', () => 
       ).toBeVisible();
       await expectNoContrastViolations(page, { context: 'templates-confirm-mobile' });
     } finally {
-      resetTemplates();
+      await resetTemplates();
     }
   });
 
@@ -70,8 +70,8 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Templates', () => 
       email: `contrast-president-templates-${Date.now()}@example.test`,
       roles: ['COMMITTEE_PRESIDENT'],
     });
-    resetTemplates();
-    const templateId = seedTemplate({ withDraft: true });
+    await resetTemplates();
+    const templateId = await seedTemplate({ withDraft: true });
 
     try {
       await Promise.all([
@@ -92,7 +92,7 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Templates', () => 
       await expect(page.getByRole('textbox', { name: 'Contenido HTML' })).toBeVisible();
       await expectNoContrastViolations(page, { context: 'templates-readonly-mobile' });
     } finally {
-      resetTemplates();
+      await resetTemplates();
     }
   });
 });

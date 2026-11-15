@@ -20,9 +20,9 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Resolutions', () =
       email: `contrast-president-resolutions-${Date.now()}@example.test`,
       roles: ['COMMITTEE_PRESIDENT'],
     });
-    resetCatalog();
-    seedCurrentCatalog();
-    seedInValidationCatalogVersion();
+    await resetCatalog();
+    await seedCurrentCatalog();
+    await seedInValidationCatalogVersion();
 
     try {
       // Sin resoluciones: estado vacío
@@ -32,7 +32,7 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Resolutions', () =
       await expectNoContrastViolations(page, { context: 'resolutions-empty-desktop' });
 
       // Una fila Registrada con el formulario de aprobación abierto
-      seedResolution({ number: 'RD-001/2027', status: 'REGISTERED' });
+      await seedResolution({ number: 'RD-001/2027', status: 'REGISTERED' });
       await waitForApi(page, '/resolutions', () => page.reload());
       await page.getByRole('button', { name: 'Aprobar resolución RD-001/2027' }).click();
       await expect(
@@ -49,8 +49,8 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Resolutions', () =
       await expectNoContrastViolations(page, { context: 'resolutions-registered-approval-mobile' });
 
       // Una fila Aprobada
-      resetResolutions();
-      seedResolution({ number: 'RD-002/2027', status: 'APPROVED' });
+      await resetResolutions();
+      await seedResolution({ number: 'RD-002/2027', status: 'APPROVED' });
       await page.setViewportSize(DESKTOP);
       await waitForApi(page, '/resolutions', () => page.reload());
       await expect(page.getByRole('cell', { name: 'Aprobada' })).toBeVisible();
@@ -60,7 +60,7 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Resolutions', () =
       await expect(page.getByRole('cell', { name: 'Aprobada' })).toBeVisible();
       await expectNoContrastViolations(page, { context: 'resolutions-approved-mobile' });
     } finally {
-      resetCatalog();
+      await resetCatalog();
     }
   });
 
@@ -71,10 +71,10 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Resolutions', () =
       email: `contrast-member-resolutions-${Date.now()}@example.test`,
       roles: ['COMMITTEE_MEMBER'],
     });
-    resetCatalog();
-    seedCurrentCatalog();
-    seedInValidationCatalogVersion();
-    seedResolution({ number: 'RD-003/2027', status: 'REGISTERED' });
+    await resetCatalog();
+    await seedCurrentCatalog();
+    await seedInValidationCatalogVersion();
+    await seedResolution({ number: 'RD-003/2027', status: 'REGISTERED' });
 
     try {
       await waitForApi(page, '/resolutions', () => page.goto('/resoluciones'));
@@ -87,7 +87,7 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Resolutions', () =
       await expect(page.getByRole('cell', { name: 'RD-003/2027' })).toBeVisible();
       await expectNoContrastViolations(page, { context: 'resolutions-readonly-mobile' });
     } finally {
-      resetCatalog();
+      await resetCatalog();
     }
   });
 });
