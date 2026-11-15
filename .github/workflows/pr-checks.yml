@@ -152,6 +152,7 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U test" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
+      SHARDS: 2
       DATABASE_URL: postgresql://test:test@localhost:5432/oeag_test
       NODE_ENV: test
     steps:
@@ -169,7 +170,7 @@ jobs:
       - name: Pruebas de integración (shard ${{ matrix.shard }}/2)
         run: |
           mkdir -p tmp/integration-blobs
-          pnpm --filter backend exec vitest run --project integration --shard=${{ matrix.shard }}/2 --exclude src/architecture/worker-isolation.integration.test.ts --reporter=blob --outputFile=${{ github.workspace }}/tmp/integration-blobs/blob-${{ matrix.shard }}.json
+          pnpm --filter backend exec vitest run --project integration --shard=${{ matrix.shard }}/${{ env.SHARDS }} --exclude src/test/db/worker-isolation.integration.test.ts --reporter=blob --outputFile=${{ github.workspace }}/tmp/integration-blobs/blob-${{ matrix.shard }}.json
       - name: Estabilidad del PDF con Chromium (3 pasadas)
         if: matrix.shard == 1
         run: |
@@ -261,7 +262,7 @@ jobs:
       - name: Prueba de aislamiento de workers (integración)
         run: |
           mkdir -p tmp/ci-reports
-          pnpm --filter backend exec vitest run --project integration src/architecture/worker-isolation.integration.test.ts --reporter=default --reporter=json --outputFile.json=${{ github.workspace }}/tmp/ci-reports/isolation-integration.json
+          pnpm --filter backend exec vitest run --project integration src/test/db/worker-isolation.integration.test.ts --reporter=default --reporter=json --outputFile.json=${{ github.workspace }}/tmp/ci-reports/isolation-integration.json
       - name: Subir informe de aislamiento de integración
         uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}

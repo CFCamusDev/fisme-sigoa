@@ -61,7 +61,9 @@ describe('pr-checks.yml structure (HU-080)', () => {
     const integracionBlock = extractJobBlock(workflow, 'integracion');
     expect(integracionBlock).toMatch(/shard:\s*\[1,\s*2\]/);
     expect(integracionBlock).toMatch(/if:\s*matrix\.shard\s*==\s*1/);
-    expect(integracionBlock).toMatch(/--shard=\$\{\{\s*matrix\.shard\s*\}\}\/2/);
+    expect(integracionBlock).toMatch(
+      /--shard=\$\{\{\s*matrix\.shard\s*\}\}\/\$\{\{\s*env\.SHARDS\s*\}\}/,
+    );
 
     const integracionInformeBlock = extractJobBlock(workflow, 'integracion-informe');
     expect(integracionInformeBlock).toMatch(/needs:\s*\[integracion,\s*aislamiento\]/);
@@ -99,7 +101,7 @@ describe('pr-checks.yml structure (HU-080)', () => {
   it('runs worker isolation tests in their own job outside the shards', () => {
     const integracionBlock = extractJobBlock(workflow, 'integracion');
     expect(integracionBlock).toMatch(
-      /--exclude src\/architecture\/worker-isolation\.integration\.test\.ts/,
+      /--exclude src\/test\/db\/worker-isolation\.integration\.test\.ts/,
     );
 
     const e2eShardsBlock = extractJobBlock(workflow, 'e2e-shards');
@@ -107,8 +109,40 @@ describe('pr-checks.yml structure (HU-080)', () => {
 
     const aislamientoBlock = extractJobBlock(workflow, 'aislamiento');
     expect(aislamientoBlock).toMatch(/^\s{4}needs:\s*convenciones\s*$/m);
-    expect(aislamientoBlock).toMatch(/worker-isolation\.integration\.test\.ts/);
+    expect(aislamientoBlock).toMatch(/src\/test\/db\/worker-isolation\.integration\.test\.ts/);
     expect(aislamientoBlock).toMatch(/e2e\/worker-isolation\.spec\.ts/);
     expect(aislamientoBlock).toMatch(/E2E_WORKERS:\s*2/);
+  });
+
+  it('points the isolation job and the shard exclusion at the same existing file', () => {
+    const integracionBlock = extractJobBlock(workflow, 'integracion');
+    const aislamientoBlock = extractJobBlock(workflow, 'aislamiento');
+
+    const excludeMatch = integracionBlock.match(
+      /--exclude\s+([^\s]+worker-isolation\.integration\.test\.ts)/,
+    );
+    const isolationMatch = aislamientoBlock.match(
+      /vitest run --project integration\s+([^\s]+worker-isolation\.integration\.test\.ts)/,
+    );
+
+    expect(excludeMatch?.[1]).toBeDefined();
+    expect(isolationMatch?.[1]).toBe(excludeMatch?.[1]);
+    expect(fs.existsSync(path.join(repoRoot, 'apps', 'backend', excludeMatch![1]))).toBe(true);
+  });
+
+  it('uses one shard count in matrix, env and job name', () => {
+    for (const jobId of ['integracion', 'e2e-shards']) {
+      const block = extractJobBlock(workflow, jobId);
+      const matrixMatch = block.match(/shard:\s*\[([^\]]+)\]/);
+      const envMatch = block.match(/^\s{6}SHARDS:\s*(\d+)/m);
+      const nameMatch = block.match(/^\s{4}name:.*\/(\d+)\s*$/m);
+      const stepMatch = block.match(/^\s{6}-\s+name:.*\/(\d+)\s*$/m);
+
+      expect(matrixMatch?.[1]).toBeDefined();
+      const matrixCount = matrixMatch![1].split(',').length;
+      expect(Number(envMatch?.[1])).toBe(matrixCount);
+      expect(Number(nameMatch?.[1])).toBe(matrixCount);
+      expect(Number(stepMatch?.[1])).toBe(matrixCount);
+    }
   });
 });
