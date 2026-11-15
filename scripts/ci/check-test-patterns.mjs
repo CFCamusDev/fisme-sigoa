@@ -42,9 +42,24 @@ export const RULE_EXCLUSIONS = [
     reason: "Contiene el literal 'sleep()' como nombre de regla para auditar pruebas de integración.",
   },
   {
+    file: 'apps/backend/src/architecture/check-test-patterns.test.ts',
+    rule: 'fixed-pause',
+    reason: 'Contiene literales de prueba con waitForTimeout y sleep para verificar las reglas de check-test-patterns.',
+  },
+  {
     file: 'apps/backend/src/shared/pdf/puppeteer-pdf-generator.test.ts',
     rule: 'fixed-pause',
     reason: 'Simula latencia de renderizado en un mock de concurrencia de generación PDF.',
+  },
+  {
+    file: 'apps/frontend/src/features/parameters/components/parameters-form.test.tsx',
+    rule: 'fixed-pause',
+    reason: 'Handler MSW parametrizado (postDelayMs) para simular petición en vuelo al probar doble envío.',
+  },
+  {
+    file: 'apps/frontend/src/features/users/components/user-form.test.tsx',
+    rule: 'fixed-pause',
+    reason: 'Handler MSW con retardo corto (100 ms) para simular petición en vuelo al probar doble clic.',
   },
   {
     file: 'apps/frontend/e2e/authorization.spec.ts',
