@@ -153,7 +153,7 @@ export function StakeholdersPage() {
       ) : items.length === 0 ? (
         hasFilters ? (
           <EmptyState
-            variant="no-results"
+            illustration="no-results"
             title="Sin resultados"
             description="No se encontraron constituyentes con los criterios seleccionados."
           />
