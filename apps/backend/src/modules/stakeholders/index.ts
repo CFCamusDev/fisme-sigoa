@@ -4,6 +4,7 @@ import type { DbProvider } from '../../shared/prisma/prisma-unit-of-work.js';
 import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
 import { EditStakeholderUseCase } from './application/edit-stakeholder.js';
 import { RegisterStakeholderUseCase } from './application/register-stakeholder.js';
+import { SearchStakeholdersUseCase } from './application/search-stakeholders.js';
 import { VoidStakeholderUseCase } from './application/void-stakeholder.js';
 import type { StakeholderPermissionChecker } from './domain/ports/stakeholder-permission-checker.js';
 import { StakeholdersController } from './infrastructure/http/stakeholders.controller.js';
@@ -57,10 +58,16 @@ export function createStakeholdersModule(deps?: StakeholdersModuleDependencies):
     clock: deps.clock,
   });
 
+  const searchStakeholdersUseCase = new SearchStakeholdersUseCase({
+    stakeholderReader: stakeholderRepository,
+    permissionChecker: deps.permissionChecker,
+  });
+
   const controller = new StakeholdersController({
     registerStakeholderUseCase,
     editStakeholderUseCase,
     voidStakeholderUseCase,
+    searchStakeholdersUseCase,
   });
 
   return createStakeholdersRouter({

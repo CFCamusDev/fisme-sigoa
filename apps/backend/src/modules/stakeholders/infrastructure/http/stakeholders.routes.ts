@@ -1,6 +1,7 @@
 import { Router, type RequestHandler } from 'express';
 import {
   editStakeholderRequestSchema,
+  listStakeholdersQuerySchema,
   registerStakeholderRequestSchema,
   stakeholderIdParamsSchema,
   voidStakeholderRequestSchema,
@@ -50,6 +51,16 @@ export function createStakeholdersRouter(deps: StakeholdersRouterDependencies): 
     deps.requirePermission('constituyente.editar', 'GLOBAL'),
     validateRequest({ params: stakeholderIdParamsSchema, body: voidStakeholderRequestSchema }),
     deps.controller.voidStakeholder,
+  );
+
+  // GET /stakeholders (HU-021, T-021-14, RF-021, RS-002, RNF-008, RNF-009, RNF-012)
+  // Cadena obligatoria: authenticate -> requirePermission -> validateRequest -> controller
+  router.get(
+    '/',
+    deps.authenticate,
+    deps.requirePermission('constituyente.ver', 'GLOBAL'),
+    validateRequest({ query: listStakeholdersQuerySchema }),
+    deps.controller.listStakeholders,
   );
 
   return router;
