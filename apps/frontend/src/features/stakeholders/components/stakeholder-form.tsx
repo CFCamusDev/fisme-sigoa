@@ -125,7 +125,7 @@ export function StakeholderForm({
     : isEditUnchanged
       ? 'Sin cambios'
       : mode === 'register'
-        ? 'Registrar constituyente'
+        ? 'Guardar constituyente'
         : 'Guardar cambios';
 
   const fieldId = (name: string) => `${uid}-${name}`;

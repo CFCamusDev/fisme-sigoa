@@ -25,11 +25,13 @@ describe('StakeholderForm (HU-021, T-021-18, T-021-29)', () => {
       }),
     );
 
-    renderWithProviders(<StakeholderForm mode="register" onCancel={vi.fn()} onSaved={onSaved} />);
+    renderWithProviders(<StakeholderForm mode="register" onCancel={vi.fn()} onSaved={onSaved} />, {
+      withRouter: false,
+    });
 
     await user.type(screen.getByLabelText(/nombres y apellidos/i), 'Ana Lucia Torres');
     await user.type(screen.getByLabelText(/^dni$/i), '45678912');
-    await user.click(screen.getByRole('button', { name: /registrar constituyente/i }));
+    await user.click(screen.getByRole('button', { name: /guardar constituyente/i }));
 
     await waitFor(() => {
       expect(onSaved).toHaveBeenCalledWith(PERSON_STAKEHOLDER, 'register');
@@ -54,12 +56,14 @@ describe('StakeholderForm (HU-021, T-021-18, T-021-29)', () => {
       }),
     );
 
-    renderWithProviders(<StakeholderForm mode="register" onCancel={vi.fn()} onSaved={onSaved} />);
+    renderWithProviders(<StakeholderForm mode="register" onCancel={vi.fn()} onSaved={onSaved} />, {
+      withRouter: false,
+    });
 
     await user.selectOptions(screen.getByLabelText(/tipo/i), 'INSTITUTION');
     await user.type(screen.getByLabelText(/razón social/i), 'Tech Amazonas SAC');
     await user.type(screen.getByLabelText(/^ruc$/i), '20123456789');
-    await user.click(screen.getByRole('button', { name: /registrar constituyente/i }));
+    await user.click(screen.getByRole('button', { name: /guardar constituyente/i }));
 
     await waitFor(() => {
       expect(onSaved).toHaveBeenCalledWith(INSTITUTION_STAKEHOLDER, 'register');
@@ -76,6 +80,14 @@ describe('StakeholderForm (HU-021, T-021-18, T-021-29)', () => {
     const onSelectExisting = vi.fn();
 
     server.use(
+      http.get('*/me/permissions', () =>
+        HttpResponse.json({
+          permissions: [
+            { code: 'constituyente.ver', scope: 'GLOBAL' },
+            { code: 'constituyente.editar', scope: 'GLOBAL' },
+          ],
+        }),
+      ),
       http.post('*/stakeholders', () =>
         HttpResponse.json(
           { error: { code: 'CONFLICT', message: 'Ya existe un constituyente con ese DNI.' } },
@@ -99,6 +111,7 @@ describe('StakeholderForm (HU-021, T-021-18, T-021-29)', () => {
         onSelectExisting={onSelectExisting}
       />,
       {
+        withRouter: false,
         permissions: [
           { code: 'constituyente.ver', scope: 'GLOBAL' },
           { code: 'constituyente.editar', scope: 'GLOBAL' },
@@ -108,7 +121,7 @@ describe('StakeholderForm (HU-021, T-021-18, T-021-29)', () => {
 
     await user.type(screen.getByLabelText(/nombres y apellidos/i), 'Ana Duplicada');
     await user.type(screen.getByLabelText(/^dni$/i), '45678912');
-    await user.click(screen.getByRole('button', { name: /registrar constituyente/i }));
+    await user.click(screen.getByRole('button', { name: /guardar constituyente/i }));
 
     expect(
       await screen.findByText(/ya existe un constituyente con este documento/i),
@@ -124,6 +137,14 @@ describe('StakeholderForm (HU-021, T-021-18, T-021-29)', () => {
     const user = userEvent.setup();
 
     server.use(
+      http.get('*/me/permissions', () =>
+        HttpResponse.json({
+          permissions: [
+            { code: 'constituyente.ver', scope: 'GLOBAL' },
+            { code: 'constituyente.editar', scope: 'GLOBAL' },
+          ],
+        }),
+      ),
       http.post('*/stakeholders', () =>
         HttpResponse.json(
           { error: { code: 'CONFLICT', message: 'Ya existe un constituyente con ese DNI.' } },
@@ -141,6 +162,7 @@ describe('StakeholderForm (HU-021, T-021-18, T-021-29)', () => {
         onSelectExisting={vi.fn()}
       />,
       {
+        withRouter: false,
         permissions: [
           { code: 'constituyente.ver', scope: 'GLOBAL' },
           { code: 'constituyente.editar', scope: 'GLOBAL' },
@@ -150,7 +172,7 @@ describe('StakeholderForm (HU-021, T-021-18, T-021-29)', () => {
 
     await user.type(screen.getByLabelText(/nombres y apellidos/i), 'Mario Duplicado');
     await user.type(screen.getByLabelText(/^dni$/i), '33445566');
-    await user.click(screen.getByRole('button', { name: /registrar constituyente/i }));
+    await user.click(screen.getByRole('button', { name: /guardar constituyente/i }));
 
     expect(await screen.findByText('Mario Vega')).toBeInTheDocument();
     expect(screen.getByText('Anulado')).toBeInTheDocument();
@@ -178,6 +200,7 @@ describe('StakeholderForm (HU-021, T-021-18, T-021-29)', () => {
         onCancel={vi.fn()}
         onSaved={onSaved}
       />,
+      { withRouter: false },
     );
 
     expect(screen.getByRole('button', { name: /sin cambios/i })).toBeDisabled();
@@ -206,6 +229,14 @@ describe('StakeholderForm (HU-021, T-021-18, T-021-29)', () => {
     const user = userEvent.setup();
 
     server.use(
+      http.get('*/me/permissions', () =>
+        HttpResponse.json({
+          permissions: [
+            { code: 'constituyente.ver', scope: 'GLOBAL' },
+            { code: 'constituyente.editar', scope: 'GLOBAL' },
+          ],
+        }),
+      ),
       http.post('*/stakeholders', () =>
         HttpResponse.json(
           { error: { code: 'INTERNAL_ERROR', message: 'Error de servidor' } },
@@ -214,17 +245,19 @@ describe('StakeholderForm (HU-021, T-021-18, T-021-29)', () => {
       ),
     );
 
-    renderWithProviders(<StakeholderForm mode="register" onCancel={vi.fn()} onSaved={vi.fn()} />);
+    renderWithProviders(<StakeholderForm mode="register" onCancel={vi.fn()} onSaved={vi.fn()} />, {
+      withRouter: false,
+    });
 
     await user.type(screen.getByLabelText(/nombres y apellidos/i), 'Ana');
     await user.type(screen.getByLabelText(/^dni$/i), '123');
-    await user.click(screen.getByRole('button', { name: /registrar constituyente/i }));
+    await user.click(screen.getByRole('button', { name: /guardar constituyente/i }));
 
     const alerts = await screen.findAllByRole('alert');
     expect(alerts.some((el) => /8 dígitos/i.test(el.textContent ?? ''))).toBe(true);
 
     await user.type(screen.getByLabelText(/^dni$/i), '45678');
-    await user.click(screen.getByRole('button', { name: /registrar constituyente/i }));
+    await user.click(screen.getByRole('button', { name: /guardar constituyente/i }));
 
     const errorBanner = await screen.findByText(/problema del servidor/i);
     const alertContainer = errorBanner.closest('[role="alert"]');

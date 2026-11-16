@@ -28,29 +28,37 @@ describe('StakeholdersPage (HU-021, T-021-17, T-021-29)', () => {
       }),
     );
 
-    const { rerender } = renderWithProviders(<StakeholdersPage />, { permissions: FULL_PERMS });
-    expect(screen.getByText(/cargando registro de constituyentes/i)).toBeInTheDocument();
+    const first = renderWithProviders(<StakeholdersPage />, {
+      withRouter: false,
+      permissions: FULL_PERMS,
+    });
+    expect(screen.getAllByText(/cargando registro de constituyentes/i).length).toBeGreaterThan(0);
     expect(await screen.findByText(/no hay constituyentes registrados/i)).toBeInTheDocument();
+    first.unmount();
 
     server.use(
       http.get('*/stakeholders', () =>
         HttpResponse.json({ error: { code: 'INTERNAL_ERROR', message: 'Falla' } }, { status: 500 }),
       ),
     );
-    rerender(<StakeholdersPage />);
-    // El queryClient mantiene caché 30s; probamos un montaje fresco en un nuevo renderWithProviders.
-    renderWithProviders(<StakeholdersPage />, { permissions: FULL_PERMS });
+    const second = renderWithProviders(<StakeholdersPage />, {
+      withRouter: false,
+      permissions: FULL_PERMS,
+    });
     expect(await screen.findByText(/no se pudo cargar el registro/i)).toBeInTheDocument();
+    second.unmount();
 
     server.use(
       http.get('*/stakeholders', () =>
         HttpResponse.json(makeListResponse([PERSON_STAKEHOLDER, INSTITUTION_STAKEHOLDER])),
       ),
     );
-    renderWithProviders(<StakeholdersPage />, { permissions: FULL_PERMS });
+    renderWithProviders(<StakeholdersPage />, {
+      withRouter: false,
+      permissions: FULL_PERMS,
+    });
     expect(await screen.findByText('Ana Lucia Torres')).toBeInTheDocument();
     expect(screen.getByText('Tech Amazonas SAC')).toBeInTheDocument();
-    // Minimización RNF-012: correo y celular no se muestran en la tabla
     expect(screen.queryByText('ana.torres@example.com')).not.toBeInTheDocument();
     expect(screen.queryByText('987654321')).not.toBeInTheDocument();
   });
@@ -62,7 +70,10 @@ describe('StakeholdersPage (HU-021, T-021-17, T-021-29)', () => {
       ),
     );
 
-    renderWithProviders(<StakeholdersPage />, { permissions: VIEW_ONLY_PERMS });
+    renderWithProviders(<StakeholdersPage />, {
+      withRouter: false,
+      permissions: VIEW_ONLY_PERMS,
+    });
     expect(await screen.findByText(/acceso denegado/i)).toBeInTheDocument();
   });
 
@@ -77,7 +88,10 @@ describe('StakeholdersPage (HU-021, T-021-17, T-021-29)', () => {
       }),
     );
 
-    renderWithProviders(<StakeholdersPage />, { permissions: FULL_PERMS });
+    renderWithProviders(<StakeholdersPage />, {
+      withRouter: false,
+      permissions: FULL_PERMS,
+    });
     await screen.findByText('Ana Lucia Torres');
 
     await user.type(screen.getByLabelText(/buscar por nombre, dni o ruc/i), 'Ana');
@@ -112,7 +126,10 @@ describe('StakeholdersPage (HU-021, T-021-17, T-021-29)', () => {
       }),
     );
 
-    renderWithProviders(<StakeholdersPage />, { permissions: FULL_PERMS });
+    renderWithProviders(<StakeholdersPage />, {
+      withRouter: false,
+      permissions: FULL_PERMS,
+    });
     await screen.findByText(/página 1 de 2/i);
 
     await user.click(screen.getByRole('button', { name: /siguiente/i }));
@@ -126,7 +143,10 @@ describe('StakeholdersPage (HU-021, T-021-17, T-021-29)', () => {
       http.get('*/stakeholders', () => HttpResponse.json(makeListResponse([PERSON_STAKEHOLDER]))),
     );
 
-    renderWithProviders(<StakeholdersPage />, { permissions: VIEW_ONLY_PERMS });
+    renderWithProviders(<StakeholdersPage />, {
+      withRouter: false,
+      permissions: VIEW_ONLY_PERMS,
+    });
     await screen.findByText('Ana Lucia Torres');
 
     expect(
@@ -149,16 +169,19 @@ describe('StakeholdersPage (HU-021, T-021-17, T-021-29)', () => {
       }),
     );
 
-    renderWithProviders(<StakeholdersPage />, { permissions: FULL_PERMS });
+    renderWithProviders(<StakeholdersPage />, {
+      withRouter: false,
+      permissions: FULL_PERMS,
+    });
     await screen.findByText('Tech Amazonas SAC');
 
     await user.click(screen.getByRole('button', { name: /registrar constituyente/i }));
     await user.type(screen.getByLabelText(/nombres y apellidos/i), 'Ana Lucia Torres');
     await user.type(screen.getByLabelText(/^dni$/i), '45678912');
-    await user.click(screen.getByRole('button', { name: /^registrar constituyente$/i }));
+    await user.click(screen.getByRole('button', { name: /guardar constituyente/i }));
 
     const successBanner = await screen.findByText(/registrado correctamente/i);
-    expect(successBanner.closest('[role="alert"]')).toHaveFocus();
+    expect(successBanner.closest('[role="status"]')).toHaveFocus();
   });
 
   it('voids with a reason, shows the voided status badge and never deletes (CA3)', async () => {
@@ -173,7 +196,10 @@ describe('StakeholdersPage (HU-021, T-021-17, T-021-29)', () => {
       }),
     );
 
-    renderWithProviders(<StakeholdersPage />, { permissions: FULL_PERMS });
+    renderWithProviders(<StakeholdersPage />, {
+      withRouter: false,
+      permissions: FULL_PERMS,
+    });
     await screen.findByText('Ana Lucia Torres');
 
     expect(screen.queryByRole('button', { name: /eliminar/i })).not.toBeInTheDocument();
@@ -186,7 +212,8 @@ describe('StakeholdersPage (HU-021, T-021-17, T-021-29)', () => {
     await user.click(screen.getByRole('button', { name: /confirmar anulación/i }));
 
     const successBanner = await screen.findByText(/anulado correctamente/i);
-    expect(successBanner.closest('[role="alert"]')).toHaveFocus();
-    expect(await screen.findByText('Anulado')).toBeInTheDocument();
+    expect(successBanner.closest('[role="status"]')).toHaveFocus();
+    expect(await screen.findByText(/motivo de anulación:/i)).toBeInTheDocument();
+    expect(screen.getAllByText('Anulado').length).toBeGreaterThanOrEqual(2);
   });
 });
