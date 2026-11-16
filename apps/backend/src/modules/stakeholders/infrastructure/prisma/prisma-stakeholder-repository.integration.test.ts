@@ -131,4 +131,127 @@ describe('PrismaStakeholderRepository Integration (PostgreSQL real, T-021-24)', 
     const finalState = await repository.findById('stk-cv1');
     expect(finalState?.status).toBe('VOIDED');
   }, 5_000);
+
+  it('lists stakeholders ordered by name with pagination', async () => {
+    await repository.save(
+      Stakeholder.register({
+        id: 'stk-l3',
+        kind: 'PERSON',
+        fullName: 'Carlos Vega',
+        dni: '11111113',
+        actorId: 'user-1',
+        now: NOW,
+      }),
+    );
+    await repository.save(
+      Stakeholder.register({
+        id: 'stk-l1',
+        kind: 'PERSON',
+        fullName: 'Ana Alvarez',
+        dni: '11111111',
+        actorId: 'user-1',
+        now: NOW,
+      }),
+    );
+    await repository.save(
+      Stakeholder.register({
+        id: 'stk-l2',
+        kind: 'INSTITUTION',
+        fullName: 'Boreal Tech SAC',
+        ruc: '20111111112',
+        actorId: 'user-1',
+        now: NOW,
+      }),
+    );
+
+    const page1 = await repository.list({ page: 1, pageSize: 2 });
+    expect(page1.total).toBe(3);
+    expect(page1.items.map((item) => item.fullName)).toEqual(['Ana Alvarez', 'Boreal Tech SAC']);
+
+    const page2 = await repository.list({ page: 2, pageSize: 2 });
+    expect(page2.total).toBe(3);
+    expect(page2.items.map((item) => item.fullName)).toEqual(['Carlos Vega']);
+  }, 5_000);
+
+  it('filters by kind, status and exact document', async () => {
+    const pActive = makePerson('stk-f1', '22222221');
+    const pVoided = makePerson('stk-f2', '22222222').void({
+      reason: 'Registro anulado para probar filtros de estado',
+      actorId: 'user-2',
+      now: LATER,
+    });
+    const inst = makeInstitution('stk-f3', '20222222223');
+
+    await repository.save(pActive);
+    await repository.save(pVoided);
+    await repository.save(inst);
+
+    const onlyPersons = await repository.list({ kind: 'PERSON', page: 1, pageSize: 10 });
+    expect(onlyPersons.total).toBe(2);
+
+    const activePersons = await repository.list({
+      kind: 'PERSON',
+      status: 'ACTIVE',
+      page: 1,
+      pageSize: 10,
+    });
+    expect(activePersons.total).toBe(1);
+    expect(activePersons.items[0]?.id).toBe('stk-f1');
+
+    const byRuc = await repository.list({ document: '20222222223', page: 1, pageSize: 10 });
+    expect(byRuc.total).toBe(1);
+    expect(byRuc.items[0]?.id).toBe('stk-f3');
+  }, 5_000);
+
+  it('finds a voided stakeholder by its exact document', async () => {
+    const voided = makePerson('stk-fv1', '33333331').void({
+      reason: 'Anulado pero localizable por documento exacto',
+      actorId: 'user-2',
+      now: LATER,
+    });
+    await repository.save(voided);
+
+    const result = await repository.list({ document: '33333331', page: 1, pageSize: 10 });
+    expect(result.total).toBe(1);
+    expect(result.items[0]?.id).toBe('stk-fv1');
+    expect(result.items[0]?.status).toBe('VOIDED');
+  }, 5_000);
+
+  it('searches by name, DNI or RUC and treats wildcard characters literally', async () => {
+    await repository.save(
+      Stakeholder.register({
+        id: 'stk-w1',
+        kind: 'INSTITUTION',
+        fullName: '100% Real_Corp SAC',
+        ruc: '20444444441',
+        actorId: 'user-1',
+        now: NOW,
+      }),
+    );
+    await repository.save(
+      Stakeholder.register({
+        id: 'stk-w2',
+        kind: 'PERSON',
+        fullName: 'Lucia Mendoza',
+        dni: '44444442',
+        actorId: 'user-1',
+        now: NOW,
+      }),
+    );
+
+    const byName = await repository.list({ search: 'mendoza', page: 1, pageSize: 10 });
+    expect(byName.items.map((item) => item.id)).toEqual(['stk-w2']);
+
+    const byDni = await repository.list({ search: '444442', page: 1, pageSize: 10 });
+    expect(byDni.items.map((item) => item.id)).toEqual(['stk-w2']);
+
+    const byRuc = await repository.list({ search: '204444', page: 1, pageSize: 10 });
+    expect(byRuc.items.map((item) => item.id)).toEqual(['stk-w1']);
+
+    const byPercent = await repository.list({ search: '%', page: 1, pageSize: 10 });
+    expect(byPercent.items.map((item) => item.id)).toEqual(['stk-w1']);
+
+    const byUnderscore = await repository.list({ search: '_', page: 1, pageSize: 10 });
+    expect(byUnderscore.items.map((item) => item.id)).toEqual(['stk-w1']);
+  }, 5_000);
 });

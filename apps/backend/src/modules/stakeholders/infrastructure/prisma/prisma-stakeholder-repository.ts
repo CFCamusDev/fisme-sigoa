@@ -1,7 +1,13 @@
+import type { Prisma } from '../../../../shared/prisma/generated/client.js';
 import type { DbProvider } from '../../../../shared/prisma/prisma-unit-of-work.js';
 import type { StakeholderStatus } from '../../domain/entities/stakeholder-enums.js';
 import type { Stakeholder } from '../../domain/entities/stakeholder.js';
 import { DuplicateStakeholderError } from '../../domain/errors/index.js';
+import type {
+  ListStakeholdersFilter,
+  StakeholderPage,
+  StakeholderReader,
+} from '../../domain/ports/stakeholder-reader.js';
 import type { StakeholderRepository } from '../../domain/ports/stakeholder-repository.js';
 import { mapPrismaStakeholderRowToDomain } from './prisma-stakeholder-mapper.js';
 
@@ -9,12 +15,53 @@ function isUniqueViolation(error: unknown): boolean {
   return !!error && typeof error === 'object' && (error as { code?: string }).code === 'P2002';
 }
 
-export class PrismaStakeholderRepository implements StakeholderRepository {
+export class PrismaStakeholderRepository implements StakeholderRepository, StakeholderReader {
   constructor(private readonly dbProvider: DbProvider) {}
 
   async findById(id: string): Promise<Stakeholder | null> {
     const row = await this.dbProvider.get().stakeholder.findUnique({ where: { id } });
     return row ? mapPrismaStakeholderRowToDomain(row) : null;
+  }
+
+  async list(filter: ListStakeholdersFilter): Promise<StakeholderPage> {
+    const andConditions: Prisma.StakeholderWhereInput[] = [];
+    if (filter.kind) {
+      andConditions.push({ kind: filter.kind });
+    }
+    if (filter.status) {
+      andConditions.push({ status: filter.status });
+    }
+    if (filter.document) {
+      andConditions.push({
+        OR: [{ dni: filter.document }, { ruc: filter.document }],
+      });
+    }
+    if (filter.search) {
+      andConditions.push({
+        OR: [
+          { fullName: { contains: filter.search, mode: 'insensitive' } },
+          { dni: { contains: filter.search, mode: 'insensitive' } },
+          { ruc: { contains: filter.search, mode: 'insensitive' } },
+        ],
+      });
+    }
+
+    const where: Prisma.StakeholderWhereInput =
+      andConditions.length > 0 ? { AND: andConditions } : {};
+
+    const db = this.dbProvider.get();
+    const rows = await db.stakeholder.findMany({
+      where,
+      orderBy: [{ fullName: 'asc' }, { id: 'asc' }],
+      skip: (filter.page - 1) * filter.pageSize,
+      take: filter.pageSize,
+    });
+    const total = await db.stakeholder.count({ where });
+
+    return {
+      items: rows.map(mapPrismaStakeholderRowToDomain),
+      total,
+    };
   }
 
   async save(stakeholder: Stakeholder): Promise<void> {
