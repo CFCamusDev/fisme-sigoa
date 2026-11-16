@@ -37,11 +37,12 @@ export class PrismaStakeholderRepository implements StakeholderRepository, Stake
       });
     }
     if (filter.search) {
+      const literalSearch = filter.search.replace(/[\\%_]/g, '\\$&');
       andConditions.push({
         OR: [
-          { fullName: { contains: filter.search, mode: 'insensitive' } },
-          { dni: { contains: filter.search, mode: 'insensitive' } },
-          { ruc: { contains: filter.search, mode: 'insensitive' } },
+          { fullName: { contains: literalSearch, mode: 'insensitive' } },
+          { dni: { contains: literalSearch, mode: 'insensitive' } },
+          { ruc: { contains: literalSearch, mode: 'insensitive' } },
         ],
       });
     }
