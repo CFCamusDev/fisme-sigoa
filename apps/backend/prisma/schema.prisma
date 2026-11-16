@@ -597,3 +597,43 @@ model TemplateVersion {
   @@index([templateId, status])
   @@map("template_versions")
 }
+
+// ==============================================================================
+// CONSTITUYENTES (HU-021, RF-021, RS-037)
+// ==============================================================================
+
+enum StakeholderKind {
+  PERSON
+  INSTITUTION
+}
+
+enum StakeholderStatus {
+  ACTIVE
+  VOIDED
+}
+
+model Stakeholder {
+  id             String            @id @default(cuid())
+  kind           StakeholderKind
+  fullName       String
+  dni            String?           @unique
+  ruc            String?           @unique
+  email          String?
+  mobile         String?
+  position       String?
+  institution    String?
+  sector         String?
+  graduationYear Int?
+  cycle          String?
+  status         StakeholderStatus @default(ACTIVE)
+  voidReason     String?
+  voidedAt       DateTime?
+  voidedBy       String?
+  createdBy      String
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([status])
+  @@index([fullName])
+  @@map("stakeholders")
+}
