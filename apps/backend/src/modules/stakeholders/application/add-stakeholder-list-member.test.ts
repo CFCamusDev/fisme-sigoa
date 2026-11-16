@@ -270,8 +270,8 @@ describe('AddStakeholderListMemberUseCase (HU-022, T-022-07, T-022-20)', () => {
       hasEmail: true,
       hasMobile: true,
     });
-    expect('email' in (auditCall?.after ?? {})).toBe(false);
-    expect('mobile' in (auditCall?.after ?? {})).toBe(false);
+    expect('email' in (auditCall?.after as Record<string, unknown>)).toBe(false);
+    expect('mobile' in (auditCall?.after as Record<string, unknown>)).toBe(false);
   });
 
   it('propagates DuplicateListMemberError without auditing', async () => {
