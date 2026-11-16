@@ -230,13 +230,13 @@ jobs:
       - name: Preparar paquetes compartidos y cliente Prisma
         run: pnpm build:shared && pnpm db:generate
       - name: Descargar informes blob de integración
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           pattern: integration-blob-*
           path: tmp/integration-blobs
           merge-multiple: true
       - name: Descargar informe de aislamiento de integración
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: isolation-integration-report
           path: tmp/ci-reports
@@ -449,13 +449,13 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Descargar informes blob de los shards E2E
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           pattern: e2e-blob-*
           path: all-blob-reports
           merge-multiple: true
       - name: Descargar informe de aislamiento E2E
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: isolation-e2e-report
           path: tmp/ci-reports
