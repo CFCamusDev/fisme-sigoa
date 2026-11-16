@@ -112,20 +112,17 @@ describe('PrismaStakeholderRepository Integration (PostgreSQL real, T-021-24)', 
     const person = makePerson('stk-cv1', '55443322');
     await repository.save(person);
 
-    const attempts = Array.from({ length: 5 }, (_, index) =>
-      uow.run(async () => {
-        const current = await repository.findById('stk-cv1');
-        if (!current || current.status !== 'ACTIVE') {
-          return false;
-        }
-        const voided = current.void({
-          reason: `Anulacion concurrente intento ${index + 1}`,
-          actorId: `user-${index + 1}`,
-          now: LATER,
-        });
-        return repository.saveChanges(voided, 'ACTIVE');
-      }),
-    );
+    const active = await repository.findById('stk-cv1');
+    expect(active).not.toBeNull();
+
+    const attempts = Array.from({ length: 5 }, (_, index) => {
+      const voided = active!.void({
+        reason: `Anulacion concurrente intento ${index + 1}`,
+        actorId: `user-${index + 1}`,
+        now: LATER,
+      });
+      return repository.saveChanges(voided, 'ACTIVE');
+    });
 
     const results = await Promise.all(attempts);
     expect(results.filter(Boolean)).toHaveLength(1);
