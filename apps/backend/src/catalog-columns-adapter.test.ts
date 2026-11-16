@@ -52,13 +52,12 @@ describe('createCatalogColumnsReader', () => {
     const { programReader, versionReader, objectiveReader, attributeReader, reader } =
       createMocks();
 
-    const approvedVersion = CatalogVersion.reconstitute({
+    const approvedVersion = CatalogVersion.create({
       id: 'cv-2',
       programId: 'prog-1',
       number: 2,
       status: 'APPROVED',
       basedOnVersionId: 'cv-1',
-      resolutionId: 'res-1',
       createdAt: new Date('2026-01-01T00:00:00.000Z'),
       createdBy: 'user-1',
       updatedAt: new Date('2026-01-02T00:00:00.000Z'),
@@ -68,9 +67,9 @@ describe('createCatalogColumnsReader', () => {
     programReader.getCurrentProgramId.mockResolvedValue('prog-1');
     versionReader.findCurrent.mockResolvedValue(approvedVersion);
     objectiveReader.listByVersion.mockResolvedValue([
-      EducationalObjective.reconstitute({
+      EducationalObjective.create({
         id: 'oe-2',
-        catalogVersionId: 'cv-2',
+        versionId: 'cv-2',
         code: 'OEP2',
         statement: 'Segundo',
         order: 2,
@@ -79,9 +78,9 @@ describe('createCatalogColumnsReader', () => {
         updatedAt: new Date('2026-01-01T00:00:00.000Z'),
         updatedBy: 'user-1',
       }),
-      EducationalObjective.reconstitute({
+      EducationalObjective.create({
         id: 'oe-1',
-        catalogVersionId: 'cv-2',
+        versionId: 'cv-2',
         code: 'OEP1',
         statement: 'Primero',
         order: 1,
@@ -92,9 +91,9 @@ describe('createCatalogColumnsReader', () => {
       }),
     ]);
     attributeReader.listByVersion.mockResolvedValue([
-      GraduateAttribute.reconstitute({
+      GraduateAttribute.create({
         id: 'ag-2',
-        catalogVersionId: 'cv-2',
+        versionId: 'cv-2',
         code: 'AG-C02',
         name: 'Ética',
         statement: 'Principios éticos',
@@ -104,9 +103,9 @@ describe('createCatalogColumnsReader', () => {
         updatedAt: new Date('2026-01-01T00:00:00.000Z'),
         updatedBy: 'user-1',
       }),
-      GraduateAttribute.reconstitute({
+      GraduateAttribute.create({
         id: 'ag-1',
-        catalogVersionId: 'cv-2',
+        versionId: 'cv-2',
         code: 'AG-C01',
         name: 'Profesionalismo',
         statement: 'Impacto social',
