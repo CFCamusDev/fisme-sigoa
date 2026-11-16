@@ -62,7 +62,7 @@ export class RegisterStakeholderUseCase {
         entity: 'Stakeholder',
         entityId: stakeholder.id,
         actor: command.actorId,
-        ip: command.ip ?? null,
+        ip: command.ip ?? undefined,
         before: null,
         after: stakeholder.snapshot(),
       });
