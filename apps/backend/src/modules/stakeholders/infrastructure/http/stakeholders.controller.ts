@@ -1,11 +1,17 @@
 import type { Request, RequestHandler } from 'express';
-import type { RegisterStakeholderRequest } from '@sigoa/shared';
+import type {
+  EditStakeholderRequest,
+  RegisterStakeholderRequest,
+  StakeholderIdParams,
+} from '@sigoa/shared';
 import { getRequestContext } from '../../../../shared/audit/request-context.js';
 import { UnauthorizedError } from '../../../../shared/errors/app-error.js';
+import type { EditStakeholderUseCase } from '../../application/edit-stakeholder.js';
 import type { RegisterStakeholderUseCase } from '../../application/register-stakeholder.js';
 
 export interface StakeholdersControllerDependencies {
   readonly registerStakeholderUseCase: RegisterStakeholderUseCase;
+  readonly editStakeholderUseCase: EditStakeholderUseCase;
 }
 
 function resolveActor(req: Request): { actorId: string; ip: string } {
@@ -21,9 +27,11 @@ function resolveActor(req: Request): { actorId: string; ip: string } {
 /** Controlador de `/stakeholders` (HU-021). */
 export class StakeholdersController {
   private readonly registerStakeholderUseCase: RegisterStakeholderUseCase;
+  private readonly editStakeholderUseCase: EditStakeholderUseCase;
 
   constructor(deps: StakeholdersControllerDependencies) {
     this.registerStakeholderUseCase = deps.registerStakeholderUseCase;
+    this.editStakeholderUseCase = deps.editStakeholderUseCase;
   }
 
   registerStakeholder: RequestHandler = async (req, res, next) => {
@@ -38,6 +46,25 @@ export class StakeholdersController {
       });
 
       res.setHeader('Cache-Control', 'no-store').status(201).json(response);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  editStakeholder: RequestHandler = async (req, res, next) => {
+    try {
+      const { actorId, ip } = resolveActor(req);
+      const { id } = req.params as StakeholderIdParams;
+      const body = req.body as EditStakeholderRequest;
+
+      const response = await this.editStakeholderUseCase.execute({
+        ...body,
+        id,
+        actorId,
+        ip,
+      });
+
+      res.setHeader('Cache-Control', 'no-store').status(200).json(response);
     } catch (error) {
       next(error);
     }
