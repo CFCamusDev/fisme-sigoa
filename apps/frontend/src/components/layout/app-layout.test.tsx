@@ -170,6 +170,31 @@ describe('AppLayout Component', () => {
     expect(screen.queryByRole('link', { name: /Plantillas/i })).not.toBeInTheDocument();
   });
 
+  it('renders navigation item "Constituyentes" linking to /constituyentes (HU-021, T-021-17)', async () => {
+    renderWithProviders(
+      <AppLayout>
+        <p>Dashboard</p>
+      </AppLayout>,
+      { permissions: [{ code: 'constituyente.ver', scope: 'GLOBAL' }] },
+    );
+
+    const stakeholdersLink = await screen.findByRole('link', { name: /Constituyentes/i });
+    expect(stakeholdersLink).toBeInTheDocument();
+    expect(stakeholdersLink).toHaveAttribute('href', '/constituyentes');
+  });
+
+  it('hides the "Constituyentes" item without the constituyente.ver permission (HU-021, T-021-17)', async () => {
+    renderWithProviders(
+      <AppLayout>
+        <p>Dashboard</p>
+      </AppLayout>,
+      { permissions: [{ code: 'resolucion.ver', scope: 'GLOBAL' }] },
+    );
+
+    await screen.findByRole('link', { name: /Resoluciones/i });
+    expect(screen.queryByRole('link', { name: /Constituyentes/i })).not.toBeInTheDocument();
+  });
+
   it('controls mobile sidebar visibility with accessible aria-expanded button', async () => {
     const user = userEvent.setup();
 

@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Users,
+  UsersRound,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -78,5 +79,11 @@ export const MAIN_NAV_ITEMS: readonly NavItem[] = [
     href: '/plantillas',
     icon: FileText,
     permission: 'plantilla.ver',
+  },
+  {
+    title: 'Constituyentes',
+    href: '/constituyentes',
+    icon: UsersRound,
+    permission: 'constituyente.ver',
   },
 ] as const;
