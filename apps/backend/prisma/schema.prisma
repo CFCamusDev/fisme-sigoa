@@ -348,7 +348,8 @@ model Program {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  catalogVersions CatalogVersion[]
+  catalogVersions  CatalogVersion[]
+  stakeholderLists StakeholderList[]
 
   @@map("programs")
 }
@@ -636,4 +637,34 @@ model Stakeholder {
   @@index([status])
   @@index([fullName])
   @@map("stakeholders")
+}
+
+// ==============================================================================
+// LISTAS DEL ANEXO 3 (HU-022, RF-022, RS-037)
+// ==============================================================================
+
+enum StakeholderListType {
+  ADVISORY_BOARD
+  EMPLOYER
+  GRADUATE
+  STUDENT
+  TEACHER
+}
+
+model StakeholderList {
+  id              String              @id @default(cuid())
+  programId       String
+  type            StakeholderListType
+  year            Int
+  studyPlanNumber String?
+  version         String?
+  createdBy       String
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  program Program @relation(fields: [programId], references: [id], onDelete: Restrict)
+
+  @@unique([programId, type, year])
+  @@index([type, year])
+  @@map("stakeholder_lists")
 }
