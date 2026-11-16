@@ -91,6 +91,8 @@ export * from './domain/policies/template-content-policy.js';
 export * from './domain/policies/unrecognized-variable-detector.js';
 export * from './domain/policies/template-renderer.js';
 export * from './domain/policies/template-sample-data.js';
+export * from './domain/policies/catalog-columns.js';
+export * from './domain/policies/catalog-columns-provider.js';
 export * from './domain/errors/index.js';
 export * from './domain/ports/index.js';
 export * from './application/template-dto.js';

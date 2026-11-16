@@ -8,3 +8,4 @@ export * from './template-published-exists-error.js';
 export * from './template-version-number-conflict-error.js';
 export * from './template-draft-changed-error.js';
 export * from './template-preview-in-progress-error.js';
+export * from './catalog-columns-unavailable-error.js';
