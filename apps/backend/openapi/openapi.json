@@ -7267,6 +7267,635 @@
           }
         }
       }
+    },
+    "/stakeholders": {
+      "get": {
+        "tags": ["Stakeholders"],
+        "summary": "Listar y buscar constituyentes",
+        "description": "Consulta paginada del registro maestro de constituyentes con búsqueda por nombre, DNI o RUC y filtros por tipo, estado o documento exacto. Requiere `constituyente.ver` (GLOBAL).",
+        "operationId": "listStakeholders",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "description": "Búsqueda por nombre, DNI o RUC (comodines tratados como texto literal)."
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["PERSON", "INSTITUTION"]
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ACTIVE", "VOIDED"]
+            }
+          },
+          {
+            "name": "document",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(\\d{8}|\\d{11})$"
+            },
+            "description": "Búsqueda exacta por DNI (8 dígitos) o RUC (11 dígitos), incluye anulados."
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000,
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Listado paginado de constituyentes.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Evita almacenar datos personales en cachés intermedios (RNF-012)."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListStakeholdersResponse"
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "stk_person_1",
+                      "kind": "PERSON",
+                      "fullName": "Ana Lucia Torres",
+                      "dni": "45678912",
+                      "ruc": null,
+                      "email": "ana.torres@example.com",
+                      "mobile": "987654321",
+                      "position": "Egresada",
+                      "institution": "UNTRM",
+                      "sector": "Educacion",
+                      "graduationYear": 2022,
+                      "cycle": null,
+                      "status": "ACTIVE",
+                      "voidReason": null,
+                      "voidedAt": null,
+                      "voidedBy": null,
+                      "createdAt": "2026-11-16T10:00:00.000Z",
+                      "updatedAt": "2026-11-16T10:00:00.000Z"
+                    }
+                  ],
+                  "page": 1,
+                  "pageSize": 20,
+                  "total": 1,
+                  "totalPages": 1
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros de consulta inválidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Parámetros inválidos."
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin permiso constituyente.ver.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "Acceso denegado."
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Stakeholders"],
+        "summary": "Registrar constituyente",
+        "description": "Registra una persona (con DNI único) o institución (con RUC único) en el registro maestro. Requiere `constituyente.editar` (GLOBAL).",
+        "operationId": "registerStakeholder",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterStakeholderRequest"
+              },
+              "example": {
+                "kind": "PERSON",
+                "fullName": "Ana Lucia Torres",
+                "dni": "45678912",
+                "email": "ana.torres@example.com",
+                "mobile": "987654321",
+                "position": "Egresada",
+                "institution": "UNTRM",
+                "sector": "Educacion",
+                "graduationYear": 2022,
+                "cycle": null
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Constituyente registrado correctamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Evita almacenar datos personales en cachés intermedios (RNF-012)."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StakeholderDto"
+                },
+                "example": {
+                  "id": "stk_person_1",
+                  "kind": "PERSON",
+                  "fullName": "Ana Lucia Torres",
+                  "dni": "45678912",
+                  "ruc": null,
+                  "email": "ana.torres@example.com",
+                  "mobile": "987654321",
+                  "position": "Egresada",
+                  "institution": "UNTRM",
+                  "sector": "Educacion",
+                  "graduationYear": 2022,
+                  "cycle": null,
+                  "status": "ACTIVE",
+                  "voidReason": null,
+                  "voidedAt": null,
+                  "voidedBy": null,
+                  "createdAt": "2026-11-16T10:00:00.000Z",
+                  "updatedAt": "2026-11-16T10:00:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos inválidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Los datos del constituyente no son válidos."
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin permiso constituyente.editar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "Acceso denegado."
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "DNI o RUC duplicado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "Ya existe un constituyente registrado con ese DNI o RUC."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stakeholders/{id}": {
+      "patch": {
+        "tags": ["Stakeholders"],
+        "summary": "Editar constituyente",
+        "description": "Actualiza parcialmente los datos de un constituyente activo. Requiere `constituyente.editar` (GLOBAL).",
+        "operationId": "editStakeholder",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditStakeholderRequest"
+              },
+              "example": {
+                "position": "Jefa de Sistemas",
+                "email": "ana.nueva@example.com"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Constituyente actualizado.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Evita almacenar datos personales en cachés intermedios (RNF-012)."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StakeholderDto"
+                },
+                "example": {
+                  "id": "stk_person_1",
+                  "kind": "PERSON",
+                  "fullName": "Ana Lucia Torres",
+                  "dni": "45678912",
+                  "ruc": null,
+                  "email": "ana.nueva@example.com",
+                  "mobile": "987654321",
+                  "position": "Jefa de Sistemas",
+                  "institution": "UNTRM",
+                  "sector": "Educacion",
+                  "graduationYear": 2022,
+                  "cycle": null,
+                  "status": "ACTIVE",
+                  "voidReason": null,
+                  "voidedAt": null,
+                  "voidedBy": null,
+                  "createdAt": "2026-11-16T10:00:00.000Z",
+                  "updatedAt": "2026-11-16T10:00:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos de edición inválidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Los datos de edición no son válidos."
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin permiso constituyente.editar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "Acceso denegado."
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Constituyente no encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "No se encontró el constituyente solicitado."
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Constituyente anulado o documento duplicado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "El constituyente está anulado o el documento ya pertenece a otro registro."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stakeholders/{id}/void": {
+      "post": {
+        "tags": ["Stakeholders"],
+        "summary": "Anular constituyente",
+        "description": "Anula lógicamente un constituyente activo con un motivo obligatorio (10 a 500 caracteres). Nunca elimina físicamente. Requiere `constituyente.editar` (GLOBAL).",
+        "operationId": "voidStakeholder",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoidStakeholderRequest"
+              },
+              "example": {
+                "reason": "Constituyente dado de baja por solicitud expresa"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Constituyente anulado correctamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Evita almacenar datos personales en cachés intermedios (RNF-012)."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StakeholderDto"
+                },
+                "example": {
+                  "id": "stk_person_1",
+                  "kind": "PERSON",
+                  "fullName": "Ana Lucia Torres",
+                  "dni": "45678912",
+                  "ruc": null,
+                  "email": "ana.torres@example.com",
+                  "mobile": "987654321",
+                  "position": "Egresada",
+                  "institution": "UNTRM",
+                  "sector": "Educacion",
+                  "graduationYear": 2022,
+                  "cycle": null,
+                  "status": "VOIDED",
+                  "voidReason": "Constituyente dado de baja por solicitud expresa",
+                  "voidedAt": "2026-11-16T12:00:00.000Z",
+                  "voidedBy": "usr_1",
+                  "createdAt": "2026-11-16T10:00:00.000Z",
+                  "updatedAt": "2026-11-16T12:00:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Motivo inválido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "El motivo de anulación no es válido."
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "No autenticado."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin permiso constituyente.editar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "Acceso denegado."
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Constituyente no encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "No se encontró el constituyente solicitado."
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "El constituyente ya está anulado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "El constituyente ya se encuentra anulado."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -9389,6 +10018,282 @@
               "$ref": "#/components/schemas/TemplatePreviewWarning"
             },
             "description": "Avisos de variables no reconocidas."
+          }
+        }
+      },
+      "StakeholderDto": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "kind",
+          "fullName",
+          "dni",
+          "ruc",
+          "email",
+          "mobile",
+          "position",
+          "institution",
+          "sector",
+          "graduationYear",
+          "cycle",
+          "status",
+          "voidReason",
+          "voidedAt",
+          "voidedBy",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["PERSON", "INSTITUTION"]
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "dni": {
+            "type": ["string", "null"]
+          },
+          "ruc": {
+            "type": ["string", "null"]
+          },
+          "email": {
+            "type": ["string", "null"]
+          },
+          "mobile": {
+            "type": ["string", "null"]
+          },
+          "position": {
+            "type": ["string", "null"]
+          },
+          "institution": {
+            "type": ["string", "null"]
+          },
+          "sector": {
+            "type": ["string", "null"]
+          },
+          "graduationYear": {
+            "type": ["integer", "null"]
+          },
+          "cycle": {
+            "type": ["string", "null"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["ACTIVE", "VOIDED"]
+          },
+          "voidReason": {
+            "type": ["string", "null"]
+          },
+          "voidedAt": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "voidedBy": {
+            "type": ["string", "null"]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "RegisterStakeholderPersonRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "fullName", "dni"],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["PERSON"]
+          },
+          "fullName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "dni": {
+            "type": "string",
+            "pattern": "^\\d{8}$"
+          },
+          "email": {
+            "type": ["string", "null"],
+            "maxLength": 254
+          },
+          "mobile": {
+            "type": ["string", "null"],
+            "pattern": "^9\\d{8}$"
+          },
+          "position": {
+            "type": ["string", "null"],
+            "maxLength": 150
+          },
+          "institution": {
+            "type": ["string", "null"],
+            "maxLength": 200
+          },
+          "sector": {
+            "type": ["string", "null"],
+            "maxLength": 150
+          },
+          "graduationYear": {
+            "type": ["integer", "null"],
+            "minimum": 1950,
+            "maximum": 2100
+          },
+          "cycle": {
+            "type": ["string", "null"],
+            "maxLength": 50
+          }
+        }
+      },
+      "RegisterStakeholderInstitutionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "fullName", "ruc"],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["INSTITUTION"]
+          },
+          "fullName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "ruc": {
+            "type": "string",
+            "pattern": "^\\d{11}$"
+          },
+          "email": {
+            "type": ["string", "null"],
+            "maxLength": 254
+          },
+          "mobile": {
+            "type": ["string", "null"],
+            "pattern": "^9\\d{8}$"
+          },
+          "position": {
+            "type": ["string", "null"],
+            "maxLength": 150
+          },
+          "sector": {
+            "type": ["string", "null"],
+            "maxLength": 150
+          }
+        }
+      },
+      "RegisterStakeholderRequest": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/RegisterStakeholderPersonRequest"
+          },
+          {
+            "$ref": "#/components/schemas/RegisterStakeholderInstitutionRequest"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "kind",
+          "mapping": {
+            "PERSON": "#/components/schemas/RegisterStakeholderPersonRequest",
+            "INSTITUTION": "#/components/schemas/RegisterStakeholderInstitutionRequest"
+          }
+        }
+      },
+      "EditStakeholderRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "fullName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "dni": {
+            "type": ["string", "null"],
+            "pattern": "^\\d{8}$"
+          },
+          "ruc": {
+            "type": ["string", "null"],
+            "pattern": "^\\d{11}$"
+          },
+          "email": {
+            "type": ["string", "null"],
+            "maxLength": 254
+          },
+          "mobile": {
+            "type": ["string", "null"],
+            "pattern": "^9\\d{8}$"
+          },
+          "position": {
+            "type": ["string", "null"],
+            "maxLength": 150
+          },
+          "institution": {
+            "type": ["string", "null"],
+            "maxLength": 200
+          },
+          "sector": {
+            "type": ["string", "null"],
+            "maxLength": 150
+          },
+          "graduationYear": {
+            "type": ["integer", "null"],
+            "minimum": 1950,
+            "maximum": 2100
+          },
+          "cycle": {
+            "type": ["string", "null"],
+            "maxLength": 50
+          }
+        }
+      },
+      "VoidStakeholderRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["reason"],
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 500
+          }
+        }
+      },
+      "ListStakeholdersResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["items", "page", "pageSize", "total", "totalPages"],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StakeholderDto"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "totalPages": {
+            "type": "integer",
+            "minimum": 0
           }
         }
       }

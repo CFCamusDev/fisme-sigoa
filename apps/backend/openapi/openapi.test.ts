@@ -72,6 +72,11 @@ import {
   templateVariableSchema,
   templateVersionDtoSchema,
   templateVersionSummaryDtoSchema,
+  editStakeholderRequestSchema,
+  listStakeholdersResponseSchema,
+  registerStakeholderRequestSchema,
+  stakeholderDtoSchema,
+  voidStakeholderRequestSchema,
 } from '@sigoa/shared';
 import { createAuthRouter } from '../src/modules/auth/infrastructure/http/auth.routes.js';
 import { createUsersRouter } from '../src/modules/users/infrastructure/http/users.routes.js';
@@ -99,6 +104,8 @@ import { createTemplatesRouter } from '../src/modules/templates/infrastructure/h
 import type { TemplatesController } from '../src/modules/templates/infrastructure/http/templates.controller.js';
 import { createSemestersRouter } from '../src/modules/parameters/infrastructure/http/semesters.routes.js';
 import type { SemestersController } from '../src/modules/parameters/infrastructure/http/semesters.controller.js';
+import { createStakeholdersRouter } from '../src/modules/stakeholders/infrastructure/http/stakeholders.routes.js';
+import type { StakeholdersController } from '../src/modules/stakeholders/infrastructure/http/stakeholders.controller.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -2507,6 +2514,147 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
         'post /templates/:id/publish',
         'put /templates/:id/draft',
       ]);
+    });
+  });
+
+  describe('OpenAPI Specification for Stakeholders (HU-021, T-021-15, RF-021, RNF-032)', () => {
+    it('documents the four operations with bearerAuth and proper status codes', () => {
+      const operations = [
+        {
+          path: '/stakeholders',
+          method: 'get',
+          id: 'listStakeholders',
+          codes: ['200', '400', '401', '403'],
+        },
+        {
+          path: '/stakeholders',
+          method: 'post',
+          id: 'registerStakeholder',
+          codes: ['201', '400', '401', '403', '409'],
+        },
+        {
+          path: '/stakeholders/{id}',
+          method: 'patch',
+          id: 'editStakeholder',
+          codes: ['200', '400', '401', '403', '404', '409'],
+        },
+        {
+          path: '/stakeholders/{id}/void',
+          method: 'post',
+          id: 'voidStakeholder',
+          codes: ['200', '400', '401', '403', '404', '409'],
+        },
+      ] as const;
+
+      for (const expected of operations) {
+        const op = spec.paths[expected.path]?.[expected.method];
+        expect(op, `${expected.method} ${expected.path}`).toBeDefined();
+        expect(op.operationId).toBe(expected.id);
+        expect(op.tags).toEqual(['Stakeholders']);
+        expect(op.security).toEqual([{ bearerAuth: [] }]);
+        expect(Object.keys(op.responses).sort()).toEqual([...expected.codes]);
+        const successCode = expected.codes[0];
+        expect(op.responses[successCode].headers['Cache-Control'].example).toBe('no-store');
+      }
+    });
+
+    it('validates the request and response examples against the shared schemas', () => {
+      const listExample =
+        spec.paths['/stakeholders'].get.responses['200'].content['application/json'].example;
+      expect(listStakeholdersResponseSchema.safeParse(listExample).success).toBe(true);
+
+      const postOp = spec.paths['/stakeholders'].post;
+      expect(
+        registerStakeholderRequestSchema.safeParse(
+          postOp.requestBody.content['application/json'].example,
+        ).success,
+      ).toBe(true);
+      expect(
+        stakeholderDtoSchema.safeParse(postOp.responses['201'].content['application/json'].example)
+          .success,
+      ).toBe(true);
+
+      const patchOp = spec.paths['/stakeholders/{id}'].patch;
+      expect(
+        editStakeholderRequestSchema.safeParse(
+          patchOp.requestBody.content['application/json'].example,
+        ).success,
+      ).toBe(true);
+      expect(
+        stakeholderDtoSchema.safeParse(patchOp.responses['200'].content['application/json'].example)
+          .success,
+      ).toBe(true);
+
+      const voidOp = spec.paths['/stakeholders/{id}/void'].post;
+      expect(
+        voidStakeholderRequestSchema.safeParse(
+          voidOp.requestBody.content['application/json'].example,
+        ).success,
+      ).toBe(true);
+      expect(
+        stakeholderDtoSchema.safeParse(voidOp.responses['200'].content['application/json'].example)
+          .success,
+      ).toBe(true);
+
+      const pairs: [string, { shape: Record<string, unknown> }][] = [
+        ['StakeholderDto', stakeholderDtoSchema],
+        ['EditStakeholderRequest', editStakeholderRequestSchema],
+        ['VoidStakeholderRequest', voidStakeholderRequestSchema],
+        ['ListStakeholdersResponse', listStakeholdersResponseSchema],
+      ];
+      for (const [name, zodSchema] of pairs) {
+        const schema = spec.components.schemas[name];
+        expect(Object.keys(schema.properties).sort(), name).toEqual(
+          Object.keys(zodSchema.shape).sort(),
+        );
+        expect(schema.additionalProperties, name).toBe(false);
+      }
+      expect(spec.components.schemas.RegisterStakeholderRequest.discriminator.propertyName).toBe(
+        'kind',
+      );
+    });
+
+    it('documents no delete operation', () => {
+      expect(spec.paths['/stakeholders']?.delete).toBeUndefined();
+      expect(spec.paths['/stakeholders/{id}']?.delete).toBeUndefined();
+      expect(spec.paths['/stakeholders/{id}/void']?.delete).toBeUndefined();
+    });
+
+    it('has bidirectional parity between openapi spec and createStakeholdersRouter', () => {
+      const router = createStakeholdersRouter({
+        controller: {
+          registerStakeholder: vi.fn(),
+          editStakeholder: vi.fn(),
+          voidStakeholder: vi.fn(),
+          listStakeholders: vi.fn(),
+        } as unknown as StakeholdersController,
+        authenticate: vi.fn(),
+        requirePermission: vi.fn(() => vi.fn()),
+      });
+
+      const routerEndpoints: string[] = [];
+      for (const layer of router.stack) {
+        if (layer.route) {
+          for (const method of Object.keys(layer.route.methods)) {
+            const normalizedPath = (
+              '/stakeholders' + (layer.route.path === '/' ? '' : layer.route.path)
+            ).replace(/:([a-zA-Z0-9_]+)/g, '{$1}');
+            routerEndpoints.push(`${method.toLowerCase()} ${normalizedPath}`);
+          }
+        }
+      }
+
+      expect(routerEndpoints.sort()).toEqual([
+        'get /stakeholders',
+        'patch /stakeholders/{id}',
+        'post /stakeholders',
+        'post /stakeholders/{id}/void',
+      ]);
+
+      for (const endpoint of routerEndpoints) {
+        const [method, routePath] = endpoint.split(' ');
+        expect(spec.paths[routePath!]?.[method!], endpoint).toBeDefined();
+      }
     });
   });
 });
