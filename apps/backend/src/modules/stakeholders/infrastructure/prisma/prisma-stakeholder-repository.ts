@@ -8,6 +8,7 @@ import type {
   StakeholderPage,
   StakeholderReader,
 } from '../../domain/ports/stakeholder-reader.js';
+import type { StakeholderLookup } from '../../domain/ports/stakeholder-lookup.js';
 import type { StakeholderRepository } from '../../domain/ports/stakeholder-repository.js';
 import { mapPrismaStakeholderRowToDomain } from './prisma-stakeholder-mapper.js';
 
@@ -15,12 +16,25 @@ function isUniqueViolation(error: unknown): boolean {
   return !!error && typeof error === 'object' && (error as { code?: string }).code === 'P2002';
 }
 
-export class PrismaStakeholderRepository implements StakeholderRepository, StakeholderReader {
+export class PrismaStakeholderRepository
+  implements StakeholderRepository, StakeholderReader, StakeholderLookup
+{
   constructor(private readonly dbProvider: DbProvider) {}
 
   async findById(id: string): Promise<Stakeholder | null> {
     const row = await this.dbProvider.get().stakeholder.findUnique({ where: { id } });
     return row ? mapPrismaStakeholderRowToDomain(row) : null;
+  }
+
+  async findByIds(ids: readonly string[]): Promise<Stakeholder[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+    const rows = await this.dbProvider.get().stakeholder.findMany({
+      where: { id: { in: [...ids] } },
+      orderBy: [{ fullName: 'asc' }, { id: 'asc' }],
+    });
+    return rows.map(mapPrismaStakeholderRowToDomain);
   }
 
   async list(filter: ListStakeholdersFilter): Promise<StakeholderPage> {
