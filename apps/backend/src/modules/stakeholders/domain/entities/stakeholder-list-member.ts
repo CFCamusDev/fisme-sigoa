@@ -35,7 +35,7 @@ export interface CreateStakeholderListMemberInput {
 }
 
 /** Instantánea de auditoría sin exponer correo ni celular (D7, RNF-012). */
-export interface StakeholderListMemberAuditSnapshot {
+export type StakeholderListMemberAuditSnapshot = {
   readonly listId: string;
   readonly stakeholderId: string;
   readonly fullName: string;
@@ -49,7 +49,7 @@ export interface StakeholderListMemberAuditSnapshot {
   readonly position: string | null;
   readonly graduationYear: number | null;
   readonly cycle: string | null;
-}
+};
 
 export class StakeholderListMember {
   private constructor(private readonly props: StakeholderListMemberProperties) {}

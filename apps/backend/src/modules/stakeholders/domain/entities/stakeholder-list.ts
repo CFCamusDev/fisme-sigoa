@@ -31,13 +31,14 @@ export interface CreateStakeholderListInput {
   readonly now?: Date;
 }
 
-export interface StakeholderListAuditSnapshot {
+/** Alias de tipo para cumplir con el contrato de auditoría (`Record<string, unknown>`). */
+export type StakeholderListAuditSnapshot = {
   readonly programId: string;
   readonly type: StakeholderListType;
   readonly year: number;
   readonly studyPlanNumber: string | null;
   readonly version: string | null;
-}
+};
 
 function normalizeOptionalHeaderField(value: string | null | undefined): string | null {
   if (value === undefined || value === null) {
