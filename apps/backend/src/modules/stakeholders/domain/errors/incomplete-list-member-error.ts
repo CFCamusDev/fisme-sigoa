@@ -7,7 +7,7 @@ export class IncompleteListMemberError extends ValidationError {
     super(
       `Faltan campos obligatorios en el registro del constituyente para este tipo de lista: ${missingFields.join(', ')}.`,
       missingFields.map((field) => ({
-        field,
+        path: field,
         message: `El campo ${field} es obligatorio.`,
       })),
     );
