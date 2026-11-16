@@ -112,6 +112,7 @@ export * from './infrastructure/prisma/prisma-template-version-mapper.js';
 export * from './infrastructure/prisma/prisma-template-version-repository.js';
 export * from './infrastructure/http/templates.controller.js';
 export * from './infrastructure/http/templates.routes.js';
+export * from './infrastructure/rendering/catalog-column-helpers.js';
 export * from './infrastructure/prisma/seed/template-seed.js';
 export * from './infrastructure/prisma/seed/template-seed-data.js';
 export * from './infrastructure/prisma/seed/template-seed-types.js';
