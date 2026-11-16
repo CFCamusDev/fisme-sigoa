@@ -114,8 +114,10 @@ describe('catalog-column-helpers', () => {
 
       for (const attribute of columns.attributes) {
         expect(html).toContain(attribute.code);
-        if (templateCode !== 'FO-08') {
+        if (templateCode === 'FO-07') {
           expect(html).toContain(attribute.name);
+        } else if (templateCode === 'FO-09' || templateCode === 'FO-10') {
+          expect(html).toContain(attribute.statement);
         }
       }
       const attributeCodeMatches = html.match(/AG-C\d{2}/g) ?? [];
