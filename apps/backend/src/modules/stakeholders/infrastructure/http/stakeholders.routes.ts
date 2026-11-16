@@ -3,6 +3,7 @@ import {
   editStakeholderRequestSchema,
   registerStakeholderRequestSchema,
   stakeholderIdParamsSchema,
+  voidStakeholderRequestSchema,
 } from '@sigoa/shared';
 import { validateRequest } from '../../../../shared/middleware/validate-request.js';
 import type { StakeholdersController } from './stakeholders.controller.js';
@@ -39,6 +40,16 @@ export function createStakeholdersRouter(deps: StakeholdersRouterDependencies): 
     deps.requirePermission('constituyente.editar', 'GLOBAL'),
     validateRequest({ params: stakeholderIdParamsSchema, body: editStakeholderRequestSchema }),
     deps.controller.editStakeholder,
+  );
+
+  // POST /stakeholders/:id/void (HU-021, T-021-13, CA3, RF-021, RS-002, RS-020, RNF-008, RNF-009)
+  // Cadena obligatoria: authenticate -> requirePermission -> validateRequest -> controller
+  router.post(
+    '/:id/void',
+    deps.authenticate,
+    deps.requirePermission('constituyente.editar', 'GLOBAL'),
+    validateRequest({ params: stakeholderIdParamsSchema, body: voidStakeholderRequestSchema }),
+    deps.controller.voidStakeholder,
   );
 
   return router;

@@ -3,15 +3,18 @@ import type {
   EditStakeholderRequest,
   RegisterStakeholderRequest,
   StakeholderIdParams,
+  VoidStakeholderRequest,
 } from '@sigoa/shared';
 import { getRequestContext } from '../../../../shared/audit/request-context.js';
 import { UnauthorizedError } from '../../../../shared/errors/app-error.js';
 import type { EditStakeholderUseCase } from '../../application/edit-stakeholder.js';
 import type { RegisterStakeholderUseCase } from '../../application/register-stakeholder.js';
+import type { VoidStakeholderUseCase } from '../../application/void-stakeholder.js';
 
 export interface StakeholdersControllerDependencies {
   readonly registerStakeholderUseCase: RegisterStakeholderUseCase;
   readonly editStakeholderUseCase: EditStakeholderUseCase;
+  readonly voidStakeholderUseCase: VoidStakeholderUseCase;
 }
 
 function resolveActor(req: Request): { actorId: string; ip: string } {
@@ -28,10 +31,12 @@ function resolveActor(req: Request): { actorId: string; ip: string } {
 export class StakeholdersController {
   private readonly registerStakeholderUseCase: RegisterStakeholderUseCase;
   private readonly editStakeholderUseCase: EditStakeholderUseCase;
+  private readonly voidStakeholderUseCase: VoidStakeholderUseCase;
 
   constructor(deps: StakeholdersControllerDependencies) {
     this.registerStakeholderUseCase = deps.registerStakeholderUseCase;
     this.editStakeholderUseCase = deps.editStakeholderUseCase;
+    this.voidStakeholderUseCase = deps.voidStakeholderUseCase;
   }
 
   registerStakeholder: RequestHandler = async (req, res, next) => {
@@ -60,6 +65,25 @@ export class StakeholdersController {
       const response = await this.editStakeholderUseCase.execute({
         ...body,
         id,
+        actorId,
+        ip,
+      });
+
+      res.setHeader('Cache-Control', 'no-store').status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  voidStakeholder: RequestHandler = async (req, res, next) => {
+    try {
+      const { actorId, ip } = resolveActor(req);
+      const { id } = req.params as StakeholderIdParams;
+      const body = req.body as VoidStakeholderRequest;
+
+      const response = await this.voidStakeholderUseCase.execute({
+        id,
+        reason: body.reason,
         actorId,
         ip,
       });
