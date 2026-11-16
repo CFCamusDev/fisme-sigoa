@@ -15,3 +15,4 @@ export * from './resolutions.js';
 export * from './catalog-comparison.js';
 export * from './templates.js';
 export * from './stakeholders.js';
+export * from './stakeholder-lists.js';
