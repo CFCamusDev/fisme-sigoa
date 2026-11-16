@@ -1,0 +1,45 @@
+import type { Request, RequestHandler } from 'express';
+import type { RegisterStakeholderRequest } from '@sigoa/shared';
+import { getRequestContext } from '../../../../shared/audit/request-context.js';
+import { UnauthorizedError } from '../../../../shared/errors/app-error.js';
+import type { RegisterStakeholderUseCase } from '../../application/register-stakeholder.js';
+
+export interface StakeholdersControllerDependencies {
+  readonly registerStakeholderUseCase: RegisterStakeholderUseCase;
+}
+
+function resolveActor(req: Request): { actorId: string; ip: string } {
+  const context = getRequestContext();
+  const actorId = context?.actor ?? (req as unknown as { user?: { id?: string } }).user?.id;
+  if (!actorId) {
+    throw new UnauthorizedError('No autenticado');
+  }
+  const ip = context?.ip ?? (req.ip || req.socket?.remoteAddress) ?? '127.0.0.1';
+  return { actorId, ip };
+}
+
+/** Controlador de `/stakeholders` (HU-021). */
+export class StakeholdersController {
+  private readonly registerStakeholderUseCase: RegisterStakeholderUseCase;
+
+  constructor(deps: StakeholdersControllerDependencies) {
+    this.registerStakeholderUseCase = deps.registerStakeholderUseCase;
+  }
+
+  registerStakeholder: RequestHandler = async (req, res, next) => {
+    try {
+      const { actorId, ip } = resolveActor(req);
+      const body = req.body as RegisterStakeholderRequest;
+
+      const response = await this.registerStakeholderUseCase.execute({
+        ...body,
+        actorId,
+        ip,
+      });
+
+      res.setHeader('Cache-Control', 'no-store').status(201).json(response);
+    } catch (error) {
+      next(error);
+    }
+  };
+}

@@ -201,6 +201,21 @@ describe('setupAppRoutes', () => {
     expect(detail.status).toBe(401);
   });
 
+  it('mounts /stakeholders router and rejects unauthenticated requests with 401 (HU-021, T-021-11)', async () => {
+    const app = express();
+    app.use(express.json());
+    setupAppRoutes(app, {
+      unitOfWork: dummyUnitOfWork,
+      auditLogger: dummyAuditLogger,
+      dbProvider: dummyDbProvider,
+      env: createTestEnv(),
+    });
+    app.use(errorHandler);
+
+    const response = await request(app).post('/stakeholders').send({});
+    expect(response.status).toBe(401);
+  });
+
   it('throws an error in production if APP_PUBLIC_URL is not configured', () => {
     const app = express();
     const prodEnv = createTestEnv({
