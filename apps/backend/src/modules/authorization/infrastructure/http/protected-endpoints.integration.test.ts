@@ -335,6 +335,37 @@ const PROTECTED_ENDPOINTS: readonly ProtectedEndpointSpec[] = [
     requiredPermission: 'plantilla.editar',
     sampleBody: { content: '<p>Contenido de muestra</p>' },
   },
+  {
+    method: 'get',
+    openApiPath: '/stakeholders',
+    requestPath: '/stakeholders',
+    requiredPermission: 'constituyente.ver',
+  },
+  {
+    method: 'post',
+    openApiPath: '/stakeholders',
+    requestPath: '/stakeholders',
+    requiredPermission: 'constituyente.editar',
+    sampleBody: {
+      kind: 'PERSON',
+      fullName: 'Constituyente de Muestra',
+      dni: '45678912',
+    },
+  },
+  {
+    method: 'patch',
+    openApiPath: '/stakeholders/{id}',
+    requestPath: '/stakeholders/stakeholder_target_1',
+    requiredPermission: 'constituyente.editar',
+    sampleBody: { position: 'Cargo de muestra' },
+  },
+  {
+    method: 'post',
+    openApiPath: '/stakeholders/{id}/void',
+    requestPath: '/stakeholders/stakeholder_target_1/void',
+    requiredPermission: 'constituyente.editar',
+    sampleBody: { reason: 'Motivo de muestra para prueba de permiso' },
+  },
 ];
 
 describe('Protected Endpoints 403 Coverage & OpenAPI Drift Guard (PostgreSQL real, HU-008, T-008-06, CA1, RF-008, RNF-009, D11)', () => {
