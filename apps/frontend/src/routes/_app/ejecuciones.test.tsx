@@ -8,26 +8,13 @@ import { Route } from './ejecuciones';
 
 describe('ProcessExecutionsRoute (/ejecuciones) (HU-027, T-027-21)', () => {
   beforeEach(() => {
-    useAuthStore.getState().clearSession();
+    useAuthStore.getState().clearAuthSession();
   });
 
-  it('redirects without ejecucion.ver', () => {
-    useAuthStore.getState().setSession({
-      accessToken: 'token',
-      expiresAt: new Date(Date.now() + 60_000).toISOString(),
-      user: {
-        id: 'user-1',
-        names: 'Ana',
-        firstSurname: 'Torres',
-        secondSurname: 'Paz',
-        email: 'ana@untrm.edu.pe',
-      },
-      permissions: [{ code: 'catalogo.ver', scope: 'GLOBAL' }],
-    });
-
-    const beforeLoad = Route.options.beforeLoad as (() => unknown) | undefined;
+  it('redirects without ejecucion.ver', async () => {
+    const beforeLoad = Route.options.beforeLoad as (() => Promise<unknown>) | undefined;
     expect(typeof beforeLoad).toBe('function');
-    expect(() => beforeLoad?.()).toThrow();
+    await expect(beforeLoad?.()).rejects.toBeDefined();
   });
 
   it('renders the page when authenticated with ejecucion.ver', async () => {

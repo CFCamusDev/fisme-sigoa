@@ -54,8 +54,9 @@ export const SAMPLE_CATALOG_VERSIONS: CatalogVersionDto[] = [
     number: 1,
     status: 'APPROVED',
     basedOnVersionId: null,
+    objectiveCount: 4,
+    attributeCount: 12,
     createdAt: '2026-01-10T00:00:00.000Z',
-    updatedAt: '2026-01-10T00:00:00.000Z',
   },
   {
     id: 'cv-validation-2',
@@ -63,8 +64,9 @@ export const SAMPLE_CATALOG_VERSIONS: CatalogVersionDto[] = [
     number: 2,
     status: 'IN_VALIDATION',
     basedOnVersionId: 'cv-approved-1',
+    objectiveCount: 4,
+    attributeCount: 12,
     createdAt: '2026-06-10T00:00:00.000Z',
-    updatedAt: '2026-06-10T00:00:00.000Z',
   },
   {
     id: 'cv-draft-3',
@@ -72,8 +74,9 @@ export const SAMPLE_CATALOG_VERSIONS: CatalogVersionDto[] = [
     number: 3,
     status: 'DRAFT',
     basedOnVersionId: 'cv-approved-1',
+    objectiveCount: 4,
+    attributeCount: 12,
     createdAt: '2026-08-10T00:00:00.000Z',
-    updatedAt: '2026-08-10T00:00:00.000Z',
   },
 ];
 

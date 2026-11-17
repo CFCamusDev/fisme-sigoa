@@ -34,7 +34,9 @@ describe('ProcessExecutionForm (HU-027, T-027-21)', () => {
     );
 
     const onCreated = vi.fn();
-    renderWithProviders(<ProcessExecutionForm onCreated={onCreated} onCancel={vi.fn()} />);
+    renderWithProviders(<ProcessExecutionForm onCreated={onCreated} onCancel={vi.fn()} />, {
+      withRouter: false,
+    });
 
     const versionSelect = await screen.findByLabelText(/Versión de catálogo/i);
     await waitFor(() => expect((versionSelect as HTMLSelectElement).value).toBe('cv-approved-1'));
@@ -57,9 +59,11 @@ describe('ProcessExecutionForm (HU-027, T-027-21)', () => {
     const user = userEvent.setup();
     setupCatalogAndSemesters();
 
-    renderWithProviders(<ProcessExecutionForm onCreated={vi.fn()} onCancel={vi.fn()} />);
+    renderWithProviders(<ProcessExecutionForm onCreated={vi.fn()} onCancel={vi.fn()} />, {
+      withRouter: false,
+    });
 
-    const typeSelect = screen.getByLabelText(/Proceso/i);
+    const typeSelect = screen.getByLabelText(/^Proceso$/i);
     const versionSelect = await screen.findByLabelText(/Versión de catálogo/i);
 
     await waitFor(() => {
@@ -91,12 +95,14 @@ describe('ProcessExecutionForm (HU-027, T-027-21)', () => {
     const user = userEvent.setup();
     setupCatalogAndSemesters();
 
-    renderWithProviders(<ProcessExecutionForm onCreated={vi.fn()} onCancel={vi.fn()} />);
+    renderWithProviders(<ProcessExecutionForm onCreated={vi.fn()} onCancel={vi.fn()} />, {
+      withRouter: false,
+    });
 
     expect(screen.getByLabelText(/Año/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/Semestre/i)).not.toBeInTheDocument();
 
-    await user.selectOptions(screen.getByLabelText(/Proceso/i), 'P622');
+    await user.selectOptions(screen.getByLabelText(/^Proceso$/i), 'P622');
 
     expect(await screen.findByLabelText(/Semestre/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/Año/i)).not.toBeInTheDocument();
@@ -108,7 +114,9 @@ describe('ProcessExecutionForm (HU-027, T-027-21)', () => {
       SAMPLE_SEMESTERS,
     );
 
-    renderWithProviders(<ProcessExecutionForm onCreated={vi.fn()} onCancel={vi.fn()} />);
+    renderWithProviders(<ProcessExecutionForm onCreated={vi.fn()} onCancel={vi.fn()} />, {
+      withRouter: false,
+    });
 
     expect(
       await screen.findByText(/No existe una versión de catálogo en estado «Vigente»/i),
@@ -129,7 +137,9 @@ describe('ProcessExecutionForm (HU-027, T-027-21)', () => {
     );
 
     const onCreated = vi.fn();
-    renderWithProviders(<ProcessExecutionForm onCreated={onCreated} onCancel={vi.fn()} />);
+    renderWithProviders(<ProcessExecutionForm onCreated={onCreated} onCancel={vi.fn()} />, {
+      withRouter: false,
+    });
 
     const versionSelect = await screen.findByLabelText(/Versión de catálogo/i);
     await waitFor(() => expect((versionSelect as HTMLSelectElement).value).toBe('cv-approved-1'));
@@ -159,7 +169,9 @@ describe('ProcessExecutionForm (HU-027, T-027-21)', () => {
       ),
     );
 
-    renderWithProviders(<ProcessExecutionForm onCreated={vi.fn()} onCancel={vi.fn()} />);
+    renderWithProviders(<ProcessExecutionForm onCreated={vi.fn()} onCancel={vi.fn()} />, {
+      withRouter: false,
+    });
 
     const versionSelect = await screen.findByLabelText(/Versión de catálogo/i);
     await waitFor(() => expect((versionSelect as HTMLSelectElement).value).toBe('cv-approved-1'));
@@ -182,7 +194,9 @@ describe('ProcessExecutionForm (HU-027, T-027-21)', () => {
       http.get('*/semesters', () => HttpResponse.json({ items: SAMPLE_SEMESTERS })),
     );
 
-    renderWithProviders(<ProcessExecutionForm onCreated={vi.fn()} onCancel={vi.fn()} />);
+    renderWithProviders(<ProcessExecutionForm onCreated={vi.fn()} onCancel={vi.fn()} />, {
+      withRouter: false,
+    });
 
     expect(
       await screen.findByText(/No tienes el permiso necesario \(catalogo\.ver\)/i),
@@ -194,9 +208,11 @@ describe('ProcessExecutionForm (HU-027, T-027-21)', () => {
     const user = userEvent.setup();
     setupCatalogAndSemesters();
 
-    renderWithProviders(<ProcessExecutionForm onCreated={vi.fn()} onCancel={vi.fn()} />);
+    renderWithProviders(<ProcessExecutionForm onCreated={vi.fn()} onCancel={vi.fn()} />, {
+      withRouter: false,
+    });
 
-    const typeSelect = screen.getByLabelText(/Proceso/i);
+    const typeSelect = screen.getByLabelText(/^Proceso$/i);
     const yearInput = screen.getByLabelText(/Año/i);
     const versionSelect = await screen.findByLabelText(/Versión de catálogo/i);
     const nameInput = screen.getByLabelText(/Nombre \(opcional\)/i);

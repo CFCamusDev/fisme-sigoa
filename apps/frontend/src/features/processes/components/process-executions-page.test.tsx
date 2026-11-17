@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, delay, http } from 'msw';
 import { describe, expect, it } from 'vitest';
@@ -30,19 +30,22 @@ describe('ProcessExecutionsPage (HU-027, T-027-21)', () => {
     );
 
     renderWithProviders(<ProcessExecutionsPage />, {
+      withRouter: false,
       permissions: [
         { code: 'ejecucion.ver', scope: 'GLOBAL' },
         { code: 'ejecucion.crear', scope: 'GLOBAL' },
       ],
     });
 
-    expect(screen.getByText(/Cargando ejecuciones de proceso/i)).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(/Cargando ejecuciones de proceso/i);
     expect(
       await screen.findByText(/Aún no hay ejecuciones\. Crea la primera/i),
     ).toBeInTheDocument();
 
+    cleanup();
     failRequest = true;
     renderWithProviders(<ProcessExecutionsPage />, {
+      withRouter: false,
       permissions: [{ code: 'ejecucion.ver', scope: 'GLOBAL' }],
     });
 
@@ -65,13 +68,15 @@ describe('ProcessExecutionsPage (HU-027, T-027-21)', () => {
     );
 
     renderWithProviders(<ProcessExecutionsPage />, {
+      withRouter: false,
       permissions: [{ code: 'ejecucion.ver', scope: 'GLOBAL' }],
     });
 
     expect(await screen.findByText('Medición anual de OE 2027')).toBeInTheDocument();
     expect(screen.getByText('Medición directa de AG 2027-I')).toBeInTheDocument();
     expect(screen.getByText('2027-I')).toBeInTheDocument();
-    expect(screen.getAllByText('Planificado')).toHaveLength(2);
+    const table = screen.getByRole('table');
+    expect(within(table).getAllByText('Planificado')).toHaveLength(2);
   });
 
   it('filters by type, year and status', async () => {
@@ -86,6 +91,7 @@ describe('ProcessExecutionsPage (HU-027, T-027-21)', () => {
     );
 
     renderWithProviders(<ProcessExecutionsPage />, {
+      withRouter: false,
       permissions: [{ code: 'ejecucion.ver', scope: 'GLOBAL' }],
     });
 
@@ -123,6 +129,7 @@ describe('ProcessExecutionsPage (HU-027, T-027-21)', () => {
     );
 
     renderWithProviders(<ProcessExecutionsPage />, {
+      withRouter: false,
       permissions: [{ code: 'ejecucion.ver', scope: 'GLOBAL' }],
     });
 
@@ -138,6 +145,7 @@ describe('ProcessExecutionsPage (HU-027, T-027-21)', () => {
     );
 
     renderWithProviders(<ProcessExecutionsPage />, {
+      withRouter: false,
       permissions: [{ code: 'ejecucion.ver', scope: 'GLOBAL' }],
     });
 
@@ -164,6 +172,7 @@ describe('ProcessExecutionsPage (HU-027, T-027-21)', () => {
     );
 
     renderWithProviders(<ProcessExecutionsPage />, {
+      withRouter: false,
       permissions: [
         { code: 'ejecucion.ver', scope: 'GLOBAL' },
         { code: 'ejecucion.crear', scope: 'GLOBAL' },
@@ -184,6 +193,7 @@ describe('ProcessExecutionsPage (HU-027, T-027-21)', () => {
       ),
     ).toBeInTheDocument();
     expect(await screen.findByText('Medición anual de OE 2027')).toBeInTheDocument();
-    expect(screen.getByText('Planificado')).toBeInTheDocument();
+    const table = screen.getByRole('table');
+    expect(within(table).getByText('Planificado')).toBeInTheDocument();
   });
 });
