@@ -110,4 +110,23 @@ describe('createE2ESeeder (HU-080, T-080-16)', () => {
     expect(await s.countUsersBySurname(surname)).toBe(2);
     expect(await s.countUsersBySurname(`${surname}-ninguno`)).toBe(0);
   });
+
+  it('seeds and resets stakeholders', async () => {
+    const s = getSeeder();
+    const id = await s.seedStakeholder({
+      kind: 'INSTITUTION',
+      fullName: 'Empresa E2E SAC',
+      ruc: '20111222333',
+      sector: 'Software',
+      position: 'Gerente',
+      email: 'e2e@example.test',
+      mobile: '987654321',
+    });
+
+    expect(id).toBeTruthy();
+    expect(await prisma.stakeholder.count({ where: { id } })).toBe(1);
+
+    await s.resetStakeholders();
+    expect(await prisma.stakeholder.count()).toBe(0);
+  });
 });
