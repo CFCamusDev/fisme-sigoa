@@ -1,4 +1,3 @@
-import ExcelJS from 'exceljs';
 import request from 'supertest';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -15,23 +14,10 @@ import { useTestDatabase } from '../../../../test/db/use-test-database.js';
 import { seedAuthorizationFast } from '../../../../test/factories/authorization.js';
 import { createStakeholderListRow } from '../../../../test/factories/stakeholder-lists.js';
 import { createStakeholderRow } from '../../../../test/factories/stakeholders.js';
+import { buildWorkbookBuffer } from '../../../../test/factories/xlsx-workbook.js';
 import { createAuthenticatedActor } from '../../../../test/http/authenticated-actor.js';
 import { createTestEnv } from '../../../../test/test-env.js';
 import { getStakeholderImportColumns } from '../../domain/policies/stakeholder-import-columns.js';
-
-async function buildWorkbookBuffer(
-  headers: readonly string[],
-  rows: ReadonlyArray<ReadonlyArray<ExcelJS.CellValue>>,
-): Promise<Buffer> {
-  const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet('Constituyentes');
-  sheet.addRow([...headers]);
-  for (const row of rows) {
-    sheet.addRow([...row]);
-  }
-  const arrayBuffer = await workbook.xlsx.writeBuffer();
-  return Buffer.from(arrayBuffer);
-}
 
 describe('POST /stakeholder-lists/:id/import/preview (PostgreSQL real, HU-023, T-023-15, CA1, CA3, RNF-009)', () => {
   const { getPrisma } = useTestDatabase();
