@@ -6,3 +6,6 @@ export * from './get-stakeholder-lists';
 export * from './create-stakeholder-list';
 export * from './add-stakeholder-list-member';
 export * from './copy-stakeholder-list';
+export * from './download-stakeholder-import-template';
+export * from './preview-stakeholder-import';
+export * from './confirm-stakeholder-import';
