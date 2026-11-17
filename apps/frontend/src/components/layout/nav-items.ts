@@ -94,4 +94,10 @@ export const MAIN_NAV_ITEMS: readonly NavItem[] = [
     icon: ClipboardList,
     permission: 'constituyente.ver',
   },
+  {
+    title: 'Ejecuciones',
+    href: '/ejecuciones',
+    icon: Workflow,
+    permission: 'ejecucion.ver',
+  },
 ] as const;
