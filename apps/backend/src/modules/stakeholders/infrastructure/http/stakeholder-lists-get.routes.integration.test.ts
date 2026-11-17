@@ -74,7 +74,7 @@ describe('GET /stakeholder-lists (PostgreSQL real, HU-022, T-022-27, RF-022, RNF
       mobile: '987654321',
     });
 
-    const viewer = await createActor(['TEACHER']);
+    const viewer = await createActor(['COMMITTEE_MEMBER']);
     const response = await listGet(viewer.token);
 
     expect(response.status).toBe(200);
@@ -109,7 +109,7 @@ describe('GET /stakeholder-lists (PostgreSQL real, HU-022, T-022-27, RF-022, RNF
       mobile: '987654321',
     });
 
-    const viewer = await createActor(['TEACHER']);
+    const viewer = await createActor(['COMMITTEE_MEMBER']);
     const response = await listGet(viewer.token).query({
       type: 'TEACHER',
       year: 2027,
@@ -138,7 +138,7 @@ describe('GET /stakeholder-lists (PostgreSQL real, HU-022, T-022-27, RF-022, RNF
       institution: null,
     });
 
-    const viewer = await createActor(['TEACHER']);
+    const viewer = await createActor(['COMMITTEE_MEMBER']);
     const response = await listGet(viewer.token).query({
       type: 'TEACHER',
       year: 2027,
@@ -152,7 +152,7 @@ describe('GET /stakeholder-lists (PostgreSQL real, HU-022, T-022-27, RF-022, RNF
   }, 5_000);
 
   it('returns an empty page', async () => {
-    const viewer = await createActor(['TEACHER']);
+    const viewer = await createActor(['COMMITTEE_MEMBER']);
     const response = await listGet(viewer.token).query({
       type: 'ADVISORY_BOARD',
       year: 2030,
@@ -166,7 +166,7 @@ describe('GET /stakeholder-lists (PostgreSQL real, HU-022, T-022-27, RF-022, RNF
   }, 5_000);
 
   it('returns 400 when includeMembers lacks type and year', async () => {
-    const viewer = await createActor(['TEACHER']);
+    const viewer = await createActor(['COMMITTEE_MEMBER']);
     const response = await listGet(viewer.token).query({
       includeMembers: 'true',
       type: 'TEACHER',
@@ -176,7 +176,7 @@ describe('GET /stakeholder-lists (PostgreSQL real, HU-022, T-022-27, RF-022, RNF
   }, 5_000);
 
   it('returns 400 for pageSize over 100, page over 10000 or an unknown query parameter', async () => {
-    const viewer = await createActor(['TEACHER']);
+    const viewer = await createActor(['COMMITTEE_MEMBER']);
 
     expect((await listGet(viewer.token).query({ pageSize: 101 })).status).toBe(400);
     expect((await listGet(viewer.token).query({ page: 10001 })).status).toBe(400);
@@ -184,8 +184,8 @@ describe('GET /stakeholder-lists (PostgreSQL real, HU-022, T-022-27, RF-022, RNF
   }, 5_000);
 
   it('returns 403 without constituyente.ver', async () => {
-    const student = await createActor(['STUDENT']);
-    const response = await listGet(student.token);
+    const teacher = await createActor(['TEACHER']);
+    const response = await listGet(teacher.token);
 
     expect(response.status).toBe(403);
   }, 5_000);
