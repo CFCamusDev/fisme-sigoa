@@ -1,7 +1,10 @@
+import ExcelJS from 'exceljs';
 import { createPrismaClient } from '../../shared/prisma/prisma-client.js';
 import { seedAuthorizationFast } from '../factories/authorization-fast.js';
 import { seedProgram } from '../../modules/parameters/infrastructure/prisma/seed/program-seed.js';
 import { seedCatalogVersionDefaults } from '../../modules/catalog/infrastructure/prisma/seed/catalog-version-seed.js';
+import type { StakeholderListType } from '../../modules/stakeholders/domain/entities/stakeholder-list-enums.js';
+import { getStakeholderImportColumns } from '../../modules/stakeholders/domain/policies/stakeholder-import-columns.js';
 import { assertTestDatabase } from '../db/assert-test-database.js';
 import { seedE2EUserWithClient, type SeedUserOptions } from './seed-e2e-user.js';
 
@@ -35,6 +38,10 @@ export interface E2ESeeder {
   seedTemplate(options?: { withDraft?: boolean }): Promise<string>;
   resetStakeholders(): Promise<void>;
   seedStakeholder(options: SeedStakeholderOptions): Promise<string>;
+  buildStakeholderImportFile(options: {
+    listType: StakeholderListType;
+    rows: ReadonlyArray<ReadonlyArray<string | number | null>>;
+  }): Promise<string>;
   countUsersBySurname(firstSurname: string): Promise<number>;
   close(): Promise<void>;
 }
@@ -310,6 +317,18 @@ export function createE2ESeeder(databaseUrl: string): E2ESeeder {
         },
       });
       return row.id;
+    },
+
+    async buildStakeholderImportFile(options) {
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('Constituyentes');
+      const headers = getStakeholderImportColumns(options.listType).map((col) => col.header);
+      sheet.addRow(headers);
+      for (const row of options.rows) {
+        sheet.addRow([...row]);
+      }
+      const arrayBuffer = await workbook.xlsx.writeBuffer();
+      return Buffer.from(arrayBuffer).toString('base64');
     },
 
     close() {
