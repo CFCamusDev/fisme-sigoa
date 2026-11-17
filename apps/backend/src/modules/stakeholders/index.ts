@@ -7,10 +7,12 @@ import { CopyStakeholderListToNewYearUseCase } from './application/copy-stakehol
 import { CreateStakeholderListUseCase } from './application/create-stakeholder-list.js';
 import { EditStakeholderUseCase } from './application/edit-stakeholder.js';
 import { ListStakeholderListsUseCase } from './application/list-stakeholder-lists.js';
+import { PreviewStakeholderImportUseCase } from './application/preview-stakeholder-import.js';
 import { RegisterStakeholderUseCase } from './application/register-stakeholder.js';
 import { SearchStakeholdersUseCase } from './application/search-stakeholders.js';
 import { VoidStakeholderUseCase } from './application/void-stakeholder.js';
 import type { StakeholderPermissionChecker } from './domain/ports/stakeholder-permission-checker.js';
+import { ExcelJsStakeholderImportFileReader } from './infrastructure/excel/exceljs-stakeholder-import-file-reader.js';
 import { StakeholderListsController } from './infrastructure/http/stakeholder-lists.controller.js';
 import { createStakeholderListsRouter } from './infrastructure/http/stakeholder-lists.routes.js';
 import { StakeholdersController } from './infrastructure/http/stakeholders.controller.js';
@@ -132,11 +134,22 @@ export function createStakeholderListsModule(deps?: StakeholdersModuleDependenci
     permissionChecker: deps.permissionChecker,
   });
 
+  const fileReader = new ExcelJsStakeholderImportFileReader();
+  const previewStakeholderImportUseCase = new PreviewStakeholderImportUseCase({
+    stakeholderListRepository,
+    stakeholderListMemberRepository,
+    stakeholderDocumentLookup: stakeholderRepository,
+    fileReader,
+    permissionChecker: deps.permissionChecker,
+    clock: deps.clock,
+  });
+
   const controller = new StakeholderListsController({
     createStakeholderListUseCase,
     addStakeholderListMemberUseCase,
     copyStakeholderListToNewYearUseCase,
     listStakeholderListsUseCase,
+    previewStakeholderImportUseCase,
   });
 
   return createStakeholderListsRouter({
@@ -172,6 +185,8 @@ export * from './application/create-stakeholder-list.js';
 export * from './application/create-stakeholder-list.types.js';
 export * from './application/list-stakeholder-lists.js';
 export * from './application/list-stakeholder-lists.types.js';
+export * from './application/preview-stakeholder-import.js';
+export * from './application/preview-stakeholder-import.types.js';
 export * from './application/register-stakeholder.js';
 export * from './application/register-stakeholder.types.js';
 export * from './application/edit-stakeholder.js';

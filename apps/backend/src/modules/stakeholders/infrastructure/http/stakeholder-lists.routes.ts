@@ -1,5 +1,7 @@
-import { Router, type RequestHandler } from 'express';
+import express, { Router, type RequestHandler } from 'express';
 import {
+  STAKEHOLDER_IMPORT_MAX_FILE_BYTES,
+  STAKEHOLDER_IMPORT_XLSX_MIME,
   addStakeholderListMemberRequestSchema,
   copyStakeholderListRequestSchema,
   createStakeholderListRequestSchema,
@@ -7,6 +9,7 @@ import {
   stakeholderListIdParamsSchema,
 } from '@sigoa/shared';
 import { validateRequest } from '../../../../shared/middleware/validate-request.js';
+import { requireExcelBody } from './require-excel-body.js';
 import type { StakeholderListsController } from './stakeholder-lists.controller.js';
 import type { StakeholderRoutePermissionScope } from './stakeholders.routes.js';
 
@@ -66,6 +69,21 @@ export function createStakeholderListsRouter(deps: StakeholderListsRouterDepende
     deps.requirePermission('constituyente.ver', 'GLOBAL'),
     validateRequest({ query: listStakeholderListsQuerySchema }),
     deps.controller.listStakeholderLists,
+  );
+
+  // POST /stakeholder-lists/:id/import/preview (HU-023, T-023-06, CA1, CA3, RF-023, RS-002, RS-074)
+  // Cadena obligatoria: authenticate -> requirePermission -> express.raw -> requireExcelBody -> validateRequest -> controller
+  router.post(
+    '/:id/import/preview',
+    deps.authenticate,
+    deps.requirePermission('constituyente.importar', 'GLOBAL'),
+    express.raw({
+      type: STAKEHOLDER_IMPORT_XLSX_MIME,
+      limit: STAKEHOLDER_IMPORT_MAX_FILE_BYTES,
+    }),
+    requireExcelBody,
+    validateRequest({ params: stakeholderListIdParamsSchema }),
+    deps.controller.previewStakeholderImport,
   );
 
   return router;

@@ -11,6 +11,7 @@ import type { AddStakeholderListMemberUseCase } from '../../application/add-stak
 import type { CopyStakeholderListToNewYearUseCase } from '../../application/copy-stakeholder-list-to-new-year.js';
 import type { CreateStakeholderListUseCase } from '../../application/create-stakeholder-list.js';
 import type { ListStakeholderListsUseCase } from '../../application/list-stakeholder-lists.js';
+import type { PreviewStakeholderImportUseCase } from '../../application/preview-stakeholder-import.js';
 import { resolveRequestActor } from './resolve-request-actor.js';
 
 export interface StakeholderListsControllerDependencies {
@@ -18,20 +19,23 @@ export interface StakeholderListsControllerDependencies {
   readonly addStakeholderListMemberUseCase: AddStakeholderListMemberUseCase;
   readonly copyStakeholderListToNewYearUseCase: CopyStakeholderListToNewYearUseCase;
   readonly listStakeholderListsUseCase: ListStakeholderListsUseCase;
+  readonly previewStakeholderImportUseCase: PreviewStakeholderImportUseCase;
 }
 
-/** Controlador de `/stakeholder-lists` (HU-022). */
+/** Controlador de `/stakeholder-lists` (HU-022, HU-023). */
 export class StakeholderListsController {
   private readonly createStakeholderListUseCase: CreateStakeholderListUseCase;
   private readonly addStakeholderListMemberUseCase: AddStakeholderListMemberUseCase;
   private readonly copyStakeholderListToNewYearUseCase: CopyStakeholderListToNewYearUseCase;
   private readonly listStakeholderListsUseCase: ListStakeholderListsUseCase;
+  private readonly previewStakeholderImportUseCase: PreviewStakeholderImportUseCase;
 
   constructor(deps: StakeholderListsControllerDependencies) {
     this.createStakeholderListUseCase = deps.createStakeholderListUseCase;
     this.addStakeholderListMemberUseCase = deps.addStakeholderListMemberUseCase;
     this.copyStakeholderListToNewYearUseCase = deps.copyStakeholderListToNewYearUseCase;
     this.listStakeholderListsUseCase = deps.listStakeholderListsUseCase;
+    this.previewStakeholderImportUseCase = deps.previewStakeholderImportUseCase;
   }
 
   createStakeholderList: RequestHandler = async (req, res, next) => {
@@ -101,6 +105,24 @@ export class StakeholderListsController {
         includeMembers: query.includeMembers,
         page: query.page,
         pageSize: query.pageSize,
+      });
+
+      res.setHeader('Cache-Control', 'no-store').status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  previewStakeholderImport: RequestHandler = async (req, res, next) => {
+    try {
+      const { actorId } = resolveRequestActor(req);
+      const { id } = req.params as StakeholderListIdParams;
+      const fileBuffer = req.body as Buffer;
+
+      const response = await this.previewStakeholderImportUseCase.execute({
+        listId: id,
+        fileBuffer,
+        actorId,
       });
 
       res.setHeader('Cache-Control', 'no-store').status(200).json(response);
