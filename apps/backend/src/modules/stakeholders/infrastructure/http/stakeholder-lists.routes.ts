@@ -3,6 +3,7 @@ import {
   addStakeholderListMemberRequestSchema,
   copyStakeholderListRequestSchema,
   createStakeholderListRequestSchema,
+  listStakeholderListsQuerySchema,
   stakeholderListIdParamsSchema,
 } from '@sigoa/shared';
 import { validateRequest } from '../../../../shared/middleware/validate-request.js';
@@ -55,6 +56,16 @@ export function createStakeholderListsRouter(deps: StakeholderListsRouterDepende
       body: copyStakeholderListRequestSchema,
     }),
     deps.controller.copyStakeholderList,
+  );
+
+  // GET /stakeholder-lists (HU-022, T-022-13, RF-022, RS-002, RNF-008, RNF-009, RNF-012)
+  // Cadena obligatoria: authenticate -> requirePermission -> validateRequest -> controller
+  router.get(
+    '/',
+    deps.authenticate,
+    deps.requirePermission('constituyente.ver', 'GLOBAL'),
+    validateRequest({ query: listStakeholderListsQuerySchema }),
+    deps.controller.listStakeholderLists,
   );
 
   return router;

@@ -6,6 +6,7 @@ import { AddStakeholderListMemberUseCase } from './application/add-stakeholder-l
 import { CopyStakeholderListToNewYearUseCase } from './application/copy-stakeholder-list-to-new-year.js';
 import { CreateStakeholderListUseCase } from './application/create-stakeholder-list.js';
 import { EditStakeholderUseCase } from './application/edit-stakeholder.js';
+import { ListStakeholderListsUseCase } from './application/list-stakeholder-lists.js';
 import { RegisterStakeholderUseCase } from './application/register-stakeholder.js';
 import { SearchStakeholdersUseCase } from './application/search-stakeholders.js';
 import { VoidStakeholderUseCase } from './application/void-stakeholder.js';
@@ -126,10 +127,16 @@ export function createStakeholderListsModule(deps?: StakeholdersModuleDependenci
     clock: deps.clock,
   });
 
+  const listStakeholderListsUseCase = new ListStakeholderListsUseCase({
+    stakeholderListReader: stakeholderListRepository,
+    permissionChecker: deps.permissionChecker,
+  });
+
   const controller = new StakeholderListsController({
     createStakeholderListUseCase,
     addStakeholderListMemberUseCase,
     copyStakeholderListToNewYearUseCase,
+    listStakeholderListsUseCase,
   });
 
   return createStakeholderListsRouter({
@@ -163,6 +170,8 @@ export * from './application/copy-stakeholder-list-to-new-year.js';
 export * from './application/copy-stakeholder-list-to-new-year.types.js';
 export * from './application/create-stakeholder-list.js';
 export * from './application/create-stakeholder-list.types.js';
+export * from './application/list-stakeholder-lists.js';
+export * from './application/list-stakeholder-lists.types.js';
 export * from './application/register-stakeholder.js';
 export * from './application/register-stakeholder.types.js';
 export * from './application/edit-stakeholder.js';
