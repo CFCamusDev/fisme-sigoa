@@ -21,6 +21,7 @@ describe('StakeholderListsPage (HU-022, T-022-28)', () => {
   it('renders loading, empty, error and data states', async () => {
     let mode: 'empty' | 'error' | 'data' = 'empty';
     server.use(
+      http.get('*/me/permissions', () => HttpResponse.json({ permissions: EDIT_PERMISSIONS })),
       http.get('*/stakeholder-lists', async () => {
         await delay(20);
         if (mode === 'error') {
@@ -35,8 +36,11 @@ describe('StakeholderListsPage (HU-022, T-022-28)', () => {
       }),
     );
 
-    renderWithProviders(<StakeholderListsPage />, { permissions: EDIT_PERMISSIONS });
-    expect(screen.getByText(/Cargando lista del Anexo 3/i)).toBeInTheDocument();
+    renderWithProviders(<StakeholderListsPage />, {
+      withRouter: false,
+      permissions: EDIT_PERMISSIONS,
+    });
+    expect(screen.getAllByText(/Cargando lista del Anexo 3/i).length).toBeGreaterThan(0);
     expect(await screen.findByText(/No existe lista de Empleadores/i)).toBeInTheDocument();
 
     const user = userEvent.setup();
@@ -58,6 +62,7 @@ describe('StakeholderListsPage (HU-022, T-022-28)', () => {
     let createdList: typeof EMPLOYER_LIST_DTO | null = null;
 
     server.use(
+      http.get('*/me/permissions', () => HttpResponse.json({ permissions: EDIT_PERMISSIONS })),
       http.get('*/stakeholder-lists', () =>
         HttpResponse.json(makeStakeholderListsResponse(createdList ? [createdList] : [])),
       ),
@@ -67,7 +72,10 @@ describe('StakeholderListsPage (HU-022, T-022-28)', () => {
       }),
     );
 
-    renderWithProviders(<StakeholderListsPage />, { permissions: EDIT_PERMISSIONS });
+    renderWithProviders(<StakeholderListsPage />, {
+      withRouter: false,
+      permissions: EDIT_PERMISSIONS,
+    });
 
     const yearInput = screen.getByLabelText(/^Año$/i);
     await user.clear(yearInput);
@@ -88,7 +96,10 @@ describe('StakeholderListsPage (HU-022, T-022-28)', () => {
       ),
     );
 
-    renderWithProviders(<StakeholderListsPage />, { permissions: EDIT_PERMISSIONS });
+    renderWithProviders(<StakeholderListsPage />, {
+      withRouter: false,
+      permissions: EDIT_PERMISSIONS,
+    });
 
     await screen.findByText('Tech Amazonas SAC');
     for (const heading of [
@@ -112,6 +123,7 @@ describe('StakeholderListsPage (HU-022, T-022-28)', () => {
     let currentYear = 2027;
 
     server.use(
+      http.get('*/me/permissions', () => HttpResponse.json({ permissions: EDIT_PERMISSIONS })),
       http.get('*/stakeholder-lists', ({ request }) => {
         const url = new URL(request.url);
         const year = Number(url.searchParams.get('year'));
@@ -137,7 +149,10 @@ describe('StakeholderListsPage (HU-022, T-022-28)', () => {
       }),
     );
 
-    renderWithProviders(<StakeholderListsPage />, { permissions: EDIT_PERMISSIONS });
+    renderWithProviders(<StakeholderListsPage />, {
+      withRouter: false,
+      permissions: EDIT_PERMISSIONS,
+    });
 
     const copyBtn = await screen.findByRole('button', { name: /Copiar para nuevo año/i });
     await user.click(copyBtn);
@@ -159,7 +174,10 @@ describe('StakeholderListsPage (HU-022, T-022-28)', () => {
       ),
     );
 
-    renderWithProviders(<StakeholderListsPage />, { permissions: VIEW_ONLY_PERMISSIONS });
+    renderWithProviders(<StakeholderListsPage />, {
+      withRouter: false,
+      permissions: VIEW_ONLY_PERMISSIONS,
+    });
 
     await screen.findByText('Tech Amazonas SAC');
     expect(
@@ -181,7 +199,10 @@ describe('StakeholderListsPage (HU-022, T-022-28)', () => {
       ),
     );
 
-    renderWithProviders(<StakeholderListsPage />, { permissions: [] });
+    renderWithProviders(<StakeholderListsPage />, {
+      withRouter: false,
+      permissions: [],
+    });
 
     expect(await screen.findByText(/Acceso denegado/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Reintentar/i })).not.toBeInTheDocument();
@@ -192,6 +213,7 @@ describe('StakeholderListsPage (HU-022, T-022-28)', () => {
     let resolvePost!: () => void;
 
     server.use(
+      http.get('*/me/permissions', () => HttpResponse.json({ permissions: EDIT_PERMISSIONS })),
       http.get('*/stakeholder-lists', () => HttpResponse.json(makeStakeholderListsResponse([]))),
       http.post('*/stakeholder-lists', async () => {
         await new Promise<void>((resolve) => {
@@ -201,7 +223,10 @@ describe('StakeholderListsPage (HU-022, T-022-28)', () => {
       }),
     );
 
-    renderWithProviders(<StakeholderListsPage />, { permissions: EDIT_PERMISSIONS });
+    renderWithProviders(<StakeholderListsPage />, {
+      withRouter: false,
+      permissions: EDIT_PERMISSIONS,
+    });
 
     const submitButton = await screen.findByRole('button', { name: /Crear lista/i });
     await user.click(submitButton);
