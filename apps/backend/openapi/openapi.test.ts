@@ -84,6 +84,10 @@ import {
   listStakeholderListsResponseSchema,
   stakeholderListDtoSchema,
   stakeholderListMemberDtoSchema,
+  previewStakeholderImportResponseSchema,
+  confirmStakeholderImportResponseSchema,
+  stakeholderImportRowDtoSchema,
+  stakeholderImportTemplateQuerySchema,
 } from '@sigoa/shared';
 import { createAuthRouter } from '../src/modules/auth/infrastructure/http/auth.routes.js';
 import { createUsersRouter } from '../src/modules/users/infrastructure/http/users.routes.js';
@@ -2760,6 +2764,9 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
           addStakeholderListMember: vi.fn(),
           copyStakeholderList: vi.fn(),
           listStakeholderLists: vi.fn(),
+          previewStakeholderImport: vi.fn(),
+          confirmStakeholderImport: vi.fn(),
+          downloadStakeholderImportTemplate: vi.fn(),
         } as unknown as StakeholderListsController,
         authenticate: vi.fn(),
         requirePermission: vi.fn(() => vi.fn()),
@@ -2779,8 +2786,11 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
 
       expect(routerEndpoints.sort()).toEqual([
         'get /stakeholder-lists',
+        'get /stakeholder-lists/excel-template',
         'post /stakeholder-lists',
         'post /stakeholder-lists/{id}/copy',
+        'post /stakeholder-lists/{id}/import/confirm',
+        'post /stakeholder-lists/{id}/import/preview',
         'post /stakeholder-lists/{id}/members',
       ]);
 
@@ -2788,6 +2798,90 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
         const [method, routePath] = endpoint.split(' ');
         expect(spec.paths[routePath!]?.[method!], endpoint).toBeDefined();
       }
+    });
+  });
+
+  describe('OpenAPI Specification for Stakeholder Import (HU-023, T-023-09, RF-023, RNF-032)', () => {
+    it('documents preview, confirm and template operations with bearerAuth and status codes', () => {
+      const operations = [
+        {
+          path: '/stakeholder-lists/{id}/import/preview',
+          method: 'post',
+          id: 'previewStakeholderImport',
+          codes: ['200', '400', '401', '403', '404'],
+        },
+        {
+          path: '/stakeholder-lists/{id}/import/confirm',
+          method: 'post',
+          id: 'confirmStakeholderImport',
+          codes: ['201', '400', '401', '403', '404', '409'],
+        },
+        {
+          path: '/stakeholder-lists/excel-template',
+          method: 'get',
+          id: 'downloadStakeholderImportTemplate',
+          codes: ['200', '400', '401', '403'],
+        },
+      ] as const;
+
+      for (const expected of operations) {
+        const op = spec.paths[expected.path]?.[expected.method];
+        expect(op, `${expected.method} ${expected.path}`).toBeDefined();
+        expect(op.operationId).toBe(expected.id);
+        expect(op.tags).toEqual(['StakeholderLists']);
+        expect(op.security).toEqual([{ bearerAuth: [] }]);
+        expect(Object.keys(op.responses).sort()).toEqual([...expected.codes]);
+        const successCode = expected.codes[0];
+        expect(op.responses[successCode].headers['Cache-Control'].example).toBe('no-store');
+      }
+
+      const templateOp = spec.paths['/stakeholder-lists/excel-template'].get;
+      expect(templateOp.responses['200'].headers['Content-Disposition'].example).toContain(
+        'attachment; filename=',
+      );
+      expect(
+        templateOp.responses['200'].content[
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        ],
+      ).toBeDefined();
+
+      expect(
+        spec.paths['/stakeholder-lists/{id}/import/preview'].post.requestBody.description,
+      ).toContain('2 MiB');
+      expect(
+        spec.paths['/stakeholder-lists/{id}/import/confirm'].post.requestBody.description,
+      ).toContain('2 MiB');
+    });
+
+    it('keeps component schemas and examples aligned with shared Zod schemas', () => {
+      const previewOp = spec.paths['/stakeholder-lists/{id}/import/preview'].post;
+      const previewExample = previewOp.responses['200'].content['application/json'].example;
+      expect(previewStakeholderImportResponseSchema.safeParse(previewExample).success).toBe(true);
+      expect(stakeholderImportRowDtoSchema.safeParse(previewExample.rows[0]).success).toBe(true);
+
+      const confirmOp = spec.paths['/stakeholder-lists/{id}/import/confirm'].post;
+      const confirmExample = confirmOp.responses['201'].content['application/json'].example;
+      expect(confirmStakeholderImportResponseSchema.safeParse(confirmExample).success).toBe(true);
+
+      expect(stakeholderImportTemplateQuerySchema.safeParse({ type: 'EMPLOYER' }).success).toBe(
+        true,
+      );
+
+      expect(
+        Object.keys(spec.components.schemas.StakeholderImportRowDto.properties).sort(),
+      ).toEqual(['document', 'errors', 'fullName', 'rowNumber', 'status']);
+      expect(
+        Object.keys(spec.components.schemas.PreviewStakeholderImportResponse.properties).sort(),
+      ).toEqual(['listId', 'listType', 'rows', 'totals']);
+      expect(
+        Object.keys(spec.components.schemas.ConfirmStakeholderImportResponse.properties).sort(),
+      ).toEqual(['importId', 'listId', 'rejectedRows', 'totals']);
+    });
+
+    it('does not expose delete operations on stakeholder import routes', () => {
+      expect(spec.paths['/stakeholder-lists/{id}/import/preview']?.delete).toBeUndefined();
+      expect(spec.paths['/stakeholder-lists/{id}/import/confirm']?.delete).toBeUndefined();
+      expect(spec.paths['/stakeholder-lists/excel-template']?.delete).toBeUndefined();
     });
   });
 });

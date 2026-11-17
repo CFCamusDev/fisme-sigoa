@@ -236,4 +236,50 @@ describe('StakeholderListsPage (HU-022, T-022-28)', () => {
     resolvePost();
     await waitFor(() => expect(screen.getByRole('status')).toBeInTheDocument());
   });
+
+  it('shows the import button only with the import permission and closes with Escape returning focus', async () => {
+    const user = userEvent.setup();
+    let allowImport = false;
+    server.use(
+      http.get('*/me/permissions', () =>
+        HttpResponse.json({
+          permissions: allowImport
+            ? [...EDIT_PERMISSIONS, { code: 'constituyente.importar', scope: 'GLOBAL' }]
+            : VIEW_ONLY_PERMISSIONS,
+        }),
+      ),
+      http.get('*/stakeholder-lists', () =>
+        HttpResponse.json(makeStakeholderListsResponse([EMPLOYER_LIST_DTO])),
+      ),
+    );
+
+    const { unmount } = renderWithProviders(<StakeholderListsPage />, {
+      withRouter: false,
+      permissions: VIEW_ONLY_PERMISSIONS,
+    });
+
+    await screen.findByText('Tech Amazonas SAC');
+    expect(screen.queryByRole('button', { name: /Importar desde Excel/i })).not.toBeInTheDocument();
+    unmount();
+
+    allowImport = true;
+    renderWithProviders(<StakeholderListsPage />, {
+      withRouter: false,
+      permissions: [...EDIT_PERMISSIONS, { code: 'constituyente.importar', scope: 'GLOBAL' }],
+    });
+
+    const importButton = await screen.findByRole('button', { name: /Importar desde Excel/i });
+    await user.click(importButton);
+    expect(
+      screen.getByRole('region', { name: /Importar constituyentes desde Excel/i }),
+    ).toBeInTheDocument();
+
+    await user.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('region', { name: /Importar constituyentes desde Excel/i }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(importButton).toHaveFocus();
+  });
 });

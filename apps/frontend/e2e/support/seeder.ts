@@ -49,6 +49,10 @@ export interface E2ESeeder {
   seedTemplate(options?: { withDraft?: boolean }): Promise<string>;
   resetStakeholders(): Promise<void>;
   seedStakeholder(options: SeedStakeholderOptions): Promise<string>;
+  buildStakeholderImportFile(options: {
+    listType: 'ADVISORY_BOARD' | 'EMPLOYER' | 'GRADUATE' | 'STUDENT' | 'TEACHER';
+    rows: ReadonlyArray<ReadonlyArray<string | number | null>>;
+  }): Promise<string>;
   countUsersBySurname(firstSurname: string): Promise<number>;
   close(): Promise<void>;
 }

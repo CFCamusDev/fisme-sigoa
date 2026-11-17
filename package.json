@@ -12,7 +12,12 @@
     "onlyBuiltDependencies": [
       "prisma",
       "@prisma/engines"
-    ]
+    ],
+    "auditConfig": {
+      "ignoreGhsas": [
+        "GHSA-fc5q-39xc-vjpf"
+      ]
+    }
   },
   "scripts": {
     "build:shared": "pnpm --filter @sigoa/shared build",

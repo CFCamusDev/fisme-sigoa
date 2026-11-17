@@ -1,3 +1,6 @@
+export * from './stakeholder-document-lookup.js';
+export * from './stakeholder-import-file-reader.js';
+export * from './stakeholder-import-template-builder.js';
 export * from './stakeholder-list-member-repository.js';
 export * from './stakeholder-list-program-resolver.js';
 export * from './stakeholder-list-reader.js';

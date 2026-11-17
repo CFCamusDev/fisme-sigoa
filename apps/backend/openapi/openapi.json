@@ -8323,6 +8323,338 @@
           }
         }
       }
+    },
+    "/stakeholder-lists/{id}/import/preview": {
+      "post": {
+        "tags": ["StakeholderLists"],
+        "summary": "Previsualizar importación de constituyentes desde Excel",
+        "description": "Lee un archivo .xlsx y devuelve la vista previa clasificada por fila sin persistir ni auditar cambios. Requiere `constituyente.importar` (GLOBAL).",
+        "operationId": "previewStakeholderImport",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Archivo Excel (.xlsx) de hasta 2 MiB (2 097 152 bytes) y máximo 500 filas de datos.",
+          "content": {
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Vista previa generada correctamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Evita almacenar datos personales en caché del navegador."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreviewStakeholderImportResponse"
+                },
+                "example": {
+                  "listId": "list-1",
+                  "listType": "TEACHER",
+                  "totals": {
+                    "total": 2,
+                    "new": 1,
+                    "existing": 0,
+                    "alreadyInList": 0,
+                    "invalid": 1
+                  },
+                  "rows": [
+                    {
+                      "rowNumber": 2,
+                      "status": "NEW",
+                      "document": "71234567",
+                      "fullName": "Mario Quispe Salas",
+                      "errors": []
+                    },
+                    {
+                      "rowNumber": 3,
+                      "status": "INVALID",
+                      "document": null,
+                      "fullName": null,
+                      "errors": ["El DNI es obligatorio y debe tener 8 dígitos."]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Archivo inválido, encabezados incompatibles, más de 500 filas o tamaño mayor a 2 MiB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin permiso constituyente.importar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Lista de constituyentes no encontrada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stakeholder-lists/{id}/import/confirm": {
+      "post": {
+        "tags": ["StakeholderLists"],
+        "summary": "Confirmar importación de constituyentes desde Excel",
+        "description": "Relee y revalida el archivo .xlsx en el servidor y persiste constituyentes nuevos, miembros de lista y un registro de auditoría en una sola transacción. Requiere `constituyente.importar` (GLOBAL).",
+        "operationId": "confirmStakeholderImport",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Archivo Excel (.xlsx) de hasta 2 MiB (2 097 152 bytes) y máximo 500 filas de datos.",
+          "content": {
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Importación confirmada correctamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Evita almacenar datos personales en caché del navegador."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmStakeholderImportResponse"
+                },
+                "example": {
+                  "importId": "imp-1",
+                  "listId": "list-1",
+                  "totals": {
+                    "created": 1,
+                    "reused": 1,
+                    "added": 2,
+                    "alreadyInList": 0,
+                    "rejected": 1
+                  },
+                  "rejectedRows": [
+                    {
+                      "rowNumber": 4,
+                      "errors": ["El DNI debe tener exactamente 8 dígitos numéricos."]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Archivo inválido, encabezados incompatibles, más de 500 filas, tamaño mayor a 2 MiB o sin filas válidas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin permiso constituyente.importar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Lista de constituyentes no encontrada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto de unicidad por DNI, RUC o membresía repetida en concurrencia.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stakeholder-lists/excel-template": {
+      "get": {
+        "tags": ["StakeholderLists"],
+        "summary": "Descargar plantilla Excel para importar constituyentes",
+        "description": "Genera y descarga la plantilla .xlsx del tipo de lista indicado. Requiere `constituyente.importar` (GLOBAL).",
+        "operationId": "downloadStakeholderImportTemplate",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/StakeholderListType"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Plantilla Excel generada correctamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Evita almacenar la descarga en caché."
+              },
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "attachment; filename=\"plantilla-employer.xlsx\"",
+                "description": "Nombre del archivo descargable."
+              }
+            },
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tipo de lista ausente o inválido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin permiso constituyente.importar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -10973,6 +11305,97 @@
               }
             }
           }
+        }
+      },
+      "StakeholderImportRowStatus": {
+        "type": "string",
+        "enum": ["NEW", "EXISTING", "ALREADY_IN_LIST", "INVALID"]
+      },
+      "StakeholderImportRowDto": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["rowNumber", "status", "document", "fullName", "errors"],
+        "properties": {
+          "rowNumber": { "type": "integer", "minimum": 2 },
+          "status": { "$ref": "#/components/schemas/StakeholderImportRowStatus" },
+          "document": { "type": ["string", "null"] },
+          "fullName": { "type": ["string", "null"] },
+          "errors": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      },
+      "PreviewStakeholderImportResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["listId", "listType", "totals", "rows"],
+        "properties": {
+          "listId": { "type": "string", "minLength": 1 },
+          "listType": { "$ref": "#/components/schemas/StakeholderListType" },
+          "totals": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["total", "new", "existing", "alreadyInList", "invalid"],
+            "properties": {
+              "total": { "type": "integer", "minimum": 0 },
+              "new": { "type": "integer", "minimum": 0 },
+              "existing": { "type": "integer", "minimum": 0 },
+              "alreadyInList": { "type": "integer", "minimum": 0 },
+              "invalid": { "type": "integer", "minimum": 0 }
+            }
+          },
+          "rows": {
+            "type": "array",
+            "maxItems": 500,
+            "items": { "$ref": "#/components/schemas/StakeholderImportRowDto" }
+          }
+        }
+      },
+      "ConfirmStakeholderImportRejectedRow": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["rowNumber", "errors"],
+        "properties": {
+          "rowNumber": { "type": "integer", "minimum": 2 },
+          "errors": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      },
+      "ConfirmStakeholderImportResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["importId", "listId", "totals", "rejectedRows"],
+        "properties": {
+          "importId": { "type": "string", "minLength": 1 },
+          "listId": { "type": "string", "minLength": 1 },
+          "totals": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["created", "reused", "added", "alreadyInList", "rejected"],
+            "properties": {
+              "created": { "type": "integer", "minimum": 0 },
+              "reused": { "type": "integer", "minimum": 0 },
+              "added": { "type": "integer", "minimum": 0 },
+              "alreadyInList": { "type": "integer", "minimum": 0 },
+              "rejected": { "type": "integer", "minimum": 0 }
+            }
+          },
+          "rejectedRows": {
+            "type": "array",
+            "maxItems": 500,
+            "items": { "$ref": "#/components/schemas/ConfirmStakeholderImportRejectedRow" }
+          }
+        }
+      },
+      "StakeholderImportTemplateQuery": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type"],
+        "properties": {
+          "type": { "$ref": "#/components/schemas/StakeholderListType" }
         }
       }
     },

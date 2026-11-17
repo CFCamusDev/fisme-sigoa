@@ -129,4 +129,14 @@ describe('createE2ESeeder (HU-080, T-080-16)', () => {
     await s.resetStakeholders();
     expect(await prisma.stakeholder.count()).toBe(0);
   });
+
+  it('builds an import file with the headers of the list type', async () => {
+    const s = getSeeder();
+    const base64 = await s.buildStakeholderImportFile({
+      listType: 'TEACHER',
+      rows: [['71234567', 'Docente E2E', 'docente@example.test', '912345678']],
+    });
+    const buffer = Buffer.from(base64, 'base64');
+    expect(buffer.subarray(0, 4).equals(Buffer.from([0x50, 0x4b, 0x03, 0x04]))).toBe(true);
+  });
 });

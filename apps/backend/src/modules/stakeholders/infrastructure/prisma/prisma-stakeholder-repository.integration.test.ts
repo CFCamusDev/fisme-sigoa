@@ -268,4 +268,43 @@ describe('PrismaStakeholderRepository Integration (PostgreSQL real, T-021-24)', 
     const found = await repository.findByIds(['stk-f3', 'stk-f1', 'missing-id']);
     expect(found.map((item) => item.id)).toEqual(['stk-f1', 'stk-f3']);
   }, 5_000);
+
+  it('finds stakeholders by DNI and RUC in one query', async () => {
+    const person = makePerson('stk-doc-1', '71111111');
+    const institution = makeInstitution('stk-doc-2', '20711111111');
+    await repository.save(person);
+    await repository.save(institution);
+
+    expect(await repository.findByDocuments({ dnis: [], rucs: [] })).toEqual([]);
+
+    const found = await repository.findByDocuments({
+      dnis: ['71111111', '79999999'],
+      rucs: ['20711111111'],
+    });
+    expect(found.map((item) => item.id)).toEqual(['stk-doc-2', 'stk-doc-1']);
+  }, 5_000);
+
+  it('saves many stakeholders at once', async () => {
+    await repository.saveMany([]);
+
+    const s1 = makePerson('stk-bulk-1', '72111111');
+    const s2 = makeInstitution('stk-bulk-2', '20721111111');
+    await repository.saveMany([s1, s2]);
+
+    const found = await repository.findByIds(['stk-bulk-1', 'stk-bulk-2']);
+    expect(found).toHaveLength(2);
+  }, 5_000);
+
+  it('maps a duplicate document to a conflict and saves nothing', async () => {
+    await repository.save(makePerson('stk-dup-base', '73111111'));
+
+    const fresh = makePerson('stk-dup-fresh', '73222222');
+    const colliding = makePerson('stk-dup-collide', '73111111');
+
+    await expect(repository.saveMany([fresh, colliding])).rejects.toBeInstanceOf(
+      DuplicateStakeholderError,
+    );
+
+    expect(await repository.findById('stk-dup-fresh')).toBeNull();
+  }, 5_000);
 });

@@ -8,3 +8,6 @@ export * from './use-stakeholder-lists';
 export * from './use-create-stakeholder-list';
 export * from './use-add-stakeholder-list-member';
 export * from './use-copy-stakeholder-list';
+export * from './use-download-stakeholder-import-template';
+export * from './use-preview-stakeholder-import';
+export * from './use-confirm-stakeholder-import';
