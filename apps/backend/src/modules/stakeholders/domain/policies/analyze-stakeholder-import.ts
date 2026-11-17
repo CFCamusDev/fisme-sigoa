@@ -82,15 +82,21 @@ export function normalizeImportDocument(
     return normalized;
   }
   if (listType === 'EMPLOYER') {
-    return normalized.length <= 11 ? normalized.padStart(11, '0') : normalized;
+    return normalized.length >= 9 && normalized.length <= 11
+      ? normalized.padStart(11, '0')
+      : normalized;
   }
   if (listType === 'ADVISORY_BOARD') {
-    if (normalized.length <= 8) {
+    if (normalized.length >= 6 && normalized.length <= 8) {
       return normalized.padStart(8, '0');
     }
-    return normalized.length <= 11 ? normalized.padStart(11, '0') : normalized;
+    return normalized.length >= 9 && normalized.length <= 11
+      ? normalized.padStart(11, '0')
+      : normalized;
   }
-  return normalized.length <= 8 ? normalized.padStart(8, '0') : normalized;
+  return normalized.length >= 6 && normalized.length <= 8
+    ? normalized.padStart(8, '0')
+    : normalized;
 }
 
 function resolveDocumentAndKind(
