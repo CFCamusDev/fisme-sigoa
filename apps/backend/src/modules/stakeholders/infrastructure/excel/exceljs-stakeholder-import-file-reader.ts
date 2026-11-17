@@ -110,8 +110,9 @@ export class ExcelJsStakeholderImportFileReader implements StakeholderImportFile
       sharedStrings: 'cache',
       hyperlinks: 'ignore',
       styles: 'ignore',
-      entries: 'emit',
     });
+    // ExcelJS 4.4.0 puede recibir sheet1.xml antes que workbook.xml y acceder a this.model.sheets.
+    (reader as unknown as { model?: { sheets: unknown[] } }).model ??= { sheets: [] };
 
     const rows: RawImportRow[] = [];
     let processedFirstSheet = false;
