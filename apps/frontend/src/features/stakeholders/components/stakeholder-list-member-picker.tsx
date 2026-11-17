@@ -203,7 +203,7 @@ export function StakeholderListMemberPicker({
           </Button>
         </form>
 
-        {query.isLoading ? <LoadingState label="Buscando constituyentes…" /> : null}
+        {query.isLoading ? <LoadingState message="Buscando constituyentes…" /> : null}
 
         {query.isError ? (
           <ErrorState
@@ -335,6 +335,7 @@ export function StakeholderListMemberPicker({
 
             <StakeholdersPagination
               page={page}
+              pageSize={PICKER_PAGE_SIZE}
               totalPages={totalPages}
               total={total}
               onPageChange={setPage}
