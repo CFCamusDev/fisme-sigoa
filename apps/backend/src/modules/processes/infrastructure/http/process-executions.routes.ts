@@ -1,4 +1,7 @@
-import { createProcessExecutionRequestSchema } from '@sigoa/shared';
+import {
+  createProcessExecutionRequestSchema,
+  listProcessExecutionsQuerySchema,
+} from '@sigoa/shared';
 import { Router, type RequestHandler } from 'express';
 import { validateRequest } from '../../../../shared/middleware/validate-request.js';
 import type { ProcessExecutionsController } from './process-executions.controller.js';
@@ -25,6 +28,16 @@ export function createProcessExecutionsRouter(deps: ProcessExecutionsRouterDepen
     deps.requirePermission('ejecucion.crear', 'GLOBAL'),
     validateRequest({ body: createProcessExecutionRequestSchema }),
     deps.controller.createProcessExecution,
+  );
+
+  // GET /process-executions (HU-027, T-027-10, RF-027, RS-002, RNF-008, RNF-009)
+  // Cadena obligatoria: authenticate -> requirePermission -> validateRequest -> controller
+  router.get(
+    '/',
+    deps.authenticate,
+    deps.requirePermission('ejecucion.ver', 'GLOBAL'),
+    validateRequest({ query: listProcessExecutionsQuerySchema }),
+    deps.controller.listProcessExecutions,
   );
 
   return router;

@@ -3,6 +3,7 @@ import type { AuditLogger } from '../../shared/audit/audit-logger.js';
 import type { DbProvider } from '../../shared/prisma/prisma-unit-of-work.js';
 import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
 import { CreateProcessExecutionUseCase } from './application/create-process-execution.js';
+import { ListProcessExecutionsUseCase } from './application/list-process-executions.js';
 import type { ProcessPermissionChecker } from './domain/ports/process-permission-checker.js';
 import { ProcessExecutionsController } from './infrastructure/http/process-executions.controller.js';
 import {
@@ -48,8 +49,14 @@ export function createProcessesModule(deps?: ProcessesModuleDependencies): Route
     clock: deps.clock,
   });
 
+  const listProcessExecutionsUseCase = new ListProcessExecutionsUseCase({
+    processExecutionReader: processExecutionRepository,
+    permissionChecker: deps.permissionChecker,
+  });
+
   const controller = new ProcessExecutionsController({
     createProcessExecutionUseCase,
+    listProcessExecutionsUseCase,
   });
 
   return createProcessExecutionsRouter({
@@ -68,5 +75,7 @@ export * from './domain/ports/index.js';
 export * from './application/process-execution-dto.js';
 export * from './application/create-process-execution.js';
 export * from './application/create-process-execution.types.js';
+export * from './application/list-process-executions.js';
+export * from './application/list-process-executions.types.js';
 export * from './infrastructure/http/process-executions.controller.js';
 export * from './infrastructure/http/process-executions.routes.js';
