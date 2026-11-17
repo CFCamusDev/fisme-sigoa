@@ -8349,6 +8349,7 @@
         ],
         "requestBody": {
           "required": true,
+          "description": "Archivo Excel (.xlsx) de hasta 2 MiB (2 097 152 bytes) y máximo 500 filas de datos.",
           "content": {
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
               "schema": {
@@ -8373,7 +8374,34 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/PreviewStakeholderImportResponse"
+                },
+                "example": {
+                  "listId": "list-1",
+                  "listType": "TEACHER",
+                  "totals": {
+                    "total": 2,
+                    "new": 1,
+                    "existing": 0,
+                    "alreadyInList": 0,
+                    "invalid": 1
+                  },
+                  "rows": [
+                    {
+                      "rowNumber": 2,
+                      "status": "NEW",
+                      "document": "71234567",
+                      "fullName": "Mario Quispe Salas",
+                      "errors": []
+                    },
+                    {
+                      "rowNumber": 3,
+                      "status": "INVALID",
+                      "document": null,
+                      "fullName": null,
+                      "errors": ["El DNI es obligatorio y debe tener 8 dígitos."]
+                    }
+                  ]
                 }
               }
             }
@@ -8446,6 +8474,7 @@
         ],
         "requestBody": {
           "required": true,
+          "description": "Archivo Excel (.xlsx) de hasta 2 MiB (2 097 152 bytes) y máximo 500 filas de datos.",
           "content": {
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
               "schema": {
@@ -8470,7 +8499,24 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/ConfirmStakeholderImportResponse"
+                },
+                "example": {
+                  "importId": "imp-1",
+                  "listId": "list-1",
+                  "totals": {
+                    "created": 1,
+                    "reused": 1,
+                    "added": 2,
+                    "alreadyInList": 0,
+                    "rejected": 1
+                  },
+                  "rejectedRows": [
+                    {
+                      "rowNumber": 4,
+                      "errors": ["El DNI debe tener exactamente 8 dígitos numéricos."]
+                    }
+                  ]
                 }
               }
             }
@@ -11259,6 +11305,97 @@
               }
             }
           }
+        }
+      },
+      "StakeholderImportRowStatus": {
+        "type": "string",
+        "enum": ["NEW", "EXISTING", "ALREADY_IN_LIST", "INVALID"]
+      },
+      "StakeholderImportRowDto": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["rowNumber", "status", "document", "fullName", "errors"],
+        "properties": {
+          "rowNumber": { "type": "integer", "minimum": 2 },
+          "status": { "$ref": "#/components/schemas/StakeholderImportRowStatus" },
+          "document": { "type": ["string", "null"] },
+          "fullName": { "type": ["string", "null"] },
+          "errors": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      },
+      "PreviewStakeholderImportResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["listId", "listType", "totals", "rows"],
+        "properties": {
+          "listId": { "type": "string", "minLength": 1 },
+          "listType": { "$ref": "#/components/schemas/StakeholderListType" },
+          "totals": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["total", "new", "existing", "alreadyInList", "invalid"],
+            "properties": {
+              "total": { "type": "integer", "minimum": 0 },
+              "new": { "type": "integer", "minimum": 0 },
+              "existing": { "type": "integer", "minimum": 0 },
+              "alreadyInList": { "type": "integer", "minimum": 0 },
+              "invalid": { "type": "integer", "minimum": 0 }
+            }
+          },
+          "rows": {
+            "type": "array",
+            "maxItems": 500,
+            "items": { "$ref": "#/components/schemas/StakeholderImportRowDto" }
+          }
+        }
+      },
+      "ConfirmStakeholderImportRejectedRow": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["rowNumber", "errors"],
+        "properties": {
+          "rowNumber": { "type": "integer", "minimum": 2 },
+          "errors": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      },
+      "ConfirmStakeholderImportResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["importId", "listId", "totals", "rejectedRows"],
+        "properties": {
+          "importId": { "type": "string", "minLength": 1 },
+          "listId": { "type": "string", "minLength": 1 },
+          "totals": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["created", "reused", "added", "alreadyInList", "rejected"],
+            "properties": {
+              "created": { "type": "integer", "minimum": 0 },
+              "reused": { "type": "integer", "minimum": 0 },
+              "added": { "type": "integer", "minimum": 0 },
+              "alreadyInList": { "type": "integer", "minimum": 0 },
+              "rejected": { "type": "integer", "minimum": 0 }
+            }
+          },
+          "rejectedRows": {
+            "type": "array",
+            "maxItems": 500,
+            "items": { "$ref": "#/components/schemas/ConfirmStakeholderImportRejectedRow" }
+          }
+        }
+      },
+      "StakeholderImportTemplateQuery": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type"],
+        "properties": {
+          "type": { "$ref": "#/components/schemas/StakeholderListType" }
         }
       }
     },
