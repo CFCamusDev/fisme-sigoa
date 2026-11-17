@@ -17,6 +17,30 @@ function isUniqueViolation(error: unknown): boolean {
   return !!error && typeof error === 'object' && (error as { code?: string }).code === 'P2002';
 }
 
+function toStakeholderCreateInput(stakeholder: Stakeholder): Prisma.StakeholderCreateManyInput {
+  return {
+    id: stakeholder.id,
+    kind: stakeholder.kind,
+    fullName: stakeholder.fullName,
+    dni: stakeholder.dni,
+    ruc: stakeholder.ruc,
+    email: stakeholder.email,
+    mobile: stakeholder.mobile,
+    position: stakeholder.position,
+    institution: stakeholder.institution,
+    sector: stakeholder.sector,
+    graduationYear: stakeholder.graduationYear,
+    cycle: stakeholder.cycle,
+    status: stakeholder.status,
+    voidReason: stakeholder.voidReason,
+    voidedAt: stakeholder.voidedAt,
+    voidedBy: stakeholder.voidedBy,
+    createdBy: stakeholder.createdBy,
+    createdAt: stakeholder.createdAt,
+    updatedAt: stakeholder.updatedAt,
+  };
+}
+
 export class PrismaStakeholderRepository
   implements StakeholderRepository, StakeholderReader, StakeholderLookup, StakeholderDocumentLookup
 {
@@ -104,27 +128,23 @@ export class PrismaStakeholderRepository
   async save(stakeholder: Stakeholder): Promise<void> {
     try {
       await this.dbProvider.get().stakeholder.create({
-        data: {
-          id: stakeholder.id,
-          kind: stakeholder.kind,
-          fullName: stakeholder.fullName,
-          dni: stakeholder.dni,
-          ruc: stakeholder.ruc,
-          email: stakeholder.email,
-          mobile: stakeholder.mobile,
-          position: stakeholder.position,
-          institution: stakeholder.institution,
-          sector: stakeholder.sector,
-          graduationYear: stakeholder.graduationYear,
-          cycle: stakeholder.cycle,
-          status: stakeholder.status,
-          voidReason: stakeholder.voidReason,
-          voidedAt: stakeholder.voidedAt,
-          voidedBy: stakeholder.voidedBy,
-          createdBy: stakeholder.createdBy,
-          createdAt: stakeholder.createdAt,
-          updatedAt: stakeholder.updatedAt,
-        },
+        data: toStakeholderCreateInput(stakeholder),
+      });
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw new DuplicateStakeholderError();
+      }
+      throw error;
+    }
+  }
+
+  async saveMany(stakeholders: readonly Stakeholder[]): Promise<void> {
+    if (stakeholders.length === 0) {
+      return;
+    }
+    try {
+      await this.dbProvider.get().stakeholder.createMany({
+        data: stakeholders.map(toStakeholderCreateInput),
       });
     } catch (error) {
       if (isUniqueViolation(error)) {
