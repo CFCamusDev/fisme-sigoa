@@ -121,7 +121,9 @@ test.describe('Stakeholder Lists Flow (HU-022, T-022-29, CA1, CA2, CA3)', () => 
       page.getByRole('button', { name: 'Copiar lista' }).click(),
     ]);
 
-    await expect(page.getByRole('status')).toContainText('Se copiaron 1 miembros a la lista 2028');
+    await expect(
+      page.getByRole('status').filter({ hasText: 'Se copiaron 1 miembros a la lista 2028' }),
+    ).toBeVisible();
     expect(pageErrors).toEqual([]);
   });
 });
