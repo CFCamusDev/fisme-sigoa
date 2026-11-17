@@ -2,16 +2,21 @@ import { Router, type RequestHandler } from 'express';
 import type { AuditLogger } from '../../shared/audit/audit-logger.js';
 import type { DbProvider } from '../../shared/prisma/prisma-unit-of-work.js';
 import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
+import { CreateStakeholderListUseCase } from './application/create-stakeholder-list.js';
 import { EditStakeholderUseCase } from './application/edit-stakeholder.js';
 import { RegisterStakeholderUseCase } from './application/register-stakeholder.js';
 import { SearchStakeholdersUseCase } from './application/search-stakeholders.js';
 import { VoidStakeholderUseCase } from './application/void-stakeholder.js';
 import type { StakeholderPermissionChecker } from './domain/ports/stakeholder-permission-checker.js';
+import { StakeholderListsController } from './infrastructure/http/stakeholder-lists.controller.js';
+import { createStakeholderListsRouter } from './infrastructure/http/stakeholder-lists.routes.js';
 import { StakeholdersController } from './infrastructure/http/stakeholders.controller.js';
 import {
   createStakeholdersRouter,
   type StakeholderRoutePermissionScope,
 } from './infrastructure/http/stakeholders.routes.js';
+import { PrismaStakeholderListProgramResolver } from './infrastructure/prisma/prisma-stakeholder-list-program-resolver.js';
+import { PrismaStakeholderListRepository } from './infrastructure/prisma/prisma-stakeholder-list-repository.js';
 import { PrismaStakeholderRepository } from './infrastructure/prisma/prisma-stakeholder-repository.js';
 
 export interface StakeholdersModuleDependencies {
@@ -77,14 +82,54 @@ export function createStakeholdersModule(deps?: StakeholdersModuleDependencies):
   });
 }
 
+export function createStakeholderListsModule(deps?: StakeholdersModuleDependencies): Router {
+  if (!deps) {
+    return Router();
+  }
+
+  const stakeholderListRepository = new PrismaStakeholderListRepository(deps.dbProvider);
+  const programResolver = new PrismaStakeholderListProgramResolver(deps.dbProvider);
+
+  const createStakeholderListUseCase = new CreateStakeholderListUseCase({
+    stakeholderListRepository,
+    programResolver,
+    permissionChecker: deps.permissionChecker,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+    clock: deps.clock,
+  });
+
+  const controller = new StakeholderListsController({
+    createStakeholderListUseCase,
+  });
+
+  return createStakeholderListsRouter({
+    controller,
+    authenticate: deps.authenticate,
+    requirePermission: deps.requirePermission,
+  });
+}
+
 export * from './domain/entities/stakeholder-enums.js';
+export * from './domain/entities/stakeholder-list-enums.js';
+export * from './domain/entities/stakeholder-list.js';
+export * from './domain/entities/stakeholder-list-member.js';
 export * from './domain/entities/stakeholder.js';
+export * from './domain/policies/stakeholder-list-type-fields.js';
 export * from './domain/policies/stakeholder-state-machine.js';
 export * from './domain/errors/index.js';
 export * from './domain/ports/index.js';
 export * from './infrastructure/prisma/prisma-stakeholder-mapper.js';
 export * from './infrastructure/prisma/prisma-stakeholder-repository.js';
+export * from './infrastructure/prisma/prisma-stakeholder-list-mapper.js';
+export * from './infrastructure/prisma/prisma-stakeholder-list-member-mapper.js';
+export * from './infrastructure/prisma/prisma-stakeholder-list-repository.js';
+export * from './infrastructure/prisma/prisma-stakeholder-list-member-repository.js';
+export * from './infrastructure/prisma/prisma-stakeholder-list-program-resolver.js';
 export * from './application/stakeholder-dto.js';
+export * from './application/stakeholder-list-dto.js';
+export * from './application/create-stakeholder-list.js';
+export * from './application/create-stakeholder-list.types.js';
 export * from './application/register-stakeholder.js';
 export * from './application/register-stakeholder.types.js';
 export * from './application/edit-stakeholder.js';
@@ -95,3 +140,5 @@ export * from './application/search-stakeholders.js';
 export * from './application/search-stakeholders.types.js';
 export * from './infrastructure/http/stakeholders.controller.js';
 export * from './infrastructure/http/stakeholders.routes.js';
+export * from './infrastructure/http/stakeholder-lists.controller.js';
+export * from './infrastructure/http/stakeholder-lists.routes.js';
