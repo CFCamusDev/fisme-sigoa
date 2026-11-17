@@ -77,6 +77,13 @@ import {
   registerStakeholderRequestSchema,
   stakeholderDtoSchema,
   voidStakeholderRequestSchema,
+  addStakeholderListMemberRequestSchema,
+  copyStakeholderListRequestSchema,
+  copyStakeholderListResponseSchema,
+  createStakeholderListRequestSchema,
+  listStakeholderListsResponseSchema,
+  stakeholderListDtoSchema,
+  stakeholderListMemberDtoSchema,
 } from '@sigoa/shared';
 import { createAuthRouter } from '../src/modules/auth/infrastructure/http/auth.routes.js';
 import { createUsersRouter } from '../src/modules/users/infrastructure/http/users.routes.js';
@@ -106,6 +113,8 @@ import { createSemestersRouter } from '../src/modules/parameters/infrastructure/
 import type { SemestersController } from '../src/modules/parameters/infrastructure/http/semesters.controller.js';
 import { createStakeholdersRouter } from '../src/modules/stakeholders/infrastructure/http/stakeholders.routes.js';
 import type { StakeholdersController } from '../src/modules/stakeholders/infrastructure/http/stakeholders.controller.js';
+import { createStakeholderListsRouter } from '../src/modules/stakeholders/infrastructure/http/stakeholder-lists.routes.js';
+import type { StakeholderListsController } from '../src/modules/stakeholders/infrastructure/http/stakeholder-lists.controller.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -2649,6 +2658,130 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
         'patch /stakeholders/{id}',
         'post /stakeholders',
         'post /stakeholders/{id}/void',
+      ]);
+
+      for (const endpoint of routerEndpoints) {
+        const [method, routePath] = endpoint.split(' ');
+        expect(spec.paths[routePath!]?.[method!], endpoint).toBeDefined();
+      }
+    });
+  });
+
+  describe('OpenAPI Specification for Stakeholder Lists (HU-022, T-022-14, RF-022, RNF-032)', () => {
+    it('documents the four operations with bearerAuth and proper status codes', () => {
+      const operations = [
+        {
+          path: '/stakeholder-lists',
+          method: 'get',
+          id: 'listStakeholderLists',
+          codes: ['200', '400', '401', '403'],
+        },
+        {
+          path: '/stakeholder-lists',
+          method: 'post',
+          id: 'createStakeholderList',
+          codes: ['201', '400', '401', '403', '409'],
+        },
+        {
+          path: '/stakeholder-lists/{id}/members',
+          method: 'post',
+          id: 'addStakeholderListMember',
+          codes: ['201', '400', '401', '403', '404', '409'],
+        },
+        {
+          path: '/stakeholder-lists/{id}/copy',
+          method: 'post',
+          id: 'copyStakeholderList',
+          codes: ['201', '400', '401', '403', '404', '409'],
+        },
+      ] as const;
+
+      for (const expected of operations) {
+        const op = spec.paths[expected.path]?.[expected.method];
+        expect(op, `${expected.method} ${expected.path}`).toBeDefined();
+        expect(op.operationId).toBe(expected.id);
+        expect(op.tags).toEqual(['StakeholderLists']);
+        expect(op.security).toEqual([{ bearerAuth: [] }]);
+        expect(Object.keys(op.responses).sort()).toEqual([...expected.codes]);
+        const successCode = expected.codes[0];
+        expect(op.responses[successCode].headers['Cache-Control'].example).toBe('no-store');
+      }
+    });
+
+    it('keeps component schemas and examples aligned with shared Zod schemas', () => {
+      const createOp = spec.paths['/stakeholder-lists'].post;
+      expect(
+        createStakeholderListRequestSchema.safeParse(
+          createOp.requestBody.content['application/json'].example,
+        ).success,
+      ).toBe(true);
+
+      const addOp = spec.paths['/stakeholder-lists/{id}/members'].post;
+      expect(
+        addStakeholderListMemberRequestSchema.safeParse(
+          addOp.requestBody.content['application/json'].example,
+        ).success,
+      ).toBe(true);
+
+      const copyOp = spec.paths['/stakeholder-lists/{id}/copy'].post;
+      expect(
+        copyStakeholderListRequestSchema.safeParse(
+          copyOp.requestBody.content['application/json'].example,
+        ).success,
+      ).toBe(true);
+
+      const pairs: Array<[string, { shape: Record<string, unknown> }]> = [
+        ['StakeholderListDto', stakeholderListDtoSchema],
+        ['StakeholderListMemberDto', stakeholderListMemberDtoSchema],
+        ['CreateStakeholderListRequest', createStakeholderListRequestSchema],
+        ['AddStakeholderListMemberRequest', addStakeholderListMemberRequestSchema],
+        ['CopyStakeholderListRequest', copyStakeholderListRequestSchema],
+        ['ListStakeholderListsResponse', listStakeholderListsResponseSchema],
+        ['CopyStakeholderListResponse', copyStakeholderListResponseSchema],
+      ];
+      for (const [name, zodSchema] of pairs) {
+        const schema = spec.components.schemas[name];
+        expect(Object.keys(schema.properties).sort(), name).toEqual(
+          Object.keys(zodSchema.shape).sort(),
+        );
+      }
+    });
+
+    it('has no delete operation for stakeholder lists', () => {
+      expect(spec.paths['/stakeholder-lists']?.delete).toBeUndefined();
+      expect(spec.paths['/stakeholder-lists/{id}/members']?.delete).toBeUndefined();
+      expect(spec.paths['/stakeholder-lists/{id}/copy']?.delete).toBeUndefined();
+    });
+
+    it('has bidirectional parity between openapi spec and createStakeholderListsRouter', () => {
+      const router = createStakeholderListsRouter({
+        controller: {
+          createStakeholderList: vi.fn(),
+          addStakeholderListMember: vi.fn(),
+          copyStakeholderList: vi.fn(),
+          listStakeholderLists: vi.fn(),
+        } as unknown as StakeholderListsController,
+        authenticate: vi.fn(),
+        requirePermission: vi.fn(() => vi.fn()),
+      });
+
+      const routerEndpoints: string[] = [];
+      for (const layer of router.stack) {
+        if (layer.route) {
+          for (const method of Object.keys(layer.route.methods)) {
+            const normalizedPath = (
+              '/stakeholder-lists' + (layer.route.path === '/' ? '' : layer.route.path)
+            ).replace(/:([a-zA-Z0-9_]+)/g, '{$1}');
+            routerEndpoints.push(`${method.toLowerCase()} ${normalizedPath}`);
+          }
+        }
+      }
+
+      expect(routerEndpoints.sort()).toEqual([
+        'get /stakeholder-lists',
+        'post /stakeholder-lists',
+        'post /stakeholder-lists/{id}/copy',
+        'post /stakeholder-lists/{id}/members',
       ]);
 
       for (const endpoint of routerEndpoints) {
