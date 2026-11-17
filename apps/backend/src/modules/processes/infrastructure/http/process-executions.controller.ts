@@ -40,7 +40,7 @@ export class ProcessExecutionsController {
   listProcessExecutions: RequestHandler = async (req, res, next) => {
     try {
       const { actorId } = resolveRequestActor(req);
-      const query = getValidated<ListProcessExecutionsQuery>(req, 'query');
+      const query = getValidated<unknown, unknown, ListProcessExecutionsQuery>(res).query;
 
       const response = await this.listProcessExecutionsUseCase.execute({
         actorId,
