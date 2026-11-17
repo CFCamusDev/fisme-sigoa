@@ -1,6 +1,7 @@
 import { Router, type RequestHandler } from 'express';
 import {
   addStakeholderListMemberRequestSchema,
+  copyStakeholderListRequestSchema,
   createStakeholderListRequestSchema,
   stakeholderListIdParamsSchema,
 } from '@sigoa/shared';
@@ -41,6 +42,19 @@ export function createStakeholderListsRouter(deps: StakeholderListsRouterDepende
       body: addStakeholderListMemberRequestSchema,
     }),
     deps.controller.addStakeholderListMember,
+  );
+
+  // POST /stakeholder-lists/:id/copy (HU-022, T-022-12, CA3, RF-022, RS-002, RS-020)
+  // Cadena obligatoria: authenticate -> requirePermission -> validateRequest -> controller
+  router.post(
+    '/:id/copy',
+    deps.authenticate,
+    deps.requirePermission('constituyente.editar', 'GLOBAL'),
+    validateRequest({
+      params: stakeholderListIdParamsSchema,
+      body: copyStakeholderListRequestSchema,
+    }),
+    deps.controller.copyStakeholderList,
   );
 
   return router;
