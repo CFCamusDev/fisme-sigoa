@@ -669,6 +669,7 @@ model StakeholderList {
 
   program Program                 @relation(fields: [programId], references: [id], onDelete: Restrict)
   members StakeholderListMember[]
+  sessions Session[]
 
   @@unique([programId, type, year])
   @@index([type, year])
@@ -746,4 +747,36 @@ model ProcessExecution {
   @@index([catalogVersionId])
   @@index([semesterId])
   @@map("process_executions")
+}
+
+// ==============================================================================
+// SESIONES CON CONSTITUYENTES (HU-032, RF-032, RS-030)
+// ==============================================================================
+
+enum SessionModality {
+  VIRTUAL
+  IN_PERSON
+  HYBRID
+}
+
+model Session {
+  id                String              @id @default(cuid())
+  stakeholderType   StakeholderListType
+  stakeholderListId String?
+  sessionDate       DateTime            @db.Date
+  startTime         String
+  modality          SessionModality
+  meetingUrl        String?
+  recordingUrl      String?
+  createdBy         String
+  updatedBy         String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  stakeholderList StakeholderList? @relation(fields: [stakeholderListId], references: [id], onDelete: Restrict)
+
+  @@unique([stakeholderType, sessionDate, startTime])
+  @@index([stakeholderListId])
+  @@index([sessionDate])
+  @@map("sessions")
 }
