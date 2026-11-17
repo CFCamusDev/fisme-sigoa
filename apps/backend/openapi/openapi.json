@@ -8379,7 +8379,7 @@
             }
           },
           "400": {
-            "description": "Archivo inválido, encabezados incompatibles o más de 500 filas.",
+            "description": "Archivo inválido, encabezados incompatibles, más de 500 filas o tamaño mayor a 2 MiB.",
             "content": {
               "application/json": {
                 "schema": {
@@ -8410,16 +8410,6 @@
           },
           "404": {
             "description": "Lista de constituyentes no encontrada.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "El archivo supera el límite de 2 MiB.",
             "content": {
               "application/json": {
                 "schema": {

@@ -188,13 +188,14 @@ describe('POST /stakeholder-lists/:id/import/preview (PostgreSQL real, HU-023, T
     expect(response.status).toBe(400);
   }, 5_000);
 
-  it('returns 413 above the size limit', async () => {
+  it('returns 400 above the size limit', async () => {
     const listId = await createStakeholderListRow(prisma, { type: 'TEACHER', year: 2027 });
     const member = await createActor(['COMMITTEE_MEMBER']);
     const oversized = Buffer.alloc(STAKEHOLDER_IMPORT_MAX_FILE_BYTES + 1, 0x50);
 
     const response = await postPreview(listId, member.token).send(oversized);
-    expect(response.status).toBe(413);
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe('VALIDATION_ERROR');
   }, 5_000);
 
   it('returns 404 for an unknown list and 400 for invalid id format', async () => {
