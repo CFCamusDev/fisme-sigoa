@@ -8,6 +8,7 @@ import type {
   StakeholderPage,
   StakeholderReader,
 } from '../../domain/ports/stakeholder-reader.js';
+import type { StakeholderDocumentLookup } from '../../domain/ports/stakeholder-document-lookup.js';
 import type { StakeholderLookup } from '../../domain/ports/stakeholder-lookup.js';
 import type { StakeholderRepository } from '../../domain/ports/stakeholder-repository.js';
 import { mapPrismaStakeholderRowToDomain } from './prisma-stakeholder-mapper.js';
@@ -17,7 +18,7 @@ function isUniqueViolation(error: unknown): boolean {
 }
 
 export class PrismaStakeholderRepository
-  implements StakeholderRepository, StakeholderReader, StakeholderLookup
+  implements StakeholderRepository, StakeholderReader, StakeholderLookup, StakeholderDocumentLookup
 {
   constructor(private readonly dbProvider: DbProvider) {}
 
@@ -32,6 +33,27 @@ export class PrismaStakeholderRepository
     }
     const rows = await this.dbProvider.get().stakeholder.findMany({
       where: { id: { in: [...ids] } },
+      orderBy: [{ fullName: 'asc' }, { id: 'asc' }],
+    });
+    return rows.map(mapPrismaStakeholderRowToDomain);
+  }
+
+  async findByDocuments(documents: {
+    readonly dnis: readonly string[];
+    readonly rucs: readonly string[];
+  }): Promise<Stakeholder[]> {
+    const orConditions: Prisma.StakeholderWhereInput[] = [];
+    if (documents.dnis.length > 0) {
+      orConditions.push({ dni: { in: [...documents.dnis] } });
+    }
+    if (documents.rucs.length > 0) {
+      orConditions.push({ ruc: { in: [...documents.rucs] } });
+    }
+    if (orConditions.length === 0) {
+      return [];
+    }
+    const rows = await this.dbProvider.get().stakeholder.findMany({
+      where: { OR: orConditions },
       orderBy: [{ fullName: 'asc' }, { id: 'asc' }],
     });
     return rows.map(mapPrismaStakeholderRowToDomain);

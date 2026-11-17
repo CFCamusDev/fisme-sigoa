@@ -268,4 +268,19 @@ describe('PrismaStakeholderRepository Integration (PostgreSQL real, T-021-24)', 
     const found = await repository.findByIds(['stk-f3', 'stk-f1', 'missing-id']);
     expect(found.map((item) => item.id)).toEqual(['stk-f1', 'stk-f3']);
   }, 5_000);
+
+  it('finds stakeholders by DNI and RUC in one query', async () => {
+    const person = makePerson('stk-doc-1', '71111111');
+    const institution = makeInstitution('stk-doc-2', '20711111111');
+    await repository.save(person);
+    await repository.save(institution);
+
+    expect(await repository.findByDocuments({ dnis: [], rucs: [] })).toEqual([]);
+
+    const found = await repository.findByDocuments({
+      dnis: ['71111111', '79999999'],
+      rucs: ['20711111111'],
+    });
+    expect(found.map((item) => item.id)).toEqual(['stk-doc-2', 'stk-doc-1']);
+  }, 5_000);
 });
