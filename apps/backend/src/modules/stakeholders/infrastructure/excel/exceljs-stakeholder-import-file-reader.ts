@@ -1,4 +1,3 @@
-import { Readable } from 'node:stream';
 import { STAKEHOLDER_IMPORT_MAX_ROWS } from '@sigoa/shared';
 import ExcelJS from 'exceljs';
 import type { StakeholderListType } from '../../domain/entities/stakeholder-list-enums.js';
@@ -99,108 +98,91 @@ export class ExcelJsStakeholderImportFileReader implements StakeholderImportFile
       throw new InvalidImportFileError();
     }
 
-    return this.limiter.run(() => this.readStream(buffer, listType));
+    return this.limiter.run(() => this.readWithTimeout(buffer, listType));
   }
 
-  private async readStream(buffer: Buffer, listType: StakeholderListType): Promise<RawImportRow[]> {
-    const expectedColumns = getStakeholderImportColumns(listType);
-    const stream = Readable.from(buffer);
-    const reader = new ExcelJS.stream.xlsx.WorkbookReader(stream, {
-      worksheets: 'emit',
-      sharedStrings: 'cache',
-      hyperlinks: 'ignore',
-      styles: 'ignore',
+  private async readWithTimeout(
+    buffer: Buffer,
+    listType: StakeholderListType,
+  ): Promise<RawImportRow[]> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        reject(
+          new InvalidImportFileError('La lectura del archivo superó el tiempo máximo permitido.'),
+        );
+      }, this.timeoutMs);
     });
-    // ExcelJS 4.4.0 puede recibir sheet1.xml antes que workbook.xml y acceder a this.model.sheets.
-    (reader as unknown as { model?: { sheets: unknown[] } }).model ??= { sheets: [] };
-
-    const rows: RawImportRow[] = [];
-    let processedFirstSheet = false;
-    let headerChecked = false;
-    let timedOut = false;
-
-    const timer = setTimeout(() => {
-      timedOut = true;
-      stream.destroy(
-        new InvalidImportFileError('La lectura del archivo superó el tiempo máximo permitido.'),
-      );
-    }, this.timeoutMs);
 
     try {
-      for await (const worksheet of reader) {
-        if (processedFirstSheet) {
-          break;
-        }
-        processedFirstSheet = true;
-
-        for await (const row of worksheet) {
-          if (timedOut) {
-            throw new InvalidImportFileError(
-              'La lectura del archivo superó el tiempo máximo permitido.',
-            );
-          }
-
-          if (!headerChecked) {
-            headerChecked = true;
-            const actualHeaders = expectedColumns.map((_, index) =>
-              cellValueToText(row.getCell(index + 1).value),
-            );
-            const extraHeader = cellValueToText(row.getCell(expectedColumns.length + 1).value);
-            const matches =
-              extraHeader === null &&
-              expectedColumns.every((col, index) => actualHeaders[index] === col.header);
-
-            if (!matches) {
-              throw new ImportTemplateMismatchError();
-            }
-            continue;
-          }
-
-          const values: Partial<Record<StakeholderImportColumnKey, string | null>> = {};
-          let hasAnyValue = false;
-
-          for (let index = 0; index < expectedColumns.length; index += 1) {
-            const column = expectedColumns[index];
-            if (!column) {
-              continue;
-            }
-            const text = cellValueToText(row.getCell(index + 1).value);
-            values[column.key] = text;
-            if (text !== null) {
-              hasAnyValue = true;
-            }
-          }
-
-          if (!hasAnyValue) {
-            continue;
-          }
-
-          if (rows.length >= this.maxRows) {
-            throw new ImportTooManyRowsError(this.maxRows);
-          }
-
-          rows.push({
-            rowNumber: row.number,
-            values,
-          });
-        }
-      }
-    } catch (error) {
-      if (
-        error instanceof InvalidImportFileError ||
-        error instanceof ImportTemplateMismatchError ||
-        error instanceof ImportTooManyRowsError
-      ) {
-        throw error;
-      }
-      throw new InvalidImportFileError();
+      return await Promise.race([this.parseWorkbook(buffer, listType), timeoutPromise]);
     } finally {
-      clearTimeout(timer);
-      stream.destroy();
+      if (timer !== undefined) {
+        clearTimeout(timer);
+      }
+    }
+  }
+
+  private async parseWorkbook(
+    buffer: Buffer,
+    listType: StakeholderListType,
+  ): Promise<RawImportRow[]> {
+    const workbook = new ExcelJS.Workbook();
+    try {
+      await workbook.xlsx.load(buffer as unknown as ArrayBuffer);
+    } catch {
+      throw new InvalidImportFileError();
     }
 
-    if (!processedFirstSheet || !headerChecked) {
+    const worksheet = workbook.worksheets[0];
+    if (!worksheet || worksheet.actualRowCount === 0) {
       throw new InvalidImportFileError();
+    }
+
+    const expectedColumns = getStakeholderImportColumns(listType);
+    const headerRow = worksheet.getRow(1);
+    const actualHeaders = expectedColumns.map((_, index) =>
+      cellValueToText(headerRow.getCell(index + 1).value),
+    );
+    const extraHeader = cellValueToText(headerRow.getCell(expectedColumns.length + 1).value);
+    const matches =
+      extraHeader === null &&
+      expectedColumns.every((col, index) => actualHeaders[index] === col.header);
+
+    if (!matches) {
+      throw new ImportTemplateMismatchError();
+    }
+
+    const rows: RawImportRow[] = [];
+    for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber += 1) {
+      const row = worksheet.getRow(rowNumber);
+      const values: Partial<Record<StakeholderImportColumnKey, string | null>> = {};
+      let hasAnyValue = false;
+
+      for (let index = 0; index < expectedColumns.length; index += 1) {
+        const column = expectedColumns[index];
+        if (!column) {
+          continue;
+        }
+        const text = cellValueToText(row.getCell(index + 1).value);
+        values[column.key] = text;
+        if (text !== null) {
+          hasAnyValue = true;
+        }
+      }
+
+      if (!hasAnyValue) {
+        continue;
+      }
+
+      if (rows.length >= this.maxRows) {
+        throw new ImportTooManyRowsError(this.maxRows);
+      }
+
+      rows.push({
+        rowNumber,
+        values,
+      });
     }
 
     return rows;
