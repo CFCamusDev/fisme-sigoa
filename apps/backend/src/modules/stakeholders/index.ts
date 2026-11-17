@@ -6,6 +6,7 @@ import { AddStakeholderListMemberUseCase } from './application/add-stakeholder-l
 import { ConfirmStakeholderImportUseCase } from './application/confirm-stakeholder-import.js';
 import { CopyStakeholderListToNewYearUseCase } from './application/copy-stakeholder-list-to-new-year.js';
 import { CreateStakeholderListUseCase } from './application/create-stakeholder-list.js';
+import { DownloadStakeholderImportTemplateUseCase } from './application/download-stakeholder-import-template.js';
 import { EditStakeholderUseCase } from './application/edit-stakeholder.js';
 import { ListStakeholderListsUseCase } from './application/list-stakeholder-lists.js';
 import { PreviewStakeholderImportUseCase } from './application/preview-stakeholder-import.js';
@@ -14,6 +15,7 @@ import { SearchStakeholdersUseCase } from './application/search-stakeholders.js'
 import { VoidStakeholderUseCase } from './application/void-stakeholder.js';
 import type { StakeholderPermissionChecker } from './domain/ports/stakeholder-permission-checker.js';
 import { ExcelJsStakeholderImportFileReader } from './infrastructure/excel/exceljs-stakeholder-import-file-reader.js';
+import { ExcelJsStakeholderImportTemplateBuilder } from './infrastructure/excel/exceljs-stakeholder-import-template-builder.js';
 import { StakeholderListsController } from './infrastructure/http/stakeholder-lists.controller.js';
 import { createStakeholderListsRouter } from './infrastructure/http/stakeholder-lists.routes.js';
 import { StakeholdersController } from './infrastructure/http/stakeholders.controller.js';
@@ -157,6 +159,12 @@ export function createStakeholderListsModule(deps?: StakeholdersModuleDependenci
     clock: deps.clock,
   });
 
+  const templateBuilder = new ExcelJsStakeholderImportTemplateBuilder();
+  const downloadStakeholderImportTemplateUseCase = new DownloadStakeholderImportTemplateUseCase({
+    templateBuilder,
+    permissionChecker: deps.permissionChecker,
+  });
+
   const controller = new StakeholderListsController({
     createStakeholderListUseCase,
     addStakeholderListMemberUseCase,
@@ -164,6 +172,7 @@ export function createStakeholderListsModule(deps?: StakeholdersModuleDependenci
     listStakeholderListsUseCase,
     previewStakeholderImportUseCase,
     confirmStakeholderImportUseCase,
+    downloadStakeholderImportTemplateUseCase,
   });
 
   return createStakeholderListsRouter({
@@ -199,6 +208,8 @@ export * from './application/copy-stakeholder-list-to-new-year.js';
 export * from './application/copy-stakeholder-list-to-new-year.types.js';
 export * from './application/create-stakeholder-list.js';
 export * from './application/create-stakeholder-list.types.js';
+export * from './application/download-stakeholder-import-template.js';
+export * from './application/download-stakeholder-import-template.types.js';
 export * from './application/list-stakeholder-lists.js';
 export * from './application/list-stakeholder-lists.types.js';
 export * from './application/preview-stakeholder-import.js';

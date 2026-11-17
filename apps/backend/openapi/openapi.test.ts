@@ -2762,6 +2762,7 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
           listStakeholderLists: vi.fn(),
           previewStakeholderImport: vi.fn(),
           confirmStakeholderImport: vi.fn(),
+          downloadStakeholderImportTemplate: vi.fn(),
         } as unknown as StakeholderListsController,
         authenticate: vi.fn(),
         requirePermission: vi.fn(() => vi.fn()),
@@ -2781,6 +2782,7 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
 
       expect(routerEndpoints.sort()).toEqual([
         'get /stakeholder-lists',
+        'get /stakeholder-lists/excel-template',
         'post /stakeholder-lists',
         'post /stakeholder-lists/{id}/copy',
         'post /stakeholder-lists/{id}/import/confirm',

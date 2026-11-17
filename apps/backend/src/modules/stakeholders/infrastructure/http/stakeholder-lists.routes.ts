@@ -6,6 +6,7 @@ import {
   copyStakeholderListRequestSchema,
   createStakeholderListRequestSchema,
   listStakeholderListsQuerySchema,
+  stakeholderImportTemplateQuerySchema,
   stakeholderListIdParamsSchema,
 } from '@sigoa/shared';
 import { validateRequest } from '../../../../shared/middleware/validate-request.js';
@@ -24,6 +25,16 @@ export interface StakeholderListsRouterDependencies {
 
 export function createStakeholderListsRouter(deps: StakeholderListsRouterDependencies): Router {
   const router = Router();
+
+  // GET /stakeholder-lists/excel-template (HU-023, T-023-08, RF-023, RS-002, RS-074)
+  // Se registra antes de cualquier ruta con /:id.
+  router.get(
+    '/excel-template',
+    deps.authenticate,
+    deps.requirePermission('constituyente.importar', 'GLOBAL'),
+    validateRequest({ query: stakeholderImportTemplateQuerySchema }),
+    deps.controller.downloadStakeholderImportTemplate,
+  );
 
   // POST /stakeholder-lists (HU-022, T-022-10, RF-022, RS-002, RS-020, RNF-008, RNF-009)
   // Cadena obligatoria: authenticate -> requirePermission -> validateRequest -> controller

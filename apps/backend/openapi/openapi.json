@@ -8527,6 +8527,88 @@
           }
         }
       }
+    },
+    "/stakeholder-lists/excel-template": {
+      "get": {
+        "tags": ["StakeholderLists"],
+        "summary": "Descargar plantilla Excel para importar constituyentes",
+        "description": "Genera y descarga la plantilla .xlsx del tipo de lista indicado. Requiere `constituyente.importar` (GLOBAL).",
+        "operationId": "downloadStakeholderImportTemplate",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/StakeholderListType"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Plantilla Excel generada correctamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Evita almacenar la descarga en caché."
+              },
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "attachment; filename=\"plantilla-employer.xlsx\"",
+                "description": "Nombre del archivo descargable."
+              }
+            },
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tipo de lista ausente o inválido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin permiso constituyente.importar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
