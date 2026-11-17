@@ -6,3 +6,8 @@ export * from './stakeholders-pagination';
 export * from './stakeholders-table';
 export * from './void-stakeholder-form';
 export * from './stakeholder-list-member-picker';
+export * from './stakeholder-list-filters';
+export * from './create-stakeholder-list-form';
+export * from './copy-stakeholder-list-form';
+export * from './stakeholder-list-members-table';
+export * from './stakeholder-lists-page';

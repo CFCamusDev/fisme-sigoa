@@ -13,6 +13,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppConstituyentesRouteImport } from './routes/_app/constituyentes'
+import { Route as AppListasConstituyentesRouteImport } from './routes/_app/listas-constituyentes'
 import { Route as AppPlantillasRouteImport } from './routes/_app/plantillas'
 import { Route as AppResolucionesRouteImport } from './routes/_app/resoluciones'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
@@ -51,6 +52,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
 const AppConstituyentesRoute = AppConstituyentesRouteImport.update({
   id: '/constituyentes',
   path: '/constituyentes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppListasConstituyentesRoute = AppListasConstituyentesRouteImport.update({
+  id: '/listas-constituyentes',
+  path: '/listas-constituyentes',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPlantillasRoute = AppPlantillasRouteImport.update({
@@ -166,6 +172,7 @@ const AppUsuariosUserIdEditarRoute = AppUsuariosUserIdEditarRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/constituyentes': typeof AppConstituyentesRoute
+  '/listas-constituyentes': typeof AppListasConstituyentesRoute
   '/plantillas': typeof AppPlantillasRoute
   '/resoluciones': typeof AppResolucionesRoute
   '/login': typeof AuthLoginRoute
@@ -191,6 +198,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
   '/constituyentes': typeof AppConstituyentesRoute
+  '/listas-constituyentes': typeof AppListasConstituyentesRoute
   '/plantillas': typeof AppPlantillasRoute
   '/resoluciones': typeof AppResolucionesRoute
   '/login': typeof AuthLoginRoute
@@ -218,6 +226,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/_auth': typeof AuthRouteWithChildren
   '/_app/constituyentes': typeof AppConstituyentesRoute
+  '/_app/listas-constituyentes': typeof AppListasConstituyentesRoute
   '/_app/plantillas': typeof AppPlantillasRoute
   '/_app/resoluciones': typeof AppResolucionesRoute
   '/_auth/login': typeof AuthLoginRoute
@@ -246,6 +255,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/constituyentes'
+    | '/listas-constituyentes'
     | '/plantillas'
     | '/resoluciones'
     | '/login'
@@ -271,6 +281,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/constituyentes'
+    | '/listas-constituyentes'
     | '/plantillas'
     | '/resoluciones'
     | '/login'
@@ -297,6 +308,7 @@ export interface FileRouteTypes {
     | '/_app'
     | '/_auth'
     | '/_app/constituyentes'
+    | '/_app/listas-constituyentes'
     | '/_app/plantillas'
     | '/_app/resoluciones'
     | '/_auth/login'
@@ -355,6 +367,13 @@ declare module '@tanstack/react-router' {
       path: '/constituyentes'
       fullPath: '/constituyentes'
       preLoaderRoute: typeof AppConstituyentesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/listas-constituyentes': {
+      id: '/_app/listas-constituyentes'
+      path: '/listas-constituyentes'
+      fullPath: '/listas-constituyentes'
+      preLoaderRoute: typeof AppListasConstituyentesRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/plantillas': {
@@ -509,6 +528,7 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppConstituyentesRoute: typeof AppConstituyentesRoute
+  AppListasConstituyentesRoute: typeof AppListasConstituyentesRoute
   AppPlantillasRoute: typeof AppPlantillasRoute
   AppResolucionesRoute: typeof AppResolucionesRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -530,6 +550,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppConstituyentesRoute: AppConstituyentesRoute,
+  AppListasConstituyentesRoute: AppListasConstituyentesRoute,
   AppPlantillasRoute: AppPlantillasRoute,
   AppResolucionesRoute: AppResolucionesRoute,
   AppIndexRoute: AppIndexRoute,

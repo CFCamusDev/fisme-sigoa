@@ -3,6 +3,7 @@ import {
   BookMarked,
   Building2,
   CalendarRange,
+  ClipboardList,
   FileCheck,
   FileText,
   LayoutDashboard,
@@ -84,6 +85,12 @@ export const MAIN_NAV_ITEMS: readonly NavItem[] = [
     title: 'Constituyentes',
     href: '/constituyentes',
     icon: UsersRound,
+    permission: 'constituyente.ver',
+  },
+  {
+    title: 'Listas Anexo 3',
+    href: '/listas-constituyentes',
+    icon: ClipboardList,
     permission: 'constituyente.ver',
   },
 ] as const;
