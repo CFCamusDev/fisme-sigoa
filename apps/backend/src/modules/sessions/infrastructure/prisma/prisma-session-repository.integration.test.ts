@@ -169,9 +169,7 @@ describe('PrismaSessionRepository Integration (PostgreSQL real, T-032-20)', () =
       const current = await repository.findByIdForUpdate('sess-edit-1');
       if (!current) throw new Error('Expected session');
       const updated = current.applyChanges({
-        modality: 'HYBRID',
-        meetingUrl: 'https://meet.example.com/b',
-        recordingUrl: null,
+        startTime: '09:30',
         actorId: 'editor-b',
         now: new Date('2026-11-17T16:01:00.000Z'),
       });
@@ -183,16 +181,10 @@ describe('PrismaSessionRepository Integration (PostgreSQL real, T-032-20)', () =
 
     const finalRow = await prisma.session.findUnique({ where: { id: 'sess-edit-1' } });
     expect(finalRow).not.toBeNull();
-    if (finalRow?.modality === 'VIRTUAL') {
-      expect(finalRow.meetingUrl).toBe('https://meet.example.com/a');
-      expect(finalRow.recordingUrl).toBe('https://drive.example.com/a');
-      expect(finalRow.updatedBy).toBe('editor-a');
-    } else {
-      expect(finalRow?.modality).toBe('HYBRID');
-      expect(finalRow?.meetingUrl).toBe('https://meet.example.com/b');
-      expect(finalRow?.recordingUrl).toBeNull();
-      expect(finalRow?.updatedBy).toBe('editor-b');
-    }
+    expect(finalRow?.modality).toBe('VIRTUAL');
+    expect(finalRow?.meetingUrl).toBe('https://meet.example.com/a');
+    expect(finalRow?.recordingUrl).toBe('https://drive.example.com/a');
+    expect(finalRow?.startTime).toBe('09:30');
   }, 5_000);
 
   it('rejects a virtual session without links at the database level', async () => {
