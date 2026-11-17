@@ -12,6 +12,7 @@ import {
   SlidersHorizontal,
   Users,
   UsersRound,
+  Workflow,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -92,5 +93,11 @@ export const MAIN_NAV_ITEMS: readonly NavItem[] = [
     href: '/listas-constituyentes',
     icon: ClipboardList,
     permission: 'constituyente.ver',
+  },
+  {
+    title: 'Ejecuciones',
+    href: '/ejecuciones',
+    icon: Workflow,
+    permission: 'ejecucion.ver',
   },
 ] as const;

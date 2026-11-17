@@ -418,6 +418,23 @@ const PROTECTED_ENDPOINTS: readonly ProtectedEndpointSpec[] = [
     requestPath: '/stakeholder-lists/excel-template?type=EMPLOYER',
     requiredPermission: 'constituyente.importar',
   },
+  {
+    method: 'get',
+    openApiPath: '/process-executions',
+    requestPath: '/process-executions',
+    requiredPermission: 'ejecucion.ver',
+  },
+  {
+    method: 'post',
+    openApiPath: '/process-executions',
+    requestPath: '/process-executions',
+    requiredPermission: 'ejecucion.crear',
+    sampleBody: {
+      type: 'P612',
+      year: 2027,
+      catalogVersionId: 'cv-1',
+    },
+  },
 ];
 
 describe('Protected Endpoints 403 Coverage & OpenAPI Drift Guard (PostgreSQL real, HU-008, T-008-06, CA1, RF-008, RNF-009, D11)', () => {

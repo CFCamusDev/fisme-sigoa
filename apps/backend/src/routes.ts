@@ -39,6 +39,7 @@ import {
   createStakeholderListsModule,
   createStakeholdersModule,
 } from './modules/stakeholders/index.js';
+import { createProcessesModule } from './modules/processes/index.js';
 import { createUsersModule, EmailActivationSender } from './modules/users/index.js';
 import {
   LoginAttemptsParameterProvider,
@@ -295,6 +296,18 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
   app.use(
     '/stakeholder-lists',
     createStakeholderListsModule({
+      unitOfWork: deps.unitOfWork,
+      auditLogger: deps.auditLogger,
+      dbProvider: deps.dbProvider,
+      authenticate: authServices.authenticate,
+      requirePermission: authorizationServices.requirePermission,
+      permissionChecker: authorizationServices.authorizer,
+      clock: deps.clock,
+    }),
+  );
+  app.use(
+    '/process-executions',
+    createProcessesModule({
       unitOfWork: deps.unitOfWork,
       auditLogger: deps.auditLogger,
       dbProvider: deps.dbProvider,
