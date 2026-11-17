@@ -3,3 +3,8 @@ export * from './use-edit-stakeholder';
 export * from './use-register-stakeholder';
 export * from './use-stakeholders';
 export * from './use-void-stakeholder';
+export * from './stakeholder-list-keys';
+export * from './use-stakeholder-lists';
+export * from './use-create-stakeholder-list';
+export * from './use-add-stakeholder-list-member';
+export * from './use-copy-stakeholder-list';
