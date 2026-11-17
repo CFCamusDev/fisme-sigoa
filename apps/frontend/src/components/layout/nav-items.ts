@@ -12,6 +12,7 @@ import {
   SlidersHorizontal,
   Users,
   UsersRound,
+  Workflow,
 } from 'lucide-react';
 
 export interface NavItem {
