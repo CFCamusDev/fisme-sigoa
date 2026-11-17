@@ -738,9 +738,10 @@ model ProcessExecution {
   createdAt        DateTime               @default(now())
   updatedAt        DateTime               @updatedAt
 
-  program        Program        @relation(fields: [programId], references: [id], onDelete: Restrict)
-  semester       Semester?      @relation(fields: [semesterId], references: [id], onDelete: Restrict)
-  catalogVersion CatalogVersion @relation(fields: [catalogVersionId], references: [id], onDelete: Restrict)
+  program        Program            @relation(fields: [programId], references: [id], onDelete: Restrict)
+  semester       Semester?          @relation(fields: [semesterId], references: [id], onDelete: Restrict)
+  catalogVersion CatalogVersion     @relation(fields: [catalogVersionId], references: [id], onDelete: Restrict)
+  sessionLinks   SessionExecution[]
 
   @@index([type, year])
   @@index([status])
@@ -773,10 +774,26 @@ model Session {
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
 
-  stakeholderList StakeholderList? @relation(fields: [stakeholderListId], references: [id], onDelete: Restrict)
+  stakeholderList StakeholderList?   @relation(fields: [stakeholderListId], references: [id], onDelete: Restrict)
+  executions      SessionExecution[]
 
   @@unique([stakeholderType, sessionDate, startTime])
   @@index([stakeholderListId])
   @@index([sessionDate])
   @@map("sessions")
+}
+
+model SessionExecution {
+  id                 String   @id @default(cuid())
+  sessionId          String
+  processExecutionId String
+  createdBy          String
+  createdAt          DateTime @default(now())
+
+  session          Session          @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+  processExecution ProcessExecution @relation(fields: [processExecutionId], references: [id], onDelete: Restrict)
+
+  @@unique([sessionId, processExecutionId])
+  @@index([processExecutionId])
+  @@map("session_executions")
 }
