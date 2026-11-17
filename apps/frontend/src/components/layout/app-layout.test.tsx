@@ -332,4 +332,28 @@ describe('AppLayout Component', () => {
     const main = screen.getByRole('main');
     expect(main).toHaveFocus();
   });
+
+  it('renders the "Ejecuciones" link to /ejecuciones (HU-027, T-027-21)', async () => {
+    renderWithProviders(
+      <AppLayout>
+        <p>Dashboard</p>
+      </AppLayout>,
+      { permissions: [{ code: 'ejecucion.ver', scope: 'GLOBAL' }] },
+    );
+
+    const executionsLink = await screen.findByRole('link', { name: /Ejecuciones/i });
+    expect(executionsLink).toBeInTheDocument();
+    expect(executionsLink).toHaveAttribute('href', '/ejecuciones');
+  });
+
+  it('hides the "Ejecuciones" link without ejecucion.ver (HU-027, T-027-21)', () => {
+    renderWithProviders(
+      <AppLayout>
+        <p>Dashboard</p>
+      </AppLayout>,
+      { permissions: [{ code: 'catalogo.ver', scope: 'GLOBAL' }] },
+    );
+
+    expect(screen.queryByRole('link', { name: /Ejecuciones/i })).not.toBeInTheDocument();
+  });
 });
