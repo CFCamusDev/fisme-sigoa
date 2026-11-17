@@ -7,6 +7,22 @@ import { seedE2EUserWithClient, type SeedUserOptions } from './seed-e2e-user.js'
 
 const TEMPLATE_ID = 'e2e-template-1';
 
+export interface SeedStakeholderOptions {
+  readonly id?: string;
+  readonly kind: 'PERSON' | 'INSTITUTION';
+  readonly fullName: string;
+  readonly dni?: string | null;
+  readonly ruc?: string | null;
+  readonly email?: string | null;
+  readonly mobile?: string | null;
+  readonly position?: string | null;
+  readonly institution?: string | null;
+  readonly sector?: string | null;
+  readonly graduationYear?: number | null;
+  readonly cycle?: string | null;
+  readonly status?: 'ACTIVE' | 'VOIDED';
+}
+
 export interface E2ESeeder {
   seedUser(options: SeedUserOptions): Promise<{ id: string; email: string }>;
   resetCatalog(): Promise<void>;
@@ -17,6 +33,8 @@ export interface E2ESeeder {
   seedResolution(options: { number: string; status: 'REGISTERED' | 'APPROVED' }): Promise<void>;
   resetTemplates(): Promise<void>;
   seedTemplate(options?: { withDraft?: boolean }): Promise<string>;
+  resetStakeholders(): Promise<void>;
+  seedStakeholder(options: SeedStakeholderOptions): Promise<string>;
   countUsersBySurname(firstSurname: string): Promise<number>;
   close(): Promise<void>;
 }
@@ -260,6 +278,38 @@ export function createE2ESeeder(databaseUrl: string): E2ESeeder {
 
     countUsersBySurname(firstSurname) {
       return prisma.user.count({ where: { firstSurname } });
+    },
+
+    async resetStakeholders() {
+      await prisma.stakeholderListMember.deleteMany();
+      await prisma.stakeholderList.deleteMany();
+      await prisma.stakeholder.deleteMany();
+    },
+
+    async seedStakeholder(options) {
+      await ensureAuthorization();
+      const row = await prisma.stakeholder.create({
+        data: {
+          ...(options.id ? { id: options.id } : {}),
+          kind: options.kind,
+          fullName: options.fullName,
+          dni: options.dni ?? null,
+          ruc: options.ruc ?? null,
+          email: options.email ?? null,
+          mobile: options.mobile ?? null,
+          position: options.position ?? null,
+          institution: options.institution ?? null,
+          sector: options.sector ?? null,
+          graduationYear: options.graduationYear ?? null,
+          cycle: options.cycle ?? null,
+          status: options.status ?? 'ACTIVE',
+          voidReason: options.status === 'VOIDED' ? 'Motivo de prueba E2E' : null,
+          voidedAt: options.status === 'VOIDED' ? new Date() : null,
+          voidedBy: options.status === 'VOIDED' ? 'SEED' : null,
+          createdBy: 'SEED',
+        },
+      });
+      return row.id;
     },
 
     close() {

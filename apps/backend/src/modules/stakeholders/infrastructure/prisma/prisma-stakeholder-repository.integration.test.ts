@@ -254,4 +254,18 @@ describe('PrismaStakeholderRepository Integration (PostgreSQL real, T-021-24)', 
     const byUnderscore = await repository.list({ search: '_', page: 1, pageSize: 10 });
     expect(byUnderscore.items.map((item) => item.id)).toEqual(['stk-w1']);
   }, 5_000);
+
+  it('finds several stakeholders by id', async () => {
+    const s1 = makePerson('stk-f1', '61111111');
+    const s2 = makePerson('stk-f2', '62222222');
+    const s3 = makePerson('stk-f3', '63333333');
+    await repository.save(s1);
+    await repository.save(s2);
+    await repository.save(s3);
+
+    expect(await repository.findByIds([])).toEqual([]);
+
+    const found = await repository.findByIds(['stk-f3', 'stk-f1', 'missing-id']);
+    expect(found.map((item) => item.id)).toEqual(['stk-f1', 'stk-f3']);
+  }, 5_000);
 });

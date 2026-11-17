@@ -7896,6 +7896,433 @@
           }
         }
       }
+    },
+    "/stakeholder-lists": {
+      "get": {
+        "tags": ["StakeholderLists"],
+        "summary": "Listar listas del Anexo 3",
+        "description": "Consulta listas del Anexo 3 filtradas por tipo y año. Incluye miembros solo cuando `includeMembers=true` junto con `type` y `year`. Requiere `constituyente.ver` (GLOBAL).",
+        "operationId": "listStakeholderLists",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ADVISORY_BOARD", "EMPLOYER", "GRADUATE", "STUDENT", "TEACHER"]
+            },
+            "description": "Tipo de lista del Anexo 3."
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 2000,
+              "maximum": 2100
+            },
+            "description": "Año de la lista."
+          },
+          {
+            "name": "includeMembers",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["true", "false"],
+              "default": "false"
+            },
+            "description": "Incluye la lista de miembros (requiere especificar `type` y `year`)."
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000,
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Listado paginado de listas del Anexo 3.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Evita almacenar datos personales en caché del navegador."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListStakeholderListsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros de consulta inválidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin permiso constituyente.ver.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["StakeholderLists"],
+        "summary": "Crear lista del Anexo 3",
+        "description": "Crea una lista del Anexo 3 por tipo y año para el programa vigente. Requiere `constituyente.editar` (GLOBAL).",
+        "operationId": "createStakeholderList",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStakeholderListRequest"
+              },
+              "example": {
+                "type": "EMPLOYER",
+                "year": 2027,
+                "studyPlanNumber": "2024-II",
+                "version": "v1.0"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Lista creada correctamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Evita almacenar datos personales en caché del navegador."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StakeholderListDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos de la lista inválidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin permiso constituyente.editar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ya existe una lista para ese tipo y año o falta configurar el programa.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stakeholder-lists/{id}/members": {
+      "post": {
+        "tags": ["StakeholderLists"],
+        "summary": "Agregar constituyente a una lista del Anexo 3",
+        "description": "Agrega un constituyente activo del registro maestro guardando una instantánea de los campos del Anexo 3 para ese tipo de lista. Requiere `constituyente.editar` (GLOBAL).",
+        "operationId": "addStakeholderListMember",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddStakeholderListMemberRequest"
+              },
+              "example": {
+                "stakeholderId": "stk-emp-1",
+                "representative": "Carlos Mendoza"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Miembro agregado a la lista.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Evita almacenar datos personales en caché del navegador."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StakeholderListMemberDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Faltan campos obligatorios en el maestro o tipo de constituyente no admitido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin permiso constituyente.editar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Lista o constituyente no encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "El constituyente está anulado o ya pertenece a la lista.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stakeholder-lists/{id}/copy": {
+      "post": {
+        "tags": ["StakeholderLists"],
+        "summary": "Copiar lista del Anexo 3 para un nuevo año",
+        "description": "Crea una nueva lista para un año posterior copiando miembros activos y completos desde el maestro e informando omitidos. Requiere `constituyente.editar` (GLOBAL).",
+        "operationId": "copyStakeholderList",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CopyStakeholderListRequest"
+              },
+              "example": {
+                "year": 2028
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Lista copiada correctamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Evita almacenar datos personales en caché del navegador."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CopyStakeholderListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Año destino inválido o no posterior al origen.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin permiso constituyente.editar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Lista origen no encontrada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ya existe una lista para el año destino.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -9442,10 +9869,22 @@
             "required": ["added", "removed", "modified", "unchanged"],
             "additionalProperties": false,
             "properties": {
-              "added": { "type": "integer", "minimum": 0 },
-              "removed": { "type": "integer", "minimum": 0 },
-              "modified": { "type": "integer", "minimum": 0 },
-              "unchanged": { "type": "integer", "minimum": 0 }
+              "added": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "removed": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "modified": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "unchanged": {
+                "type": "integer",
+                "minimum": 0
+              }
             }
           },
           "objectives": {
@@ -10294,6 +10733,245 @@
           "totalPages": {
             "type": "integer",
             "minimum": 0
+          }
+        }
+      },
+      "CreateStakeholderListRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "year"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["ADVISORY_BOARD", "EMPLOYER", "GRADUATE", "STUDENT", "TEACHER"]
+          },
+          "year": {
+            "type": "integer",
+            "minimum": 2000,
+            "maximum": 2100
+          },
+          "studyPlanNumber": {
+            "type": ["string", "null"],
+            "maxLength": 20
+          },
+          "version": {
+            "type": ["string", "null"],
+            "maxLength": 20
+          }
+        }
+      },
+      "AddStakeholderListMemberRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["stakeholderId"],
+        "properties": {
+          "stakeholderId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "activity": {
+            "type": ["string", "null"],
+            "maxLength": 120
+          },
+          "representative": {
+            "type": ["string", "null"],
+            "maxLength": 150
+          }
+        }
+      },
+      "CopyStakeholderListRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["year"],
+        "properties": {
+          "year": {
+            "type": "integer",
+            "minimum": 2000,
+            "maximum": 2100
+          }
+        }
+      },
+      "StakeholderListMemberDto": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "listId",
+          "stakeholderId",
+          "fullName",
+          "institution",
+          "ruc",
+          "sector",
+          "representative",
+          "activity",
+          "email",
+          "mobile",
+          "position",
+          "graduationYear",
+          "cycle",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "listId": {
+            "type": "string"
+          },
+          "stakeholderId": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "institution": {
+            "type": ["string", "null"]
+          },
+          "ruc": {
+            "type": ["string", "null"]
+          },
+          "sector": {
+            "type": ["string", "null"]
+          },
+          "representative": {
+            "type": ["string", "null"]
+          },
+          "activity": {
+            "type": ["string", "null"]
+          },
+          "email": {
+            "type": ["string", "null"]
+          },
+          "mobile": {
+            "type": ["string", "null"]
+          },
+          "position": {
+            "type": ["string", "null"]
+          },
+          "graduationYear": {
+            "type": ["integer", "null"]
+          },
+          "cycle": {
+            "type": ["string", "null"]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "StakeholderListDto": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "programId",
+          "type",
+          "year",
+          "studyPlanNumber",
+          "version",
+          "memberCount",
+          "members",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "programId": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["ADVISORY_BOARD", "EMPLOYER", "GRADUATE", "STUDENT", "TEACHER"]
+          },
+          "year": {
+            "type": "integer"
+          },
+          "studyPlanNumber": {
+            "type": ["string", "null"]
+          },
+          "version": {
+            "type": ["string", "null"]
+          },
+          "memberCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "members": {
+            "type": ["array", "null"],
+            "items": {
+              "$ref": "#/components/schemas/StakeholderListMemberDto"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ListStakeholderListsResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["items", "page", "pageSize", "total", "totalPages"],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StakeholderListDto"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "totalPages": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "CopyStakeholderListResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["list", "skipped"],
+        "properties": {
+          "list": {
+            "$ref": "#/components/schemas/StakeholderListDto"
+          },
+          "skipped": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["stakeholderId", "fullName", "reason"],
+              "properties": {
+                "stakeholderId": {
+                  "type": "string"
+                },
+                "fullName": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string",
+                  "enum": ["VOIDED", "INCOMPLETE"]
+                }
+              }
+            }
           }
         }
       }

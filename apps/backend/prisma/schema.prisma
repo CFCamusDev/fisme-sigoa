@@ -348,7 +348,8 @@ model Program {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  catalogVersions CatalogVersion[]
+  catalogVersions  CatalogVersion[]
+  stakeholderLists StakeholderList[]
 
   @@map("programs")
 }
@@ -633,7 +634,66 @@ model Stakeholder {
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 
+  listMemberships StakeholderListMember[]
+
   @@index([status])
   @@index([fullName])
   @@map("stakeholders")
+}
+
+// ==============================================================================
+// LISTAS DEL ANEXO 3 (HU-022, RF-022, RS-037)
+// ==============================================================================
+
+enum StakeholderListType {
+  ADVISORY_BOARD
+  EMPLOYER
+  GRADUATE
+  STUDENT
+  TEACHER
+}
+
+model StakeholderList {
+  id              String              @id @default(cuid())
+  programId       String
+  type            StakeholderListType
+  year            Int
+  studyPlanNumber String?
+  version         String?
+  createdBy       String
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  program Program                 @relation(fields: [programId], references: [id], onDelete: Restrict)
+  members StakeholderListMember[]
+
+  @@unique([programId, type, year])
+  @@index([type, year])
+  @@map("stakeholder_lists")
+}
+
+model StakeholderListMember {
+  id             String   @id @default(cuid())
+  listId         String
+  stakeholderId  String
+  fullName       String
+  institution    String?
+  ruc            String?
+  sector         String?
+  representative String?
+  activity       String?
+  email          String?
+  mobile         String?
+  position       String?
+  graduationYear Int?
+  cycle          String?
+  createdBy      String
+  createdAt      DateTime @default(now())
+
+  list        StakeholderList @relation(fields: [listId], references: [id], onDelete: Restrict)
+  stakeholder Stakeholder     @relation(fields: [stakeholderId], references: [id], onDelete: Restrict)
+
+  @@unique([listId, stakeholderId])
+  @@index([stakeholderId])
+  @@map("stakeholder_list_members")
 }

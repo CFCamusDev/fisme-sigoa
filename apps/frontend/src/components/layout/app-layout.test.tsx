@@ -195,6 +195,31 @@ describe('AppLayout Component', () => {
     expect(screen.queryByRole('link', { name: /Constituyentes/i })).not.toBeInTheDocument();
   });
 
+  it('renders navigation item "Listas Anexo 3" linking to /listas-constituyentes (HU-022, T-022-16)', async () => {
+    renderWithProviders(
+      <AppLayout>
+        <p>Dashboard</p>
+      </AppLayout>,
+      { permissions: [{ code: 'constituyente.ver', scope: 'GLOBAL' }] },
+    );
+
+    const listsLink = await screen.findByRole('link', { name: /Listas Anexo 3/i });
+    expect(listsLink).toBeInTheDocument();
+    expect(listsLink).toHaveAttribute('href', '/listas-constituyentes');
+  });
+
+  it('hides the "Listas Anexo 3" item without the constituyente.ver permission (HU-022, T-022-16)', async () => {
+    renderWithProviders(
+      <AppLayout>
+        <p>Dashboard</p>
+      </AppLayout>,
+      { permissions: [{ code: 'resolucion.ver', scope: 'GLOBAL' }] },
+    );
+
+    await screen.findByRole('link', { name: /Resoluciones/i });
+    expect(screen.queryByRole('link', { name: /Listas Anexo 3/i })).not.toBeInTheDocument();
+  });
+
   it('controls mobile sidebar visibility with accessible aria-expanded button', async () => {
     const user = userEvent.setup();
 

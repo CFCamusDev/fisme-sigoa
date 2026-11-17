@@ -21,6 +21,22 @@ export interface SeedUserOptions {
   activationToken?: ActivationTokenSeedOptions;
 }
 
+export interface SeedStakeholderOptions {
+  readonly id?: string;
+  readonly kind: 'PERSON' | 'INSTITUTION';
+  readonly fullName: string;
+  readonly dni?: string | null;
+  readonly ruc?: string | null;
+  readonly email?: string | null;
+  readonly mobile?: string | null;
+  readonly position?: string | null;
+  readonly institution?: string | null;
+  readonly sector?: string | null;
+  readonly graduationYear?: number | null;
+  readonly cycle?: string | null;
+  readonly status?: 'ACTIVE' | 'VOIDED';
+}
+
 export interface E2ESeeder {
   seedUser(options: SeedUserOptions): Promise<{ id: string; email: string }>;
   resetCatalog(): Promise<void>;
@@ -31,6 +47,8 @@ export interface E2ESeeder {
   seedResolution(options: { number: string; status: 'REGISTERED' | 'APPROVED' }): Promise<void>;
   resetTemplates(): Promise<void>;
   seedTemplate(options?: { withDraft?: boolean }): Promise<string>;
+  resetStakeholders(): Promise<void>;
+  seedStakeholder(options: SeedStakeholderOptions): Promise<string>;
   countUsersBySurname(firstSurname: string): Promise<number>;
   close(): Promise<void>;
 }

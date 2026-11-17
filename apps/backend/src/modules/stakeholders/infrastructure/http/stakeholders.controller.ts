@@ -1,4 +1,4 @@
-import type { Request, RequestHandler } from 'express';
+import type { RequestHandler } from 'express';
 import type {
   EditStakeholderRequest,
   ListStakeholdersQuery,
@@ -6,29 +6,18 @@ import type {
   StakeholderIdParams,
   VoidStakeholderRequest,
 } from '@sigoa/shared';
-import { getRequestContext } from '../../../../shared/audit/request-context.js';
-import { UnauthorizedError } from '../../../../shared/errors/app-error.js';
 import { getValidated } from '../../../../shared/middleware/validate-request.js';
 import type { EditStakeholderUseCase } from '../../application/edit-stakeholder.js';
 import type { RegisterStakeholderUseCase } from '../../application/register-stakeholder.js';
 import type { SearchStakeholdersUseCase } from '../../application/search-stakeholders.js';
 import type { VoidStakeholderUseCase } from '../../application/void-stakeholder.js';
+import { resolveRequestActor } from './resolve-request-actor.js';
 
 export interface StakeholdersControllerDependencies {
   readonly registerStakeholderUseCase: RegisterStakeholderUseCase;
   readonly editStakeholderUseCase: EditStakeholderUseCase;
   readonly voidStakeholderUseCase: VoidStakeholderUseCase;
   readonly searchStakeholdersUseCase: SearchStakeholdersUseCase;
-}
-
-function resolveActor(req: Request): { actorId: string; ip: string } {
-  const context = getRequestContext();
-  const actorId = context?.actor ?? (req as unknown as { user?: { id?: string } }).user?.id;
-  if (!actorId) {
-    throw new UnauthorizedError('No autenticado');
-  }
-  const ip = context?.ip ?? (req.ip || req.socket?.remoteAddress) ?? '127.0.0.1';
-  return { actorId, ip };
 }
 
 /** Controlador de `/stakeholders` (HU-021). */
@@ -47,7 +36,7 @@ export class StakeholdersController {
 
   registerStakeholder: RequestHandler = async (req, res, next) => {
     try {
-      const { actorId, ip } = resolveActor(req);
+      const { actorId, ip } = resolveRequestActor(req);
       const body = req.body as RegisterStakeholderRequest;
 
       const response = await this.registerStakeholderUseCase.execute({
@@ -64,7 +53,7 @@ export class StakeholdersController {
 
   editStakeholder: RequestHandler = async (req, res, next) => {
     try {
-      const { actorId, ip } = resolveActor(req);
+      const { actorId, ip } = resolveRequestActor(req);
       const { id } = req.params as StakeholderIdParams;
       const body = req.body as EditStakeholderRequest;
 
@@ -83,7 +72,7 @@ export class StakeholdersController {
 
   voidStakeholder: RequestHandler = async (req, res, next) => {
     try {
-      const { actorId, ip } = resolveActor(req);
+      const { actorId, ip } = resolveRequestActor(req);
       const { id } = req.params as StakeholderIdParams;
       const body = req.body as VoidStakeholderRequest;
 
@@ -102,7 +91,7 @@ export class StakeholdersController {
 
   listStakeholders: RequestHandler = async (req, res, next) => {
     try {
-      const { actorId } = resolveActor(req);
+      const { actorId } = resolveRequestActor(req);
       const query = getValidated<unknown, unknown, ListStakeholdersQuery>(res).query;
 
       const response = await this.searchStakeholdersUseCase.execute({

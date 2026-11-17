@@ -35,7 +35,10 @@ import {
   type ResolutionApprovedSubscriber,
 } from './modules/resolutions/index.js';
 import { createTemplatesModule } from './modules/templates/index.js';
-import { createStakeholdersModule } from './modules/stakeholders/index.js';
+import {
+  createStakeholderListsModule,
+  createStakeholdersModule,
+} from './modules/stakeholders/index.js';
 import { createUsersModule, EmailActivationSender } from './modules/users/index.js';
 import {
   LoginAttemptsParameterProvider,
@@ -280,6 +283,18 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
   app.use(
     '/stakeholders',
     createStakeholdersModule({
+      unitOfWork: deps.unitOfWork,
+      auditLogger: deps.auditLogger,
+      dbProvider: deps.dbProvider,
+      authenticate: authServices.authenticate,
+      requirePermission: authorizationServices.requirePermission,
+      permissionChecker: authorizationServices.authorizer,
+      clock: deps.clock,
+    }),
+  );
+  app.use(
+    '/stakeholder-lists',
+    createStakeholderListsModule({
       unitOfWork: deps.unitOfWork,
       auditLogger: deps.auditLogger,
       dbProvider: deps.dbProvider,
