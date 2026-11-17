@@ -108,7 +108,7 @@ export function StakeholderListsPage() {
         </Alert>
       ) : null}
 
-      {query.isLoading ? <LoadingState label="Cargando lista del Anexo 3…" /> : null}
+      {query.isLoading ? <LoadingState message="Cargando lista del Anexo 3…" /> : null}
 
       {query.isError ? (
         <ErrorState
