@@ -48,8 +48,12 @@ function createHarness() {
     assertAllowed: vi.fn().mockResolvedValue(undefined),
   };
 
+  const unitOfWorkRun = vi.fn();
   const unitOfWork: UnitOfWork = {
-    run: vi.fn(async <T>(work: () => Promise<T>) => await work()),
+    run: async <T>(work: () => Promise<T>): Promise<T> => {
+      unitOfWorkRun();
+      return await work();
+    },
   };
 
   const auditLogger: AuditLogger = {
@@ -75,7 +79,7 @@ function createHarness() {
     processExecutionReader,
     stakeholderListReader,
     permissionChecker,
-    unitOfWork,
+    unitOfWorkRun,
     auditLogger,
   };
 }
@@ -142,7 +146,7 @@ describe('RegisterSessionUseCase', () => {
   });
 
   it('denies a user without sesion.editar', async () => {
-    const { useCase, permissionChecker, unitOfWork } = createHarness();
+    const { useCase, permissionChecker, unitOfWorkRun } = createHarness();
     vi.mocked(permissionChecker.assertAllowed).mockRejectedValueOnce(
       new ForbiddenError('No tienes permiso'),
     );
@@ -163,7 +167,7 @@ describe('RegisterSessionUseCase', () => {
       permission: 'sesion.editar',
       scope: 'GLOBAL',
     });
-    expect(unitOfWork.run).not.toHaveBeenCalled();
+    expect(unitOfWorkRun).not.toHaveBeenCalled();
   });
 
   it('fails when an execution does not exist', async () => {
