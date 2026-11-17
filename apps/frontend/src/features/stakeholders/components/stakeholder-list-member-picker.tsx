@@ -7,7 +7,6 @@ import { ErrorState } from '@/components/common/error-state';
 import { LoadingState } from '@/components/common/loading-state';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -140,14 +139,14 @@ export function StakeholderListMemberPicker({
   }
 
   return (
-    <Card className="border-border bg-card text-card-foreground">
-      <CardHeader className="flex flex-row items-start justify-between gap-4">
+    <div className="space-y-4 rounded-lg border border-border bg-card p-6 text-card-foreground">
+      <div className="flex flex-row items-start justify-between gap-4">
         <div className="space-y-1">
-          <CardTitle className="text-lg">Agregar constituyentes del registro maestro</CardTitle>
-          <CardDescription>
+          <h3 className="text-lg font-semibold">Agregar constituyentes del registro maestro</h3>
+          <p className="text-sm text-muted-foreground">
             Lista de {STAKEHOLDER_LIST_TYPE_LABELS[list.type]} {list.year}. Solo se muestran
             constituyentes activos.
-          </CardDescription>
+          </p>
         </div>
         {onClose ? (
           <Button
@@ -161,9 +160,9 @@ export function StakeholderListMemberPicker({
             Cerrar
           </Button>
         ) : null}
-      </CardHeader>
+      </div>
 
-      <CardContent className="space-y-4">
+      <div className="space-y-4">
         {missingFields.length > 0 ? (
           <Alert ref={alertRef} variant="warning" role="alert" tabIndex={-1}>
             <AlertTriangle className="size-4" aria-hidden="true" />
@@ -342,7 +341,7 @@ export function StakeholderListMemberPicker({
             />
           </div>
         ) : null}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
