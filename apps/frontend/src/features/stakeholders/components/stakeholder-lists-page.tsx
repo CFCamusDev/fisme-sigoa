@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Copy, UserPlus, CheckCircle2 } from 'lucide-react';
+import { Copy, FileSpreadsheet, UserPlus, CheckCircle2 } from 'lucide-react';
 import type {
+  ConfirmStakeholderImportResponse,
   CopyStakeholderListResponse,
   CopyStakeholderListSkippedItem,
   StakeholderListDto,
@@ -18,6 +19,8 @@ import { getStakeholderListErrorMessage } from '../lib/stakeholder-list-error-me
 import { STAKEHOLDER_LIST_TYPE_LABELS } from '../lib/stakeholder-list-labels';
 import { CopyStakeholderListForm } from './copy-stakeholder-list-form';
 import { CreateStakeholderListForm } from './create-stakeholder-list-form';
+import { StakeholderImportResult } from './stakeholder-import-result';
+import { StakeholderImportWizard } from './stakeholder-import-wizard';
 import {
   StakeholderListFilters,
   type StakeholderListFiltersValue,
@@ -25,7 +28,7 @@ import {
 import { StakeholderListMemberPicker } from './stakeholder-list-member-picker';
 import { StakeholderListMembersTable } from './stakeholder-list-members-table';
 
-type ActivePanel = 'none' | 'picker' | 'copy';
+type ActivePanel = 'none' | 'picker' | 'copy' | 'import';
 
 const numberFormatter = new Intl.NumberFormat('es-PE');
 
@@ -37,7 +40,9 @@ export function StakeholderListsPage() {
   const [activePanel, setActivePanel] = useState<ActivePanel>('none');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [skippedItems, setSkippedItems] = useState<readonly CopyStakeholderListSkippedItem[]>([]);
+  const [importResult, setImportResult] = useState<ConfirmStakeholderImportResponse | null>(null);
   const successAlertRef = useRef<HTMLDivElement>(null);
+  const importButtonRef = useRef<HTMLButtonElement>(null);
 
   const query = useStakeholderLists({
     type: filters.type,
@@ -46,10 +51,10 @@ export function StakeholderListsPage() {
   });
 
   useEffect(() => {
-    if (successMessage) {
+    if (successMessage || importResult) {
       successAlertRef.current?.focus();
     }
-  }, [successMessage]);
+  }, [successMessage, importResult]);
 
   const list: StakeholderListDto | null = query.data?.items[0] ?? null;
   const members = list?.members ?? [];
@@ -59,11 +64,13 @@ export function StakeholderListsPage() {
     setActivePanel('none');
     setSuccessMessage(null);
     setSkippedItems([]);
+    setImportResult(null);
   }
 
   function handleCreated(created: StakeholderListDto) {
     setActivePanel('none');
     setSkippedItems([]);
+    setImportResult(null);
     setSuccessMessage(
       `Lista de ${STAKEHOLDER_LIST_TYPE_LABELS[created.type]} ${created.year} creada correctamente.`,
     );
@@ -73,9 +80,22 @@ export function StakeholderListsPage() {
     setActivePanel('none');
     setFilters({ type: response.list.type, year: response.list.year });
     setSkippedItems(response.skipped);
+    setImportResult(null);
     setSuccessMessage(
       `Se copiaron ${numberFormatter.format(response.list.memberCount)} miembros a la lista ${response.list.year}.`,
     );
+  }
+
+  function handleImported(result: ConfirmStakeholderImportResponse) {
+    setActivePanel('none');
+    setSkippedItems([]);
+    setSuccessMessage(null);
+    setImportResult(result);
+  }
+
+  function handleCancelImport() {
+    setActivePanel('none');
+    importButtonRef.current?.focus();
   }
 
   return (
@@ -106,6 +126,10 @@ export function StakeholderListsPage() {
             </AlertDescription>
           ) : null}
         </Alert>
+      ) : null}
+
+      {importResult ? (
+        <StakeholderImportResult result={importResult} alertRef={successAlertRef} />
       ) : null}
 
       {query.isLoading ? <LoadingState message="Cargando lista del Anexo 3…" /> : null}
@@ -149,8 +173,8 @@ export function StakeholderListsPage() {
                 </p>
               </div>
 
-              <Can permission="constituyente.editar">
-                <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2">
+                <Can permission="constituyente.editar">
                   <Button
                     type="button"
                     onClick={() =>
@@ -170,8 +194,21 @@ export function StakeholderListsPage() {
                     <Copy className="mr-2 size-4" aria-hidden="true" />
                     Copiar para nuevo año
                   </Button>
-                </div>
-              </Can>
+                </Can>
+                <Can permission="constituyente.importar">
+                  <Button
+                    ref={importButtonRef}
+                    type="button"
+                    variant="outline"
+                    onClick={() =>
+                      setActivePanel((current) => (current === 'import' ? 'none' : 'import'))
+                    }
+                  >
+                    <FileSpreadsheet className="mr-2 size-4" aria-hidden="true" />
+                    Importar desde Excel
+                  </Button>
+                </Can>
+              </div>
             </div>
 
             {members.length === 0 ? (
@@ -200,6 +237,14 @@ export function StakeholderListsPage() {
               sourceList={list}
               onCopied={handleCopied}
               onCancel={() => setActivePanel('none')}
+            />
+          ) : null}
+
+          {activePanel === 'import' ? (
+            <StakeholderImportWizard
+              list={list}
+              onImported={handleImported}
+              onCancel={handleCancelImport}
             />
           ) : null}
 

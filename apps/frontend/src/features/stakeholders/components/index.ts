@@ -10,4 +10,7 @@ export * from './stakeholder-list-filters';
 export * from './create-stakeholder-list-form';
 export * from './copy-stakeholder-list-form';
 export * from './stakeholder-list-members-table';
+export * from './stakeholder-import-preview-table';
+export * from './stakeholder-import-result';
+export * from './stakeholder-import-wizard';
 export * from './stakeholder-lists-page';
