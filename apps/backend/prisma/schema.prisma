@@ -348,8 +348,9 @@ model Program {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  catalogVersions  CatalogVersion[]
-  stakeholderLists StakeholderList[]
+  catalogVersions   CatalogVersion[]
+  stakeholderLists  StakeholderList[]
+  processExecutions ProcessExecution[]
 
   @@map("programs")
 }
@@ -368,7 +369,8 @@ model Semester {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  parameters Parameter[]
+  parameters        Parameter[]
+  processExecutions ProcessExecution[]
 
   @@index([startDate])
   @@map("semesters")
@@ -460,8 +462,9 @@ model CatalogVersion {
   basedOnVersion  CatalogVersion?        @relation("CatalogVersionOrigin", fields: [basedOnVersionId], references: [id], onDelete: Restrict)
   derivedVersions CatalogVersion[]       @relation("CatalogVersionOrigin")
   objectives      EducationalObjective[]
-  attributes      GraduateAttribute[]
-  resolutions     Resolution[]
+  attributes        GraduateAttribute[]
+  resolutions       Resolution[]
+  processExecutions ProcessExecution[]
 
   @@unique([programId, number])
   @@index([programId, status])
@@ -696,4 +699,51 @@ model StakeholderListMember {
   @@unique([listId, stakeholderId])
   @@index([stakeholderId])
   @@map("stakeholder_list_members")
+}
+
+// ==============================================================================
+// EJECUCIONES DE PROCESO (HU-027, RF-027, RS-001)
+// ==============================================================================
+
+enum ProcessType {
+  P611
+  P612
+  P613
+  P621
+  P622
+  P623
+}
+
+enum ProcessExecutionStatus {
+  PLANNED
+  IN_PROGRESS
+  CONSOLIDATING
+  PENDING_APPROVAL
+  CLOSED
+  VOIDED
+}
+
+model ProcessExecution {
+  id               String                 @id @default(cuid())
+  programId        String
+  type             ProcessType
+  name             String
+  year             Int
+  semesterId       String?
+  catalogVersionId String
+  status           ProcessExecutionStatus @default(PLANNED)
+  createdBy        String
+  updatedBy        String?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+
+  program        Program        @relation(fields: [programId], references: [id], onDelete: Restrict)
+  semester       Semester?      @relation(fields: [semesterId], references: [id], onDelete: Restrict)
+  catalogVersion CatalogVersion @relation(fields: [catalogVersionId], references: [id], onDelete: Restrict)
+
+  @@index([type, year])
+  @@index([status])
+  @@index([catalogVersionId])
+  @@index([semesterId])
+  @@map("process_executions")
 }
