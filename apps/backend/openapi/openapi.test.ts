@@ -2761,6 +2761,7 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
           copyStakeholderList: vi.fn(),
           listStakeholderLists: vi.fn(),
           previewStakeholderImport: vi.fn(),
+          confirmStakeholderImport: vi.fn(),
         } as unknown as StakeholderListsController,
         authenticate: vi.fn(),
         requirePermission: vi.fn(() => vi.fn()),
@@ -2782,6 +2783,7 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
         'get /stakeholder-lists',
         'post /stakeholder-lists',
         'post /stakeholder-lists/{id}/copy',
+        'post /stakeholder-lists/{id}/import/confirm',
         'post /stakeholder-lists/{id}/import/preview',
         'post /stakeholder-lists/{id}/members',
       ]);

@@ -3,6 +3,7 @@ import type { AuditLogger } from '../../shared/audit/audit-logger.js';
 import type { DbProvider } from '../../shared/prisma/prisma-unit-of-work.js';
 import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
 import { AddStakeholderListMemberUseCase } from './application/add-stakeholder-list-member.js';
+import { ConfirmStakeholderImportUseCase } from './application/confirm-stakeholder-import.js';
 import { CopyStakeholderListToNewYearUseCase } from './application/copy-stakeholder-list-to-new-year.js';
 import { CreateStakeholderListUseCase } from './application/create-stakeholder-list.js';
 import { EditStakeholderUseCase } from './application/edit-stakeholder.js';
@@ -144,12 +145,25 @@ export function createStakeholderListsModule(deps?: StakeholdersModuleDependenci
     clock: deps.clock,
   });
 
+  const confirmStakeholderImportUseCase = new ConfirmStakeholderImportUseCase({
+    stakeholderListRepository,
+    stakeholderListMemberRepository,
+    stakeholderRepository,
+    stakeholderDocumentLookup: stakeholderRepository,
+    fileReader,
+    permissionChecker: deps.permissionChecker,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+    clock: deps.clock,
+  });
+
   const controller = new StakeholderListsController({
     createStakeholderListUseCase,
     addStakeholderListMemberUseCase,
     copyStakeholderListToNewYearUseCase,
     listStakeholderListsUseCase,
     previewStakeholderImportUseCase,
+    confirmStakeholderImportUseCase,
   });
 
   return createStakeholderListsRouter({
@@ -179,6 +193,8 @@ export * from './application/stakeholder-dto.js';
 export * from './application/stakeholder-list-dto.js';
 export * from './application/add-stakeholder-list-member.js';
 export * from './application/add-stakeholder-list-member.types.js';
+export * from './application/confirm-stakeholder-import.js';
+export * from './application/confirm-stakeholder-import.types.js';
 export * from './application/copy-stakeholder-list-to-new-year.js';
 export * from './application/copy-stakeholder-list-to-new-year.types.js';
 export * from './application/create-stakeholder-list.js';

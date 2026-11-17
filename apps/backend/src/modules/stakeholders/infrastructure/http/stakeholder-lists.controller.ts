@@ -8,6 +8,7 @@ import type {
 } from '@sigoa/shared';
 import { getValidated } from '../../../../shared/middleware/validate-request.js';
 import type { AddStakeholderListMemberUseCase } from '../../application/add-stakeholder-list-member.js';
+import type { ConfirmStakeholderImportUseCase } from '../../application/confirm-stakeholder-import.js';
 import type { CopyStakeholderListToNewYearUseCase } from '../../application/copy-stakeholder-list-to-new-year.js';
 import type { CreateStakeholderListUseCase } from '../../application/create-stakeholder-list.js';
 import type { ListStakeholderListsUseCase } from '../../application/list-stakeholder-lists.js';
@@ -20,6 +21,7 @@ export interface StakeholderListsControllerDependencies {
   readonly copyStakeholderListToNewYearUseCase: CopyStakeholderListToNewYearUseCase;
   readonly listStakeholderListsUseCase: ListStakeholderListsUseCase;
   readonly previewStakeholderImportUseCase: PreviewStakeholderImportUseCase;
+  readonly confirmStakeholderImportUseCase: ConfirmStakeholderImportUseCase;
 }
 
 /** Controlador de `/stakeholder-lists` (HU-022, HU-023). */
@@ -29,6 +31,7 @@ export class StakeholderListsController {
   private readonly copyStakeholderListToNewYearUseCase: CopyStakeholderListToNewYearUseCase;
   private readonly listStakeholderListsUseCase: ListStakeholderListsUseCase;
   private readonly previewStakeholderImportUseCase: PreviewStakeholderImportUseCase;
+  private readonly confirmStakeholderImportUseCase: ConfirmStakeholderImportUseCase;
 
   constructor(deps: StakeholderListsControllerDependencies) {
     this.createStakeholderListUseCase = deps.createStakeholderListUseCase;
@@ -36,6 +39,7 @@ export class StakeholderListsController {
     this.copyStakeholderListToNewYearUseCase = deps.copyStakeholderListToNewYearUseCase;
     this.listStakeholderListsUseCase = deps.listStakeholderListsUseCase;
     this.previewStakeholderImportUseCase = deps.previewStakeholderImportUseCase;
+    this.confirmStakeholderImportUseCase = deps.confirmStakeholderImportUseCase;
   }
 
   createStakeholderList: RequestHandler = async (req, res, next) => {
@@ -126,6 +130,25 @@ export class StakeholderListsController {
       });
 
       res.setHeader('Cache-Control', 'no-store').status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  confirmStakeholderImport: RequestHandler = async (req, res, next) => {
+    try {
+      const { actorId, ip } = resolveRequestActor(req);
+      const { id } = req.params as StakeholderListIdParams;
+      const fileBuffer = req.body as Buffer;
+
+      const response = await this.confirmStakeholderImportUseCase.execute({
+        listId: id,
+        fileBuffer,
+        actorId,
+        ip,
+      });
+
+      res.setHeader('Cache-Control', 'no-store').status(201).json(response);
     } catch (error) {
       next(error);
     }

@@ -86,5 +86,20 @@ export function createStakeholderListsRouter(deps: StakeholderListsRouterDepende
     deps.controller.previewStakeholderImport,
   );
 
+  // POST /stakeholder-lists/:id/import/confirm (HU-023, T-023-07, CA2, RF-023, RS-002, RS-020, RS-074)
+  // Cadena obligatoria: authenticate -> requirePermission -> express.raw -> requireExcelBody -> validateRequest -> controller
+  router.post(
+    '/:id/import/confirm',
+    deps.authenticate,
+    deps.requirePermission('constituyente.importar', 'GLOBAL'),
+    express.raw({
+      type: STAKEHOLDER_IMPORT_XLSX_MIME,
+      limit: STAKEHOLDER_IMPORT_MAX_FILE_BYTES,
+    }),
+    requireExcelBody,
+    validateRequest({ params: stakeholderListIdParamsSchema }),
+    deps.controller.confirmStakeholderImport,
+  );
+
   return router;
 }
