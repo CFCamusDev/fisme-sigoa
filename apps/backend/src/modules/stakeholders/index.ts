@@ -2,6 +2,7 @@ import { Router, type RequestHandler } from 'express';
 import type { AuditLogger } from '../../shared/audit/audit-logger.js';
 import type { DbProvider } from '../../shared/prisma/prisma-unit-of-work.js';
 import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
+import { AddStakeholderListMemberUseCase } from './application/add-stakeholder-list-member.js';
 import { CreateStakeholderListUseCase } from './application/create-stakeholder-list.js';
 import { EditStakeholderUseCase } from './application/edit-stakeholder.js';
 import { RegisterStakeholderUseCase } from './application/register-stakeholder.js';
@@ -15,6 +16,7 @@ import {
   createStakeholdersRouter,
   type StakeholderRoutePermissionScope,
 } from './infrastructure/http/stakeholders.routes.js';
+import { PrismaStakeholderListMemberRepository } from './infrastructure/prisma/prisma-stakeholder-list-member-repository.js';
 import { PrismaStakeholderListProgramResolver } from './infrastructure/prisma/prisma-stakeholder-list-program-resolver.js';
 import { PrismaStakeholderListRepository } from './infrastructure/prisma/prisma-stakeholder-list-repository.js';
 import { PrismaStakeholderRepository } from './infrastructure/prisma/prisma-stakeholder-repository.js';
@@ -88,6 +90,10 @@ export function createStakeholderListsModule(deps?: StakeholdersModuleDependenci
   }
 
   const stakeholderListRepository = new PrismaStakeholderListRepository(deps.dbProvider);
+  const stakeholderListMemberRepository = new PrismaStakeholderListMemberRepository(
+    deps.dbProvider,
+  );
+  const stakeholderRepository = new PrismaStakeholderRepository(deps.dbProvider);
   const programResolver = new PrismaStakeholderListProgramResolver(deps.dbProvider);
 
   const createStakeholderListUseCase = new CreateStakeholderListUseCase({
@@ -99,8 +105,19 @@ export function createStakeholderListsModule(deps?: StakeholdersModuleDependenci
     clock: deps.clock,
   });
 
+  const addStakeholderListMemberUseCase = new AddStakeholderListMemberUseCase({
+    stakeholderListRepository,
+    stakeholderListMemberRepository,
+    stakeholderRepository,
+    permissionChecker: deps.permissionChecker,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+    clock: deps.clock,
+  });
+
   const controller = new StakeholderListsController({
     createStakeholderListUseCase,
+    addStakeholderListMemberUseCase,
   });
 
   return createStakeholderListsRouter({
@@ -128,6 +145,8 @@ export * from './infrastructure/prisma/prisma-stakeholder-list-member-repository
 export * from './infrastructure/prisma/prisma-stakeholder-list-program-resolver.js';
 export * from './application/stakeholder-dto.js';
 export * from './application/stakeholder-list-dto.js';
+export * from './application/add-stakeholder-list-member.js';
+export * from './application/add-stakeholder-list-member.types.js';
 export * from './application/create-stakeholder-list.js';
 export * from './application/create-stakeholder-list.types.js';
 export * from './application/register-stakeholder.js';
