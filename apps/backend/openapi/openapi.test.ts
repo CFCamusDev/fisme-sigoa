@@ -88,6 +88,9 @@ import {
   confirmStakeholderImportResponseSchema,
   stakeholderImportRowDtoSchema,
   stakeholderImportTemplateQuerySchema,
+  createProcessExecutionRequestSchema,
+  listProcessExecutionsResponseSchema,
+  processExecutionDtoSchema,
 } from '@sigoa/shared';
 import { createAuthRouter } from '../src/modules/auth/infrastructure/http/auth.routes.js';
 import { createUsersRouter } from '../src/modules/users/infrastructure/http/users.routes.js';
@@ -2882,6 +2885,26 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
       expect(spec.paths['/stakeholder-lists/{id}/import/preview']?.delete).toBeUndefined();
       expect(spec.paths['/stakeholder-lists/{id}/import/confirm']?.delete).toBeUndefined();
       expect(spec.paths['/stakeholder-lists/excel-template']?.delete).toBeUndefined();
+    });
+  });
+
+  describe('OpenAPI Specification for Process Executions (HU-027, T-027-11, RF-027, RNF-032)', () => {
+    it('process execution schemas validate their documented examples', () => {
+      const getOp = spec.paths['/process-executions']?.get;
+      const postOp = spec.paths['/process-executions']?.post;
+      expect(getOp).toBeDefined();
+      expect(postOp).toBeDefined();
+      expect(getOp.security).toEqual([{ bearerAuth: [] }]);
+      expect(postOp.security).toEqual([{ bearerAuth: [] }]);
+
+      const requestExample = postOp.requestBody.content['application/json'].example;
+      expect(createProcessExecutionRequestSchema.safeParse(requestExample).success).toBe(true);
+
+      const createdExample = postOp.responses['201'].content['application/json'].example;
+      expect(processExecutionDtoSchema.safeParse(createdExample).success).toBe(true);
+
+      const listExample = getOp.responses['200'].content['application/json'].example;
+      expect(listProcessExecutionsResponseSchema.safeParse(listExample).success).toBe(true);
     });
   });
 });

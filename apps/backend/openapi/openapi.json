@@ -8655,6 +8655,241 @@
           }
         }
       }
+    },
+    "/process-executions": {
+      "get": {
+        "tags": ["Processes"],
+        "summary": "Listar ejecuciones de proceso",
+        "description": "Lista las ejecuciones de los 6 procesos institucionales paginadas y con filtros opcionales por tipo, año y estado. Requiere `ejecucion.ver` (GLOBAL).",
+        "operationId": "listProcessExecutions",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ProcessType"
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 2000,
+              "maximum": 2100
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ProcessExecutionStatus"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000,
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Listado paginado de ejecuciones de proceso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListProcessExecutionsResponse"
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "exec_cuid_1",
+                      "type": "P612",
+                      "name": "Medición anual de OE 2027",
+                      "year": 2027,
+                      "semesterId": null,
+                      "semesterCode": null,
+                      "catalogVersionId": "cv_cuid_1",
+                      "catalogVersionNumber": 1,
+                      "status": "PLANNED",
+                      "createdAt": "2027-01-15T10:00:00.000Z",
+                      "updatedAt": "2027-01-15T10:00:00.000Z"
+                    }
+                  ],
+                  "page": 1,
+                  "pageSize": 20,
+                  "total": 1,
+                  "totalPages": 1
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros de consulta inválidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin permiso ejecucion.ver.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Processes"],
+        "summary": "Crear ejecución de proceso",
+        "description": "Crea una ejecución de proceso en estado inicial PLANNED asociando periodo y versión de catálogo compatible. Requiere `ejecucion.crear` (GLOBAL).",
+        "operationId": "createProcessExecution",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProcessExecutionRequest"
+              },
+              "example": {
+                "type": "P612",
+                "year": 2027,
+                "catalogVersionId": "cv_cuid_1"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Ejecución creada en estado PLANNED.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcessExecution"
+                },
+                "example": {
+                  "id": "exec_cuid_1",
+                  "type": "P612",
+                  "name": "Medición anual de OE 2027",
+                  "year": 2027,
+                  "semesterId": null,
+                  "semesterCode": null,
+                  "catalogVersionId": "cv_cuid_1",
+                  "catalogVersionNumber": 1,
+                  "status": "PLANNED",
+                  "createdAt": "2027-01-15T10:00:00.000Z",
+                  "updatedAt": "2027-01-15T10:00:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos de ejecución inválidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin permiso ejecucion.crear.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Versión de catálogo o semestre inexistente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Nombre duplicado, versión incompatible con el tipo o programa sin configurar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -11396,6 +11631,71 @@
         "required": ["type"],
         "properties": {
           "type": { "$ref": "#/components/schemas/StakeholderListType" }
+        }
+      },
+      "ProcessType": {
+        "type": "string",
+        "enum": ["P611", "P612", "P613", "P621", "P622", "P623"]
+      },
+      "ProcessExecutionStatus": {
+        "type": "string",
+        "enum": ["PLANNED", "IN_PROGRESS", "CONSOLIDATING", "PENDING_APPROVAL", "CLOSED", "VOIDED"]
+      },
+      "CreateProcessExecutionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "year", "catalogVersionId"],
+        "properties": {
+          "type": { "$ref": "#/components/schemas/ProcessType" },
+          "year": { "type": "integer", "minimum": 2000, "maximum": 2100 },
+          "semesterId": { "type": ["string", "null"], "minLength": 1, "maxLength": 64 },
+          "catalogVersionId": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "name": { "type": ["string", "null"], "maxLength": 150 }
+        }
+      },
+      "ProcessExecution": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "type",
+          "name",
+          "year",
+          "semesterId",
+          "semesterCode",
+          "catalogVersionId",
+          "catalogVersionNumber",
+          "status",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "$ref": "#/components/schemas/ProcessType" },
+          "name": { "type": "string" },
+          "year": { "type": "integer" },
+          "semesterId": { "type": ["string", "null"] },
+          "semesterCode": { "type": ["string", "null"] },
+          "catalogVersionId": { "type": "string" },
+          "catalogVersionNumber": { "type": "integer" },
+          "status": { "$ref": "#/components/schemas/ProcessExecutionStatus" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ListProcessExecutionsResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["items", "page", "pageSize", "total", "totalPages"],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ProcessExecution" }
+          },
+          "page": { "type": "integer", "minimum": 1 },
+          "pageSize": { "type": "integer", "minimum": 1 },
+          "total": { "type": "integer", "minimum": 0 },
+          "totalPages": { "type": "integer", "minimum": 0 }
         }
       }
     },
