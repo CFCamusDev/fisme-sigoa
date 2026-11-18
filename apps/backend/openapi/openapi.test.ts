@@ -93,6 +93,8 @@ import {
   listProcessExecutionsResponseSchema,
   listSessionsResponseSchema,
   processExecutionDtoSchema,
+  registerSessionAttendeesRequestSchema,
+  sessionAttendeesResponseSchema,
   sessionDtoSchema,
   updateSessionRequestSchema,
 } from '@sigoa/shared';
@@ -2938,6 +2940,24 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
 
       const listExample = getOp.responses['200'].content['application/json'].example;
       expect(listSessionsResponseSchema.safeParse(listExample).success).toBe(true);
+    });
+
+    it('session attendees schemas validate their documented examples', () => {
+      const putOp = spec.paths['/sessions/{id}/attendees']?.put;
+      const getOp = spec.paths['/sessions/{id}/attendees']?.get;
+      expect(putOp).toBeDefined();
+      expect(getOp).toBeDefined();
+      expect(putOp.security).toEqual([{ bearerAuth: [] }]);
+      expect(getOp.security).toEqual([{ bearerAuth: [] }]);
+
+      const putBodyExample = putOp.requestBody.content['application/json'].example;
+      expect(registerSessionAttendeesRequestSchema.safeParse(putBodyExample).success).toBe(true);
+
+      const putResponseExample = putOp.responses['200'].content['application/json'].example;
+      expect(sessionAttendeesResponseSchema.safeParse(putResponseExample).success).toBe(true);
+
+      const getResponseExample = getOp.responses['200'].content['application/json'].example;
+      expect(sessionAttendeesResponseSchema.safeParse(getResponseExample).success).toBe(true);
     });
   });
 });
