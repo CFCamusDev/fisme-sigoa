@@ -7,9 +7,11 @@ import { DuplicateSessionError } from '../domain/errors/duplicate-session-error.
 import { InvalidSessionDataError } from '../domain/errors/invalid-session-data-error.js';
 import { SessionExecutionNotFoundError } from '../domain/errors/session-execution-not-found-error.js';
 import { SessionExecutionNotOpenError } from '../domain/errors/session-execution-not-open-error.js';
+import { SessionHasAttendeesError } from '../domain/errors/session-has-attendees-error.js';
 import { SessionNotFoundError } from '../domain/errors/session-not-found-error.js';
 import { SessionStakeholderListMismatchError } from '../domain/errors/session-stakeholder-list-mismatch-error.js';
 import type {
+  AttendeeRepository,
   SessionExecutionRepository,
   SessionPermissionChecker,
   SessionProcessExecutionReader,
@@ -52,6 +54,10 @@ function createHarness(existing: Session | null = makeExistingSession()) {
     findExecutionIds: vi.fn().mockResolvedValue(existing ? [...existing.executionIds] : []),
   };
 
+  const attendeeRepository: Pick<AttendeeRepository, 'countBySession'> = {
+    countBySession: vi.fn().mockResolvedValue(0),
+  };
+
   const processExecutionReader: SessionProcessExecutionReader = {
     findByIds: vi.fn().mockImplementation(async (ids: readonly string[]) =>
       ids.map((id) => ({
@@ -85,6 +91,7 @@ function createHarness(existing: Session | null = makeExistingSession()) {
   const useCase = new EditSessionUseCase({
     sessionRepository,
     sessionExecutionRepository,
+    attendeeRepository,
     processExecutionReader,
     stakeholderListReader,
     permissionChecker,
@@ -97,6 +104,7 @@ function createHarness(existing: Session | null = makeExistingSession()) {
     useCase,
     sessionRepository,
     sessionExecutionRepository,
+    attendeeRepository,
     processExecutionReader,
     stakeholderListReader,
     permissionChecker,
@@ -325,5 +333,35 @@ describe('EditSessionUseCase', () => {
 
     expect(sessionExecutionRepository.replaceLinks).not.toHaveBeenCalled();
     expect(auditLogger.log).not.toHaveBeenCalled();
+  });
+
+  it('rejects changing the list when attendees exist', async () => {
+    const { useCase, attendeeRepository, sessionRepository, auditLogger } = createHarness();
+    vi.mocked(attendeeRepository.countBySession).mockResolvedValue(2);
+
+    await expect(
+      useCase.execute({
+        actorId: 'user-2',
+        sessionId: 'sess-1',
+        stakeholderListId: 'list-2',
+      }),
+    ).rejects.toBeInstanceOf(SessionHasAttendeesError);
+
+    expect(sessionRepository.update).not.toHaveBeenCalled();
+    expect(auditLogger.log).not.toHaveBeenCalled();
+  });
+
+  it('keeps editing other fields with attendees', async () => {
+    const { useCase, attendeeRepository, sessionRepository } = createHarness();
+    vi.mocked(attendeeRepository.countBySession).mockResolvedValue(2);
+
+    const updated = await useCase.execute({
+      actorId: 'user-2',
+      sessionId: 'sess-1',
+      startTime: '11:30',
+    });
+
+    expect(updated.startTime).toBe('11:30');
+    expect(sessionRepository.update).toHaveBeenCalledTimes(1);
   });
 });

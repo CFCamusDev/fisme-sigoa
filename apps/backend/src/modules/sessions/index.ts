@@ -12,6 +12,7 @@ import {
   createSessionsRouter,
   type SessionRoutePermissionScope,
 } from './infrastructure/http/sessions.routes.js';
+import { PrismaAttendeeRepository } from './infrastructure/prisma/prisma-attendee-repository.js';
 import { PrismaSessionExecutionRepository } from './infrastructure/prisma/prisma-session-execution-repository.js';
 import { PrismaSessionProcessExecutionReader } from './infrastructure/prisma/prisma-session-process-execution-reader.js';
 import { PrismaSessionRepository } from './infrastructure/prisma/prisma-session-repository.js';
@@ -42,6 +43,7 @@ export function createSessionsModule(deps?: SessionsModuleDependencies): Session
 
   const sessionRepository = new PrismaSessionRepository(deps.dbProvider);
   const sessionExecutionRepository = new PrismaSessionExecutionRepository(deps.dbProvider);
+  const attendeeRepository = new PrismaAttendeeRepository(deps.dbProvider);
   const processExecutionReader = new PrismaSessionProcessExecutionReader(deps.dbProvider);
   const stakeholderListReader = new PrismaSessionStakeholderListReader(deps.dbProvider);
 
@@ -59,6 +61,7 @@ export function createSessionsModule(deps?: SessionsModuleDependencies): Session
   const editSessionUseCase = new EditSessionUseCase({
     sessionRepository,
     sessionExecutionRepository,
+    attendeeRepository,
     processExecutionReader,
     stakeholderListReader,
     permissionChecker: deps.permissionChecker,
