@@ -1,6 +1,5 @@
 import { useId, useMemo, useState } from 'react';
 import type { SessionDto } from '@sigoa/shared';
-import { Link } from '@tanstack/react-router';
 import { AlertTriangle, Plus } from 'lucide-react';
 import { Can } from '@/components/common/can';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -129,9 +128,9 @@ export function SessionsPage() {
         <div className="rounded-lg border border-border bg-card p-6 text-center text-card-foreground">
           <p className="text-sm text-muted-foreground">
             No existen ejecuciones de proceso registradas. Crea una ejecución primero en{' '}
-            <Link to="/ejecuciones" className="text-primary underline underline-offset-2">
+            <a href="/ejecuciones" className="text-primary underline underline-offset-2">
               Ejecuciones
-            </Link>
+            </a>
             .
           </p>
         </div>
