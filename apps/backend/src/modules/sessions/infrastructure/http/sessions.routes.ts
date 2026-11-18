@@ -1,5 +1,6 @@
 import {
   createSessionRequestSchema,
+  registerSessionAttendeesRequestSchema,
   sessionIdParamSchema,
   updateSessionRequestSchema,
 } from '@sigoa/shared';
@@ -37,6 +38,18 @@ export function createSessionsRouter(deps: SessionsRouterDependencies): Router {
     deps.requirePermission('sesion.editar', 'GLOBAL'),
     validateRequest({ params: sessionIdParamSchema, body: updateSessionRequestSchema }),
     deps.controller.editSession,
+  );
+
+  // PUT /sessions/:id/attendees (HU-033, T-033-06, RF-033, RS-002, RS-020, RNF-008, RNF-009)
+  router.put(
+    '/:id/attendees',
+    deps.authenticate,
+    deps.requirePermission('sesion.editar', 'GLOBAL'),
+    validateRequest({
+      params: sessionIdParamSchema,
+      body: registerSessionAttendeesRequestSchema,
+    }),
+    deps.controller.registerAttendees,
   );
 
   return router;
