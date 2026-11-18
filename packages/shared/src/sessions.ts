@@ -202,3 +202,19 @@ export const listSessionsResponseSchema = z
   .strict();
 
 export type ListSessionsResponse = z.infer<typeof listSessionsResponseSchema>;
+
+export const sessionIdParamSchema = z
+  .object({
+    id: identifierSchema,
+  })
+  .strict();
+
+export type SessionIdParam = z.infer<typeof sessionIdParamSchema>;
+
+export const processExecutionIdParamSchema = z
+  .object({
+    id: identifierSchema,
+  })
+  .strict();
+
+export type ProcessExecutionIdParam = z.infer<typeof processExecutionIdParamSchema>;

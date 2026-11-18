@@ -3,7 +3,9 @@ import {
   SESSION_URL_MAX_LENGTH,
   createSessionRequestSchema,
   listSessionsByExecutionQuerySchema,
+  processExecutionIdParamSchema,
   sessionDtoSchema,
+  sessionIdParamSchema,
   updateSessionRequestSchema,
 } from './sessions.js';
 
@@ -148,5 +150,13 @@ describe('sessions schemas', () => {
 
     const valid = updateSessionRequestSchema.safeParse({ startTime: '11:30' });
     expect(valid.success).toBe(true);
+  });
+
+  it('rejects an id over 64 characters', () => {
+    const overMax = 'a'.repeat(65);
+    expect(sessionIdParamSchema.safeParse({ id: overMax }).success).toBe(false);
+    expect(processExecutionIdParamSchema.safeParse({ id: overMax }).success).toBe(false);
+    expect(sessionIdParamSchema.safeParse({ id: 'sess-1' }).success).toBe(true);
+    expect(processExecutionIdParamSchema.safeParse({ id: 'exec-1' }).success).toBe(true);
   });
 });
