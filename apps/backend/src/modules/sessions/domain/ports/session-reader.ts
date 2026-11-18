@@ -25,7 +25,13 @@ export interface ListSessionsByExecutionResult {
   readonly total: number;
 }
 
+export interface SessionListRef {
+  readonly id: string;
+  readonly stakeholderListId: string | null;
+}
+
 export interface SessionReader {
+  findById(sessionId: string): Promise<SessionListRef | null>;
   listByExecution(
     executionId: string,
     params: ListSessionsByExecutionParams,

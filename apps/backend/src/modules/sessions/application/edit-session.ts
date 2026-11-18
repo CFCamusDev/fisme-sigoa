@@ -4,6 +4,7 @@ import type { UnitOfWork } from '../../../shared/unit-of-work/unit-of-work.js';
 import type { SessionStakeholderListInput } from '../domain/entities/session.js';
 import {
   SessionExecutionNotFoundError,
+  SessionHasAttendeesError,
   SessionNotFoundError,
   SessionStakeholderListNotFoundError,
 } from '../domain/errors/index.js';
@@ -12,6 +13,7 @@ import {
   type SessionProcessExecutionRef,
 } from '../domain/policies/session-execution-rule.js';
 import type {
+  AttendeeRepository,
   SessionExecutionRepository,
   SessionPermissionChecker,
   SessionProcessExecutionReader,
@@ -24,6 +26,7 @@ import { buildSessionDto } from './session-dto.js';
 export interface EditSessionDependencies {
   readonly sessionRepository: SessionRepository;
   readonly sessionExecutionRepository: SessionExecutionRepository;
+  readonly attendeeRepository: Pick<AttendeeRepository, 'countBySession'>;
   readonly processExecutionReader: SessionProcessExecutionReader;
   readonly stakeholderListReader: SessionStakeholderListReader;
   readonly permissionChecker: SessionPermissionChecker;
@@ -77,6 +80,20 @@ export class EditSessionUseCase {
         throw new SessionExecutionNotFoundError(missing);
       }
       assertExecutionsLinkable(currentExecutions);
+
+      const listChanged =
+        command.stakeholderListId !== undefined &&
+        command.stakeholderListId !== current.stakeholderListId;
+      const typeChanged =
+        command.stakeholderType !== undefined &&
+        command.stakeholderType !== current.stakeholderType;
+
+      if (listChanged || typeChanged) {
+        const attendeeCount = await this.deps.attendeeRepository.countBySession(current.id);
+        if (attendeeCount > 0) {
+          throw new SessionHasAttendeesError();
+        }
+      }
 
       let nextExecutions: readonly SessionProcessExecutionRef[] | undefined;
       if (command.executionIds !== undefined) {

@@ -8,9 +8,15 @@ export interface SessionsTableProps {
   readonly items: readonly SessionDto[];
   readonly executionNamesById: ReadonlyMap<string, string>;
   readonly onEdit: (session: SessionDto) => void;
+  readonly onManageAttendees?: (session: SessionDto) => void;
 }
 
-export function SessionsTable({ items, executionNamesById, onEdit }: SessionsTableProps) {
+export function SessionsTable({
+  items,
+  executionNamesById,
+  onEdit,
+  onManageAttendees,
+}: SessionsTableProps) {
   return (
     <div className="overflow-x-auto rounded-lg border border-border bg-card text-card-foreground">
       <table className="w-full border-collapse text-left text-sm">
@@ -87,9 +93,26 @@ export function SessionsTable({ items, executionNamesById, onEdit }: SessionsTab
               </td>
               <Can permission="sesion.editar">
                 <td className="px-4 py-3 text-right">
-                  <Button type="button" variant="outline" size="sm" onClick={() => onEdit(session)}>
-                    Editar
-                  </Button>
+                  <div className="flex justify-end gap-2">
+                    {onManageAttendees && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onManageAttendees(session)}
+                      >
+                        Asistentes
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onEdit(session)}
+                    >
+                      Editar
+                    </Button>
+                  </div>
                 </td>
               </Can>
             </tr>

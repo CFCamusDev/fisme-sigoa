@@ -8,12 +8,23 @@ import type {
 import type {
   ListSessionsByExecutionParams,
   ListSessionsByExecutionResult,
+  SessionListRef,
   SessionReader,
 } from '../../domain/ports/session-reader.js';
 import { formatUtcDateToIso } from './prisma-session-mapper.js';
 
 export class PrismaSessionExecutionRepository implements SessionExecutionRepository, SessionReader {
   constructor(private readonly dbProvider: DbProvider) {}
+
+  async findById(sessionId: string): Promise<SessionListRef | null> {
+    return this.dbProvider.get().session.findUnique({
+      where: { id: sessionId },
+      select: {
+        id: true,
+        stakeholderListId: true,
+      },
+    });
+  }
 
   async replaceLinks(input: ReplaceSessionLinksInput): Promise<void> {
     const db = this.dbProvider.get();

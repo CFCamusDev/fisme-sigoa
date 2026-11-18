@@ -696,6 +696,7 @@ model StakeholderListMember {
 
   list        StakeholderList @relation(fields: [listId], references: [id], onDelete: Restrict)
   stakeholder Stakeholder     @relation(fields: [stakeholderId], references: [id], onDelete: Restrict)
+  attendees   Attendee[]
 
   @@unique([listId, stakeholderId])
   @@index([stakeholderId])
@@ -776,6 +777,7 @@ model Session {
 
   stakeholderList StakeholderList?   @relation(fields: [stakeholderListId], references: [id], onDelete: Restrict)
   executions      SessionExecution[]
+  attendees       Attendee[]
 
   @@unique([stakeholderType, sessionDate, startTime])
   @@index([stakeholderListId])
@@ -796,4 +798,20 @@ model SessionExecution {
   @@unique([sessionId, processExecutionId])
   @@index([processExecutionId])
   @@map("session_executions")
+}
+
+model Attendee {
+  id           String   @id @default(cuid())
+  sessionId    String
+  listMemberId String
+  position     String?
+  createdBy    String
+  createdAt    DateTime @default(now())
+
+  session    Session               @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+  listMember StakeholderListMember @relation(fields: [listMemberId], references: [id], onDelete: Restrict)
+
+  @@unique([sessionId, listMemberId])
+  @@index([listMemberId])
+  @@map("attendees")
 }

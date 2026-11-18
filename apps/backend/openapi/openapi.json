@@ -9063,6 +9063,163 @@
         }
       }
     },
+    "/sessions/{id}/attendees": {
+      "put": {
+        "tags": ["Sessions"],
+        "summary": "Registrar asistentes de una sesión",
+        "description": "Reemplaza el conjunto de asistentes de una sesión abierta usando miembros de su lista Anexo 3 (RF-033, RS-020).",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "minLength": 1, "maxLength": 64 }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RegisterSessionAttendeesRequest" },
+              "example": {
+                "attendees": [{ "listMemberId": "mem_cuid_1", "position": "Gerente de TI" }]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Asistentes registrados correctamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": { "type": "string" },
+                "example": "no-store"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SessionAttendeesResponse" },
+                "example": {
+                  "sessionId": "sess_cuid_1",
+                  "stakeholderListId": "list_cuid_1",
+                  "attendeeCount": 1,
+                  "items": [
+                    {
+                      "listMemberId": "mem_cuid_1",
+                      "fullName": "Ana Pérez",
+                      "institution": "Empresa A",
+                      "memberPosition": "Analista",
+                      "attended": true,
+                      "position": "Gerente de TI"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos de asistentes inválidos.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "403": {
+            "description": "Sin permiso sesion.editar.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "404": {
+            "description": "Sesión inexistente.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "409": {
+            "description": "Sesión sin lista, miembro fuera de lista o ejecución no abierta.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": ["Sessions"],
+        "summary": "Listar padrón y asistentes de una sesión",
+        "description": "Devuelve el padrón de la lista Anexo 3 de la sesión con la marca de asistencia y el cargo registrado (RF-033).",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "minLength": 1, "maxLength": 64 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Padrón de asistentes obtenido correctamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": { "type": "string" },
+                "example": "no-store"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SessionAttendeesResponse" },
+                "example": {
+                  "sessionId": "sess_cuid_1",
+                  "stakeholderListId": "list_cuid_1",
+                  "attendeeCount": 1,
+                  "items": [
+                    {
+                      "listMemberId": "mem_cuid_1",
+                      "fullName": "Ana Pérez",
+                      "institution": "Empresa A",
+                      "memberPosition": "Analista",
+                      "attended": true,
+                      "position": "Gerente de TI"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros inválidos.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "403": {
+            "description": "Sin permiso sesion.ver.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "404": {
+            "description": "Sesión inexistente.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          }
+        }
+      }
+    },
     "/process-executions/{id}/sessions": {
       "get": {
         "tags": ["Sessions"],
@@ -12043,6 +12200,61 @@
           "total": { "type": "integer", "minimum": 0 },
           "page": { "type": "integer", "minimum": 1 },
           "pageSize": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "RegisterSessionAttendeeEntry": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["listMemberId"],
+        "properties": {
+          "listMemberId": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "position": { "type": ["string", "null"], "maxLength": 120 }
+        }
+      },
+      "RegisterSessionAttendeesRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["attendees"],
+        "properties": {
+          "attendees": {
+            "type": "array",
+            "maxItems": 500,
+            "items": { "$ref": "#/components/schemas/RegisterSessionAttendeeEntry" }
+          }
+        }
+      },
+      "SessionAttendeeRosterItem": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "listMemberId",
+          "fullName",
+          "institution",
+          "memberPosition",
+          "attended",
+          "position"
+        ],
+        "properties": {
+          "listMemberId": { "type": "string" },
+          "fullName": { "type": "string" },
+          "institution": { "type": ["string", "null"] },
+          "memberPosition": { "type": ["string", "null"] },
+          "attended": { "type": "boolean" },
+          "position": { "type": ["string", "null"] }
+        }
+      },
+      "SessionAttendeesResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sessionId", "stakeholderListId", "attendeeCount", "items"],
+        "properties": {
+          "sessionId": { "type": "string" },
+          "stakeholderListId": { "type": ["string", "null"] },
+          "attendeeCount": { "type": "integer", "minimum": 0 },
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SessionAttendeeRosterItem" }
+          }
         }
       }
     },

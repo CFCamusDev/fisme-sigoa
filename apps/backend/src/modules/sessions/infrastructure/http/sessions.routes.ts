@@ -1,11 +1,15 @@
 import {
   createSessionRequestSchema,
+  registerSessionAttendeesRequestSchema,
   sessionIdParamSchema,
   updateSessionRequestSchema,
 } from '@sigoa/shared';
 import { Router, type RequestHandler } from 'express';
+import { z } from 'zod';
 import { validateRequest } from '../../../../shared/middleware/validate-request.js';
 import type { SessionsController } from './sessions.controller.js';
+
+const emptyQuerySchema = z.object({}).strict();
 
 export type SessionRoutePermissionScope = 'GLOBAL' | 'OWN';
 
@@ -37,6 +41,30 @@ export function createSessionsRouter(deps: SessionsRouterDependencies): Router {
     deps.requirePermission('sesion.editar', 'GLOBAL'),
     validateRequest({ params: sessionIdParamSchema, body: updateSessionRequestSchema }),
     deps.controller.editSession,
+  );
+
+  // PUT /sessions/:id/attendees (HU-033, T-033-06, RF-033, RS-002, RS-020, RNF-008, RNF-009)
+  router.put(
+    '/:id/attendees',
+    deps.authenticate,
+    deps.requirePermission('sesion.editar', 'GLOBAL'),
+    validateRequest({
+      params: sessionIdParamSchema,
+      body: registerSessionAttendeesRequestSchema,
+    }),
+    deps.controller.registerAttendees,
+  );
+
+  // GET /sessions/:id/attendees (HU-033, T-033-06 D5, RF-033, RS-002, RNF-008, RNF-009)
+  router.get(
+    '/:id/attendees',
+    deps.authenticate,
+    deps.requirePermission('sesion.ver', 'GLOBAL'),
+    validateRequest({
+      params: sessionIdParamSchema,
+      query: emptyQuerySchema,
+    }),
+    deps.controller.listAttendees,
   );
 
   return router;

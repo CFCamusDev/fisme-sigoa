@@ -3,7 +3,9 @@ import type { AuditLogger } from '../../shared/audit/audit-logger.js';
 import type { DbProvider } from '../../shared/prisma/prisma-unit-of-work.js';
 import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
 import { EditSessionUseCase } from './application/edit-session.js';
+import { ListSessionAttendeesUseCase } from './application/list-session-attendees.js';
 import { ListSessionsByExecutionUseCase } from './application/list-sessions-by-execution.js';
+import { RegisterAttendeesUseCase } from './application/register-attendees.js';
 import { RegisterSessionUseCase } from './application/register-session.js';
 import type { SessionPermissionChecker } from './domain/ports/session-permission-checker.js';
 import { createExecutionSessionsRouter } from './infrastructure/http/execution-sessions.routes.js';
@@ -12,7 +14,9 @@ import {
   createSessionsRouter,
   type SessionRoutePermissionScope,
 } from './infrastructure/http/sessions.routes.js';
+import { PrismaAttendeeRepository } from './infrastructure/prisma/prisma-attendee-repository.js';
 import { PrismaSessionExecutionRepository } from './infrastructure/prisma/prisma-session-execution-repository.js';
+import { PrismaSessionListMemberReader } from './infrastructure/prisma/prisma-session-list-member-reader.js';
 import { PrismaSessionProcessExecutionReader } from './infrastructure/prisma/prisma-session-process-execution-reader.js';
 import { PrismaSessionRepository } from './infrastructure/prisma/prisma-session-repository.js';
 import { PrismaSessionStakeholderListReader } from './infrastructure/prisma/prisma-session-stakeholder-list-reader.js';
@@ -42,8 +46,10 @@ export function createSessionsModule(deps?: SessionsModuleDependencies): Session
 
   const sessionRepository = new PrismaSessionRepository(deps.dbProvider);
   const sessionExecutionRepository = new PrismaSessionExecutionRepository(deps.dbProvider);
+  const attendeeRepository = new PrismaAttendeeRepository(deps.dbProvider);
   const processExecutionReader = new PrismaSessionProcessExecutionReader(deps.dbProvider);
   const stakeholderListReader = new PrismaSessionStakeholderListReader(deps.dbProvider);
+  const sessionListMemberReader = new PrismaSessionListMemberReader(deps.dbProvider);
 
   const registerSessionUseCase = new RegisterSessionUseCase({
     sessionRepository,
@@ -59,6 +65,7 @@ export function createSessionsModule(deps?: SessionsModuleDependencies): Session
   const editSessionUseCase = new EditSessionUseCase({
     sessionRepository,
     sessionExecutionRepository,
+    attendeeRepository,
     processExecutionReader,
     stakeholderListReader,
     permissionChecker: deps.permissionChecker,
@@ -73,10 +80,30 @@ export function createSessionsModule(deps?: SessionsModuleDependencies): Session
     permissionChecker: deps.permissionChecker,
   });
 
+  const registerAttendeesUseCase = new RegisterAttendeesUseCase({
+    sessionRepository,
+    attendeeRepository,
+    processExecutionReader,
+    sessionListMemberReader,
+    permissionChecker: deps.permissionChecker,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+    clock: deps.clock,
+  });
+
+  const listSessionAttendeesUseCase = new ListSessionAttendeesUseCase({
+    sessionReader: sessionExecutionRepository,
+    attendeeRepository,
+    sessionListMemberReader,
+    permissionChecker: deps.permissionChecker,
+  });
+
   const controller = new SessionsController({
     registerSessionUseCase,
     editSessionUseCase,
     listSessionsByExecutionUseCase,
+    registerAttendeesUseCase,
+    listSessionAttendeesUseCase,
   });
 
   return {
@@ -93,13 +120,20 @@ export function createSessionsModule(deps?: SessionsModuleDependencies): Session
   };
 }
 
+export * from './domain/entities/attendee.js';
 export * from './domain/entities/session-modality.js';
 export * from './domain/entities/session-stakeholder-type.js';
 export * from './domain/entities/session.js';
+export * from './domain/policies/attendee-selection.js';
 export * from './domain/policies/session-execution-rule.js';
 export * from './domain/errors/index.js';
 export * from './domain/ports/index.js';
+export * from './application/attendee-dto.js';
 export * from './application/session-dto.js';
+export * from './application/list-session-attendees.js';
+export * from './application/list-session-attendees.types.js';
+export * from './application/register-attendees.js';
+export * from './application/register-attendees.types.js';
 export * from './application/register-session.js';
 export * from './application/register-session.types.js';
 export * from './application/edit-session.js';
