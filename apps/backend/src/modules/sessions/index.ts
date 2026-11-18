@@ -2,6 +2,7 @@ import { Router, type RequestHandler } from 'express';
 import type { AuditLogger } from '../../shared/audit/audit-logger.js';
 import type { DbProvider } from '../../shared/prisma/prisma-unit-of-work.js';
 import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
+import { EditSessionUseCase } from './application/edit-session.js';
 import { RegisterSessionUseCase } from './application/register-session.js';
 import type { SessionPermissionChecker } from './domain/ports/session-permission-checker.js';
 import { SessionsController } from './infrastructure/http/sessions.controller.js';
@@ -52,8 +53,20 @@ export function createSessionsModule(deps?: SessionsModuleDependencies): Session
     clock: deps.clock,
   });
 
+  const editSessionUseCase = new EditSessionUseCase({
+    sessionRepository,
+    sessionExecutionRepository,
+    processExecutionReader,
+    stakeholderListReader,
+    permissionChecker: deps.permissionChecker,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+    clock: deps.clock,
+  });
+
   const controller = new SessionsController({
     registerSessionUseCase,
+    editSessionUseCase,
   });
 
   return {

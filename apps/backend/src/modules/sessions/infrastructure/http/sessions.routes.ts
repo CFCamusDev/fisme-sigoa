@@ -1,4 +1,8 @@
-import { createSessionRequestSchema } from '@sigoa/shared';
+import {
+  createSessionRequestSchema,
+  sessionIdParamSchema,
+  updateSessionRequestSchema,
+} from '@sigoa/shared';
 import { Router, type RequestHandler } from 'express';
 import { validateRequest } from '../../../../shared/middleware/validate-request.js';
 import type { SessionsController } from './sessions.controller.js';
@@ -24,6 +28,15 @@ export function createSessionsRouter(deps: SessionsRouterDependencies): Router {
     deps.requirePermission('sesion.editar', 'GLOBAL'),
     validateRequest({ body: createSessionRequestSchema }),
     deps.controller.registerSession,
+  );
+
+  // PATCH /sessions/:id (HU-032, T-032-12, RF-032, RS-002, RS-020, RNF-008, RNF-009)
+  router.patch(
+    '/:id',
+    deps.authenticate,
+    deps.requirePermission('sesion.editar', 'GLOBAL'),
+    validateRequest({ params: sessionIdParamSchema, body: updateSessionRequestSchema }),
+    deps.controller.editSession,
   );
 
   return router;
