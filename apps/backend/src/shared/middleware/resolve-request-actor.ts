@@ -1,6 +1,6 @@
 import type { Request } from 'express';
-import { getRequestContext } from '../../../../shared/audit/request-context.js';
-import { UnauthorizedError } from '../../../../shared/errors/app-error.js';
+import { getRequestContext } from '../audit/request-context.js';
+import { UnauthorizedError } from '../errors/app-error.js';
 
 export function resolveRequestActor(req: Request): { actorId: string; ip: string } {
   const context = getRequestContext();

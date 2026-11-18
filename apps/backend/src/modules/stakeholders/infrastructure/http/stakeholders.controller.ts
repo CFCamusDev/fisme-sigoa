@@ -11,7 +11,7 @@ import type { EditStakeholderUseCase } from '../../application/edit-stakeholder.
 import type { RegisterStakeholderUseCase } from '../../application/register-stakeholder.js';
 import type { SearchStakeholdersUseCase } from '../../application/search-stakeholders.js';
 import type { VoidStakeholderUseCase } from '../../application/void-stakeholder.js';
-import { resolveRequestActor } from './resolve-request-actor.js';
+import { resolveRequestActor } from '../../../../shared/middleware/resolve-request-actor.js';
 
 export interface StakeholdersControllerDependencies {
   readonly registerStakeholderUseCase: RegisterStakeholderUseCase;

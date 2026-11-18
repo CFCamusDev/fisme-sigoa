@@ -3,7 +3,7 @@ import type { RequestHandler } from 'express';
 import { getValidated } from '../../../../shared/middleware/validate-request.js';
 import type { CreateProcessExecutionUseCase } from '../../application/create-process-execution.js';
 import type { ListProcessExecutionsUseCase } from '../../application/list-process-executions.js';
-import { resolveRequestActor } from './resolve-request-actor.js';
+import { resolveRequestActor } from '../../../../shared/middleware/resolve-request-actor.js';
 
 export interface ProcessExecutionsControllerDependencies {
   readonly createProcessExecutionUseCase: CreateProcessExecutionUseCase;
