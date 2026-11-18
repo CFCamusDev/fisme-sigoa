@@ -3,8 +3,10 @@ import type { AuditLogger } from '../../shared/audit/audit-logger.js';
 import type { DbProvider } from '../../shared/prisma/prisma-unit-of-work.js';
 import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
 import { EditSessionUseCase } from './application/edit-session.js';
+import { ListSessionsByExecutionUseCase } from './application/list-sessions-by-execution.js';
 import { RegisterSessionUseCase } from './application/register-session.js';
 import type { SessionPermissionChecker } from './domain/ports/session-permission-checker.js';
+import { createExecutionSessionsRouter } from './infrastructure/http/execution-sessions.routes.js';
 import { SessionsController } from './infrastructure/http/sessions.controller.js';
 import {
   createSessionsRouter,
@@ -30,11 +32,12 @@ export interface SessionsModuleDependencies {
 
 export interface SessionsModuleRouters {
   readonly sessions: Router;
+  readonly executionSessions: Router;
 }
 
 export function createSessionsModule(deps?: SessionsModuleDependencies): SessionsModuleRouters {
   if (!deps) {
-    return { sessions: Router() };
+    return { sessions: Router(), executionSessions: Router() };
   }
 
   const sessionRepository = new PrismaSessionRepository(deps.dbProvider);
@@ -64,13 +67,25 @@ export function createSessionsModule(deps?: SessionsModuleDependencies): Session
     clock: deps.clock,
   });
 
+  const listSessionsByExecutionUseCase = new ListSessionsByExecutionUseCase({
+    sessionReader: sessionExecutionRepository,
+    processExecutionReader,
+    permissionChecker: deps.permissionChecker,
+  });
+
   const controller = new SessionsController({
     registerSessionUseCase,
     editSessionUseCase,
+    listSessionsByExecutionUseCase,
   });
 
   return {
     sessions: createSessionsRouter({
+      controller,
+      authenticate: deps.authenticate,
+      requirePermission: deps.requirePermission,
+    }),
+    executionSessions: createExecutionSessionsRouter({
       controller,
       authenticate: deps.authenticate,
       requirePermission: deps.requirePermission,
@@ -89,5 +104,8 @@ export * from './application/register-session.js';
 export * from './application/register-session.types.js';
 export * from './application/edit-session.js';
 export * from './application/edit-session.types.js';
+export * from './application/list-sessions-by-execution.js';
+export * from './application/list-sessions-by-execution.types.js';
 export * from './infrastructure/http/sessions.controller.js';
 export * from './infrastructure/http/sessions.routes.js';
+export * from './infrastructure/http/execution-sessions.routes.js';

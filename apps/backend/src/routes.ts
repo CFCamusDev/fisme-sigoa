@@ -328,4 +328,5 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
     clock: deps.clock,
   });
   app.use('/sessions', sessionsModule.sessions);
+  app.use('/process-executions', sessionsModule.executionSessions);
 }
