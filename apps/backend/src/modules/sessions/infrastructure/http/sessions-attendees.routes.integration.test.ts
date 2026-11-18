@@ -357,7 +357,7 @@ describe('PUT & GET /sessions/:id/attendees (PostgreSQL real, HU-033, T-033-13, 
       .send({ attendees: [{ listMemberId: 'mem-other', position: 'Director' }] });
 
     expect(res.status).toBe(409);
-    expect(String(res.body.message)).toContain('agrégalo primero a la lista');
+    expect(String(res.body.error?.message)).toContain('agrégalo primero a la lista');
   }, 5_000);
 
   it('PUT returns 409 when the session has no list', async () => {
@@ -470,11 +470,11 @@ describe('PUT & GET /sessions/:id/attendees (PostgreSQL real, HU-033, T-033-13, 
 
   it('GET returns 403 without sesion.ver', async () => {
     await seedDomainData();
-    const director = await createActor(['PROGRAM_DIRECTOR']);
+    const actorWithoutPerms = await createActor([]);
 
     const res = await request(app)
       .get('/sessions/sess-1/attendees')
-      .set('Authorization', `Bearer ${director.token}`);
+      .set('Authorization', `Bearer ${actorWithoutPerms.token}`);
 
     expect(res.status).toBe(403);
   }, 5_000);

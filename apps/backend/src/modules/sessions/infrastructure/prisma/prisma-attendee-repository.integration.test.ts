@@ -83,6 +83,7 @@ describe('PrismaAttendeeRepository Integration (PostgreSQL real, T-033-12)', () 
       startTime: '10:00',
       modality: 'VIRTUAL',
       meetingUrl: 'https://meet.example.com/room-1',
+      recordingUrl: 'https://drive.example.com/rec-1',
       executions: OPEN_EXECUTIONS,
       actorId: 'user-1',
       now: NOW,
