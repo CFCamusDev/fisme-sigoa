@@ -127,5 +127,6 @@ describe('SessionsPage (HU-032, T-032-25)', () => {
     expect(await screen.findByText('20/11/2026')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Nueva sesión/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Editar' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Asistentes' })).not.toBeInTheDocument();
   });
 });
