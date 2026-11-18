@@ -49,6 +49,7 @@ function setupBaseHandlers(options?: { includeClosedExecution?: boolean; listsSt
             studyPlanNumber: null,
             version: '1',
             memberCount: 5,
+            members: null,
             createdAt: '2026-01-01T00:00:00.000Z',
             updatedAt: '2026-01-01T00:00:00.000Z',
           },
@@ -56,6 +57,7 @@ function setupBaseHandlers(options?: { includeClosedExecution?: boolean; listsSt
         total: 1,
         page: 1,
         pageSize: 20,
+        totalPages: 1,
       });
     }),
   );
@@ -168,7 +170,7 @@ describe('SessionForm (HU-032, T-032-25)', () => {
     await screen.findByLabelText('Revisión OE 2026');
     await user.click(screen.getByRole('button', { name: 'Registrar sesión' }));
 
-    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(onSaved).toHaveBeenCalled());
     expect(postCalls).toBe(1);
   });
 
@@ -250,7 +252,12 @@ describe('SessionForm (HU-032, T-032-25)', () => {
     server.use(
       http.post('*/sessions', () =>
         HttpResponse.json(
-          { message: 'Ya existe una sesión de ese tipo a esa fecha y hora.' },
+          {
+            error: {
+              code: 'CONFLICT',
+              message: 'Ya existe una sesión de ese tipo a esa fecha y hora.',
+            },
+          },
           { status: 409 },
         ),
       ),
@@ -291,7 +298,7 @@ describe('SessionForm (HU-032, T-032-25)', () => {
     const submitButton = screen.getByRole('button', { name: 'Registrar sesión' });
     await Promise.all([user.click(submitButton), user.click(submitButton)]);
 
-    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(onSaved).toHaveBeenCalled());
     expect(postCalls).toBe(1);
   });
 

@@ -34,7 +34,7 @@ describe('SessionsRoute (/sesiones) (HU-032, T-032-25)', () => {
     expect(Component).toBeDefined();
     if (Component) {
       renderWithProviders(<Component />, {
-        withRouter: true,
+        withRouter: false,
         permissions: [{ code: 'sesion.ver', scope: 'GLOBAL' }],
       });
       expect(screen.getByRole('heading', { level: 1, name: /Sesiones/i })).toBeInTheDocument();
