@@ -3,8 +3,14 @@ import { describe, expect, it } from 'vitest';
 import { server } from '@/test/msw/server';
 import { createSession } from './create-session';
 import { getExecutionSessions } from './get-execution-sessions';
+import { getSessionAttendees } from './get-session-attendees';
+import { registerSessionAttendees } from './register-session-attendees';
 import { updateSession } from './update-session';
-import { SAMPLE_SESSION_DTO, makeSessionsResponse } from '../test/sessions-fixtures';
+import {
+  SAMPLE_SESSION_DTO,
+  makeSessionAttendeesResponse,
+  makeSessionsResponse,
+} from '../test/sessions-fixtures';
 
 describe('sessions API client (HU-032, T-032-15)', () => {
   it('parses the created session', async () => {
@@ -60,5 +66,38 @@ describe('sessions API client (HU-032, T-032-15)', () => {
         executionIds: ['exec-1'],
       }),
     ).rejects.toThrow();
+  });
+
+  it('parses the session attendees roster', async () => {
+    const payload = makeSessionAttendeesResponse();
+    server.use(
+      http.get('*/sessions/sess-1/attendees', () => HttpResponse.json(payload, { status: 200 })),
+    );
+
+    const response = await getSessionAttendees('sess-1');
+    expect(response).toEqual(payload);
+  });
+
+  it('parses the registered session attendees response', async () => {
+    const payload = makeSessionAttendeesResponse();
+    server.use(
+      http.put('*/sessions/sess-1/attendees', () => HttpResponse.json(payload, { status: 200 })),
+    );
+
+    const response = await registerSessionAttendees({
+      sessionId: 'sess-1',
+      data: { attendees: [{ listMemberId: 'mem-1', position: 'Gerente de TI' }] },
+    });
+    expect(response).toEqual(payload);
+  });
+
+  it('rejects an invalid session attendees payload', async () => {
+    server.use(
+      http.get('*/sessions/sess-1/attendees', () =>
+        HttpResponse.json({ sessionId: 'sess-1', invalid: true }, { status: 200 }),
+      ),
+    );
+
+    await expect(getSessionAttendees('sess-1')).rejects.toThrow();
   });
 });

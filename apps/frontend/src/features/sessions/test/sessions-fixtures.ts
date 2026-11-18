@@ -1,4 +1,10 @@
-import type { ListSessionsResponse, ProcessExecutionDto, SessionDto } from '@sigoa/shared';
+import type {
+  ListSessionsResponse,
+  ProcessExecutionDto,
+  SessionAttendeeRosterItem,
+  SessionAttendeesResponse,
+  SessionDto,
+} from '@sigoa/shared';
 
 export const SAMPLE_SESSION_DTO: SessionDto = {
   id: 'sess-1',
@@ -67,3 +73,37 @@ export const SAMPLE_OPEN_EXECUTIONS: readonly ProcessExecutionDto[] = [
     updatedAt: '2026-11-10T10:00:00.000Z',
   },
 ];
+
+export const SAMPLE_ATTENDEE_ROSTER: readonly SessionAttendeeRosterItem[] = [
+  {
+    listMemberId: 'mem-1',
+    fullName: 'Ana Pérez',
+    institution: 'Empresa A',
+    memberPosition: 'Analista',
+    attended: true,
+    position: 'Gerente de TI',
+  },
+  {
+    listMemberId: 'mem-2',
+    fullName: 'Luis Torres',
+    institution: 'Empresa B',
+    memberPosition: 'Jefe de Área',
+    attended: false,
+    position: null,
+  },
+];
+
+export function makeSessionAttendeesResponse(
+  overrides?: Partial<SessionAttendeesResponse>,
+): SessionAttendeesResponse {
+  const items = overrides?.items ?? [...SAMPLE_ATTENDEE_ROSTER];
+  return {
+    sessionId: overrides?.sessionId ?? 'sess-1',
+    stakeholderListId:
+      overrides && 'stakeholderListId' in overrides
+        ? (overrides.stakeholderListId ?? null)
+        : 'list-1',
+    attendeeCount: overrides?.attendeeCount ?? items.filter((item) => item.attended).length,
+    items,
+  };
+}
