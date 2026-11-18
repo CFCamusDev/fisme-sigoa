@@ -3,6 +3,7 @@ import type { AuditLogger } from '../../shared/audit/audit-logger.js';
 import type { DbProvider } from '../../shared/prisma/prisma-unit-of-work.js';
 import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
 import { EditSessionUseCase } from './application/edit-session.js';
+import { ListSessionAttendeesUseCase } from './application/list-session-attendees.js';
 import { ListSessionsByExecutionUseCase } from './application/list-sessions-by-execution.js';
 import { RegisterAttendeesUseCase } from './application/register-attendees.js';
 import { RegisterSessionUseCase } from './application/register-session.js';
@@ -90,11 +91,19 @@ export function createSessionsModule(deps?: SessionsModuleDependencies): Session
     clock: deps.clock,
   });
 
+  const listSessionAttendeesUseCase = new ListSessionAttendeesUseCase({
+    sessionReader: sessionExecutionRepository,
+    attendeeRepository,
+    sessionListMemberReader,
+    permissionChecker: deps.permissionChecker,
+  });
+
   const controller = new SessionsController({
     registerSessionUseCase,
     editSessionUseCase,
     listSessionsByExecutionUseCase,
     registerAttendeesUseCase,
+    listSessionAttendeesUseCase,
   });
 
   return {
@@ -121,6 +130,8 @@ export * from './domain/errors/index.js';
 export * from './domain/ports/index.js';
 export * from './application/attendee-dto.js';
 export * from './application/session-dto.js';
+export * from './application/list-session-attendees.js';
+export * from './application/list-session-attendees.types.js';
 export * from './application/register-attendees.js';
 export * from './application/register-attendees.types.js';
 export * from './application/register-session.js';

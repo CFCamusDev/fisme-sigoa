@@ -12,6 +12,7 @@ const NOW = new Date('2026-11-17T15:00:00.000Z');
 
 function createHarness() {
   const sessionReader: SessionReader = {
+    findById: vi.fn().mockResolvedValue(null),
     listByExecution: vi.fn().mockResolvedValue({
       items: [
         {
