@@ -17,6 +17,7 @@ import { Route as AppEjecucionesRouteImport } from './routes/_app/ejecuciones'
 import { Route as AppListasConstituyentesRouteImport } from './routes/_app/listas-constituyentes'
 import { Route as AppPlantillasRouteImport } from './routes/_app/plantillas'
 import { Route as AppResolucionesRouteImport } from './routes/_app/resoluciones'
+import { Route as AppSesionesRouteImport } from './routes/_app/sesiones'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as AuthRecuperarContrasenaRouteImport } from './routes/_auth/recuperar-contrasena'
 import { Route as EncuestaTokenRouteImport } from './routes/encuesta/$token'
@@ -73,6 +74,11 @@ const AppPlantillasRoute = AppPlantillasRouteImport.update({
 const AppResolucionesRoute = AppResolucionesRouteImport.update({
   id: '/resoluciones',
   path: '/resoluciones',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSesionesRoute = AppSesionesRouteImport.update({
+  id: '/sesiones',
+  path: '/sesiones',
   getParentRoute: () => AppRoute,
 } as any)
 const AuthLoginRoute = AuthLoginRouteImport.update({
@@ -182,6 +188,7 @@ export interface FileRoutesByFullPath {
   '/listas-constituyentes': typeof AppListasConstituyentesRoute
   '/plantillas': typeof AppPlantillasRoute
   '/resoluciones': typeof AppResolucionesRoute
+  '/sesiones': typeof AppSesionesRoute
   '/login': typeof AuthLoginRoute
   '/recuperar-contrasena': typeof AuthRecuperarContrasenaRoute
   '/encuesta/$token': typeof EncuestaTokenRoute
@@ -209,6 +216,7 @@ export interface FileRoutesByTo {
   '/listas-constituyentes': typeof AppListasConstituyentesRoute
   '/plantillas': typeof AppPlantillasRoute
   '/resoluciones': typeof AppResolucionesRoute
+  '/sesiones': typeof AppSesionesRoute
   '/login': typeof AuthLoginRoute
   '/recuperar-contrasena': typeof AuthRecuperarContrasenaRoute
   '/encuesta/$token': typeof EncuestaTokenRoute
@@ -238,6 +246,7 @@ export interface FileRoutesById {
   '/_app/listas-constituyentes': typeof AppListasConstituyentesRoute
   '/_app/plantillas': typeof AppPlantillasRoute
   '/_app/resoluciones': typeof AppResolucionesRoute
+  '/_app/sesiones': typeof AppSesionesRoute
   '/_auth/login': typeof AuthLoginRoute
   '/_auth/recuperar-contrasena': typeof AuthRecuperarContrasenaRoute
   '/encuesta/$token': typeof EncuestaTokenRoute
@@ -268,6 +277,7 @@ export interface FileRouteTypes {
     | '/listas-constituyentes'
     | '/plantillas'
     | '/resoluciones'
+    | '/sesiones'
     | '/login'
     | '/recuperar-contrasena'
     | '/encuesta/$token'
@@ -295,6 +305,7 @@ export interface FileRouteTypes {
     | '/listas-constituyentes'
     | '/plantillas'
     | '/resoluciones'
+    | '/sesiones'
     | '/login'
     | '/recuperar-contrasena'
     | '/encuesta/$token'
@@ -323,6 +334,7 @@ export interface FileRouteTypes {
     | '/_app/listas-constituyentes'
     | '/_app/plantillas'
     | '/_app/resoluciones'
+    | '/_app/sesiones'
     | '/_auth/login'
     | '/_auth/recuperar-contrasena'
     | '/encuesta/$token'
@@ -407,6 +419,13 @@ declare module '@tanstack/react-router' {
       path: '/resoluciones'
       fullPath: '/resoluciones'
       preLoaderRoute: typeof AppResolucionesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/sesiones': {
+      id: '/_app/sesiones'
+      path: '/sesiones'
+      fullPath: '/sesiones'
+      preLoaderRoute: typeof AppSesionesRouteImport
       parentRoute: typeof AppRoute
     }
     '/_auth/login': {
@@ -551,6 +570,7 @@ interface AppRouteChildren {
   AppListasConstituyentesRoute: typeof AppListasConstituyentesRoute
   AppPlantillasRoute: typeof AppPlantillasRoute
   AppResolucionesRoute: typeof AppResolucionesRoute
+  AppSesionesRoute: typeof AppSesionesRoute
   AppIndexRoute: typeof AppIndexRoute
   AppCatalogoHistorialRoute: typeof AppCatalogoHistorialRoute
   AppCatalogoVersionesRoute: typeof AppCatalogoVersionesRoute
@@ -574,6 +594,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppListasConstituyentesRoute: AppListasConstituyentesRoute,
   AppPlantillasRoute: AppPlantillasRoute,
   AppResolucionesRoute: AppResolucionesRoute,
+  AppSesionesRoute: AppSesionesRoute,
   AppIndexRoute: AppIndexRoute,
   AppCatalogoHistorialRoute: AppCatalogoHistorialRoute,
   AppCatalogoVersionesRoute: AppCatalogoVersionesRoute,

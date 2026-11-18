@@ -2,6 +2,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
   BookMarked,
   Building2,
+  CalendarClock,
   CalendarRange,
   ClipboardList,
   FileCheck,
@@ -99,5 +100,11 @@ export const MAIN_NAV_ITEMS: readonly NavItem[] = [
     href: '/ejecuciones',
     icon: Workflow,
     permission: 'ejecucion.ver',
+  },
+  {
+    title: 'Sesiones',
+    href: '/sesiones',
+    icon: CalendarClock,
+    permission: 'sesion.ver',
   },
 ] as const;
