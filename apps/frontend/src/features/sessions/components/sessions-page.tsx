@@ -1,5 +1,5 @@
 import { useId, useMemo, useState } from 'react';
-import type { SessionDto } from '@sigoa/shared';
+import type { SessionAttendeesResponse, SessionDto } from '@sigoa/shared';
 import { AlertTriangle, Plus } from 'lucide-react';
 import { Can } from '@/components/common/can';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -9,13 +9,15 @@ import { Select } from '@/components/ui/select';
 import { useProcessExecutions } from '@/features/processes';
 import { useExecutionSessions } from '../hooks/use-execution-sessions';
 import { getSessionErrorMessage } from '../lib/session-error-message';
+import { SessionAttendeesPanel } from './session-attendees-panel';
 import { SessionForm } from './session-form';
 import { SessionsTable } from './sessions-table';
 
 type PanelState =
   | { readonly mode: 'closed' }
   | { readonly mode: 'create' }
-  | { readonly mode: 'edit'; readonly session: SessionDto };
+  | { readonly mode: 'edit'; readonly session: SessionDto }
+  | { readonly mode: 'attendees'; readonly session: SessionDto };
 
 const PAGE_SIZE = 20;
 
@@ -70,6 +72,15 @@ export function SessionsPage() {
       setSelectedExecutionId(saved.executionIds[0] ?? '');
       setPage(1);
     }
+  }
+
+  function handleAttendeesSaved(response: SessionAttendeesResponse) {
+    setPanelState({ mode: 'closed' });
+    setStatusMessage(
+      response.attendeeCount === 1
+        ? 'Se registró 1 asistente en la sesión.'
+        : `Se registraron ${response.attendeeCount} asistentes en la sesión.`,
+    );
   }
 
   return (
@@ -197,7 +208,20 @@ export function SessionsPage() {
                   setStatusMessage(null);
                   setPanelState({ mode: 'edit', session });
                 }}
+                onManageAttendees={(session) => {
+                  setStatusMessage(null);
+                  setPanelState({ mode: 'attendees', session });
+                }}
               />
+
+              {panelState.mode === 'attendees' && (
+                <SessionAttendeesPanel
+                  key={panelState.session.id}
+                  session={panelState.session}
+                  onSaved={handleAttendeesSaved}
+                  onCancel={() => setPanelState({ mode: 'closed' })}
+                />
+              )}
 
               {total > PAGE_SIZE && (
                 <div className="flex items-center justify-between text-sm text-muted-foreground">
