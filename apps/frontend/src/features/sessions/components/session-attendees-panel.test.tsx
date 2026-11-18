@@ -118,7 +118,7 @@ describe('SessionAttendeesPanel (HU-033, T-033-14)', () => {
       <SessionAttendeesPanel session={SAMPLE_SESSION_DTO} onSaved={vi.fn()} onCancel={vi.fn()} />,
     );
 
-    expect(screen.getByText('Cargando asistentes…')).toBeInTheDocument();
+    expect(await screen.findByText('Cargando asistentes…')).toBeInTheDocument();
     expect(await screen.findByRole('alert')).toBeInTheDocument();
 
     server.use(
@@ -141,7 +141,12 @@ describe('SessionAttendeesPanel (HU-033, T-033-14)', () => {
       ),
       http.put('*/sessions/sess-1/attendees', () =>
         HttpResponse.json(
-          { message: 'La ejecución está cerrada y no admite cambios.' },
+          {
+            error: {
+              code: 'CONFLICT',
+              message: 'La ejecución está cerrada y no admite cambios.',
+            },
+          },
           { status: 409 },
         ),
       ),
