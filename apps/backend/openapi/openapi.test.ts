@@ -89,8 +89,12 @@ import {
   stakeholderImportRowDtoSchema,
   stakeholderImportTemplateQuerySchema,
   createProcessExecutionRequestSchema,
+  createSessionRequestSchema,
   listProcessExecutionsResponseSchema,
+  listSessionsResponseSchema,
   processExecutionDtoSchema,
+  sessionDtoSchema,
+  updateSessionRequestSchema,
 } from '@sigoa/shared';
 import { createAuthRouter } from '../src/modules/auth/infrastructure/http/auth.routes.js';
 import { createUsersRouter } from '../src/modules/users/infrastructure/http/users.routes.js';
@@ -2905,6 +2909,35 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
 
       const listExample = getOp.responses['200'].content['application/json'].example;
       expect(listProcessExecutionsResponseSchema.safeParse(listExample).success).toBe(true);
+    });
+  });
+
+  describe('OpenAPI Specification for Sessions (HU-032, T-032-14, RF-032, RNF-032)', () => {
+    it('session schemas validate their documented examples', () => {
+      const postOp = spec.paths['/sessions']?.post;
+      const patchOp = spec.paths['/sessions/{id}']?.patch;
+      const getOp = spec.paths['/process-executions/{id}/sessions']?.get;
+      expect(postOp).toBeDefined();
+      expect(patchOp).toBeDefined();
+      expect(getOp).toBeDefined();
+      expect(postOp.security).toEqual([{ bearerAuth: [] }]);
+      expect(patchOp.security).toEqual([{ bearerAuth: [] }]);
+      expect(getOp.security).toEqual([{ bearerAuth: [] }]);
+
+      const createExample = postOp.requestBody.content['application/json'].example;
+      expect(createSessionRequestSchema.safeParse(createExample).success).toBe(true);
+
+      const createdExample = postOp.responses['201'].content['application/json'].example;
+      expect(sessionDtoSchema.safeParse(createdExample).success).toBe(true);
+
+      const updateExample = patchOp.requestBody.content['application/json'].example;
+      expect(updateSessionRequestSchema.safeParse(updateExample).success).toBe(true);
+
+      const updatedExample = patchOp.responses['200'].content['application/json'].example;
+      expect(sessionDtoSchema.safeParse(updatedExample).success).toBe(true);
+
+      const listExample = getOp.responses['200'].content['application/json'].example;
+      expect(listSessionsResponseSchema.safeParse(listExample).success).toBe(true);
     });
   });
 });

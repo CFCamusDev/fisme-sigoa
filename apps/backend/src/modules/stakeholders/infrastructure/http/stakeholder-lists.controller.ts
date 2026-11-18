@@ -16,7 +16,7 @@ import type { CreateStakeholderListUseCase } from '../../application/create-stak
 import type { DownloadStakeholderImportTemplateUseCase } from '../../application/download-stakeholder-import-template.js';
 import type { ListStakeholderListsUseCase } from '../../application/list-stakeholder-lists.js';
 import type { PreviewStakeholderImportUseCase } from '../../application/preview-stakeholder-import.js';
-import { resolveRequestActor } from './resolve-request-actor.js';
+import { resolveRequestActor } from '../../../../shared/middleware/resolve-request-actor.js';
 
 export interface StakeholderListsControllerDependencies {
   readonly createStakeholderListUseCase: CreateStakeholderListUseCase;

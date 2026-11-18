@@ -8890,6 +8890,260 @@
           }
         }
       }
+    },
+    "/sessions": {
+      "post": {
+        "tags": ["Sessions"],
+        "summary": "Registrar sesión con constituyentes",
+        "description": "Registra una reunión vinculada a una o más ejecuciones de proceso abiertas (RF-032, RS-030).",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateSessionRequest" },
+              "example": {
+                "stakeholderType": "EMPLOYER",
+                "stakeholderListId": "list_cuid_1",
+                "sessionDate": "2026-11-20",
+                "startTime": "10:00",
+                "modality": "VIRTUAL",
+                "meetingUrl": "https://meet.example.com/emp-2026",
+                "recordingUrl": "https://drive.example.com/emp-2026",
+                "executionIds": ["exec_cuid_1", "exec_cuid_2"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Sesión registrada correctamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": { "type": "string" },
+                "example": "no-store"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Session" },
+                "example": {
+                  "id": "sess_cuid_1",
+                  "stakeholderType": "EMPLOYER",
+                  "stakeholderListId": "list_cuid_1",
+                  "sessionDate": "2026-11-20",
+                  "startTime": "10:00",
+                  "modality": "VIRTUAL",
+                  "meetingUrl": "https://meet.example.com/emp-2026",
+                  "recordingUrl": "https://drive.example.com/emp-2026",
+                  "executionIds": ["exec_cuid_1", "exec_cuid_2"],
+                  "createdAt": "2026-11-17T15:00:00.000Z",
+                  "updatedAt": "2026-11-17T15:00:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos de sesión inválidos.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "403": {
+            "description": "Sin permiso sesion.editar.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "404": {
+            "description": "Ejecución o lista de constituyentes inexistente.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "409": {
+            "description": "Sesión duplicada, ejecución no elegible o lista incompatible.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/sessions/{id}": {
+      "patch": {
+        "tags": ["Sessions"],
+        "summary": "Editar sesión con constituyentes",
+        "description": "Actualiza los datos o ejecuciones vinculadas de una sesión abierta (RF-032, RS-020).",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "minLength": 1, "maxLength": 64 }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateSessionRequest" },
+              "example": {
+                "startTime": "11:30",
+                "executionIds": ["exec_cuid_1", "exec_cuid_3"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sesión actualizada correctamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": { "type": "string" },
+                "example": "no-store"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Session" },
+                "example": {
+                  "id": "sess_cuid_1",
+                  "stakeholderType": "EMPLOYER",
+                  "stakeholderListId": null,
+                  "sessionDate": "2026-11-20",
+                  "startTime": "11:30",
+                  "modality": "IN_PERSON",
+                  "meetingUrl": null,
+                  "recordingUrl": null,
+                  "executionIds": ["exec_cuid_1", "exec_cuid_3"],
+                  "createdAt": "2026-11-17T15:00:00.000Z",
+                  "updatedAt": "2026-11-17T16:00:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos de actualización inválidos.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "403": {
+            "description": "Sin permiso sesion.editar.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "404": {
+            "description": "Sesión, ejecución o lista inexistente.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "409": {
+            "description": "Sesión duplicada, ejecución no abierta o lista incompatible.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/process-executions/{id}/sessions": {
+      "get": {
+        "tags": ["Sessions"],
+        "summary": "Listar sesiones de una ejecución",
+        "description": "Lista de forma paginada las sesiones vinculadas a una ejecución de proceso (RF-032).",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "minLength": 1, "maxLength": 64 }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1, "maximum": 10000, "default": 1 }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Listado paginado de sesiones.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ListSessionsResponse" },
+                "example": {
+                  "items": [
+                    {
+                      "id": "sess_cuid_1",
+                      "stakeholderType": "EMPLOYER",
+                      "stakeholderListId": null,
+                      "sessionDate": "2026-11-20",
+                      "startTime": "10:00",
+                      "modality": "IN_PERSON",
+                      "meetingUrl": null,
+                      "recordingUrl": null,
+                      "executionIds": ["exec_cuid_1"],
+                      "createdAt": "2026-11-17T15:00:00.000Z",
+                      "updatedAt": "2026-11-17T15:00:00.000Z"
+                    }
+                  ],
+                  "total": 1,
+                  "page": 1,
+                  "pageSize": 20
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros de consulta inválidos.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "403": {
+            "description": "Sin permiso sesion.ver.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "404": {
+            "description": "Ejecución no encontrada.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -11696,6 +11950,99 @@
           "pageSize": { "type": "integer", "minimum": 1 },
           "total": { "type": "integer", "minimum": 0 },
           "totalPages": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "CreateSessionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["stakeholderType", "sessionDate", "startTime", "modality", "executionIds"],
+        "properties": {
+          "stakeholderType": {
+            "type": "string",
+            "enum": ["ADVISORY_BOARD", "EMPLOYER", "GRADUATE", "STUDENT", "TEACHER"]
+          },
+          "stakeholderListId": { "type": ["string", "null"], "minLength": 1, "maxLength": 64 },
+          "sessionDate": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+          "startTime": { "type": "string", "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$" },
+          "modality": { "type": "string", "enum": ["VIRTUAL", "IN_PERSON", "HYBRID"] },
+          "meetingUrl": { "type": ["string", "null"], "maxLength": 500 },
+          "recordingUrl": { "type": ["string", "null"], "maxLength": 500 },
+          "executionIds": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 20,
+            "items": { "type": "string", "minLength": 1, "maxLength": 64 }
+          }
+        }
+      },
+      "UpdateSessionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "minProperties": 1,
+        "properties": {
+          "stakeholderType": {
+            "type": "string",
+            "enum": ["ADVISORY_BOARD", "EMPLOYER", "GRADUATE", "STUDENT", "TEACHER"]
+          },
+          "stakeholderListId": { "type": ["string", "null"], "minLength": 1, "maxLength": 64 },
+          "sessionDate": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+          "startTime": { "type": "string", "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$" },
+          "modality": { "type": "string", "enum": ["VIRTUAL", "IN_PERSON", "HYBRID"] },
+          "meetingUrl": { "type": ["string", "null"], "maxLength": 500 },
+          "recordingUrl": { "type": ["string", "null"], "maxLength": 500 },
+          "executionIds": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 20,
+            "items": { "type": "string", "minLength": 1, "maxLength": 64 }
+          }
+        }
+      },
+      "Session": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "stakeholderType",
+          "stakeholderListId",
+          "sessionDate",
+          "startTime",
+          "modality",
+          "meetingUrl",
+          "recordingUrl",
+          "executionIds",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "stakeholderType": {
+            "type": "string",
+            "enum": ["ADVISORY_BOARD", "EMPLOYER", "GRADUATE", "STUDENT", "TEACHER"]
+          },
+          "stakeholderListId": { "type": ["string", "null"] },
+          "sessionDate": { "type": "string" },
+          "startTime": { "type": "string" },
+          "modality": { "type": "string", "enum": ["VIRTUAL", "IN_PERSON", "HYBRID"] },
+          "meetingUrl": { "type": ["string", "null"] },
+          "recordingUrl": { "type": ["string", "null"] },
+          "executionIds": { "type": "array", "items": { "type": "string" } },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ListSessionsResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["items", "total", "page", "pageSize"],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Session" }
+          },
+          "total": { "type": "integer", "minimum": 0 },
+          "page": { "type": "integer", "minimum": 1 },
+          "pageSize": { "type": "integer", "minimum": 1 }
         }
       }
     },
