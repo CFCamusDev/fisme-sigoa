@@ -40,7 +40,7 @@ export class SessionsController {
   editSession: RequestHandler = async (req, res, next) => {
     try {
       const { actorId, ip } = resolveRequestActor(req);
-      const { params, body } = getValidated<SessionIdParam, UpdateSessionRequest>(res);
+      const { params, body } = getValidated<UpdateSessionRequest, SessionIdParam>(res);
 
       const response = await this.editSessionUseCase.execute({
         ...body,
