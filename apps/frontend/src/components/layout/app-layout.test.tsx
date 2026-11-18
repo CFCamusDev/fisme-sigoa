@@ -356,4 +356,28 @@ describe('AppLayout Component', () => {
 
     expect(screen.queryByRole('link', { name: /Ejecuciones/i })).not.toBeInTheDocument();
   });
+
+  it('renders the "Sesiones" link to /sesiones (HU-032, T-032-25)', async () => {
+    renderWithProviders(
+      <AppLayout>
+        <p>Dashboard</p>
+      </AppLayout>,
+      { permissions: [{ code: 'sesion.ver', scope: 'GLOBAL' }] },
+    );
+
+    const sessionsLink = await screen.findByRole('link', { name: /Sesiones/i });
+    expect(sessionsLink).toBeInTheDocument();
+    expect(sessionsLink).toHaveAttribute('href', '/sesiones');
+  });
+
+  it('hides the "Sesiones" link without sesion.ver (HU-032, T-032-25)', () => {
+    renderWithProviders(
+      <AppLayout>
+        <p>Dashboard</p>
+      </AppLayout>,
+      { permissions: [{ code: 'catalogo.ver', scope: 'GLOBAL' }] },
+    );
+
+    expect(screen.queryByRole('link', { name: /Sesiones/i })).not.toBeInTheDocument();
+  });
 });
