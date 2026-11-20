@@ -380,4 +380,28 @@ describe('AppLayout Component', () => {
 
     expect(screen.queryByRole('link', { name: /Sesiones/i })).not.toBeInTheDocument();
   });
+
+  it('renders the "Comité de Calidad" link to /comite-calidad (HU-025, T-025-28)', async () => {
+    renderWithProviders(
+      <AppLayout>
+        <p>Dashboard</p>
+      </AppLayout>,
+      { permissions: [{ code: 'comite.ver', scope: 'GLOBAL' }] },
+    );
+
+    const committeeLink = await screen.findByRole('link', { name: /Comité de Calidad/i });
+    expect(committeeLink).toBeInTheDocument();
+    expect(committeeLink).toHaveAttribute('href', '/comite-calidad');
+  });
+
+  it('hides the "Comité de Calidad" link without comite.ver (HU-025, T-025-28)', () => {
+    renderWithProviders(
+      <AppLayout>
+        <p>Dashboard</p>
+      </AppLayout>,
+      { permissions: [{ code: 'catalogo.ver', scope: 'GLOBAL' }] },
+    );
+
+    expect(screen.queryByRole('link', { name: /Comité de Calidad/i })).not.toBeInTheDocument();
+  });
 });
