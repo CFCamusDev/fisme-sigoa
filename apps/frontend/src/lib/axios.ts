@@ -55,15 +55,21 @@ apiClient.interceptors.response.use(
     if (error.response) {
       const status = error.response.status;
       let rawData: unknown = error.response.data;
-      if (typeof Blob !== 'undefined' && rawData instanceof Blob) {
+      if (rawData && typeof (rawData as Blob).text === 'function') {
         try {
-          rawData = JSON.parse(await rawData.text());
+          rawData = JSON.parse(await (rawData as Blob).text());
         } catch {
           rawData = null;
         }
-      } else if (typeof Buffer !== 'undefined' && Buffer.isBuffer(rawData)) {
+      } else if (rawData instanceof ArrayBuffer || ArrayBuffer.isView(rawData)) {
         try {
-          rawData = JSON.parse(rawData.toString('utf8'));
+          rawData = JSON.parse(new TextDecoder('utf-8').decode(rawData));
+        } catch {
+          rawData = null;
+        }
+      } else if (typeof rawData === 'string') {
+        try {
+          rawData = JSON.parse(rawData);
         } catch {
           rawData = null;
         }
