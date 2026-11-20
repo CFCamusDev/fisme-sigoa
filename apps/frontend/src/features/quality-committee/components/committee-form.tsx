@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useFieldArray, useForm } from 'react-hook-form';
+import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { Plus, Trash2, Unlink, UserCheck } from 'lucide-react';
 import {
   COMMITTEE_MEMBERS_MAX,
@@ -90,7 +90,7 @@ export function CommitteeForm({
 }: CommitteeFormProps) {
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  const { register, control, handleSubmit, setValue, watch } = useForm<CommitteeFormValues>({
+  const { register, control, handleSubmit, setValue } = useForm<CommitteeFormValues>({
     defaultValues: buildDefaultValues(mode, initialCommittee),
   });
 
@@ -99,7 +99,7 @@ export function CommitteeForm({
     name: 'members',
   });
 
-  const watchedMembers = watch('members');
+  const watchedMembers = useWatch({ control, name: 'members' }) ?? [];
 
   const onFormSubmit = handleSubmit(async (values) => {
     setValidationError(null);

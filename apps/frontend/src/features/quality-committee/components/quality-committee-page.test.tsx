@@ -320,7 +320,12 @@ describe('QualityCommitteePage (HU-025, T-025-28)', () => {
       ),
       http.post('*/quality-committees', () =>
         HttpResponse.json(
-          { message: 'El periodo indicado se solapa con un Comité de Calidad ya registrado.' },
+          {
+            error: {
+              code: 'CONFLICT',
+              message: 'El periodo indicado se solapa con un Comité de Calidad ya registrado.',
+            },
+          },
           { status: 409 },
         ),
       ),
