@@ -22,7 +22,9 @@ describe('POST /quality-committees (PostgreSQL real, HU-025, T-025-25, RF-025, R
   const emailSender = new InMemoryEmailSender();
   const uow = new PrismaUnitOfWork(prisma);
   const auditServices = createPrismaAuditServices(uow);
-  const FIXED_NOW = new Date('2027-06-15T15:00:00.000Z');
+  const currentYear = new Date().getUTCFullYear();
+  const CURRENT_START = `${currentYear}-01-01`;
+  const CURRENT_END = `${currentYear}-12-31`;
 
   const app = createApp({
     env,
@@ -33,7 +35,6 @@ describe('POST /quality-committees (PostgreSQL real, HU-025, T-025-25, RF-025, R
         dbProvider: uow,
         env,
         emailSender,
-        clock: () => FIXED_NOW,
       });
     },
   });
@@ -61,8 +62,8 @@ describe('POST /quality-committees (PostgreSQL real, HU-025, T-025-25, RF-025, R
     const president = await createActor(['COMMITTEE_PRESIDENT']);
 
     const response = await postCommittee(president.token).send({
-      periodStart: '2027-01-01',
-      periodEnd: '2027-12-31',
+      periodStart: CURRENT_START,
+      periodEnd: CURRENT_END,
       members: [
         { fullName: 'Ana Torres', degree: 'Dr.', position: 'PRESIDENT' },
         { fullName: 'Carlos Méndez', degree: 'Mg.', position: 'MEMBER' },
@@ -72,8 +73,8 @@ describe('POST /quality-committees (PostgreSQL real, HU-025, T-025-25, RF-025, R
     expect(response.status).toBe(201);
     expect(response.headers['cache-control']).toBe('no-store');
     const parsed = qualityCommitteeSchema.parse(response.body);
-    expect(parsed.periodStart).toBe('2027-01-01');
-    expect(parsed.periodEnd).toBe('2027-12-31');
+    expect(parsed.periodStart).toBe(CURRENT_START);
+    expect(parsed.periodEnd).toBe(CURRENT_END);
     expect(parsed.isCurrent).toBe(true);
     expect(parsed.members).toHaveLength(2);
 

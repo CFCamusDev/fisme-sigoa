@@ -25,7 +25,13 @@ describe('GET /quality-committees/current & GET /quality-committees (PostgreSQL 
   const emailSender = new InMemoryEmailSender();
   const uow = new PrismaUnitOfWork(prisma);
   const auditServices = createPrismaAuditServices(uow);
-  const FIXED_NOW = new Date('2027-06-15T15:00:00.000Z');
+  const currentYear = new Date().getUTCFullYear();
+  const PAST_START = new Date(`${currentYear - 1}-01-01T00:00:00.000Z`);
+  const PAST_END = new Date(`${currentYear - 1}-12-31T00:00:00.000Z`);
+  const CURRENT_START = new Date(`${currentYear}-01-01T00:00:00.000Z`);
+  const CURRENT_END = new Date(`${currentYear}-12-31T00:00:00.000Z`);
+  const FUTURE_START = new Date(`${currentYear + 1}-01-01T00:00:00.000Z`);
+  const FUTURE_END = new Date(`${currentYear + 1}-12-31T00:00:00.000Z`);
 
   const app = createApp({
     env,
@@ -36,7 +42,6 @@ describe('GET /quality-committees/current & GET /quality-committees (PostgreSQL 
         dbProvider: uow,
         env,
         emailSender,
-        clock: () => FIXED_NOW,
       });
     },
   });
@@ -63,8 +68,8 @@ describe('GET /quality-committees/current & GET /quality-committees (PostgreSQL 
       data: {
         id: 'com-2027',
         programId: 'prog-1',
-        periodStart: new Date('2027-01-01T00:00:00.000Z'),
-        periodEnd: new Date('2027-12-31T00:00:00.000Z'),
+        periodStart: CURRENT_START,
+        periodEnd: CURRENT_END,
         createdBy: 'seed',
         members: {
           create: [
@@ -98,8 +103,8 @@ describe('GET /quality-committees/current & GET /quality-committees (PostgreSQL 
       data: {
         id: 'com-2027',
         programId: 'prog-1',
-        periodStart: new Date('2027-01-01T00:00:00.000Z'),
-        periodEnd: new Date('2027-12-31T00:00:00.000Z'),
+        periodStart: CURRENT_START,
+        periodEnd: CURRENT_END,
         createdBy: 'seed',
         members: {
           create: [
@@ -149,8 +154,8 @@ describe('GET /quality-committees/current & GET /quality-committees (PostgreSQL 
       data: {
         id: 'com-2027',
         programId: 'prog-1',
-        periodStart: new Date('2027-01-01T00:00:00.000Z'),
-        periodEnd: new Date('2027-12-31T00:00:00.000Z'),
+        periodStart: CURRENT_START,
+        periodEnd: CURRENT_END,
         createdBy: 'seed',
         members: {
           create: [
@@ -218,22 +223,22 @@ describe('GET /quality-committees/current & GET /quality-committees (PostgreSQL 
         {
           id: 'com-2026',
           programId: 'prog-1',
-          periodStart: new Date('2026-01-01T00:00:00.000Z'),
-          periodEnd: new Date('2026-12-31T00:00:00.000Z'),
+          periodStart: PAST_START,
+          periodEnd: PAST_END,
           createdBy: 'seed',
         },
         {
           id: 'com-2028',
           programId: 'prog-1',
-          periodStart: new Date('2028-01-01T00:00:00.000Z'),
-          periodEnd: new Date('2028-12-31T00:00:00.000Z'),
+          periodStart: FUTURE_START,
+          periodEnd: FUTURE_END,
           createdBy: 'seed',
         },
         {
           id: 'com-2027',
           programId: 'prog-1',
-          periodStart: new Date('2027-01-01T00:00:00.000Z'),
-          periodEnd: new Date('2027-12-31T00:00:00.000Z'),
+          periodStart: CURRENT_START,
+          periodEnd: CURRENT_END,
           createdBy: 'seed',
         },
       ],

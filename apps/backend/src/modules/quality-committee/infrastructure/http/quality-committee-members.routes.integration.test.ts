@@ -22,7 +22,11 @@ describe('PUT /quality-committees/:id/members (PostgreSQL real, HU-025, T-025-26
   const emailSender = new InMemoryEmailSender();
   const uow = new PrismaUnitOfWork(prisma);
   const auditServices = createPrismaAuditServices(uow);
-  const FIXED_NOW = new Date('2027-06-15T15:00:00.000Z');
+  const currentYear = new Date().getUTCFullYear();
+  const CURRENT_START = `${currentYear}-01-01`;
+  const CURRENT_END = `${currentYear}-12-31`;
+  const PAST_START = `${currentYear - 1}-01-01`;
+  const PAST_END = `${currentYear - 1}-12-31`;
 
   const app = createApp({
     env,
@@ -33,7 +37,6 @@ describe('PUT /quality-committees/:id/members (PostgreSQL real, HU-025, T-025-26
         dbProvider: uow,
         env,
         emailSender,
-        clock: () => FIXED_NOW,
       });
     },
   });
@@ -59,8 +62,8 @@ describe('PUT /quality-committees/:id/members (PostgreSQL real, HU-025, T-025-26
 
   async function seedCommittee(
     id = 'com-2027',
-    periodStart = '2027-01-01',
-    periodEnd = '2027-12-31',
+    periodStart = CURRENT_START,
+    periodEnd = CURRENT_END,
     linkedUserId: string | null = null,
   ) {
     await prisma.qualityCommittee.create({
@@ -126,7 +129,7 @@ describe('PUT /quality-committees/:id/members (PostgreSQL real, HU-025, T-025-26
         status: 'ACTIVE',
       },
     });
-    await seedCommittee('com-2027', '2027-01-01', '2027-12-31', 'usr-linked');
+    await seedCommittee('com-2027', CURRENT_START, CURRENT_END, 'usr-linked');
 
     const response = await putMembers(president.token, 'com-2027').send({
       members: [
@@ -209,7 +212,7 @@ describe('PUT /quality-committees/:id/members (PostgreSQL real, HU-025, T-025-26
 
   it('returns 409 for a committee whose period ended', async () => {
     const president = await createActor(['COMMITTEE_PRESIDENT']);
-    await seedCommittee('com-2026', '2026-01-01', '2026-12-31');
+    await seedCommittee('com-2026', PAST_START, PAST_END);
 
     const response = await putMembers(president.token, 'com-2026').send({
       members: [{ fullName: 'Luis Rojas', degree: 'Dr.', position: 'PRESIDENT' }],
