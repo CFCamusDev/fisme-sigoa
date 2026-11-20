@@ -27,7 +27,7 @@ describe('useDownloadAnnexPdf (T-070-06)', () => {
       http.get(URL_FO_01, async () => {
         requests += 1;
         await delay(30);
-        return new HttpResponse(new Blob(['%PDF-1.4\nOfficial'], { type: 'application/pdf' }), {
+        return new HttpResponse(new TextEncoder().encode('%PDF-1.4\nOfficial'), {
           status: 200,
           headers: {
             'Content-Type': 'application/pdf',

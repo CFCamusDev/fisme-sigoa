@@ -33,7 +33,7 @@ describe('AnnexesPage (T-070-11, CA1)', () => {
 
     server.use(
       http.get('http://localhost:3000/annexes/FO-01/pdf', () => {
-        return new HttpResponse(new Blob(['%PDF-1.4\nAnnex'], { type: 'application/pdf' }), {
+        return new HttpResponse(new TextEncoder().encode('%PDF-1.4\nAnnex'), {
           status: 200,
           headers: {
             'Content-Type': 'application/pdf',
@@ -72,7 +72,7 @@ describe('AnnexesPage (T-070-11, CA1)', () => {
       http.get('http://localhost:3000/annexes/FO-02/pdf', async () => {
         await delay(10);
         await gate;
-        return new HttpResponse(new Blob(['%PDF-1.4\nActa'], { type: 'application/pdf' }), {
+        return new HttpResponse(new TextEncoder().encode('%PDF-1.4\nActa'), {
           status: 200,
           headers: {
             'Content-Type': 'application/pdf',
