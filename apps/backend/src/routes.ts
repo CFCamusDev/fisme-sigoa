@@ -40,6 +40,7 @@ import {
   createStakeholdersModule,
 } from './modules/stakeholders/index.js';
 import { createProcessesModule } from './modules/processes/index.js';
+import { createQualityCommitteeModule } from './modules/quality-committee/index.js';
 import { createSessionsModule } from './modules/sessions/index.js';
 import { createUsersModule, EmailActivationSender } from './modules/users/index.js';
 import {
@@ -329,4 +330,16 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
   });
   app.use('/sessions', sessionsModule.sessions);
   app.use('/process-executions', sessionsModule.executionSessions);
+  app.use(
+    '/quality-committees',
+    createQualityCommitteeModule({
+      unitOfWork: deps.unitOfWork,
+      auditLogger: deps.auditLogger,
+      dbProvider: deps.dbProvider,
+      authenticate: authServices.authenticate,
+      requirePermission: authorizationServices.requirePermission,
+      permissionChecker: authorizationServices.authorizer,
+      clock: deps.clock,
+    }),
+  );
 }
