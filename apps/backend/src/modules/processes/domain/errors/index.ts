@@ -1,6 +1,13 @@
 export { CatalogVersionNotAllowedError } from './catalog-version-not-allowed-error.js';
 export { DuplicateProcessExecutionError } from './duplicate-process-execution-error.js';
 export { InvalidProcessExecutionDataError } from './invalid-process-execution-data-error.js';
+export { InvalidScheduleDataError } from './invalid-schedule-data-error.js';
+export { InvalidScheduleTransitionError } from './invalid-schedule-transition-error.js';
 export { ProcessCatalogVersionNotFoundError } from './process-catalog-version-not-found-error.js';
 export { ProcessProgramNotConfiguredError } from './process-program-not-configured-error.js';
 export { ProcessSemesterNotFoundError } from './process-semester-not-found-error.js';
+export { ScheduleActivityInUseError } from './schedule-activity-in-use-error.js';
+export { ScheduleActivityNotFoundError } from './schedule-activity-not-found-error.js';
+export { ScheduleAlreadyDefinedError } from './schedule-already-defined-error.js';
+export { ScheduleExecutionClosedError } from './schedule-execution-closed-error.js';
+export { ScheduleExecutionNotFoundError } from './schedule-execution-not-found-error.js';

@@ -3,3 +3,6 @@ export * from './process-executions-filters';
 export * from './process-executions-page';
 export * from './process-executions-pagination';
 export * from './process-executions-table';
+export * from './schedule-activity-row';
+export * from './schedule-editor';
+export * from './schedule-editor-page';

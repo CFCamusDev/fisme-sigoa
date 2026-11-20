@@ -336,18 +336,18 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
       clock: deps.clock,
     }),
   );
-  app.use(
-    '/process-executions',
-    createProcessesModule({
-      unitOfWork: deps.unitOfWork,
-      auditLogger: deps.auditLogger,
-      dbProvider: deps.dbProvider,
-      authenticate: authServices.authenticate,
-      requirePermission: authorizationServices.requirePermission,
-      permissionChecker: authorizationServices.authorizer,
-      clock: deps.clock,
-    }),
-  );
+  const processesModule = createProcessesModule({
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+    dbProvider: deps.dbProvider,
+    authenticate: authServices.authenticate,
+    requirePermission: authorizationServices.requirePermission,
+    permissionChecker: authorizationServices.authorizer,
+    clock: deps.clock,
+  });
+  app.use('/process-executions', processesModule.processExecutions);
+  app.use('/process-executions', processesModule.executionSchedule);
+  app.use('/schedule-activities', processesModule.scheduleActivities);
   const sessionsModule = createSessionsModule({
     unitOfWork: deps.unitOfWork,
     auditLogger: deps.auditLogger,

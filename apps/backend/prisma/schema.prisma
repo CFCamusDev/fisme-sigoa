@@ -741,10 +741,11 @@ model ProcessExecution {
   createdAt        DateTime               @default(now())
   updatedAt        DateTime               @updatedAt
 
-  program        Program            @relation(fields: [programId], references: [id], onDelete: Restrict)
-  semester       Semester?          @relation(fields: [semesterId], references: [id], onDelete: Restrict)
-  catalogVersion CatalogVersion     @relation(fields: [catalogVersionId], references: [id], onDelete: Restrict)
-  sessionLinks   SessionExecution[]
+  program            Program            @relation(fields: [programId], references: [id], onDelete: Restrict)
+  semester           Semester?          @relation(fields: [semesterId], references: [id], onDelete: Restrict)
+  catalogVersion     CatalogVersion     @relation(fields: [catalogVersionId], references: [id], onDelete: Restrict)
+  sessionLinks       SessionExecution[]
+  scheduleActivities ScheduleActivity[]
 
   @@index([type, year])
   @@index([status])
@@ -860,4 +861,37 @@ model CommitteeMember {
   @@unique([committeeId, userId])
   @@index([userId])
   @@map("committee_members")
+}
+
+// ==============================================================================
+// CRONOGRAMA DE EJECUCIÓN DE PROCESOS (HU-028, RF-028, RS-022)
+// ==============================================================================
+
+enum ScheduleActivityStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+model ScheduleActivity {
+  id                 String                 @id @default(cuid())
+  processExecutionId String
+  number             Int
+  activity           String
+  responsible        String
+  goal               String?
+  indicator          String?
+  startDate          DateTime?              @db.Date
+  endDate            DateTime?              @db.Date
+  status             ScheduleActivityStatus @default(PENDING)
+  actualEndDate      DateTime?              @db.Date
+  createdBy          String
+  updatedBy          String?
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+
+  processExecution ProcessExecution @relation(fields: [processExecutionId], references: [id], onDelete: Restrict)
+
+  @@unique([processExecutionId, number])
+  @@map("schedule_activities")
 }

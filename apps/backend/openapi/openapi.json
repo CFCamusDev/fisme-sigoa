@@ -9714,6 +9714,470 @@
         }
       }
     },
+    "/process-executions/{id}/schedule": {
+      "get": {
+        "tags": ["Schedule"],
+        "summary": "Consultar el cronograma (Anexo 1) de una ejecución",
+        "description": "Devuelve las actividades del cronograma ordenadas por número con el indicador calculado isOverdue (HU-028, RF-028, D8).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cronograma de la ejecución.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleResponse"
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "act_cuid_1",
+                      "processExecutionId": "exec_cuid_1",
+                      "number": 1,
+                      "activity": "Elaborar cronograma para el establecimiento y validación de OE y las encuestas (aplicación virtual)",
+                      "responsible": "Presidente",
+                      "goal": "Anexo 1, Anexo 5",
+                      "indicator": "Cronograma aprobado",
+                      "startDate": "2027-03-01",
+                      "endDate": "2027-03-15",
+                      "status": "PENDING",
+                      "actualEndDate": null,
+                      "isOverdue": false,
+                      "createdAt": "2027-03-01T10:00:00.000Z",
+                      "updatedAt": "2027-03-01T10:00:00.000Z"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Identificador inválido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin permiso cronograma.ver.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ejecución no encontrada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Schedule"],
+        "summary": "Guardar el cronograma completo (Anexo 1) de una ejecución",
+        "description": "Reemplaza el cronograma completo mediante conciliación atómica: crea nuevas, actualiza existentes (sin cambiar estado) y elimina Pendientes ausentes auditando con VOID (HU-028, B-01).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveScheduleRequest"
+              },
+              "example": {
+                "activities": [
+                  {
+                    "activity": "Elaborar cronograma",
+                    "responsible": "Presidente",
+                    "goal": "Anexo 1",
+                    "indicator": "1 cronograma",
+                    "startDate": "2027-03-01",
+                    "endDate": "2027-03-15"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cronograma guardado correctamente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleResponse"
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "act_cuid_1",
+                      "processExecutionId": "exec_cuid_1",
+                      "number": 1,
+                      "activity": "Elaborar cronograma",
+                      "responsible": "Presidente",
+                      "goal": "Anexo 1",
+                      "indicator": "1 cronograma",
+                      "startDate": "2027-03-01",
+                      "endDate": "2027-03-15",
+                      "status": "PENDING",
+                      "actualEndDate": null,
+                      "isOverdue": false,
+                      "createdAt": "2027-03-01T10:00:00.000Z",
+                      "updatedAt": "2027-03-01T10:00:00.000Z"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos inválidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin permiso cronograma.editar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ejecución no encontrada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ejecución cerrada/anulada o intento de eliminar actividad en curso/completada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/process-executions/{id}/schedule/propose": {
+      "post": {
+        "tags": ["Schedule"],
+        "summary": "Proponer las actividades oficiales del procedimiento",
+        "description": "Carga los pasos predefinidos del tipo de proceso como actividades Pendientes numeradas desde 1, solo si el cronograma está vacío (HU-028, RF-028).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false
+              },
+              "example": {}
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Actividades propuestas correctamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleResponse"
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "act_cuid_1",
+                      "processExecutionId": "exec_cuid_1",
+                      "number": 1,
+                      "activity": "Elaborar cronograma para el establecimiento y validación de OE y las encuestas (aplicación virtual)",
+                      "responsible": "Presidente",
+                      "goal": "Anexo 1, Anexo 5",
+                      "indicator": null,
+                      "startDate": null,
+                      "endDate": null,
+                      "status": "PENDING",
+                      "actualEndDate": null,
+                      "isOverdue": false,
+                      "createdAt": "2027-03-01T10:00:00.000Z",
+                      "updatedAt": "2027-03-01T10:00:00.000Z"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin permiso cronograma.editar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ejecución no encontrada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "El cronograma ya tiene actividades o la ejecución está cerrada/anulada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/schedule-activities/{id}/status": {
+      "patch": {
+        "tags": ["Schedule"],
+        "summary": "Cambiar el estado de una actividad del cronograma",
+        "description": "Transiciona una actividad de PENDING a IN_PROGRESS o de IN_PROGRESS a COMPLETED registrando actualEndDate (HU-028, LS 5.2).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeScheduleActivityStatusRequest"
+              },
+              "example": {
+                "status": "COMPLETED",
+                "actualEndDate": "2027-03-14"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Estado actualizado correctamente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleActivityDto"
+                },
+                "example": {
+                  "id": "act_cuid_1",
+                  "processExecutionId": "exec_cuid_1",
+                  "number": 1,
+                  "activity": "Elaborar cronograma",
+                  "responsible": "Presidente",
+                  "goal": "Anexo 1",
+                  "indicator": null,
+                  "startDate": "2027-03-01",
+                  "endDate": "2027-03-15",
+                  "status": "COMPLETED",
+                  "actualEndDate": "2027-03-14",
+                  "isOverdue": false,
+                  "createdAt": "2027-03-01T10:00:00.000Z",
+                  "updatedAt": "2027-03-14T15:00:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos o fecha real inválidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin permiso cronograma.editar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Actividad o ejecución no encontrada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Transición no permitida o ejecución cerrada/anulada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/quality-committees": {
       "post": {
         "tags": ["QualityCommittee"],
@@ -13582,6 +14046,102 @@
           "total": {
             "type": "integer",
             "minimum": 0
+          }
+        }
+      },
+      "ScheduleActivityStatus": {
+        "type": "string",
+        "enum": ["PENDING", "IN_PROGRESS", "COMPLETED"]
+      },
+      "ScheduleActivityInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["activity", "responsible"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "activity": { "type": "string", "minLength": 1, "maxLength": 300 },
+          "responsible": { "type": "string", "minLength": 1, "maxLength": 150 },
+          "goal": { "type": "string", "maxLength": 300, "nullable": true },
+          "indicator": { "type": "string", "maxLength": 300, "nullable": true },
+          "startDate": { "type": "string", "format": "date", "nullable": true },
+          "endDate": { "type": "string", "format": "date", "nullable": true }
+        }
+      },
+      "SaveScheduleRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["activities"],
+        "properties": {
+          "activities": {
+            "type": "array",
+            "maxItems": 50,
+            "items": {
+              "$ref": "#/components/schemas/ScheduleActivityInput"
+            }
+          }
+        }
+      },
+      "ChangeScheduleActivityStatusRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["IN_PROGRESS", "COMPLETED"]
+          },
+          "actualEndDate": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
+      "ScheduleActivityDto": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "processExecutionId",
+          "number",
+          "activity",
+          "responsible",
+          "goal",
+          "indicator",
+          "startDate",
+          "endDate",
+          "status",
+          "actualEndDate",
+          "isOverdue",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "processExecutionId": { "type": "string" },
+          "number": { "type": "integer", "minimum": 1 },
+          "activity": { "type": "string" },
+          "responsible": { "type": "string" },
+          "goal": { "type": "string", "nullable": true },
+          "indicator": { "type": "string", "nullable": true },
+          "startDate": { "type": "string", "nullable": true },
+          "endDate": { "type": "string", "nullable": true },
+          "status": { "$ref": "#/components/schemas/ScheduleActivityStatus" },
+          "actualEndDate": { "type": "string", "nullable": true },
+          "isOverdue": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ScheduleResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["items"],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScheduleActivityDto"
+            }
           }
         }
       }
