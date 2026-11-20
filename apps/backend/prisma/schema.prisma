@@ -351,6 +351,7 @@ model Program {
   catalogVersions   CatalogVersion[]
   stakeholderLists  StakeholderList[]
   processExecutions ProcessExecution[]
+  qualityCommittees QualityCommittee[]
 
   @@map("programs")
 }
@@ -814,4 +815,24 @@ model Attendee {
   @@unique([sessionId, listMemberId])
   @@index([listMemberId])
   @@map("attendees")
+}
+
+// ==============================================================================
+// COMITÉ DE CALIDAD (HU-025, RF-025, RS-034, RN-062)
+// ==============================================================================
+
+model QualityCommittee {
+  id          String   @id @default(cuid())
+  programId   String
+  periodStart DateTime @db.Date
+  periodEnd   DateTime @db.Date
+  createdBy   String
+  updatedBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  program Program @relation(fields: [programId], references: [id], onDelete: Restrict)
+
+  @@index([programId, periodStart])
+  @@map("quality_committees")
 }
