@@ -4,16 +4,22 @@ import type { DbProvider } from '../../shared/prisma/prisma-unit-of-work.js';
 import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
 import { CreateProcessExecutionUseCase } from './application/create-process-execution.js';
 import { ListProcessExecutionsUseCase } from './application/list-process-executions.js';
+import { ProposeScheduleUseCase } from './application/propose-schedule.js';
 import type { ProcessPermissionChecker } from './domain/ports/process-permission-checker.js';
+import { createExecutionScheduleRouter } from './infrastructure/http/execution-schedule.routes.js';
 import { ProcessExecutionsController } from './infrastructure/http/process-executions.controller.js';
 import {
   createProcessExecutionsRouter,
   type ProcessRoutePermissionScope,
 } from './infrastructure/http/process-executions.routes.js';
+import { createScheduleActivitiesRouter } from './infrastructure/http/schedule-activities.routes.js';
+import { ScheduleController } from './infrastructure/http/schedule.controller.js';
 import { PrismaProcessCatalogVersionReader } from './infrastructure/prisma/prisma-process-catalog-version-reader.js';
 import { PrismaProcessExecutionRepository } from './infrastructure/prisma/prisma-process-execution-repository.js';
 import { PrismaProcessProgramResolver } from './infrastructure/prisma/prisma-process-program-resolver.js';
 import { PrismaProcessSemesterReader } from './infrastructure/prisma/prisma-process-semester-reader.js';
+import { PrismaScheduleActivityRepository } from './infrastructure/prisma/prisma-schedule-activity-repository.js';
+import { PrismaScheduleExecutionLocker } from './infrastructure/prisma/prisma-schedule-execution-locker.js';
 
 export interface ProcessesModuleDependencies {
   readonly unitOfWork: UnitOfWork;
@@ -28,15 +34,27 @@ export interface ProcessesModuleDependencies {
   readonly clock?: () => Date;
 }
 
-export function createProcessesModule(deps?: ProcessesModuleDependencies): Router {
+export interface ProcessesModuleRouters {
+  readonly processExecutions: Router;
+  readonly executionSchedule: Router;
+  readonly scheduleActivities: Router;
+}
+
+export function createProcessesModule(deps?: ProcessesModuleDependencies): ProcessesModuleRouters {
   if (!deps) {
-    return Router();
+    return {
+      processExecutions: Router(),
+      executionSchedule: Router(),
+      scheduleActivities: Router(),
+    };
   }
 
   const processExecutionRepository = new PrismaProcessExecutionRepository(deps.dbProvider);
   const programResolver = new PrismaProcessProgramResolver(deps.dbProvider);
   const catalogVersionReader = new PrismaProcessCatalogVersionReader(deps.dbProvider);
   const semesterReader = new PrismaProcessSemesterReader(deps.dbProvider);
+  const scheduleActivityRepository = new PrismaScheduleActivityRepository(deps.dbProvider);
+  const scheduleExecutionLocker = new PrismaScheduleExecutionLocker(deps.dbProvider);
 
   const createProcessExecutionUseCase = new CreateProcessExecutionUseCase({
     processExecutionRepository,
@@ -54,16 +72,41 @@ export function createProcessesModule(deps?: ProcessesModuleDependencies): Route
     permissionChecker: deps.permissionChecker,
   });
 
+  const proposeScheduleUseCase = new ProposeScheduleUseCase({
+    scheduleExecutionLocker,
+    scheduleActivityRepository,
+    permissionChecker: deps.permissionChecker,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+    clock: deps.clock,
+  });
+
   const controller = new ProcessExecutionsController({
     createProcessExecutionUseCase,
     listProcessExecutionsUseCase,
   });
 
-  return createProcessExecutionsRouter({
-    controller,
-    authenticate: deps.authenticate,
-    requirePermission: deps.requirePermission,
+  const scheduleController = new ScheduleController({
+    proposeScheduleUseCase,
   });
+
+  return {
+    processExecutions: createProcessExecutionsRouter({
+      controller,
+      authenticate: deps.authenticate,
+      requirePermission: deps.requirePermission,
+    }),
+    executionSchedule: createExecutionScheduleRouter({
+      controller: scheduleController,
+      authenticate: deps.authenticate,
+      requirePermission: deps.requirePermission,
+    }),
+    scheduleActivities: createScheduleActivitiesRouter({
+      controller: scheduleController,
+      authenticate: deps.authenticate,
+      requirePermission: deps.requirePermission,
+    }),
+  };
 }
 
 export * from './domain/entities/process-execution-status.js';
@@ -94,3 +137,6 @@ export * from './application/change-schedule-activity-status.js';
 export * from './application/change-schedule-activity-status.types.js';
 export * from './infrastructure/http/process-executions.controller.js';
 export * from './infrastructure/http/process-executions.routes.js';
+export * from './infrastructure/http/schedule.controller.js';
+export * from './infrastructure/http/execution-schedule.routes.js';
+export * from './infrastructure/http/schedule-activities.routes.js';
