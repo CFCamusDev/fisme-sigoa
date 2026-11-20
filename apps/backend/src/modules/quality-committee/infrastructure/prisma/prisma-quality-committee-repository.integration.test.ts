@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
+import { PrismaAuditLogger } from '../../../../shared/prisma/prisma-audit-logger.js';
 import { PrismaUnitOfWork } from '../../../../shared/prisma/prisma-unit-of-work.js';
 import { useTestDatabase } from '../../../../test/db/use-test-database.js';
+import { RegisterQualityCommitteeUseCase } from '../../application/register-quality-committee.js';
 import { QualityCommitteeOverlapError } from '../../domain/errors/quality-committee-overlap-error.js';
 import { assertNoOverlap } from '../../domain/policies/committee-composition.js';
+import { PrismaCommitteeMemberRepository } from './prisma-committee-member-repository.js';
 import { PrismaCommitteeProgramResolver } from './prisma-committee-program-resolver.js';
+import { PrismaCommitteeUserReader } from './prisma-committee-user-reader.js';
 import { PrismaQualityCommitteeRepository } from './prisma-quality-committee-repository.js';
 
 describe('PrismaQualityCommitteeRepository Integration (PostgreSQL real, T-025-23)', () => {
@@ -197,5 +201,56 @@ describe('PrismaQualityCommitteeRepository Integration (PostgreSQL real, T-025-2
 
     const persisted = await repository.listByProgram('prog-1');
     expect(persisted).toHaveLength(1);
+  }, 5_000);
+
+  it('registers exactly one committee under concurrent overlapping requests', async () => {
+    await seedProgram();
+
+    const memberRepository = new PrismaCommitteeMemberRepository(uow);
+    const committeeUserReader = new PrismaCommitteeUserReader(uow);
+    const auditLogger = new PrismaAuditLogger(uow);
+    const useCase = new RegisterQualityCommitteeUseCase({
+      qualityCommitteeRepository: repository,
+      committeeMemberRepository: memberRepository,
+      programResolver,
+      committeeUserReader,
+      permissionChecker: { assertAllowed: async () => undefined },
+      unitOfWork: uow,
+      auditLogger,
+      clock: () => NOW,
+    });
+
+    const outcomes = await Promise.allSettled(
+      Array.from({ length: 5 }, (_, index) =>
+        useCase.execute({
+          actorId: `actor-${index}`,
+          periodStart: '2027-01-01',
+          periodEnd: '2027-12-31',
+          members: [
+            { fullName: `Presidente ${index}`, degree: 'Dr.', position: 'PRESIDENT' },
+            { fullName: `Miembro ${index}`, degree: 'Mg.', position: 'MEMBER' },
+          ],
+        }),
+      ),
+    );
+
+    const fulfilled = outcomes.filter((outcome) => outcome.status === 'fulfilled');
+    const rejected = outcomes.filter(
+      (outcome): outcome is PromiseRejectedResult => outcome.status === 'rejected',
+    );
+
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(4);
+    for (const item of rejected) {
+      expect(item.reason).toBeInstanceOf(QualityCommitteeOverlapError);
+    }
+
+    const committees = await repository.listByProgram('prog-1');
+    expect(committees).toHaveLength(1);
+
+    const auditCount = await prisma.auditLog.count({
+      where: { entity: 'QualityCommittee', action: 'CREATE' },
+    });
+    expect(auditCount).toBe(1);
   }, 5_000);
 });

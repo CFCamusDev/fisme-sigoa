@@ -83,7 +83,6 @@ export class RegisterQualityCommitteeUseCase {
         entityId: committee.id,
         actor: command.actorId,
         ip: command.ip ?? undefined,
-        requestId: command.requestId ?? undefined,
         before: null,
         after: snapshotCommittee(committee, savedMembers),
       });
