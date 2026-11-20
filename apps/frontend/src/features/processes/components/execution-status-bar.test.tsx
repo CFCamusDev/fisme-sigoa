@@ -179,6 +179,7 @@ describe('ExecutionStatusBar (HU-029, T-029-11)', () => {
 
   it('hides the advance button without ejecucion.avanzar', async () => {
     server.use(
+      http.get('*/me/permissions', () => HttpResponse.json({ permissions: VIEW_ONLY_PERMS })),
       http.get('*/process-executions/exec-1/next-transition', () =>
         HttpResponse.json(SAMPLE_PLANNED),
       ),

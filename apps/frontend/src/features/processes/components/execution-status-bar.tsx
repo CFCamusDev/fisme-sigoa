@@ -72,8 +72,8 @@ function PreconditionIcon({ state }: { readonly state: 'MET' | 'UNMET' | 'NOT_VE
 }
 
 export function ExecutionStatusBar({ executionId }: ExecutionStatusBarProps) {
-  const canView = usePermission('ejecucion.ver');
-  const canAdvancePermission = usePermission('ejecucion.avanzar');
+  const { allowed: canView } = usePermission('ejecucion.ver');
+  const { allowed: canAdvancePermission } = usePermission('ejecucion.avanzar');
 
   const query = useNextTransition(canView ? executionId : '');
   const advanceMutation = useAdvanceProcessExecution(executionId);
