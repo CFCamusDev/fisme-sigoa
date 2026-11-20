@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import {
+  BadgeCheck,
   BookMarked,
   Building2,
   CalendarClock,
@@ -94,6 +95,12 @@ export const MAIN_NAV_ITEMS: readonly NavItem[] = [
     href: '/listas-constituyentes',
     icon: ClipboardList,
     permission: 'constituyente.ver',
+  },
+  {
+    title: 'Comité de Calidad',
+    href: '/comite-calidad',
+    icon: BadgeCheck,
+    permission: 'comite.ver',
   },
   {
     title: 'Ejecuciones',
