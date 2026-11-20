@@ -79,7 +79,10 @@ describe('GET /stakeholder-lists/:id/pdf (PostgreSQL real, HU-026, T-026-08)', (
         code: fo03.code,
         name: fo03.name,
         type: 'ANNEX',
-        variables: [...fo03.variables],
+        variables: fo03.variables.map((variable) => ({
+          key: variable.key,
+          label: variable.label,
+        })),
       },
     });
 
@@ -135,9 +138,7 @@ describe('GET /stakeholder-lists/:id/pdf (PostgreSQL real, HU-026, T-026-08)', (
       data: [
         {
           id: 'stk-emp-1',
-          kind: 'ORGANIZATION',
-          type: 'EMPLOYER',
-          documentNumber: '20123456789',
+          kind: 'LEGAL_ENTITY',
           fullName: 'Empresa Ficticia SAC',
           institution: 'Empresa Ficticia SAC',
           ruc: '20123456789',
@@ -151,8 +152,7 @@ describe('GET /stakeholder-lists/:id/pdf (PostgreSQL real, HU-026, T-026-08)', (
         {
           id: 'stk-tea-1',
           kind: 'PERSON',
-          type: 'TEACHER',
-          documentNumber: '40000001',
+          dni: '40000001',
           fullName: 'Docente Ficticio',
           email: 'docente@ejemplo.test',
           mobile: '988777666',
@@ -198,7 +198,7 @@ describe('GET /stakeholder-lists/:id/pdf (PostgreSQL real, HU-026, T-026-08)', (
 
     const response = await request(app)
       .get('/stakeholder-lists/list-emp-2026/pdf')
-      .set('Authorization', `Bearer ${actor.accessToken}`);
+      .set('Authorization', `Bearer ${actor.token}`);
 
     expect(response.status).toBe(200);
     expect(response.headers['content-type']).toContain('application/pdf');
@@ -252,8 +252,7 @@ describe('GET /stakeholder-lists/:id/pdf (PostgreSQL real, HU-026, T-026-08)', (
       data: {
         id: 'stk-stu-1',
         kind: 'PERSON',
-        type: 'STUDENT',
-        documentNumber: '40000002',
+        dni: '40000002',
         fullName: 'Estudiante Sin Datos',
         status: 'ACTIVE',
         createdBy: 'seed',
@@ -275,7 +274,7 @@ describe('GET /stakeholder-lists/:id/pdf (PostgreSQL real, HU-026, T-026-08)', (
     const actor = await createActor(['Director de Escuela']);
     const response = await request(app)
       .get('/stakeholder-lists/list-stu-2026/pdf')
-      .set('Authorization', `Bearer ${actor.accessToken}`);
+      .set('Authorization', `Bearer ${actor.token}`);
 
     expect(response.status).toBe(200);
     const bodyText = Buffer.from(response.body).toString('utf8');
@@ -288,12 +287,12 @@ describe('GET /stakeholder-lists/:id/pdf (PostgreSQL real, HU-026, T-026-08)', (
 
     const oversized = await request(app)
       .get(`/stakeholder-lists/${'a'.repeat(65)}/pdf`)
-      .set('Authorization', `Bearer ${actor.accessToken}`);
+      .set('Authorization', `Bearer ${actor.token}`);
     expect(oversized.status).toBe(400);
 
     const unknownQuery = await request(app)
       .get('/stakeholder-lists/list-1/pdf?extra=1')
-      .set('Authorization', `Bearer ${actor.accessToken}`);
+      .set('Authorization', `Bearer ${actor.token}`);
     expect(unknownQuery.status).toBe(400);
   }, 5_000);
 
@@ -307,7 +306,7 @@ describe('GET /stakeholder-lists/:id/pdf (PostgreSQL real, HU-026, T-026-08)', (
 
     const response = await request(app)
       .get('/stakeholder-lists/list-1/pdf')
-      .set('Authorization', `Bearer ${actor.accessToken}`);
+      .set('Authorization', `Bearer ${actor.token}`);
 
     expect(response.status).toBe(403);
   }, 5_000);
@@ -318,7 +317,7 @@ describe('GET /stakeholder-lists/:id/pdf (PostgreSQL real, HU-026, T-026-08)', (
 
     const response = await request(app)
       .get('/stakeholder-lists/list-inexistente/pdf')
-      .set('Authorization', `Bearer ${actor.accessToken}`);
+      .set('Authorization', `Bearer ${actor.token}`);
 
     expect(response.status).toBe(404);
   }, 5_000);
@@ -333,7 +332,7 @@ describe('GET /stakeholder-lists/:id/pdf (PostgreSQL real, HU-026, T-026-08)', (
 
     const firstReq = request(app)
       .get('/stakeholder-lists/list-emp-2026/pdf')
-      .set('Authorization', `Bearer ${actor.accessToken}`)
+      .set('Authorization', `Bearer ${actor.token}`)
       .then((res) => res);
 
     await vi.waitFor(() => {
@@ -342,7 +341,7 @@ describe('GET /stakeholder-lists/:id/pdf (PostgreSQL real, HU-026, T-026-08)', (
 
     const secondRes = await request(app)
       .get('/stakeholder-lists/list-emp-2026/pdf')
-      .set('Authorization', `Bearer ${actor.accessToken}`);
+      .set('Authorization', `Bearer ${actor.token}`);
 
     expect(secondRes.status).toBe(409);
 
