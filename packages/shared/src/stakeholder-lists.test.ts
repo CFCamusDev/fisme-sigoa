@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  STAKEHOLDER_LIST_ID_MAX_LENGTH,
+  STAKEHOLDER_LIST_PDF_ANNEX_CODE,
   addStakeholderListMemberRequestSchema,
   copyStakeholderListRequestSchema,
   createStakeholderListRequestSchema,
+  exportStakeholderListPdfParamsSchema,
+  exportStakeholderListPdfQuerySchema,
   listStakeholderListsQuerySchema,
   stakeholderListDtoSchema,
   stakeholderListMemberDtoSchema,
@@ -113,5 +117,29 @@ describe('stakeholder-lists shared schemas', () => {
 
     expect(list.studyPlanNumber).toBeNull();
     expect(list.members).toHaveLength(1);
+  });
+
+  it('validates export pdf params and rejects empty, oversized or unknown fields', () => {
+    expect(STAKEHOLDER_LIST_PDF_ANNEX_CODE).toBe('FO-03');
+
+    const parsed = exportStakeholderListPdfParamsSchema.parse({ id: '  list-1  ' });
+    expect(parsed.id).toBe('list-1');
+
+    expect(exportStakeholderListPdfParamsSchema.safeParse({ id: '' }).success).toBe(false);
+    expect(exportStakeholderListPdfParamsSchema.safeParse({ id: '   ' }).success).toBe(false);
+    expect(
+      exportStakeholderListPdfParamsSchema.safeParse({
+        id: 'a'.repeat(STAKEHOLDER_LIST_ID_MAX_LENGTH + 1),
+      }).success,
+    ).toBe(false);
+    expect(
+      exportStakeholderListPdfParamsSchema.safeParse({
+        id: 'list-1',
+        extra: 'no-permitido',
+      }).success,
+    ).toBe(false);
+
+    expect(exportStakeholderListPdfQuerySchema.safeParse({}).success).toBe(true);
+    expect(exportStakeholderListPdfQuerySchema.safeParse({ format: 'pdf' }).success).toBe(false);
   });
 });

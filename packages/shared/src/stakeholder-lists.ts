@@ -18,6 +18,7 @@ export const STAKEHOLDER_LIST_MEMBER_REPRESENTATIVE_MAX_LENGTH = 150;
 export const STAKEHOLDER_LISTS_PAGE_MAX = 10_000;
 export const STAKEHOLDER_LISTS_PAGE_SIZE_MAX = 100;
 export const STAKEHOLDER_LISTS_PAGE_SIZE_DEFAULT = 20;
+export const STAKEHOLDER_LIST_PDF_ANNEX_CODE = 'FO-03' as const;
 
 export const stakeholderListTypeSchema = z.enum(STAKEHOLDER_LIST_TYPES, {
   message: 'El tipo de lista debe ser ADVISORY_BOARD, EMPLOYER, GRADUATE, STUDENT o TEACHER',
@@ -91,6 +92,12 @@ export const stakeholderListIdParamsSchema = z
   })
   .strict();
 export type StakeholderListIdParams = z.infer<typeof stakeholderListIdParamsSchema>;
+
+export const exportStakeholderListPdfParamsSchema = stakeholderListIdParamsSchema;
+export type ExportStakeholderListPdfParams = z.infer<typeof exportStakeholderListPdfParamsSchema>;
+
+export const exportStakeholderListPdfQuerySchema = z.object({}).strict();
+export type ExportStakeholderListPdfQuery = z.infer<typeof exportStakeholderListPdfQuerySchema>;
 
 export const listStakeholderListsQuerySchema = z
   .object({
