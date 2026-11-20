@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ProcessExecution } from './process-execution.js';
 import { CatalogVersionNotAllowedError } from '../errors/catalog-version-not-allowed-error.js';
+import { InvalidExecutionTransitionError } from '../errors/invalid-execution-transition-error.js';
 import { InvalidProcessExecutionDataError } from '../errors/invalid-process-execution-data-error.js';
 
 const BASE_NOW = new Date('2027-01-15T10:00:00.000Z');
@@ -192,5 +193,65 @@ describe('ProcessExecution', () => {
     });
     expect(snapshot).not.toHaveProperty('email');
     expect(snapshot).not.toHaveProperty('dni');
+  });
+
+  it('advance returns a new instance with the next status, updatedBy and updatedAt', () => {
+    const execution = ProcessExecution.create({
+      id: 'exec-13',
+      programId: PROGRAM_ID,
+      type: 'P612',
+      year: 2027,
+      catalogVersion: { id: 'cv-1', programId: PROGRAM_ID, status: 'APPROVED' },
+      actorId: ACTOR_ID,
+      now: BASE_NOW,
+    });
+    const nextNow = new Date('2027-01-20T12:00:00.000Z');
+
+    const advanced = execution.advance({ actorId: 'user-2', now: nextNow });
+
+    expect(advanced.status).toBe('IN_PROGRESS');
+    expect(advanced.updatedBy).toBe('user-2');
+    expect(advanced.updatedAt).toBe(nextNow);
+  });
+
+  it('advance does not mutate the original', () => {
+    const execution = ProcessExecution.create({
+      id: 'exec-14',
+      programId: PROGRAM_ID,
+      type: 'P612',
+      year: 2027,
+      catalogVersion: { id: 'cv-1', programId: PROGRAM_ID, status: 'APPROVED' },
+      actorId: ACTOR_ID,
+      now: BASE_NOW,
+    });
+
+    execution.advance({ actorId: 'user-2', now: new Date('2027-01-20T12:00:00.000Z') });
+
+    expect(execution.status).toBe('PLANNED');
+    expect(execution.updatedBy).toBeNull();
+    expect(execution.updatedAt).toBe(BASE_NOW);
+  });
+
+  it('advance fails from a status without advance', () => {
+    for (const status of ['PENDING_APPROVAL', 'CLOSED', 'VOIDED'] as const) {
+      const execution = ProcessExecution.rehydrate({
+        id: `exec-${status}`,
+        programId: PROGRAM_ID,
+        type: 'P612',
+        name: 'Medición anual de OE 2027',
+        year: 2027,
+        semesterId: null,
+        catalogVersionId: 'cv-1',
+        status,
+        createdBy: ACTOR_ID,
+        updatedBy: null,
+        createdAt: BASE_NOW,
+        updatedAt: BASE_NOW,
+      });
+
+      expect(() =>
+        execution.advance({ actorId: 'user-2', now: new Date('2027-01-20T12:00:00.000Z') }),
+      ).toThrow(InvalidExecutionTransitionError);
+    }
   });
 });
