@@ -1,4 +1,8 @@
-import { processExecutionIdParamSchema, proposeScheduleRequestSchema } from '@sigoa/shared';
+import {
+  processExecutionIdParamSchema,
+  proposeScheduleRequestSchema,
+  saveScheduleRequestSchema,
+} from '@sigoa/shared';
 import { Router, type RequestHandler } from 'express';
 import { validateRequest } from '../../../../shared/middleware/validate-request.js';
 import type { ProcessRoutePermissionScope } from './process-executions.routes.js';
@@ -23,6 +27,17 @@ const normalizeEmptyBody: RequestHandler = (req, _res, next) => {
 export function createExecutionScheduleRouter(deps: ExecutionScheduleRouterDependencies): Router {
   const router = Router();
 
+  // GET /process-executions/:id/schedule (HU-028, D8, T-028-10, RF-028, RNF-008, RNF-009)
+  router.get(
+    '/:id/schedule',
+    deps.authenticate,
+    deps.requirePermission('cronograma.ver', 'GLOBAL'),
+    validateRequest({
+      params: processExecutionIdParamSchema,
+    }),
+    deps.controller.listSchedule,
+  );
+
   // POST /process-executions/:id/schedule/propose (HU-028, T-028-09, RF-028, RNF-008, RNF-009)
   router.post(
     '/:id/schedule/propose',
@@ -34,6 +49,18 @@ export function createExecutionScheduleRouter(deps: ExecutionScheduleRouterDepen
       body: proposeScheduleRequestSchema,
     }),
     deps.controller.proposeSchedule,
+  );
+
+  // PUT /process-executions/:id/schedule (HU-028, T-028-10, RF-028, RNF-008, RNF-009)
+  router.put(
+    '/:id/schedule',
+    deps.authenticate,
+    deps.requirePermission('cronograma.editar', 'GLOBAL'),
+    validateRequest({
+      params: processExecutionIdParamSchema,
+      body: saveScheduleRequestSchema,
+    }),
+    deps.controller.saveSchedule,
   );
 
   return router;

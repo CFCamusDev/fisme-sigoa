@@ -4,7 +4,9 @@ import type { DbProvider } from '../../shared/prisma/prisma-unit-of-work.js';
 import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
 import { CreateProcessExecutionUseCase } from './application/create-process-execution.js';
 import { ListProcessExecutionsUseCase } from './application/list-process-executions.js';
+import { ListScheduleUseCase } from './application/list-schedule.js';
 import { ProposeScheduleUseCase } from './application/propose-schedule.js';
+import { SaveScheduleUseCase } from './application/save-schedule.js';
 import type { ProcessPermissionChecker } from './domain/ports/process-permission-checker.js';
 import { createExecutionScheduleRouter } from './infrastructure/http/execution-schedule.routes.js';
 import { ProcessExecutionsController } from './infrastructure/http/process-executions.controller.js';
@@ -81,6 +83,22 @@ export function createProcessesModule(deps?: ProcessesModuleDependencies): Proce
     clock: deps.clock,
   });
 
+  const saveScheduleUseCase = new SaveScheduleUseCase({
+    scheduleExecutionLocker,
+    scheduleActivityRepository,
+    permissionChecker: deps.permissionChecker,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+    clock: deps.clock,
+  });
+
+  const listScheduleUseCase = new ListScheduleUseCase({
+    processExecutionReader: processExecutionRepository,
+    scheduleActivityRepository,
+    permissionChecker: deps.permissionChecker,
+    clock: deps.clock,
+  });
+
   const controller = new ProcessExecutionsController({
     createProcessExecutionUseCase,
     listProcessExecutionsUseCase,
@@ -88,6 +106,8 @@ export function createProcessesModule(deps?: ProcessesModuleDependencies): Proce
 
   const scheduleController = new ScheduleController({
     proposeScheduleUseCase,
+    saveScheduleUseCase,
+    listScheduleUseCase,
   });
 
   return {
