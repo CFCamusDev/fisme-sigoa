@@ -90,5 +90,7 @@ export * from './application/save-schedule.js';
 export * from './application/save-schedule.types.js';
 export * from './application/list-schedule.js';
 export * from './application/list-schedule.types.js';
+export * from './application/change-schedule-activity-status.js';
+export * from './application/change-schedule-activity-status.types.js';
 export * from './infrastructure/http/process-executions.controller.js';
 export * from './infrastructure/http/process-executions.routes.js';
