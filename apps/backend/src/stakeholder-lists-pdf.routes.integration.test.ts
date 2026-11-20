@@ -1,16 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import request from 'supertest';
-import { createApp } from '../../../../app.js';
-import { setupAppRoutes } from '../../../../routes.js';
-import { InMemoryEmailSender } from '../../../../shared/email/in-memory-email-sender.js';
-import type { PdfGenerator } from '../../../../shared/pdf/pdf-generator.js';
-import { createPrismaAuditServices } from '../../../../shared/prisma/create-prisma-audit-services.js';
-import { PrismaUnitOfWork } from '../../../../shared/prisma/prisma-unit-of-work.js';
-import { useTestDatabase } from '../../../../test/db/use-test-database.js';
-import { seedAuthorizationFast } from '../../../../test/factories/authorization-fast.js';
-import { createAuthenticatedActor } from '../../../../test/http/authenticated-actor.js';
-import { createTestEnv } from '../../../../test/test-env.js';
-import { OFFICIAL_TEMPLATES } from '../../../templates/index.js';
+import { createApp } from './app.js';
+import { setupAppRoutes } from './routes.js';
+import { InMemoryEmailSender } from './shared/email/in-memory-email-sender.js';
+import type { PdfGenerator } from './shared/pdf/pdf-generator.js';
+import { createPrismaAuditServices } from './shared/prisma/create-prisma-audit-services.js';
+import { PrismaUnitOfWork } from './shared/prisma/prisma-unit-of-work.js';
+import { useTestDatabase } from './test/db/use-test-database.js';
+import { seedAuthorizationFast } from './test/factories/authorization-fast.js';
+import { createAuthenticatedActor } from './test/http/authenticated-actor.js';
+import { createTestEnv } from './test/test-env.js';
+import { OFFICIAL_TEMPLATES } from './modules/templates/index.js';
 
 function createDeferred<T>(): {
   promise: Promise<T>;
@@ -138,7 +138,7 @@ describe('GET /stakeholder-lists/:id/pdf (PostgreSQL real, HU-026, T-026-08)', (
       data: [
         {
           id: 'stk-emp-1',
-          kind: 'LEGAL_ENTITY',
+          kind: 'INSTITUTION',
           fullName: 'Empresa Ficticia SAC',
           institution: 'Empresa Ficticia SAC',
           ruc: '20123456789',

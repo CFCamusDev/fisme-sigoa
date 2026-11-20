@@ -1,18 +1,20 @@
 import fs from 'node:fs';
 import { performance } from 'node:perf_hooks';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { PuppeteerPdfGenerator } from '../../../../shared/pdf/puppeteer-pdf-generator.js';
+import { PuppeteerPdfGenerator } from './shared/pdf/puppeteer-pdf-generator.js';
 import {
   buildAnnexPdfFooter,
   buildOfficialRenderData,
   InstitutionalAnnexDataProvider,
   OFFICIAL_TEMPLATES,
   renderTemplateHtml,
-} from '../../../templates/index.js';
-import { StakeholderList } from '../../domain/entities/stakeholder-list.js';
-import type { StakeholderListType } from '../../domain/entities/stakeholder-list-enums.js';
-import { StakeholderListMember } from '../../domain/entities/stakeholder-list-member.js';
-import { buildAnnex3RenderData } from '../../domain/policies/build-annex3-render-data.js';
+} from './modules/templates/index.js';
+import {
+  buildAnnex3RenderData,
+  StakeholderList,
+  StakeholderListMember,
+  type StakeholderListType,
+} from './modules/stakeholders/index.js';
 
 const WARMUP_TIMEOUT_MS = 60_000;
 const RENDER_BUDGET_MS = 10_000;

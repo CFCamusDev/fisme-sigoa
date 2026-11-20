@@ -44,7 +44,7 @@
       "reason": "Recorre las rutas y viewports de usuarios con axe-core para validar contraste WCAG 2.1 AA."
     },
     {
-      "file": "apps/backend/src/modules/stakeholders/infrastructure/http/stakeholder-lists-pdf.chromium.integration.test.ts",
+      "file": "apps/backend/src/stakeholder-lists-pdf.chromium.integration.test.ts",
       "test": "renders a real pdf of a large list within the time budget",
       "ms": 10000,
       "reason": "Renderiza FO-03 con 600 miembros en Chromium real para demostrar cumplimiento de RNF-021 (< 10 s)."
