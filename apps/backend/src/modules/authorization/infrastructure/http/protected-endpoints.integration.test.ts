@@ -448,6 +448,33 @@ const PROTECTED_ENDPOINTS: readonly ProtectedEndpointSpec[] = [
     },
   },
   {
+    method: 'get',
+    openApiPath: '/process-executions/{id}/schedule',
+    requestPath: '/process-executions/exec-1/schedule',
+    requiredPermission: 'cronograma.ver',
+  },
+  {
+    method: 'post',
+    openApiPath: '/process-executions/{id}/schedule/propose',
+    requestPath: '/process-executions/exec-1/schedule/propose',
+    requiredPermission: 'cronograma.editar',
+    sampleBody: {},
+  },
+  {
+    method: 'put',
+    openApiPath: '/process-executions/{id}/schedule',
+    requestPath: '/process-executions/exec-1/schedule',
+    requiredPermission: 'cronograma.editar',
+    sampleBody: { activities: [] },
+  },
+  {
+    method: 'patch',
+    openApiPath: '/schedule-activities/{id}/status',
+    requestPath: '/schedule-activities/act-1/status',
+    requiredPermission: 'cronograma.editar',
+    sampleBody: { status: 'IN_PROGRESS' },
+  },
+  {
     method: 'post',
     openApiPath: '/sessions',
     requestPath: '/sessions',

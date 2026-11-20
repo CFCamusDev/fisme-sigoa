@@ -92,6 +92,10 @@ import {
   createSessionRequestSchema,
   listProcessExecutionsResponseSchema,
   listSessionsResponseSchema,
+  saveScheduleRequestSchema,
+  changeScheduleActivityStatusRequestSchema,
+  scheduleActivityDtoSchema,
+  scheduleResponseSchema,
   processExecutionDtoSchema,
   registerSessionAttendeesRequestSchema,
   sessionAttendeesResponseSchema,
@@ -2993,6 +2997,43 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
 
       const getResponseExample = getOp.responses['200'].content['application/json'].example;
       expect(sessionAttendeesResponseSchema.safeParse(getResponseExample).success).toBe(true);
+    });
+  });
+
+  describe('OpenAPI Specification for Schedule (HU-028, T-028-12, RF-028, RNF-032)', () => {
+    it('schedule schemas validate their documented examples', () => {
+      const getOp = spec.paths['/process-executions/{id}/schedule']?.get;
+      const putOp = spec.paths['/process-executions/{id}/schedule']?.put;
+      const postOp = spec.paths['/process-executions/{id}/schedule/propose']?.post;
+      const patchOp = spec.paths['/schedule-activities/{id}/status']?.patch;
+
+      expect(getOp).toBeDefined();
+      expect(putOp).toBeDefined();
+      expect(postOp).toBeDefined();
+      expect(patchOp).toBeDefined();
+
+      expect(getOp.security).toEqual([{ bearerAuth: [] }]);
+      expect(putOp.security).toEqual([{ bearerAuth: [] }]);
+      expect(postOp.security).toEqual([{ bearerAuth: [] }]);
+      expect(patchOp.security).toEqual([{ bearerAuth: [] }]);
+
+      const getExample = getOp.responses['200'].content['application/json'].example;
+      expect(scheduleResponseSchema.safeParse(getExample).success).toBe(true);
+
+      const putReqExample = putOp.requestBody.content['application/json'].example;
+      expect(saveScheduleRequestSchema.safeParse(putReqExample).success).toBe(true);
+      const putResExample = putOp.responses['200'].content['application/json'].example;
+      expect(scheduleResponseSchema.safeParse(putResExample).success).toBe(true);
+
+      const postResExample = postOp.responses['201'].content['application/json'].example;
+      expect(scheduleResponseSchema.safeParse(postResExample).success).toBe(true);
+
+      const patchReqExample = patchOp.requestBody.content['application/json'].example;
+      expect(changeScheduleActivityStatusRequestSchema.safeParse(patchReqExample).success).toBe(
+        true,
+      );
+      const patchResExample = patchOp.responses['200'].content['application/json'].example;
+      expect(scheduleActivityDtoSchema.safeParse(patchResExample).success).toBe(true);
     });
   });
 
