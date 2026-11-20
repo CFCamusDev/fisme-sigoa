@@ -2,6 +2,7 @@ import { Router, type RequestHandler } from 'express';
 import type { AuditLogger } from '../../shared/audit/audit-logger.js';
 import type { DbProvider } from '../../shared/prisma/prisma-unit-of-work.js';
 import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
+import { ChangeScheduleActivityStatusUseCase } from './application/change-schedule-activity-status.js';
 import { CreateProcessExecutionUseCase } from './application/create-process-execution.js';
 import { ListProcessExecutionsUseCase } from './application/list-process-executions.js';
 import { ListScheduleUseCase } from './application/list-schedule.js';
@@ -99,6 +100,15 @@ export function createProcessesModule(deps?: ProcessesModuleDependencies): Proce
     clock: deps.clock,
   });
 
+  const changeScheduleActivityStatusUseCase = new ChangeScheduleActivityStatusUseCase({
+    scheduleExecutionLocker,
+    scheduleActivityRepository,
+    permissionChecker: deps.permissionChecker,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+    clock: deps.clock,
+  });
+
   const controller = new ProcessExecutionsController({
     createProcessExecutionUseCase,
     listProcessExecutionsUseCase,
@@ -108,6 +118,7 @@ export function createProcessesModule(deps?: ProcessesModuleDependencies): Proce
     proposeScheduleUseCase,
     saveScheduleUseCase,
     listScheduleUseCase,
+    changeScheduleActivityStatusUseCase,
   });
 
   return {
