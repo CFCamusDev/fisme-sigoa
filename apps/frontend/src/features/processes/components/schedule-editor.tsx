@@ -45,7 +45,7 @@ export function ScheduleEditor({
   onStartActivity,
   onCompleteActivity,
 }: ScheduleEditorProps) {
-  const canEdit = usePermission('cronograma.editar');
+  const { allowed: canEdit } = usePermission('cronograma.editar');
 
   const {
     control,
@@ -79,13 +79,13 @@ export function ScheduleEditor({
     return (
       <div className="space-y-4">
         {errorMessage ? (
-          <Alert variant="destructive" role="alert">
+          <Alert variant="danger" role="alert">
             <AlertDescription>{errorMessage}</AlertDescription>
           </Alert>
         ) : null}
 
         <EmptyState
-          icon={Calendar}
+          icon={<Calendar className="size-10" aria-hidden="true" />}
           title="Aún no hay actividades en el cronograma"
           description="Puedes proponer los pasos oficiales del procedimiento o agregar actividades manualmente."
           action={
@@ -115,7 +115,7 @@ export function ScheduleEditor({
   return (
     <form onSubmit={submitForm} className="space-y-4" noValidate>
       {errorMessage ? (
-        <Alert variant="destructive" role="alert">
+        <Alert variant="danger" role="alert">
           <AlertDescription>{errorMessage}</AlertDescription>
         </Alert>
       ) : null}

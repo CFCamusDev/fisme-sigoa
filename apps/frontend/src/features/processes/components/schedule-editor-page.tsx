@@ -40,7 +40,7 @@ export function ScheduleEditorPage({ executionId }: ScheduleEditorPageProps) {
       />
 
       {query.isPending ? (
-        <LoadingState label="Cargando cronograma…" />
+        <LoadingState message="Cargando cronograma…" />
       ) : query.isError ? (
         <ErrorState
           title="No se pudo cargar el cronograma"
