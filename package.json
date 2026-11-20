@@ -13,6 +13,9 @@
       "prisma",
       "@prisma/engines"
     ],
+    "overrides": {
+      "effect": "^3.22.1"
+    },
     "auditConfig": {
       "ignoreGhsas": [
         "GHSA-fc5q-39xc-vjpf"
