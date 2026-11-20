@@ -2,6 +2,7 @@ import { Router, type RequestHandler } from 'express';
 import type { AuditLogger } from '../../shared/audit/audit-logger.js';
 import type { DbProvider } from '../../shared/prisma/prisma-unit-of-work.js';
 import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
+import { GetCurrentQualityCommitteeUseCase } from './application/get-current-quality-committee.js';
 import { ManageCommitteeMembersUseCase } from './application/manage-committee-members.js';
 import { RegisterQualityCommitteeUseCase } from './application/register-quality-committee.js';
 import type { CommitteePermissionChecker } from './domain/ports/committee-permission-checker.js';
@@ -11,6 +12,7 @@ import {
   type QualityCommitteeRoutePermissionScope,
 } from './infrastructure/http/quality-committee.routes.js';
 import { PrismaCommitteeMemberRepository } from './infrastructure/prisma/prisma-committee-member-repository.js';
+import { PrismaCommitteePresidentRoleReader } from './infrastructure/prisma/prisma-committee-president-role-reader.js';
 import { PrismaCommitteeProgramResolver } from './infrastructure/prisma/prisma-committee-program-resolver.js';
 import { PrismaCommitteeUserReader } from './infrastructure/prisma/prisma-committee-user-reader.js';
 import { PrismaQualityCommitteeRepository } from './infrastructure/prisma/prisma-quality-committee-repository.js';
@@ -37,6 +39,7 @@ export function createQualityCommitteeModule(deps?: QualityCommitteeModuleDepend
   const committeeMemberRepository = new PrismaCommitteeMemberRepository(deps.dbProvider);
   const programResolver = new PrismaCommitteeProgramResolver(deps.dbProvider);
   const committeeUserReader = new PrismaCommitteeUserReader(deps.dbProvider);
+  const presidentRoleReader = new PrismaCommitteePresidentRoleReader(deps.dbProvider);
 
   const registerQualityCommitteeUseCase = new RegisterQualityCommitteeUseCase({
     qualityCommitteeRepository,
@@ -59,9 +62,20 @@ export function createQualityCommitteeModule(deps?: QualityCommitteeModuleDepend
     clock: deps.clock,
   });
 
+  const getCurrentQualityCommitteeUseCase = new GetCurrentQualityCommitteeUseCase({
+    qualityCommitteeRepository,
+    committeeMemberRepository,
+    programResolver,
+    committeeUserReader,
+    presidentRoleReader,
+    permissionChecker: deps.permissionChecker,
+    clock: deps.clock,
+  });
+
   const controller = new QualityCommitteeController({
     registerQualityCommitteeUseCase,
     manageCommitteeMembersUseCase,
+    getCurrentQualityCommitteeUseCase,
   });
 
   return createQualityCommitteeRouter({

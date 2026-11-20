@@ -4,8 +4,11 @@ import {
   replaceCommitteeMembersRequestSchema,
 } from '@sigoa/shared';
 import { Router, type RequestHandler } from 'express';
+import { z } from 'zod';
 import { validateRequest } from '../../../../shared/middleware/validate-request.js';
 import type { QualityCommitteeController } from './quality-committee.controller.js';
+
+const emptyQuerySchema = z.object({}).strict();
 
 export type QualityCommitteeRoutePermissionScope = 'GLOBAL' | 'OWN';
 
@@ -20,6 +23,15 @@ export interface QualityCommitteeRouterDependencies {
 
 export function createQualityCommitteeRouter(deps: QualityCommitteeRouterDependencies): Router {
   const router = Router();
+
+  // GET /quality-committees/current (HU-025, T-025-15, RF-025, RS-017, RS-034)
+  router.get(
+    '/current',
+    deps.authenticate,
+    deps.requirePermission('comite.ver', 'GLOBAL'),
+    validateRequest({ query: emptyQuerySchema }),
+    deps.controller.getCurrentCommittee,
+  );
 
   // POST /quality-committees (HU-025, T-025-13, RF-025, RS-002, RS-020, RNF-008, RNF-009)
   router.post(
