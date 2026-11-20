@@ -1,7 +1,8 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, delay, http } from 'msw';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import * as blobDownload from '@/lib/blob-download';
 import { server } from '@/test/msw/server';
 import { renderWithProviders } from '@/test/render';
 import {
@@ -281,5 +282,158 @@ describe('StakeholderListsPage (HU-022, T-022-28)', () => {
       ).not.toBeInTheDocument(),
     );
     expect(importButton).toHaveFocus();
+  });
+
+  it('downloads the list pdf when the button is pressed', async () => {
+    const user = userEvent.setup();
+    const saveSpy = vi.spyOn(blobDownload, 'saveBlobFile').mockImplementation(() => {});
+    const pdfPermissions = [
+      ...VIEW_ONLY_PERMISSIONS,
+      { code: 'documento.descargar', scope: 'GLOBAL' as const },
+    ];
+
+    server.use(
+      http.get('*/me/permissions', () => HttpResponse.json({ permissions: pdfPermissions })),
+      http.get('*/stakeholder-lists', () =>
+        HttpResponse.json(makeStakeholderListsResponse([EMPLOYER_LIST_DTO])),
+      ),
+      http.get('*/stakeholder-lists/:id/pdf', () => {
+        return new HttpResponse('%PDF-1.4\nAnexo 3', {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': 'attachment; filename="fo-03-2027-v1.pdf"',
+          },
+        });
+      }),
+    );
+
+    renderWithProviders(<StakeholderListsPage />, {
+      withRouter: false,
+      permissions: pdfPermissions,
+    });
+
+    const downloadButton = await screen.findByRole('button', { name: /Descargar PDF/i });
+    await user.click(downloadButton);
+
+    await waitFor(() => {
+      expect(saveSpy).toHaveBeenCalledTimes(1);
+    });
+    expect(saveSpy.mock.calls[0]?.[1]).toBe('fo-03-2027-v1.pdf');
+    expect(downloadButton).toBeEnabled();
+    saveSpy.mockRestore();
+  });
+
+  it('sends a single request on a double click and disables the button while loading', async () => {
+    const user = userEvent.setup();
+    const saveSpy = vi.spyOn(blobDownload, 'saveBlobFile').mockImplementation(() => {});
+    const pdfPermissions = [
+      ...VIEW_ONLY_PERMISSIONS,
+      { code: 'documento.descargar', scope: 'GLOBAL' as const },
+    ];
+
+    let pdfRequests = 0;
+    let releaseResponse!: () => void;
+    const responseGate = new Promise<void>((resolve) => {
+      releaseResponse = resolve;
+    });
+
+    server.use(
+      http.get('*/me/permissions', () => HttpResponse.json({ permissions: pdfPermissions })),
+      http.get('*/stakeholder-lists', () =>
+        HttpResponse.json(makeStakeholderListsResponse([EMPLOYER_LIST_DTO])),
+      ),
+      http.get('*/stakeholder-lists/:id/pdf', async () => {
+        pdfRequests += 1;
+        await responseGate;
+        return new HttpResponse('%PDF-1.4\nAnexo 3', {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': 'attachment; filename="fo-03-2027-v1.pdf"',
+          },
+        });
+      }),
+    );
+
+    renderWithProviders(<StakeholderListsPage />, {
+      withRouter: false,
+      permissions: pdfPermissions,
+    });
+
+    const downloadButton = await screen.findByRole('button', { name: /Descargar PDF/i });
+    await user.dblClick(downloadButton);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Generando PDF…/i })).toBeDisabled();
+    });
+    expect(screen.getByRole('button', { name: /Generando PDF…/i })).toHaveAttribute(
+      'aria-busy',
+      'true',
+    );
+    expect(pdfRequests).toBe(1);
+
+    releaseResponse();
+    await waitFor(() => {
+      expect(saveSpy).toHaveBeenCalledTimes(1);
+    });
+    expect(screen.getByRole('button', { name: /Descargar PDF/i })).toBeEnabled();
+    saveSpy.mockRestore();
+  });
+
+  it('shows the error and keeps the button usable when the download fails', async () => {
+    const user = userEvent.setup();
+    const pdfPermissions = [
+      ...VIEW_ONLY_PERMISSIONS,
+      { code: 'documento.descargar', scope: 'GLOBAL' as const },
+    ];
+
+    server.use(
+      http.get('*/me/permissions', () => HttpResponse.json({ permissions: pdfPermissions })),
+      http.get('*/stakeholder-lists', () =>
+        HttpResponse.json(makeStakeholderListsResponse([EMPLOYER_LIST_DTO])),
+      ),
+      http.get('*/stakeholder-lists/:id/pdf', () =>
+        HttpResponse.json(
+          {
+            error: {
+              code: 'CONFLICT',
+              message: 'Ya hay una descarga de anexo en curso para este usuario.',
+            },
+          },
+          { status: 409 },
+        ),
+      ),
+    );
+
+    renderWithProviders(<StakeholderListsPage />, {
+      withRouter: false,
+      permissions: pdfPermissions,
+    });
+
+    const downloadButton = await screen.findByRole('button', { name: /Descargar PDF/i });
+    await user.click(downloadButton);
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/No se pudo descargar el PDF/i);
+    expect(alert).toHaveTextContent(/descarga de anexo en curso/i);
+    expect(downloadButton).toBeEnabled();
+  });
+
+  it('hides the button without documento.descargar', async () => {
+    server.use(
+      http.get('*/me/permissions', () => HttpResponse.json({ permissions: VIEW_ONLY_PERMISSIONS })),
+      http.get('*/stakeholder-lists', () =>
+        HttpResponse.json(makeStakeholderListsResponse([EMPLOYER_LIST_DTO])),
+      ),
+    );
+
+    renderWithProviders(<StakeholderListsPage />, {
+      withRouter: false,
+      permissions: VIEW_ONLY_PERMISSIONS,
+    });
+
+    await screen.findByText('Tech Amazonas SAC');
+    expect(screen.queryByRole('button', { name: /Descargar PDF/i })).not.toBeInTheDocument();
   });
 });
