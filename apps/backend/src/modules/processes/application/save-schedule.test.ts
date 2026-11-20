@@ -301,7 +301,7 @@ describe('SaveScheduleUseCase (HU-028, T-028-06, T-028-18)', () => {
     expect(auditLogger.log).toHaveBeenCalledTimes(3);
     expect(auditLogger.log).toHaveBeenCalledWith(
       expect.objectContaining({
-        action: 'DELETE',
+        action: 'VOID',
         entity: 'ScheduleActivity',
         entityId: 'act-2',
         before: expect.objectContaining({ id: 'act-2', activity: 'Eliminada' }),

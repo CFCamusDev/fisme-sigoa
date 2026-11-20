@@ -79,7 +79,7 @@ export class SaveScheduleUseCase {
 
       for (const deleted of plan.toDelete) {
         await this.deps.auditLogger.log({
-          action: 'DELETE',
+          action: 'VOID',
           entity: 'ScheduleActivity',
           entityId: deleted.id,
           actor: command.actorId,
