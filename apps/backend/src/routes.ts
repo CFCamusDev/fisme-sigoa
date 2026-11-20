@@ -34,7 +34,7 @@ import {
   createResolutionsModule,
   type ResolutionApprovedSubscriber,
 } from './modules/resolutions/index.js';
-import { createTemplatesModule } from './modules/templates/index.js';
+import { createAnnexesModule, createTemplatesModule } from './modules/templates/index.js';
 import {
   createStakeholderListsModule,
   createStakeholdersModule,
@@ -273,6 +273,19 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
   app.use(
     '/templates',
     createTemplatesModule({
+      unitOfWork: deps.unitOfWork,
+      auditLogger: deps.auditLogger,
+      dbProvider: deps.dbProvider,
+      authenticate: authServices.authenticate,
+      requirePermission: authorizationServices.requirePermission,
+      permissionChecker: authorizationServices.authorizer,
+      pdfGenerator,
+      clock: deps.clock,
+    }),
+  );
+  app.use(
+    '/annexes',
+    createAnnexesModule({
       unitOfWork: deps.unitOfWork,
       auditLogger: deps.auditLogger,
       dbProvider: deps.dbProvider,

@@ -8,7 +8,11 @@ import { GetTemplateDetailUseCase } from './application/get-template-detail.js';
 import { ListTemplatesUseCase } from './application/list-templates.js';
 import { PreviewTemplateUseCase } from './application/preview-template.js';
 import { PublishTemplateUseCase } from './application/publish-template.js';
+import { GenerateAnnexPdfUseCase } from './application/generate-annex-pdf.js';
+import type { AnnexDataProvider } from './domain/ports/annex-data-provider.js';
 import type { TemplatePermissionChecker } from './domain/ports/template-permission-checker.js';
+import { AnnexesController } from './infrastructure/http/annexes.controller.js';
+import { createAnnexesRouter } from './infrastructure/http/annexes.routes.js';
 import { TemplatesController } from './infrastructure/http/templates.controller.js';
 import {
   createTemplatesRouter,
@@ -16,6 +20,7 @@ import {
 } from './infrastructure/http/templates.routes.js';
 import { PrismaTemplateRepository } from './infrastructure/prisma/prisma-template-repository.js';
 import { PrismaTemplateVersionRepository } from './infrastructure/prisma/prisma-template-version-repository.js';
+import { InstitutionalAnnexDataProvider } from './infrastructure/rendering/institutional-annex-data-provider.js';
 
 export interface TemplatesModuleDependencies {
   readonly unitOfWork: UnitOfWork;
@@ -83,6 +88,40 @@ export function createTemplatesModule(deps?: TemplatesModuleDependencies): Route
   });
 }
 
+export interface AnnexesModuleDependencies extends TemplatesModuleDependencies {
+  readonly dataProviders?: readonly AnnexDataProvider[];
+}
+
+export function createAnnexesModule(deps?: AnnexesModuleDependencies): Router {
+  if (!deps) {
+    return Router();
+  }
+
+  const templateRepository = new PrismaTemplateRepository(deps.dbProvider);
+  const versionRepository = new PrismaTemplateVersionRepository(deps.dbProvider);
+
+  const generateAnnexPdfUseCase = new GenerateAnnexPdfUseCase({
+    templateReader: templateRepository,
+    versionReader: versionRepository,
+    permissionChecker: deps.permissionChecker,
+    pdfGenerator: deps.pdfGenerator,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+    dataProviders: [new InstitutionalAnnexDataProvider(), ...(deps.dataProviders ?? [])],
+    clock: deps.clock,
+  });
+
+  const controller = new AnnexesController({
+    generateAnnexPdfUseCase,
+  });
+
+  return createAnnexesRouter({
+    controller,
+    authenticate: deps.authenticate,
+    requirePermission: deps.requirePermission,
+  });
+}
+
 export * from './domain/entities/template.js';
 export * from './domain/entities/template-version.js';
 export * from './domain/entities/template-limits.js';
@@ -117,6 +156,8 @@ export * from './infrastructure/prisma/prisma-template-version-mapper.js';
 export * from './infrastructure/prisma/prisma-template-version-repository.js';
 export * from './infrastructure/http/templates.controller.js';
 export * from './infrastructure/http/templates.routes.js';
+export * from './infrastructure/http/annexes.controller.js';
+export * from './infrastructure/http/annexes.routes.js';
 export * from './infrastructure/rendering/catalog-column-helpers.js';
 export * from './infrastructure/rendering/institutional-annex-data-provider.js';
 export * from './infrastructure/prisma/seed/template-seed.js';
