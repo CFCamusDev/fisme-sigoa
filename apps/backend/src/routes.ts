@@ -44,7 +44,10 @@ import {
   createStakeholdersModule,
 } from './modules/stakeholders/index.js';
 import { createStakeholderAnnexPdfGenerator } from './stakeholder-annex-pdf-adapter.js';
-import { createProcessesModule } from './modules/processes/index.js';
+import {
+  createProcessesModule,
+  type ExecutionPreconditionProvider,
+} from './modules/processes/index.js';
 import { createQualityCommitteeModule } from './modules/quality-committee/index.js';
 import { createSessionsModule } from './modules/sessions/index.js';
 import { createUsersModule, EmailActivationSender } from './modules/users/index.js';
@@ -69,6 +72,7 @@ export interface AppRoutesDependencies {
   pdfGenerator?: PdfGenerator;
   /** Suscriptores de `ResolutionApproved` (HU-016 registra el suyo aquí, D6 del tramo 2 de HU-048). */
   resolutionApprovedSubscribers?: readonly ResolutionApprovedSubscriber[];
+  processPreconditionProviders?: readonly ExecutionPreconditionProvider[];
   logger?: Logger;
   clock?: () => Date;
   detachedTaskRunner?: DetachedTaskRunner;
@@ -343,10 +347,12 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
     authenticate: authServices.authenticate,
     requirePermission: authorizationServices.requirePermission,
     permissionChecker: authorizationServices.authorizer,
+    preconditionProviders: deps.processPreconditionProviders,
     clock: deps.clock,
   });
   app.use('/process-executions', processesModule.processExecutions);
   app.use('/process-executions', processesModule.executionSchedule);
+  app.use('/process-executions', processesModule.executionTransitions);
   app.use('/schedule-activities', processesModule.scheduleActivities);
   const sessionsModule = createSessionsModule({
     unitOfWork: deps.unitOfWork,
