@@ -1,9 +1,11 @@
 import type { RequestHandler } from 'express';
 import {
+  ANNEX_PDF_CONTENT_TYPE,
   STAKEHOLDER_IMPORT_XLSX_MIME,
   type AddStakeholderListMemberRequest,
   type CopyStakeholderListRequest,
   type CreateStakeholderListRequest,
+  type ExportStakeholderListPdfParams,
   type ListStakeholderListsQuery,
   type StakeholderImportTemplateQuery,
   type StakeholderListIdParams,
@@ -14,6 +16,7 @@ import type { ConfirmStakeholderImportUseCase } from '../../application/confirm-
 import type { CopyStakeholderListToNewYearUseCase } from '../../application/copy-stakeholder-list-to-new-year.js';
 import type { CreateStakeholderListUseCase } from '../../application/create-stakeholder-list.js';
 import type { DownloadStakeholderImportTemplateUseCase } from '../../application/download-stakeholder-import-template.js';
+import type { ExportStakeholderListPdfUseCase } from '../../application/export-stakeholder-list-pdf.js';
 import type { ListStakeholderListsUseCase } from '../../application/list-stakeholder-lists.js';
 import type { PreviewStakeholderImportUseCase } from '../../application/preview-stakeholder-import.js';
 import { resolveRequestActor } from '../../../../shared/middleware/resolve-request-actor.js';
@@ -26,9 +29,10 @@ export interface StakeholderListsControllerDependencies {
   readonly previewStakeholderImportUseCase: PreviewStakeholderImportUseCase;
   readonly confirmStakeholderImportUseCase: ConfirmStakeholderImportUseCase;
   readonly downloadStakeholderImportTemplateUseCase: DownloadStakeholderImportTemplateUseCase;
+  readonly exportStakeholderListPdfUseCase?: ExportStakeholderListPdfUseCase;
 }
 
-/** Controlador de `/stakeholder-lists` (HU-022, HU-023). */
+/** Controlador de `/stakeholder-lists` (HU-022, HU-023, HU-026). */
 export class StakeholderListsController {
   private readonly createStakeholderListUseCase: CreateStakeholderListUseCase;
   private readonly addStakeholderListMemberUseCase: AddStakeholderListMemberUseCase;
@@ -37,6 +41,7 @@ export class StakeholderListsController {
   private readonly previewStakeholderImportUseCase: PreviewStakeholderImportUseCase;
   private readonly confirmStakeholderImportUseCase: ConfirmStakeholderImportUseCase;
   private readonly downloadStakeholderImportTemplateUseCase: DownloadStakeholderImportTemplateUseCase;
+  private readonly exportStakeholderListPdfUseCase?: ExportStakeholderListPdfUseCase;
 
   constructor(deps: StakeholderListsControllerDependencies) {
     this.createStakeholderListUseCase = deps.createStakeholderListUseCase;
@@ -46,6 +51,7 @@ export class StakeholderListsController {
     this.previewStakeholderImportUseCase = deps.previewStakeholderImportUseCase;
     this.confirmStakeholderImportUseCase = deps.confirmStakeholderImportUseCase;
     this.downloadStakeholderImportTemplateUseCase = deps.downloadStakeholderImportTemplateUseCase;
+    this.exportStakeholderListPdfUseCase = deps.exportStakeholderListPdfUseCase;
   }
 
   createStakeholderList: RequestHandler = async (req, res, next) => {
@@ -176,6 +182,34 @@ export class StakeholderListsController {
         .setHeader('Content-Disposition', `attachment; filename="${fileName}"`)
         .status(200)
         .send(buffer);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  exportStakeholderListPdf: RequestHandler = async (req, res, next) => {
+    try {
+      if (!this.exportStakeholderListPdfUseCase) {
+        res.status(404).end();
+        return;
+      }
+
+      const { actorId, ip } = resolveRequestActor(req);
+      const { id } = getValidated<unknown, ExportStakeholderListPdfParams>(res).params;
+
+      const result = await this.exportStakeholderListPdfUseCase.execute({
+        actorId,
+        ip,
+        listId: id,
+      });
+
+      res
+        .setHeader('Content-Type', ANNEX_PDF_CONTENT_TYPE)
+        .setHeader('Content-Disposition', `attachment; filename="${result.fileName}"`)
+        .setHeader('Cache-Control', 'no-store')
+        .setHeader('X-Template-Version', String(result.versionNumber))
+        .status(200)
+        .send(result.pdf);
     } catch (error) {
       next(error);
     }

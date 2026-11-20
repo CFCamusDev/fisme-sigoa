@@ -8,6 +8,7 @@ import { CopyStakeholderListToNewYearUseCase } from './application/copy-stakehol
 import { CreateStakeholderListUseCase } from './application/create-stakeholder-list.js';
 import { DownloadStakeholderImportTemplateUseCase } from './application/download-stakeholder-import-template.js';
 import { EditStakeholderUseCase } from './application/edit-stakeholder.js';
+import { ExportStakeholderListPdfUseCase } from './application/export-stakeholder-list-pdf.js';
 import { ListStakeholderListsUseCase } from './application/list-stakeholder-lists.js';
 import { PreviewStakeholderImportUseCase } from './application/preview-stakeholder-import.js';
 import { RegisterStakeholderUseCase } from './application/register-stakeholder.js';
@@ -167,6 +168,15 @@ export function createStakeholderListsModule(deps?: StakeholdersModuleDependenci
     permissionChecker: deps.permissionChecker,
   });
 
+  const exportStakeholderListPdfUseCase = deps.annexPdfGenerator
+    ? new ExportStakeholderListPdfUseCase({
+        stakeholderListRepository,
+        stakeholderListReader: stakeholderListRepository,
+        permissionChecker: deps.permissionChecker,
+        annexPdfGenerator: deps.annexPdfGenerator,
+      })
+    : undefined;
+
   const controller = new StakeholderListsController({
     createStakeholderListUseCase,
     addStakeholderListMemberUseCase,
@@ -175,12 +185,14 @@ export function createStakeholderListsModule(deps?: StakeholdersModuleDependenci
     previewStakeholderImportUseCase,
     confirmStakeholderImportUseCase,
     downloadStakeholderImportTemplateUseCase,
+    exportStakeholderListPdfUseCase,
   });
 
   return createStakeholderListsRouter({
     controller,
     authenticate: deps.authenticate,
     requirePermission: deps.requirePermission,
+    enablePdfExport: Boolean(exportStakeholderListPdfUseCase),
   });
 }
 
