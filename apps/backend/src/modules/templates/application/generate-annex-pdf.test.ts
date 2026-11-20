@@ -44,6 +44,7 @@ function createPublishedVersion(number = 2, content?: string): TemplateVersion {
       content ??
       '<header><img src="{{logo.url}}" /></header><p>{{schedule.period}}</p><table><tr data-repeat="activities"><td>{{activities.name}}</td></tr></table>',
     updatedBy: 'admin-1',
+    createdAt: FIXED_DATE,
     updatedAt: FIXED_DATE,
     publishedBy: 'admin-1',
     publishedAt: FIXED_DATE,

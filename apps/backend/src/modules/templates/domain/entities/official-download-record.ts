@@ -12,7 +12,7 @@ export interface OfficialDownloadRecordProperties {
   readonly generatedAt: Date;
 }
 
-export interface OfficialDownloadAuditPayload {
+export type OfficialDownloadAuditPayload = {
   readonly templateId: string;
   readonly templateCode: string;
   readonly versionId: string;
@@ -20,7 +20,7 @@ export interface OfficialDownloadAuditPayload {
   readonly pdfSha256: string;
   readonly pdfBytes: number;
   readonly generatedAt: string;
-}
+};
 
 /**
  * Registro de metadatos de una descarga oficial de anexo en PDF para auditoría (HU-070, CA2).
