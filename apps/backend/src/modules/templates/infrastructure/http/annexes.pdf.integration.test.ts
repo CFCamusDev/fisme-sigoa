@@ -162,17 +162,17 @@ describe('GET /annexes/:code/pdf (PostgreSQL real, HU-070, T-070-10, RF-070, RNF
       .update(response.body as Buffer)
       .digest('hex');
 
-    const auditEntry = await prisma.audit.findFirst({
+    const auditEntry = await prisma.auditLog.findFirst({
       where: {
         action: 'DOWNLOAD',
         entity: 'TemplateVersion',
         entityId: 'ver-tpl-annex-1',
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { occurredAt: 'desc' },
     });
 
     expect(auditEntry).not.toBeNull();
-    expect(auditEntry?.actor).toBe(admin.id);
+    expect(auditEntry?.actor).toBe(admin.user.id);
     expect(auditEntry?.after).toMatchObject({
       templateId: 'tpl-annex-1',
       templateCode: 'FO-01',
