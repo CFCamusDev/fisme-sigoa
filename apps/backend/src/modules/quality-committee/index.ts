@@ -17,3 +17,5 @@ export * from './application/register-quality-committee.js';
 export * from './application/register-quality-committee.types.js';
 export * from './application/manage-committee-members.js';
 export * from './application/manage-committee-members.types.js';
+export * from './application/get-current-quality-committee.js';
+export * from './application/get-current-quality-committee.types.js';
