@@ -288,8 +288,7 @@ describe('PrismaStakeholderListRepository Integration (PostgreSQL real, T-022-22
     const teacherB = Stakeholder.register({
       id: 'stk-b',
       kind: 'PERSON',
-      stakeholderType: 'TEACHER',
-      documentNumber: '10000002',
+      dni: '10000002',
       fullName: 'Zulema Torres',
       email: 'zulema@ejemplo.test',
       actorId: 'user-1',
@@ -298,8 +297,7 @@ describe('PrismaStakeholderListRepository Integration (PostgreSQL real, T-022-22
     const teacherA = Stakeholder.register({
       id: 'stk-a',
       kind: 'PERSON',
-      stakeholderType: 'TEACHER',
-      documentNumber: '10000001',
+      dni: '10000001',
       fullName: 'Alberto Ramos',
       email: 'alberto@ejemplo.test',
       actorId: 'user-1',
