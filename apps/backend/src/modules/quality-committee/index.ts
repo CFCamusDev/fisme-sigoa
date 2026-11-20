@@ -2,6 +2,7 @@ import { Router, type RequestHandler } from 'express';
 import type { AuditLogger } from '../../shared/audit/audit-logger.js';
 import type { DbProvider } from '../../shared/prisma/prisma-unit-of-work.js';
 import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
+import { ManageCommitteeMembersUseCase } from './application/manage-committee-members.js';
 import { RegisterQualityCommitteeUseCase } from './application/register-quality-committee.js';
 import type { CommitteePermissionChecker } from './domain/ports/committee-permission-checker.js';
 import { QualityCommitteeController } from './infrastructure/http/quality-committee.controller.js';
@@ -48,8 +49,19 @@ export function createQualityCommitteeModule(deps?: QualityCommitteeModuleDepend
     clock: deps.clock,
   });
 
+  const manageCommitteeMembersUseCase = new ManageCommitteeMembersUseCase({
+    qualityCommitteeRepository,
+    committeeMemberRepository,
+    committeeUserReader,
+    permissionChecker: deps.permissionChecker,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+    clock: deps.clock,
+  });
+
   const controller = new QualityCommitteeController({
     registerQualityCommitteeUseCase,
+    manageCommitteeMembersUseCase,
   });
 
   return createQualityCommitteeRouter({

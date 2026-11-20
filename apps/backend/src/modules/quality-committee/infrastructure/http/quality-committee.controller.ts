@@ -1,19 +1,27 @@
-import type { RegisterQualityCommitteeRequest } from '@sigoa/shared';
+import type {
+  QualityCommitteeIdParam,
+  RegisterQualityCommitteeRequest,
+  ReplaceCommitteeMembersRequest,
+} from '@sigoa/shared';
 import type { RequestHandler } from 'express';
 import { resolveRequestActor } from '../../../../shared/middleware/resolve-request-actor.js';
 import { getValidated } from '../../../../shared/middleware/validate-request.js';
+import type { ManageCommitteeMembersUseCase } from '../../application/manage-committee-members.js';
 import type { RegisterQualityCommitteeUseCase } from '../../application/register-quality-committee.js';
 
 export interface QualityCommitteeControllerDependencies {
   readonly registerQualityCommitteeUseCase: RegisterQualityCommitteeUseCase;
+  readonly manageCommitteeMembersUseCase: ManageCommitteeMembersUseCase;
 }
 
 /** HTTP controller for `/quality-committees` (HU-025, RF-025). */
 export class QualityCommitteeController {
   private readonly registerQualityCommitteeUseCase: RegisterQualityCommitteeUseCase;
+  private readonly manageCommitteeMembersUseCase: ManageCommitteeMembersUseCase;
 
   constructor(deps: QualityCommitteeControllerDependencies) {
     this.registerQualityCommitteeUseCase = deps.registerQualityCommitteeUseCase;
+    this.manageCommitteeMembersUseCase = deps.manageCommitteeMembersUseCase;
   }
 
   registerCommittee: RequestHandler = async (req, res, next) => {
@@ -28,6 +36,27 @@ export class QualityCommitteeController {
       });
 
       res.setHeader('Cache-Control', 'no-store').status(201).json(response);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  replaceMembers: RequestHandler = async (req, res, next) => {
+    try {
+      const { actorId, ip } = resolveRequestActor(req);
+      const { params, body } = getValidated<
+        ReplaceCommitteeMembersRequest,
+        QualityCommitteeIdParam
+      >(res);
+
+      const response = await this.manageCommitteeMembersUseCase.execute({
+        committeeId: params.id,
+        members: body.members,
+        actorId,
+        ip,
+      });
+
+      res.setHeader('Cache-Control', 'no-store').status(200).json(response);
     } catch (error) {
       next(error);
     }
