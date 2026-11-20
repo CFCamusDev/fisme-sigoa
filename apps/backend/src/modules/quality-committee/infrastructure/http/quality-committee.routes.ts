@@ -1,5 +1,6 @@
 import {
   qualityCommitteeIdParamSchema,
+  qualityCommitteeListQuerySchema,
   registerQualityCommitteeRequestSchema,
   replaceCommitteeMembersRequestSchema,
 } from '@sigoa/shared';
@@ -31,6 +32,15 @@ export function createQualityCommitteeRouter(deps: QualityCommitteeRouterDepende
     deps.requirePermission('comite.ver', 'GLOBAL'),
     validateRequest({ query: emptyQuerySchema }),
     deps.controller.getCurrentCommittee,
+  );
+
+  // GET /quality-committees (HU-025, T-025-15 D7, RN-062)
+  router.get(
+    '/',
+    deps.authenticate,
+    deps.requirePermission('comite.ver', 'GLOBAL'),
+    validateRequest({ query: qualityCommitteeListQuerySchema }),
+    deps.controller.listCommittees,
   );
 
   // POST /quality-committees (HU-025, T-025-13, RF-025, RS-002, RS-020, RNF-008, RNF-009)

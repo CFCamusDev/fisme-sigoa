@@ -3,6 +3,7 @@ import type { AuditLogger } from '../../shared/audit/audit-logger.js';
 import type { DbProvider } from '../../shared/prisma/prisma-unit-of-work.js';
 import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
 import { GetCurrentQualityCommitteeUseCase } from './application/get-current-quality-committee.js';
+import { ListQualityCommitteesUseCase } from './application/list-quality-committees.js';
 import { ManageCommitteeMembersUseCase } from './application/manage-committee-members.js';
 import { RegisterQualityCommitteeUseCase } from './application/register-quality-committee.js';
 import type { CommitteePermissionChecker } from './domain/ports/committee-permission-checker.js';
@@ -72,10 +73,20 @@ export function createQualityCommitteeModule(deps?: QualityCommitteeModuleDepend
     clock: deps.clock,
   });
 
+  const listQualityCommitteesUseCase = new ListQualityCommitteesUseCase({
+    qualityCommitteeRepository,
+    committeeMemberRepository,
+    programResolver,
+    committeeUserReader,
+    permissionChecker: deps.permissionChecker,
+    clock: deps.clock,
+  });
+
   const controller = new QualityCommitteeController({
     registerQualityCommitteeUseCase,
     manageCommitteeMembersUseCase,
     getCurrentQualityCommitteeUseCase,
+    listQualityCommitteesUseCase,
   });
 
   return createQualityCommitteeRouter({
@@ -100,5 +111,7 @@ export * from './application/manage-committee-members.js';
 export * from './application/manage-committee-members.types.js';
 export * from './application/get-current-quality-committee.js';
 export * from './application/get-current-quality-committee.types.js';
+export * from './application/list-quality-committees.js';
+export * from './application/list-quality-committees.types.js';
 export * from './infrastructure/http/quality-committee.controller.js';
 export * from './infrastructure/http/quality-committee.routes.js';
