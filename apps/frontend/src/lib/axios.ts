@@ -61,6 +61,12 @@ apiClient.interceptors.response.use(
         } catch {
           rawData = null;
         }
+      } else if (typeof Buffer !== 'undefined' && Buffer.isBuffer(rawData)) {
+        try {
+          rawData = JSON.parse(rawData.toString('utf8'));
+        } catch {
+          rawData = null;
+        }
       }
 
       const parsedBackendError = apiErrorResponseSchema.safeParse(rawData);
