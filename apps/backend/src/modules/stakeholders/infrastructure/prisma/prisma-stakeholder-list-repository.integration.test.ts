@@ -291,6 +291,7 @@ describe('PrismaStakeholderListRepository Integration (PostgreSQL real, T-022-22
       dni: '10000002',
       fullName: 'Zulema Torres',
       email: 'zulema@ejemplo.test',
+      mobile: '987654322',
       actorId: 'user-1',
       now: NOW,
     });
@@ -300,6 +301,7 @@ describe('PrismaStakeholderListRepository Integration (PostgreSQL real, T-022-22
       dni: '10000001',
       fullName: 'Alberto Ramos',
       email: 'alberto@ejemplo.test',
+      mobile: '987654321',
       actorId: 'user-1',
       now: NOW,
     });
