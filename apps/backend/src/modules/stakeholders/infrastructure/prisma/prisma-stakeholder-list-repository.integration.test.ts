@@ -242,4 +242,98 @@ describe('PrismaStakeholderListRepository Integration (PostgreSQL real, T-022-22
     expect(withMembers.items[0]?.members).toHaveLength(1);
     expect(withMembers.items[0]?.members?.[0]?.fullName).toBe('Docente Uno');
   }, 5_000);
+
+  it('lists all lists with members for a program and year ordered by type and member name', async () => {
+    const programId = await createProgram('prog-a', 'EPIS-A');
+    const otherProgramId = await createProgram('prog-b', 'EPIS-B');
+
+    const teacherList = StakeholderList.create({
+      id: 'list-t-2026',
+      programId,
+      type: 'TEACHER',
+      year: 2026,
+      actorId: 'user-1',
+      now: NOW,
+    });
+    const advisoryList = StakeholderList.create({
+      id: 'list-a-2026',
+      programId,
+      type: 'ADVISORY_BOARD',
+      year: 2026,
+      actorId: 'user-1',
+      now: NOW,
+    });
+    const otherYearList = StakeholderList.create({
+      id: 'list-t-2027',
+      programId,
+      type: 'TEACHER',
+      year: 2027,
+      actorId: 'user-1',
+      now: NOW,
+    });
+    const otherProgramList = StakeholderList.create({
+      id: 'list-other-prog',
+      programId: otherProgramId,
+      type: 'TEACHER',
+      year: 2026,
+      actorId: 'user-1',
+      now: NOW,
+    });
+
+    await repository.save(teacherList);
+    await repository.save(advisoryList);
+    await repository.save(otherYearList);
+    await repository.save(otherProgramList);
+
+    const teacherB = Stakeholder.register({
+      id: 'stk-b',
+      kind: 'PERSON',
+      stakeholderType: 'TEACHER',
+      documentNumber: '10000002',
+      fullName: 'Zulema Torres',
+      email: 'zulema@ejemplo.test',
+      actorId: 'user-1',
+      now: NOW,
+    });
+    const teacherA = Stakeholder.register({
+      id: 'stk-a',
+      kind: 'PERSON',
+      stakeholderType: 'TEACHER',
+      documentNumber: '10000001',
+      fullName: 'Alberto Ramos',
+      email: 'alberto@ejemplo.test',
+      actorId: 'user-1',
+      now: NOW,
+    });
+
+    await stakeholderRepository.save(teacherB);
+    await stakeholderRepository.save(teacherA);
+
+    await memberRepository.add(
+      StakeholderListMember.create({
+        id: 'mem-b',
+        list: teacherList,
+        stakeholder: teacherB,
+        actorId: 'user-1',
+        now: NOW,
+      }),
+    );
+    await memberRepository.add(
+      StakeholderListMember.create({
+        id: 'mem-a',
+        list: teacherList,
+        stakeholder: teacherA,
+        actorId: 'user-1',
+        now: NOW,
+      }),
+    );
+
+    const result = await repository.listByProgramAndYear(programId, 2026);
+    expect(result.map((entry) => entry.list.type)).toEqual(['ADVISORY_BOARD', 'TEACHER']);
+    expect(result[0]?.members).toEqual([]);
+    expect(result[1]?.members.map((member) => member.fullName)).toEqual([
+      'Alberto Ramos',
+      'Zulema Torres',
+    ]);
+  }, 5_000);
 });

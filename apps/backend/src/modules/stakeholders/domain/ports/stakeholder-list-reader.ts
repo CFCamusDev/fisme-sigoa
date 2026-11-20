@@ -21,6 +21,15 @@ export interface StakeholderListPage {
   readonly total: number;
 }
 
+export interface StakeholderListWithMembers {
+  readonly list: StakeholderList;
+  readonly members: readonly StakeholderListMember[];
+}
+
 export interface StakeholderListReader {
   list(filter: ListStakeholderListsFilter): Promise<StakeholderListPage>;
+  listByProgramAndYear(
+    programId: string,
+    year: number,
+  ): Promise<readonly StakeholderListWithMembers[]>;
 }

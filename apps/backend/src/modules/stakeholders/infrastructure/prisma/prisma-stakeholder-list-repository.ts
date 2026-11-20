@@ -6,6 +6,7 @@ import type {
   ListStakeholderListsFilter,
   StakeholderListPage,
   StakeholderListReader,
+  StakeholderListWithMembers,
 } from '../../domain/ports/stakeholder-list-reader.js';
 import type { StakeholderListRepository } from '../../domain/ports/stakeholder-list-repository.js';
 import { mapPrismaStakeholderListRowToDomain } from './prisma-stakeholder-list-mapper.js';
@@ -102,5 +103,25 @@ export class PrismaStakeholderListRepository
       })),
       total,
     };
+  }
+
+  async listByProgramAndYear(
+    programId: string,
+    year: number,
+  ): Promise<readonly StakeholderListWithMembers[]> {
+    const rows = await this.dbProvider.get().stakeholderList.findMany({
+      where: { programId, year },
+      orderBy: [{ type: 'asc' }, { id: 'asc' }],
+      include: {
+        members: {
+          orderBy: [{ fullName: 'asc' }, { id: 'asc' }],
+        },
+      },
+    });
+
+    return rows.map((row) => ({
+      list: mapPrismaStakeholderListRowToDomain(row),
+      members: row.members.map(mapPrismaStakeholderListMemberRowToDomain),
+    }));
   }
 }
