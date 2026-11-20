@@ -245,7 +245,7 @@ export function StakeholderListsPage() {
             </div>
 
             {pdfError ? (
-              <Alert variant="destructive" role="alert">
+              <Alert variant="danger" role="alert">
                 <AlertCircle className="size-4" aria-hidden="true" />
                 <AlertTitle>No se pudo descargar el PDF</AlertTitle>
                 <AlertDescription>{pdfError}</AlertDescription>
