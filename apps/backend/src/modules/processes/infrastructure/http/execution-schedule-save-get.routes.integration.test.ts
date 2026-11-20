@@ -423,7 +423,7 @@ describe('PUT and GET /process-executions/:id/schedule (PostgreSQL real, HU-028,
 
   it('returns 403 without cronograma.ver', async () => {
     const executionId = await seedExecution('exec-get-403');
-    const actorWithoutPerm = await createActor(['STAKEHOLDER_VIEWER']);
+    const actorWithoutPerm = await createActor([]);
 
     const response = await request(app)
       .get(`/process-executions/${executionId}/schedule`)
