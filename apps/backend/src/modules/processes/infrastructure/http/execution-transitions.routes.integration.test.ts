@@ -107,7 +107,7 @@ describe('Process execution transitions routes (PostgreSQL real, HU-029, T-029-1
 
       const response = await request(app)
         .post(`/process-executions/${executionId}/advance`)
-        .set('Authorization', `Bearer ${president.accessToken}`)
+        .set('Authorization', `Bearer ${president.token}`)
         .send({});
 
       expect(response.status).toBe(200);
@@ -164,7 +164,7 @@ describe('Process execution transitions routes (PostgreSQL real, HU-029, T-029-1
 
       const response = await request(appWithMinutesProvider)
         .post(`/process-executions/${executionId}/advance`)
-        .set('Authorization', `Bearer ${president.accessToken}`)
+        .set('Authorization', `Bearer ${president.token}`)
         .send({});
 
       expect(response.status).toBe(409);
@@ -182,7 +182,7 @@ describe('Process execution transitions routes (PostgreSQL real, HU-029, T-029-1
 
       const response = await request(app)
         .post(`/process-executions/${executionId}/advance`)
-        .set('Authorization', `Bearer ${president.accessToken}`)
+        .set('Authorization', `Bearer ${president.token}`)
         .send({});
 
       expect(response.status).toBe(409);
@@ -204,7 +204,7 @@ describe('Process execution transitions routes (PostgreSQL real, HU-029, T-029-1
 
       const response = await request(app)
         .post(`/process-executions/${executionId}/advance`)
-        .set('Authorization', `Bearer ${president.accessToken}`)
+        .set('Authorization', `Bearer ${president.token}`)
         .send({});
 
       expect(response.status).toBe(200);
@@ -213,7 +213,7 @@ describe('Process execution transitions routes (PostgreSQL real, HU-029, T-029-1
         where: { entity: 'ProcessExecution', entityId: executionId, action: 'STATE_CHANGE' },
       });
       expect(auditRows).toHaveLength(1);
-      expect(auditRows[0]?.actor).toBe(president.userId);
+      expect(auditRows[0]?.actor).toBe(president.user.id);
       expect((auditRows[0]?.before as Record<string, unknown>)?.status).toBe('PLANNED');
       expect((auditRows[0]?.after as Record<string, unknown>)?.status).toBe('IN_PROGRESS');
     }, 5_000);
@@ -224,14 +224,14 @@ describe('Process execution transitions routes (PostgreSQL real, HU-029, T-029-1
 
       const nonEmptyBody = await request(app)
         .post(`/process-executions/${executionId}/advance`)
-        .set('Authorization', `Bearer ${president.accessToken}`)
+        .set('Authorization', `Bearer ${president.token}`)
         .send({ unexpected: true });
       expect(nonEmptyBody.status).toBe(400);
 
       const longId = 'a'.repeat(65);
       const invalidId = await request(app)
         .post(`/process-executions/${longId}/advance`)
-        .set('Authorization', `Bearer ${president.accessToken}`)
+        .set('Authorization', `Bearer ${president.token}`)
         .send({});
       expect(invalidId.status).toBe(400);
     }, 5_000);
@@ -252,7 +252,7 @@ describe('Process execution transitions routes (PostgreSQL real, HU-029, T-029-1
 
       const response = await request(app)
         .post(`/process-executions/${executionId}/advance`)
-        .set('Authorization', `Bearer ${member.accessToken}`)
+        .set('Authorization', `Bearer ${member.token}`)
         .send({});
 
       expect(response.status).toBe(403);
@@ -263,7 +263,7 @@ describe('Process execution transitions routes (PostgreSQL real, HU-029, T-029-1
 
       const response = await request(app)
         .post('/process-executions/missing-exec/advance')
-        .set('Authorization', `Bearer ${president.accessToken}`)
+        .set('Authorization', `Bearer ${president.token}`)
         .send({});
 
       expect(response.status).toBe(404);
@@ -280,7 +280,7 @@ describe('Process execution transitions routes (PostgreSQL real, HU-029, T-029-1
 
         const response = await request(app)
           .post(`/process-executions/${executionId}/advance`)
-          .set('Authorization', `Bearer ${president.accessToken}`)
+          .set('Authorization', `Bearer ${president.token}`)
           .send({});
 
         expect(response.status).toBe(409);
@@ -293,7 +293,7 @@ describe('Process execution transitions routes (PostgreSQL real, HU-029, T-029-1
 
       const response = await request(app)
         .post(`/process-executions/${executionId}/advance`)
-        .set('Authorization', `Bearer ${president.accessToken}`)
+        .set('Authorization', `Bearer ${president.token}`)
         .send({});
 
       expect(response.status).toBe(409);
@@ -312,11 +312,11 @@ describe('Process execution transitions routes (PostgreSQL real, HU-029, T-029-1
       const [first, second] = await Promise.all([
         request(app)
           .post(`/process-executions/${executionId}/advance`)
-          .set('Authorization', `Bearer ${president.accessToken}`)
+          .set('Authorization', `Bearer ${president.token}`)
           .send({}),
         request(app)
           .post(`/process-executions/${executionId}/advance`)
-          .set('Authorization', `Bearer ${president.accessToken}`)
+          .set('Authorization', `Bearer ${president.token}`)
           .send({}),
       ]);
 
@@ -336,11 +336,11 @@ describe('Process execution transitions routes (PostgreSQL real, HU-029, T-029-1
       const [advanceResponse, scheduleResponse] = await Promise.all([
         request(app)
           .post(`/process-executions/${executionId}/advance`)
-          .set('Authorization', `Bearer ${president.accessToken}`)
+          .set('Authorization', `Bearer ${president.token}`)
           .send({}),
         request(app)
           .put(`/process-executions/${executionId}/schedule`)
-          .set('Authorization', `Bearer ${president.accessToken}`)
+          .set('Authorization', `Bearer ${president.token}`)
           .send({
             activities: [
               {
@@ -365,7 +365,7 @@ describe('Process execution transitions routes (PostgreSQL real, HU-029, T-029-1
 
       const response = await request(app)
         .get(`/process-executions/${executionId}/next-transition`)
-        .set('Authorization', `Bearer ${member.accessToken}`);
+        .set('Authorization', `Bearer ${member.token}`);
 
       expect(response.status).toBe(200);
       expect(response.headers['cache-control']).toBe('no-store');
@@ -391,7 +391,7 @@ describe('Process execution transitions routes (PostgreSQL real, HU-029, T-029-1
 
       const response = await request(app)
         .get(`/process-executions/${executionId}/next-transition`)
-        .set('Authorization', `Bearer ${member.accessToken}`);
+        .set('Authorization', `Bearer ${member.token}`);
 
       expect(response.status).toBe(200);
       const parsed = nextTransitionResponseSchema.parse(response.body);
@@ -410,7 +410,7 @@ describe('Process execution transitions routes (PostgreSQL real, HU-029, T-029-1
 
       const response = await request(app)
         .get(`/process-executions/${executionId}/next-transition`)
-        .set('Authorization', `Bearer ${teacher.accessToken}`);
+        .set('Authorization', `Bearer ${teacher.token}`);
 
       expect(response.status).toBe(403);
     }, 5_000);
@@ -420,7 +420,7 @@ describe('Process execution transitions routes (PostgreSQL real, HU-029, T-029-1
 
       const response = await request(app)
         .get('/process-executions/missing-exec/next-transition')
-        .set('Authorization', `Bearer ${member.accessToken}`);
+        .set('Authorization', `Bearer ${member.token}`);
 
       expect(response.status).toBe(404);
     }, 5_000);
