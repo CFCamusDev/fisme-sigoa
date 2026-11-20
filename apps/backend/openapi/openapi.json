@@ -7268,6 +7268,139 @@
         }
       }
     },
+    "/annexes/{code}/pdf": {
+      "get": {
+        "tags": ["Templates"],
+        "summary": "Descargar un anexo oficial en PDF",
+        "description": "Genera en PDF (Puppeteer) cualquiera de los 11 anexos oficiales (FO-01 a FO-11) desde su versión de plantilla Publicada y registra la descarga en la auditoría (DOWNLOAD). Límite conocido: entrega el escudo institucional y textos base del programa; las colecciones y variables de procesos cuya HU dueña aún no registra proveedor se muestran con «—» o sin filas. Limita a una generación en vuelo por usuario (409). Requiere el permiso 'documento.descargar' con alcance GLOBAL (HU-070, RF-070, RS-002, RS-043, RS-063).",
+        "operationId": "downloadAnnexPdf",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "FO-01",
+                "FO-02",
+                "FO-03",
+                "FO-04",
+                "FO-05",
+                "FO-06",
+                "FO-07",
+                "FO-08",
+                "FO-09",
+                "FO-10",
+                "FO-11"
+              ]
+            },
+            "description": "Código oficial del anexo (FO-01 a FO-11)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Anexo oficial generado en formato PDF.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Directiva anti-almacenamiento en caché HTTP."
+              },
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "attachment; filename=\"fo-01-v1.pdf\"",
+                "description": "Nombre de descarga del anexo oficial."
+              },
+              "X-Template-Version": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "1",
+                "description": "Número de versión de la plantilla Publicada utilizada."
+              }
+            },
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Código de anexo fuera del catálogo oficial.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin permiso documento.descargar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Anexo no encontrado o sin versión Publicada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "El usuario ya tiene una generación de anexo en curso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error al renderizar el PDF o registrar la auditoría.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/stakeholders": {
       "get": {
         "tags": ["Stakeholders"],
