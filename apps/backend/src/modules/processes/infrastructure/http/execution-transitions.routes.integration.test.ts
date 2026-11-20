@@ -344,7 +344,6 @@ describe('Process execution transitions routes (PostgreSQL real, HU-029, T-029-1
           .send({
             activities: [
               {
-                number: 1,
                 activity: 'Elaborar cronograma actualizado',
                 responsible: 'Presidente',
                 goal: 'Anexo 1',
