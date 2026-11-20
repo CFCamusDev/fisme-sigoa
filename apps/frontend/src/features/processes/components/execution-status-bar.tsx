@@ -17,9 +17,35 @@ export interface ExecutionStatusBarProps {
   readonly executionId: string;
 }
 
+interface ConflictDetail {
+  readonly path?: string;
+  readonly message: string;
+}
+
+function extractConflictDetails(details: unknown): readonly ConflictDetail[] | undefined {
+  if (!Array.isArray(details)) {
+    return undefined;
+  }
+  const parsed: ConflictDetail[] = [];
+  for (const item of details) {
+    if (
+      item &&
+      typeof item === 'object' &&
+      typeof (item as { message?: unknown }).message === 'string'
+    ) {
+      const rawPath = (item as { path?: unknown }).path;
+      parsed.push({
+        ...(typeof rawPath === 'string' ? { path: rawPath } : {}),
+        message: (item as { message: string }).message,
+      });
+    }
+  }
+  return parsed.length > 0 ? parsed : undefined;
+}
+
 function resolveDisplayedPreconditions(
   queryPreconditions: readonly ExecutionPreconditionResultDto[],
-  conflictDetails: readonly { path?: string; message: string }[] | undefined,
+  conflictDetails: readonly ConflictDetail[] | undefined,
 ): readonly {
   readonly code: string;
   readonly label: string;
@@ -92,7 +118,9 @@ export function ExecutionStatusBar({ executionId }: ExecutionStatusBarProps) {
     status as (typeof EXECUTION_FLOW_STEPS)[number],
   );
   const conflictDetails =
-    advanceMutation.error?.status === 409 ? advanceMutation.error.details : undefined;
+    advanceMutation.error?.status === 409
+      ? extractConflictDetails(advanceMutation.error.details)
+      : undefined;
   const displayedPreconditions = resolveDisplayedPreconditions(preconditions, conflictDetails);
   const hasNonDetailError =
     advanceMutation.error && (!conflictDetails || conflictDetails.length === 0);
