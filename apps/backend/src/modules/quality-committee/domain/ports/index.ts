@@ -5,6 +5,7 @@ export type {
   ReplaceCommitteeMembersInput,
 } from './committee-member-repository.js';
 export type { CommitteePermissionChecker } from './committee-permission-checker.js';
+export type { CommitteePresidentRoleReader } from './committee-president-role-reader.js';
 export type { CommitteeProgramResolver } from './committee-program-resolver.js';
 export type {
   CommitteeUserReader,

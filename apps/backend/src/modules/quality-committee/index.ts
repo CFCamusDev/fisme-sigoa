@@ -9,6 +9,7 @@ export * from './domain/entities/committee-member.js';
 export * from './domain/entities/quality-committee.js';
 export * from './domain/policies/committee-composition.js';
 export * from './domain/policies/committee-period.js';
+export * from './domain/policies/president-alert.js';
 export * from './domain/errors/index.js';
 export * from './domain/ports/index.js';
 export * from './application/committee-dto.js';
