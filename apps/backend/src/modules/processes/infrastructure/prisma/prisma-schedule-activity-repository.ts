@@ -24,6 +24,14 @@ export class PrismaScheduleActivityRepository implements ScheduleActivityReposit
     return rows.map(mapPrismaScheduleActivityRowToDomain);
   }
 
+  async findById(id: string): Promise<ScheduleActivity | null> {
+    const row = await this.dbProvider.get().scheduleActivity.findUnique({
+      where: { id },
+    });
+
+    return row ? mapPrismaScheduleActivityRowToDomain(row) : null;
+  }
+
   async findByIdForUpdate(id: string): Promise<ScheduleActivity | null> {
     const rows = await this.dbProvider.get().$queryRaw<PrismaScheduleActivityRow[]>`
       SELECT

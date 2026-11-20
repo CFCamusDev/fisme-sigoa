@@ -281,6 +281,30 @@ describe('PrismaScheduleActivityRepository Integration (PostgreSQL real, T-028-2
     expect(locked).toBeNull();
   }, 5_000);
 
+  it('returns the activity by id', async () => {
+    const executionId = await createExecution('exec-find-id');
+
+    const activity = ScheduleActivity.create({
+      id: 'act-find-1',
+      executionId,
+      number: 1,
+      activity: 'Actividad consultada',
+      responsible: 'Presidente',
+      actorId: 'user-1',
+      now: NOW,
+    });
+    await repository.insertMany([activity]);
+
+    const found = await repository.findById('act-find-1');
+    expect(found?.id).toBe('act-find-1');
+    expect(found?.activity).toBe('Actividad consultada');
+  }, 5_000);
+
+  it('returns null for an unknown id', async () => {
+    const found = await repository.findById('missing-activity');
+    expect(found).toBeNull();
+  }, 5_000);
+
   it('serializes two concurrent proposals so exactly one inserts', async () => {
     const executionId = await createExecution('exec-conc-propose');
 
