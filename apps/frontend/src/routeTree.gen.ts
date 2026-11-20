@@ -29,6 +29,7 @@ import { Route as AppConfiguracionEscalasRouteImport } from './routes/_app/confi
 import { Route as AppConfiguracionParametrosRouteImport } from './routes/_app/configuracion/parametros'
 import { Route as AppConfiguracionProgramaRouteImport } from './routes/_app/configuracion/programa'
 import { Route as AppConfiguracionSemestresRouteImport } from './routes/_app/configuracion/semestres'
+import { Route as AppCronogramaExecutionIdRouteImport } from './routes/_app/cronograma.$executionId'
 import { Route as AppRolesIndexRouteImport } from './routes/_app/roles/index'
 import { Route as AppRolesNuevoRouteImport } from './routes/_app/roles/nuevo'
 import { Route as AppUsuariosIndexRouteImport } from './routes/_app/usuarios/index'
@@ -141,6 +142,12 @@ const AppConfiguracionSemestresRoute =
     path: '/configuracion/semestres',
     getParentRoute: () => AppRoute,
   } as any)
+const AppCronogramaExecutionIdRoute =
+  AppCronogramaExecutionIdRouteImport.update({
+    id: '/cronograma/$executionId',
+    path: '/cronograma/$executionId',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppRolesIndexRoute = AppRolesIndexRouteImport.update({
   id: '/roles/',
   path: '/roles/',
@@ -212,6 +219,7 @@ export interface FileRoutesByFullPath {
   '/configuracion/parametros': typeof AppConfiguracionParametrosRoute
   '/configuracion/programa': typeof AppConfiguracionProgramaRoute
   '/configuracion/semestres': typeof AppConfiguracionSemestresRoute
+  '/cronograma/$executionId': typeof AppCronogramaExecutionIdRoute
   '/roles/nuevo': typeof AppRolesNuevoRoute
   '/usuarios/nuevo': typeof AppUsuariosNuevoRoute
   '/activar/$token': typeof AuthActivarTokenRoute
@@ -242,6 +250,7 @@ export interface FileRoutesByTo {
   '/configuracion/parametros': typeof AppConfiguracionParametrosRoute
   '/configuracion/programa': typeof AppConfiguracionProgramaRoute
   '/configuracion/semestres': typeof AppConfiguracionSemestresRoute
+  '/cronograma/$executionId': typeof AppCronogramaExecutionIdRoute
   '/roles/nuevo': typeof AppRolesNuevoRoute
   '/usuarios/nuevo': typeof AppUsuariosNuevoRoute
   '/activar/$token': typeof AuthActivarTokenRoute
@@ -275,6 +284,7 @@ export interface FileRoutesById {
   '/_app/configuracion/parametros': typeof AppConfiguracionParametrosRoute
   '/_app/configuracion/programa': typeof AppConfiguracionProgramaRoute
   '/_app/configuracion/semestres': typeof AppConfiguracionSemestresRoute
+  '/_app/cronograma/$executionId': typeof AppCronogramaExecutionIdRoute
   '/_app/roles/nuevo': typeof AppRolesNuevoRoute
   '/_app/usuarios/nuevo': typeof AppUsuariosNuevoRoute
   '/_auth/activar/$token': typeof AuthActivarTokenRoute
@@ -307,6 +317,7 @@ export interface FileRouteTypes {
     | '/configuracion/parametros'
     | '/configuracion/programa'
     | '/configuracion/semestres'
+    | '/cronograma/$executionId'
     | '/roles/nuevo'
     | '/usuarios/nuevo'
     | '/activar/$token'
@@ -337,6 +348,7 @@ export interface FileRouteTypes {
     | '/configuracion/parametros'
     | '/configuracion/programa'
     | '/configuracion/semestres'
+    | '/cronograma/$executionId'
     | '/roles/nuevo'
     | '/usuarios/nuevo'
     | '/activar/$token'
@@ -369,6 +381,7 @@ export interface FileRouteTypes {
     | '/_app/configuracion/parametros'
     | '/_app/configuracion/programa'
     | '/_app/configuracion/semestres'
+    | '/_app/cronograma/$executionId'
     | '/_app/roles/nuevo'
     | '/_app/usuarios/nuevo'
     | '/_auth/activar/$token'
@@ -529,6 +542,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppConfiguracionSemestresRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/cronograma/$executionId': {
+      id: '/_app/cronograma/$executionId'
+      path: '/cronograma/$executionId'
+      fullPath: '/cronograma/$executionId'
+      preLoaderRoute: typeof AppCronogramaExecutionIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/roles/': {
       id: '/_app/roles/'
       path: '/roles'
@@ -618,6 +638,7 @@ interface AppRouteChildren {
   AppConfiguracionParametrosRoute: typeof AppConfiguracionParametrosRoute
   AppConfiguracionProgramaRoute: typeof AppConfiguracionProgramaRoute
   AppConfiguracionSemestresRoute: typeof AppConfiguracionSemestresRoute
+  AppCronogramaExecutionIdRoute: typeof AppCronogramaExecutionIdRoute
   AppRolesNuevoRoute: typeof AppRolesNuevoRoute
   AppUsuariosNuevoRoute: typeof AppUsuariosNuevoRoute
   AppRolesIndexRoute: typeof AppRolesIndexRoute
@@ -644,6 +665,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppConfiguracionParametrosRoute: AppConfiguracionParametrosRoute,
   AppConfiguracionProgramaRoute: AppConfiguracionProgramaRoute,
   AppConfiguracionSemestresRoute: AppConfiguracionSemestresRoute,
+  AppCronogramaExecutionIdRoute: AppCronogramaExecutionIdRoute,
   AppRolesNuevoRoute: AppRolesNuevoRoute,
   AppUsuariosNuevoRoute: AppUsuariosNuevoRoute,
   AppRolesIndexRoute: AppRolesIndexRoute,

@@ -1,5 +1,8 @@
 import type { ProcessExecutionDto } from '@sigoa/shared';
+import { Link } from '@tanstack/react-router';
+import { Can } from '@/components/common/can';
 import { StatusBadge } from '@/components/common/status-badge';
+import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -36,6 +39,9 @@ export function ProcessExecutionsTable({ items }: ProcessExecutionsTableProps) {
             <TableHead scope="col" className="text-foreground">
               Estado
             </TableHead>
+            <TableHead scope="col" className="text-foreground">
+              Cronograma
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -53,6 +59,15 @@ export function ProcessExecutionsTable({ items }: ProcessExecutionsTableProps) {
                 </TableCell>
                 <TableCell>
                   <StatusBadge status={item.status} />
+                </TableCell>
+                <TableCell>
+                  <Can permission="cronograma.ver">
+                    <Button variant="outline" size="sm" asChild>
+                      <Link to="/cronograma/$executionId" params={{ executionId: item.id }}>
+                        Cronograma
+                      </Link>
+                    </Button>
+                  </Can>
                 </TableCell>
               </TableRow>
             );
