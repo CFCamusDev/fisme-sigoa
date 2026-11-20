@@ -3,6 +3,7 @@ import { PrismaUnitOfWork } from '../../../../shared/prisma/prisma-unit-of-work.
 import { useTestDatabase } from '../../../../test/db/use-test-database.js';
 import { ProcessExecution } from '../../domain/entities/process-execution.js';
 import { DuplicateProcessExecutionError } from '../../domain/errors/duplicate-process-execution-error.js';
+import { ExecutionStatusConflictError } from '../../domain/errors/execution-status-conflict-error.js';
 import { PrismaProcessCatalogVersionReader } from './prisma-process-catalog-version-reader.js';
 import { PrismaProcessExecutionRepository } from './prisma-process-execution-repository.js';
 import { PrismaProcessProgramResolver } from './prisma-process-program-resolver.js';
@@ -306,5 +307,80 @@ describe('PrismaProcessExecutionRepository Integration (PostgreSQL real, T-027-1
   it('returns null for an unknown version or semester', async () => {
     expect(await catalogVersionReader.findById('missing-cv')).toBeNull();
     expect(await semesterReader.findById('missing-sem')).toBeNull();
+  }, 5_000);
+
+  it('findByIdForUpdate returns the row', async () => {
+    const programId = await createProgram();
+    const version = await createCatalogVersion({ programId, status: 'APPROVED' });
+    const execution = ProcessExecution.create({
+      id: 'exec-lock-1',
+      programId,
+      type: 'P612',
+      year: 2027,
+      catalogVersion: version,
+      actorId: 'user-1',
+      now: NOW,
+    });
+    await repository.save(execution);
+
+    const locked = await uow.run(async () => repository.findByIdForUpdate('exec-lock-1'));
+    expect(locked?.id).toBe('exec-lock-1');
+    expect(locked?.status).toBe('PLANNED');
+
+    const missing = await uow.run(async () => repository.findByIdForUpdate('missing-exec'));
+    expect(missing).toBeNull();
+  }, 5_000);
+
+  it('updateStatus changes the status only from the expected one', async () => {
+    const programId = await createProgram();
+    const version = await createCatalogVersion({ programId, status: 'APPROVED' });
+    const execution = ProcessExecution.create({
+      id: 'exec-upd-1',
+      programId,
+      type: 'P612',
+      year: 2027,
+      catalogVersion: version,
+      actorId: 'user-1',
+      now: NOW,
+    });
+    await repository.save(execution);
+
+    const advanced = execution.advance({
+      actorId: 'user-2',
+      now: new Date('2027-01-20T10:00:00.000Z'),
+    });
+
+    await repository.updateStatus(advanced, 'PLANNED');
+
+    const reloaded = await repository.findById('exec-upd-1');
+    expect(reloaded?.status).toBe('IN_PROGRESS');
+    expect(reloaded?.updatedBy).toBe('user-2');
+  }, 5_000);
+
+  it('updateStatus fails with a conflict when the status differs', async () => {
+    const programId = await createProgram();
+    const version = await createCatalogVersion({ programId, status: 'APPROVED' });
+    const execution = ProcessExecution.create({
+      id: 'exec-conflict-1',
+      programId,
+      type: 'P612',
+      year: 2027,
+      catalogVersion: version,
+      actorId: 'user-1',
+      now: NOW,
+    });
+    await repository.save(execution);
+
+    const advanced = execution.advance({
+      actorId: 'user-2',
+      now: new Date('2027-01-20T10:00:00.000Z'),
+    });
+
+    await expect(repository.updateStatus(advanced, 'IN_PROGRESS')).rejects.toBeInstanceOf(
+      ExecutionStatusConflictError,
+    );
+
+    const reloaded = await repository.findById('exec-conflict-1');
+    expect(reloaded?.status).toBe('PLANNED');
   }, 5_000);
 });
