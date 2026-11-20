@@ -20,3 +20,4 @@ export * from './stakeholder-import.js';
 export * from './process-executions.js';
 export * from './sessions.js';
 export * from './session-attendees.js';
+export * from './quality-committees.js';
