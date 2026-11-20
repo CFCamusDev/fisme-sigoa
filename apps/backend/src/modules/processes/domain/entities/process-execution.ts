@@ -9,11 +9,13 @@ import {
   buildDefaultProcessExecutionName,
   type ProcessType,
 } from './process-type.js';
+import { InvalidExecutionTransitionError } from '../errors/invalid-execution-transition-error.js';
 import { InvalidProcessExecutionDataError } from '../errors/invalid-process-execution-data-error.js';
 import {
   assertCatalogVersionAllowed,
   type ProcessCatalogVersionRef,
 } from '../policies/process-catalog-version-rule.js';
+import { nextAdvanceStatus } from '../policies/process-execution-transitions.js';
 
 export interface ProcessExecutionProps {
   readonly id: string;
@@ -122,6 +124,22 @@ export class ProcessExecution {
 
   static rehydrate(props: ProcessExecutionProps): ProcessExecution {
     return new ProcessExecution(props);
+  }
+
+  advance(input: { readonly actorId: string; readonly now: Date }): ProcessExecution {
+    const nextStatus = nextAdvanceStatus(this.props.status);
+    if (!nextStatus) {
+      throw new InvalidExecutionTransitionError(
+        `La ejecución en estado ${this.props.status} no puede avanzar al siguiente estado`,
+      );
+    }
+
+    return new ProcessExecution({
+      ...this.props,
+      status: nextStatus,
+      updatedBy: input.actorId,
+      updatedAt: input.now,
+    });
   }
 
   snapshot(): Record<string, unknown> {
