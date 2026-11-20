@@ -5,6 +5,8 @@ import {
   addStakeholderListMemberRequestSchema,
   copyStakeholderListRequestSchema,
   createStakeholderListRequestSchema,
+  exportStakeholderListPdfParamsSchema,
+  exportStakeholderListPdfQuerySchema,
   listStakeholderListsQuerySchema,
   stakeholderImportTemplateQuerySchema,
   stakeholderListIdParamsSchema,
@@ -21,6 +23,7 @@ export interface StakeholderListsRouterDependencies {
     permission: string,
     scope?: StakeholderRoutePermissionScope,
   ) => RequestHandler;
+  readonly enablePdfExport?: boolean;
 }
 
 export function createStakeholderListsRouter(deps: StakeholderListsRouterDependencies): Router {
@@ -35,6 +38,20 @@ export function createStakeholderListsRouter(deps: StakeholderListsRouterDepende
     validateRequest({ query: stakeholderImportTemplateQuerySchema }),
     deps.controller.downloadStakeholderImportTemplate,
   );
+
+  // GET /stakeholder-lists/:id/pdf (HU-026, T-026-03, RF-026, RS-002, RS-063)
+  if (deps.enablePdfExport) {
+    router.get(
+      '/:id/pdf',
+      deps.authenticate,
+      deps.requirePermission('documento.descargar', 'GLOBAL'),
+      validateRequest({
+        params: exportStakeholderListPdfParamsSchema,
+        query: exportStakeholderListPdfQuerySchema,
+      }),
+      deps.controller.exportStakeholderListPdf,
+    );
+  }
 
   // POST /stakeholder-lists (HU-022, T-022-10, RF-022, RS-002, RS-020, RNF-008, RNF-009)
   // Cadena obligatoria: authenticate -> requirePermission -> validateRequest -> controller

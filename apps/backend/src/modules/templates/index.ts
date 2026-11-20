@@ -88,19 +88,23 @@ export function createTemplatesModule(deps?: TemplatesModuleDependencies): Route
   });
 }
 
-export interface AnnexesModuleDependencies extends TemplatesModuleDependencies {
+export interface CreateGenerateAnnexPdfUseCaseDependencies {
+  readonly unitOfWork: UnitOfWork;
+  readonly auditLogger: AuditLogger;
+  readonly dbProvider: DbProvider;
+  readonly permissionChecker: TemplatePermissionChecker;
+  readonly pdfGenerator: PdfGenerator;
   readonly dataProviders?: readonly AnnexDataProvider[];
+  readonly clock?: () => Date;
 }
 
-export function createAnnexesModule(deps?: AnnexesModuleDependencies): Router {
-  if (!deps) {
-    return Router();
-  }
-
+export function createGenerateAnnexPdfUseCase(
+  deps: CreateGenerateAnnexPdfUseCaseDependencies,
+): GenerateAnnexPdfUseCase {
   const templateRepository = new PrismaTemplateRepository(deps.dbProvider);
   const versionRepository = new PrismaTemplateVersionRepository(deps.dbProvider);
 
-  const generateAnnexPdfUseCase = new GenerateAnnexPdfUseCase({
+  return new GenerateAnnexPdfUseCase({
     templateReader: templateRepository,
     versionReader: versionRepository,
     permissionChecker: deps.permissionChecker,
@@ -110,6 +114,20 @@ export function createAnnexesModule(deps?: AnnexesModuleDependencies): Router {
     dataProviders: [new InstitutionalAnnexDataProvider(), ...(deps.dataProviders ?? [])],
     clock: deps.clock,
   });
+}
+
+export interface AnnexesModuleDependencies extends TemplatesModuleDependencies {
+  readonly dataProviders?: readonly AnnexDataProvider[];
+  readonly generateAnnexPdfUseCase?: GenerateAnnexPdfUseCase;
+}
+
+export function createAnnexesModule(deps?: AnnexesModuleDependencies): Router {
+  if (!deps) {
+    return Router();
+  }
+
+  const generateAnnexPdfUseCase =
+    deps.generateAnnexPdfUseCase ?? createGenerateAnnexPdfUseCase(deps);
 
   const controller = new AnnexesController({
     generateAnnexPdfUseCase,

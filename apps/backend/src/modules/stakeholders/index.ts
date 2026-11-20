@@ -8,11 +8,13 @@ import { CopyStakeholderListToNewYearUseCase } from './application/copy-stakehol
 import { CreateStakeholderListUseCase } from './application/create-stakeholder-list.js';
 import { DownloadStakeholderImportTemplateUseCase } from './application/download-stakeholder-import-template.js';
 import { EditStakeholderUseCase } from './application/edit-stakeholder.js';
+import { ExportStakeholderListPdfUseCase } from './application/export-stakeholder-list-pdf.js';
 import { ListStakeholderListsUseCase } from './application/list-stakeholder-lists.js';
 import { PreviewStakeholderImportUseCase } from './application/preview-stakeholder-import.js';
 import { RegisterStakeholderUseCase } from './application/register-stakeholder.js';
 import { SearchStakeholdersUseCase } from './application/search-stakeholders.js';
 import { VoidStakeholderUseCase } from './application/void-stakeholder.js';
+import type { AnnexPdfGenerator } from './domain/ports/annex-pdf-generator.js';
 import type { StakeholderPermissionChecker } from './domain/ports/stakeholder-permission-checker.js';
 import { ExcelJsStakeholderImportFileReader } from './infrastructure/excel/exceljs-stakeholder-import-file-reader.js';
 import { ExcelJsStakeholderImportTemplateBuilder } from './infrastructure/excel/exceljs-stakeholder-import-template-builder.js';
@@ -38,6 +40,7 @@ export interface StakeholdersModuleDependencies {
     scope?: StakeholderRoutePermissionScope,
   ) => RequestHandler;
   readonly permissionChecker: StakeholderPermissionChecker;
+  readonly annexPdfGenerator?: AnnexPdfGenerator;
   readonly clock?: () => Date;
 }
 
@@ -165,6 +168,15 @@ export function createStakeholderListsModule(deps?: StakeholdersModuleDependenci
     permissionChecker: deps.permissionChecker,
   });
 
+  const exportStakeholderListPdfUseCase = deps.annexPdfGenerator
+    ? new ExportStakeholderListPdfUseCase({
+        stakeholderListRepository,
+        stakeholderListReader: stakeholderListRepository,
+        permissionChecker: deps.permissionChecker,
+        annexPdfGenerator: deps.annexPdfGenerator,
+      })
+    : undefined;
+
   const controller = new StakeholderListsController({
     createStakeholderListUseCase,
     addStakeholderListMemberUseCase,
@@ -173,12 +185,14 @@ export function createStakeholderListsModule(deps?: StakeholdersModuleDependenci
     previewStakeholderImportUseCase,
     confirmStakeholderImportUseCase,
     downloadStakeholderImportTemplateUseCase,
+    exportStakeholderListPdfUseCase,
   });
 
   return createStakeholderListsRouter({
     controller,
     authenticate: deps.authenticate,
     requirePermission: deps.requirePermission,
+    enablePdfExport: Boolean(exportStakeholderListPdfUseCase),
   });
 }
 
@@ -187,6 +201,7 @@ export * from './domain/entities/stakeholder-list-enums.js';
 export * from './domain/entities/stakeholder-list.js';
 export * from './domain/entities/stakeholder-list-member.js';
 export * from './domain/entities/stakeholder.js';
+export * from './domain/policies/build-annex3-render-data.js';
 export * from './domain/policies/stakeholder-list-type-fields.js';
 export * from './domain/policies/stakeholder-state-machine.js';
 export * from './domain/errors/index.js';
@@ -210,6 +225,8 @@ export * from './application/create-stakeholder-list.js';
 export * from './application/create-stakeholder-list.types.js';
 export * from './application/download-stakeholder-import-template.js';
 export * from './application/download-stakeholder-import-template.types.js';
+export * from './application/export-stakeholder-list-pdf.js';
+export * from './application/export-stakeholder-list-pdf.types.js';
 export * from './application/list-stakeholder-lists.js';
 export * from './application/list-stakeholder-lists.types.js';
 export * from './application/preview-stakeholder-import.js';

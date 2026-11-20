@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Copy, FileSpreadsheet, UserPlus, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Copy, FileDown, FileSpreadsheet, UserPlus } from 'lucide-react';
 import type {
   ConfirmStakeholderImportResponse,
   CopyStakeholderListResponse,
@@ -14,6 +14,8 @@ import { LoadingState } from '@/components/common/loading-state';
 import { PageHeader } from '@/components/common/page-header';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { saveBlobFile } from '@/lib/blob-download';
+import { useDownloadStakeholderListPdf } from '../hooks/use-download-stakeholder-list-pdf';
 import { useStakeholderLists } from '../hooks/use-stakeholder-lists';
 import { getStakeholderListErrorMessage } from '../lib/stakeholder-list-error-message';
 import { STAKEHOLDER_LIST_TYPE_LABELS } from '../lib/stakeholder-list-labels';
@@ -41,6 +43,7 @@ export function StakeholderListsPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [skippedItems, setSkippedItems] = useState<readonly CopyStakeholderListSkippedItem[]>([]);
   const [importResult, setImportResult] = useState<ConfirmStakeholderImportResponse | null>(null);
+  const [pdfError, setPdfError] = useState<string | null>(null);
   const successAlertRef = useRef<HTMLDivElement>(null);
   const importButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -49,6 +52,7 @@ export function StakeholderListsPage() {
     year: filters.year,
     includeMembers: true,
   });
+  const downloadPdfMutation = useDownloadStakeholderListPdf();
 
   useEffect(() => {
     if (successMessage || importResult) {
@@ -65,6 +69,23 @@ export function StakeholderListsPage() {
     setSuccessMessage(null);
     setSkippedItems([]);
     setImportResult(null);
+    setPdfError(null);
+  }
+
+  async function handleDownloadPdf(targetList: StakeholderListDto) {
+    if (downloadPdfMutation.isPending) {
+      return;
+    }
+    setPdfError(null);
+    try {
+      const result = await downloadPdfMutation.mutateAsync({
+        listId: targetList.id,
+        fallbackFileName: `fo-03-${targetList.year}.pdf`,
+      });
+      saveBlobFile(result.blob, result.fileName);
+    } catch (error) {
+      setPdfError(getStakeholderListErrorMessage(error, 'pdf-download'));
+    }
   }
 
   function handleCreated(created: StakeholderListDto) {
@@ -208,8 +229,28 @@ export function StakeholderListsPage() {
                     Importar desde Excel
                   </Button>
                 </Can>
+                <Can permission="documento.descargar">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={downloadPdfMutation.isPending}
+                    aria-busy={downloadPdfMutation.isPending}
+                    onClick={() => void handleDownloadPdf(list)}
+                  >
+                    <FileDown className="mr-2 size-4" aria-hidden="true" />
+                    {downloadPdfMutation.isPending ? 'Generando PDF…' : 'Descargar PDF'}
+                  </Button>
+                </Can>
               </div>
             </div>
+
+            {pdfError ? (
+              <Alert variant="danger" role="alert">
+                <AlertCircle className="size-4" aria-hidden="true" />
+                <AlertTitle>No se pudo descargar el PDF</AlertTitle>
+                <AlertDescription>{pdfError}</AlertDescription>
+              </Alert>
+            ) : null}
 
             {members.length === 0 ? (
               <div>

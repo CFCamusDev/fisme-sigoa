@@ -34,11 +34,16 @@ import {
   createResolutionsModule,
   type ResolutionApprovedSubscriber,
 } from './modules/resolutions/index.js';
-import { createAnnexesModule, createTemplatesModule } from './modules/templates/index.js';
+import {
+  createAnnexesModule,
+  createGenerateAnnexPdfUseCase,
+  createTemplatesModule,
+} from './modules/templates/index.js';
 import {
   createStakeholderListsModule,
   createStakeholdersModule,
 } from './modules/stakeholders/index.js';
+import { createStakeholderAnnexPdfGenerator } from './stakeholder-annex-pdf-adapter.js';
 import { createProcessesModule } from './modules/processes/index.js';
 import { createQualityCommitteeModule } from './modules/quality-committee/index.js';
 import { createSessionsModule } from './modules/sessions/index.js';
@@ -270,6 +275,15 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
     }),
   );
   const pdfGenerator = deps.pdfGenerator ?? new PuppeteerPdfGenerator({ logger: deps.logger });
+  const generateAnnexPdfUseCase = createGenerateAnnexPdfUseCase({
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+    dbProvider: deps.dbProvider,
+    permissionChecker: authorizationServices.authorizer,
+    pdfGenerator,
+    clock: deps.clock,
+  });
+  const stakeholderAnnexPdfGenerator = createStakeholderAnnexPdfGenerator(generateAnnexPdfUseCase);
   app.use(
     '/templates',
     createTemplatesModule({
@@ -293,6 +307,7 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
       requirePermission: authorizationServices.requirePermission,
       permissionChecker: authorizationServices.authorizer,
       pdfGenerator,
+      generateAnnexPdfUseCase,
       clock: deps.clock,
     }),
   );
@@ -317,6 +332,7 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
       authenticate: authServices.authenticate,
       requirePermission: authorizationServices.requirePermission,
       permissionChecker: authorizationServices.authorizer,
+      annexPdfGenerator: stakeholderAnnexPdfGenerator,
       clock: deps.clock,
     }),
   );

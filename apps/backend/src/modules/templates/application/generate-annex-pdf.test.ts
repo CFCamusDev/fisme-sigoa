@@ -16,7 +16,11 @@ import type { AnnexDataProvider } from '../domain/ports/annex-data-provider.js';
 import type { TemplatePermissionChecker } from '../domain/ports/template-permission-checker.js';
 import type { TemplateReader } from '../domain/ports/template-reader.js';
 import type { TemplateVersionReader } from '../domain/ports/template-version-reader.js';
-import { GenerateAnnexPdfUseCase, MAX_ANNEX_PDF_BYTES } from './generate-annex-pdf.js';
+import {
+  GenerateAnnexPdfUseCase,
+  MAX_ANNEX_PDF_BYTES,
+  formatAnnexFileName,
+} from './generate-annex-pdf.js';
 
 const FIXED_DATE = new Date('2026-11-20T15:30:00.000Z'); // 10:30 en America/Lima (UTC-5)
 
@@ -298,5 +302,55 @@ describe('GenerateAnnexPdfUseCase (T-070-09, RF-070)', () => {
 
     const recovery = await useCase.execute({ actorId: 'user-1', annexCode: 'FO-01' });
     expect(recovery.pdf).toEqual(samplePdf);
+  });
+
+  it('audits the download on the subject entity when a subject is given', async () => {
+    const result = await useCase.execute({
+      actorId: 'user-1',
+      ip: '10.0.0.8',
+      annexCode: 'FO-01',
+      fileLabel: '2026',
+      data: {
+        scalars: { 'schedule.period': '2026-I' },
+        collections: { activities: [{ name: 'Taller 1' }] },
+      },
+      subject: {
+        entity: 'StakeholderList',
+        entityId: 'list-99',
+        metadata: { year: 2026, memberCount: 1 },
+      },
+    });
+
+    expect(result.fileName).toBe('fo-01-2026-v2.pdf');
+
+    const renderedHtml = pdfGenerator.render.mock.calls[0]?.[0].html ?? '';
+    expect(renderedHtml).toContain('data:image/png;base64,AAAA');
+    expect(renderedHtml).toContain('<p>2026-I</p>');
+    expect(renderedHtml).toContain('<td>Taller 1</td>');
+
+    expect(auditLogger.log).toHaveBeenCalledWith({
+      action: 'DOWNLOAD',
+      entity: 'StakeholderList',
+      entityId: 'list-99',
+      actor: 'user-1',
+      ip: '10.0.0.8',
+      after: {
+        templateId: 'tpl-fo-01',
+        templateCode: 'FO-01',
+        versionId: 'ver-2',
+        versionNumber: 2,
+        pdfSha256: createHash('sha256').update(samplePdf).digest('hex'),
+        pdfBytes: samplePdf.byteLength,
+        generatedAt: FIXED_DATE.toISOString(),
+        year: 2026,
+        memberCount: 1,
+      },
+    });
+  });
+
+  it('formats annex file names with optional sanitized label', () => {
+    expect(formatAnnexFileName('FO-03', 1)).toBe('fo-03-v1.pdf');
+    expect(formatAnnexFileName('FO-03', 1, '2026')).toBe('fo-03-2026-v1.pdf');
+    expect(formatAnnexFileName('FO-03', 2, '  /2026/  ')).toBe('fo-03-2026-v2.pdf');
   });
 });

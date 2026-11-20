@@ -38,13 +38,43 @@ export interface GenerateAnnexPdfDependencies {
   readonly clock?: () => Date;
 }
 
-function formatAnnexFileName(templateCode: string, versionNumber: number): string {
-  const sanitizedCode = templateCode
+function sanitizeFileSegment(value: string): string {
+  return value
     .toLowerCase()
     .replace(/[^a-z0-9-.]/g, '-')
     .replace(/^-+|-+$/g, '');
+}
+
+export function formatAnnexFileName(
+  templateCode: string,
+  versionNumber: number,
+  fileLabel?: string,
+): string {
+  const sanitizedCode = sanitizeFileSegment(templateCode);
   const baseCode = sanitizedCode.length > 0 ? sanitizedCode : 'annex';
-  return `${baseCode}-v${versionNumber}.pdf`;
+  const sanitizedLabel = fileLabel ? sanitizeFileSegment(fileLabel) : '';
+  return sanitizedLabel.length > 0
+    ? `${baseCode}-${sanitizedLabel}-v${versionNumber}.pdf`
+    : `${baseCode}-v${versionNumber}.pdf`;
+}
+
+function mergeRenderData(
+  provided: Partial<TemplateRenderData>,
+  override?: Partial<TemplateRenderData>,
+): Partial<TemplateRenderData> {
+  if (!override) {
+    return provided;
+  }
+  return {
+    scalars: {
+      ...(provided.scalars ?? {}),
+      ...(override.scalars ?? {}),
+    },
+    collections: {
+      ...(provided.collections ?? {}),
+      ...(override.collections ?? {}),
+    },
+  };
 }
 
 /**
@@ -88,7 +118,8 @@ export class GenerateAnnexPdfUseCase {
 
       const generatedAt = this.clock();
       const provided = await this.collectProviderData(template.code, generatedAt);
-      const renderData = buildOfficialRenderData(template.variables, provided, version.content);
+      const merged = mergeRenderData(provided, command.data);
+      const renderData = buildOfficialRenderData(template.variables, merged, version.content);
       const html = renderTemplateHtml(version.content, renderData);
       const footerTemplate = buildAnnexPdfFooter({
         templateCode: template.code,
@@ -125,12 +156,18 @@ export class GenerateAnnexPdfUseCase {
         generatedAt,
       });
 
+      const auditEntity = command.subject?.entity ?? 'TemplateVersion';
+      const auditEntityId = command.subject?.entityId ?? version.id;
+      const auditAfter = command.subject?.metadata
+        ? { ...record.toAuditPayload(), ...command.subject.metadata }
+        : record.toAuditPayload();
+
       await this.deps.unitOfWork.run(async () => {
         await this.deps.auditLogger.log({
           action: 'DOWNLOAD',
-          entity: 'TemplateVersion',
-          entityId: version.id,
-          after: record.toAuditPayload(),
+          entity: auditEntity,
+          entityId: auditEntityId,
+          after: auditAfter,
           actor: command.actorId,
           ip: command.ip,
         });
@@ -138,7 +175,7 @@ export class GenerateAnnexPdfUseCase {
 
       return {
         pdf,
-        fileName: formatAnnexFileName(template.code, version.number),
+        fileName: formatAnnexFileName(template.code, version.number, command.fileLabel),
         templateCode: template.code,
         versionNumber: version.number,
       };

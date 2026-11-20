@@ -426,6 +426,12 @@ const PROTECTED_ENDPOINTS: readonly ProtectedEndpointSpec[] = [
   },
   {
     method: 'get',
+    openApiPath: '/stakeholder-lists/{id}/pdf',
+    requestPath: '/stakeholder-lists/stakeholder_list_target_1/pdf',
+    requiredPermission: 'documento.descargar',
+  },
+  {
+    method: 'get',
     openApiPath: '/process-executions',
     requestPath: '/process-executions',
     requiredPermission: 'ejecucion.ver',

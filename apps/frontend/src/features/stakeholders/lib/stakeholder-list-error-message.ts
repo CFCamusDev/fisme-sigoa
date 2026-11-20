@@ -33,8 +33,8 @@ export function getMissingListMemberFields(error: unknown): string[] {
     .map(capitalizeField);
 }
 
-/** Mensaje al usuario para los errores de listas del Anexo 3 (HU-022). */
-export function getStakeholderListErrorMessage(error: unknown): string {
+/** Mensaje al usuario para los errores de listas del Anexo 3 (HU-022, HU-026). */
+export function getStakeholderListErrorMessage(error: unknown, context?: 'pdf-download'): string {
   if (!error || typeof error !== 'object') {
     return GENERIC;
   }
@@ -53,11 +53,18 @@ export function getStakeholderListErrorMessage(error: unknown): string {
         : 'Revisa los datos ingresados para la lista.';
     }
     case 403:
-      return 'No tienes permiso para gestionar las listas del Anexo 3.';
+      return context === 'pdf-download'
+        ? 'No tienes permiso para descargar el PDF del Anexo 3.'
+        : 'No tienes permiso para gestionar las listas del Anexo 3.';
     case 404:
       return 'La lista o el constituyente solicitado ya no existe. Recarga la página.';
     case 409:
-      return message ?? 'La operación entra en conflicto con el estado actual de la lista.';
+      return (
+        message ??
+        (context === 'pdf-download'
+          ? 'Ya hay una descarga en curso. Espera a que termine e intenta de nuevo.'
+          : 'La operación entra en conflicto con el estado actual de la lista.')
+      );
     default:
       break;
   }
