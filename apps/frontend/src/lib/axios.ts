@@ -44,7 +44,7 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 
 apiClient.interceptors.response.use(
   (response) => response,
-  (error: AxiosError) => {
+  async (error: AxiosError) => {
     // Intento de renovación reactiva ante 401 si hay un refresher registrado (HU-002, CA1)
     const refreshAndRetryPromise = tryRefreshAndRetry(error, apiClient);
     if (refreshAndRetryPromise) {
@@ -54,7 +54,16 @@ apiClient.interceptors.response.use(
     // Caso A: El servidor respondió con un status fuera del rango 2xx
     if (error.response) {
       const status = error.response.status;
-      const parsedBackendError = apiErrorResponseSchema.safeParse(error.response.data);
+      let rawData: unknown = error.response.data;
+      if (typeof Blob !== 'undefined' && rawData instanceof Blob) {
+        try {
+          rawData = JSON.parse(await rawData.text());
+        } catch {
+          rawData = null;
+        }
+      }
+
+      const parsedBackendError = apiErrorResponseSchema.safeParse(rawData);
 
       if (parsedBackendError.success) {
         const { code, message, details, requestId, retryAfterSeconds } =
