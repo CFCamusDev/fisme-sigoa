@@ -194,11 +194,17 @@ describe('GET /stakeholder-lists/:id/pdf (PostgreSQL real, HU-026, T-026-08)', (
   it('answers 200 with a pdf, the template version header and one DOWNLOAD audit row', async () => {
     await seedPublishedFo03();
     await seedListsWithMembers();
-    const actor = await createActor(['Director de Escuela']);
+    const actor = await createActor(['ADMINISTRATOR']);
 
     const response = await request(app)
       .get('/stakeholder-lists/list-emp-2026/pdf')
-      .set('Authorization', `Bearer ${actor.token}`);
+      .set('Authorization', `Bearer ${actor.token}`)
+      .buffer(true)
+      .parse((res, callback) => {
+        const chunks: Buffer[] = [];
+        res.on('data', (chunk: Buffer) => chunks.push(chunk));
+        res.on('end', () => callback(null, Buffer.concat(chunks)));
+      });
 
     expect(response.status).toBe(200);
     expect(response.headers['content-type']).toContain('application/pdf');
@@ -208,7 +214,7 @@ describe('GET /stakeholder-lists/:id/pdf (PostgreSQL real, HU-026, T-026-08)', (
     expect(response.headers['cache-control']).toBe('no-store');
     expect(response.headers['x-template-version']).toBe('1');
 
-    const bodyText = Buffer.from(response.body).toString('utf8');
+    const bodyText = (response.body as Buffer).toString('utf8');
     expect(bodyText.startsWith('%PDF-1.4')).toBe(true);
     expect(bodyText).toContain('Empresa Ficticia SAC');
     expect(bodyText).toContain('Docente Ficticio');
@@ -271,19 +277,25 @@ describe('GET /stakeholder-lists/:id/pdf (PostgreSQL real, HU-026, T-026-08)', (
       },
     });
 
-    const actor = await createActor(['Director de Escuela']);
+    const actor = await createActor(['ADMINISTRATOR']);
     const response = await request(app)
       .get('/stakeholder-lists/list-stu-2026/pdf')
-      .set('Authorization', `Bearer ${actor.token}`);
+      .set('Authorization', `Bearer ${actor.token}`)
+      .buffer(true)
+      .parse((res, callback) => {
+        const chunks: Buffer[] = [];
+        res.on('data', (chunk: Buffer) => chunks.push(chunk));
+        res.on('end', () => callback(null, Buffer.concat(chunks)));
+      });
 
     expect(response.status).toBe(200);
-    const bodyText = Buffer.from(response.body).toString('utf8');
+    const bodyText = (response.body as Buffer).toString('utf8');
     expect(bodyText).toContain('Estudiante Sin Datos');
     expect(bodyText).not.toContain('{{');
   }, 5_000);
 
   it('answers 400 for an invalid id or unknown query', async () => {
-    const actor = await createActor(['Director de Escuela']);
+    const actor = await createActor(['ADMINISTRATOR']);
 
     const oversized = await request(app)
       .get(`/stakeholder-lists/${'a'.repeat(65)}/pdf`)
@@ -302,7 +314,7 @@ describe('GET /stakeholder-lists/:id/pdf (PostgreSQL real, HU-026, T-026-08)', (
   }, 5_000);
 
   it('answers 403 without documento.descargar', async () => {
-    const actor = await createActor(['Miembro Comité Calidad']);
+    const actor = await createActor(['TEACHER']);
 
     const response = await request(app)
       .get('/stakeholder-lists/list-1/pdf')
@@ -313,7 +325,7 @@ describe('GET /stakeholder-lists/:id/pdf (PostgreSQL real, HU-026, T-026-08)', (
 
   it('answers 404 for an unknown list', async () => {
     await seedPublishedFo03();
-    const actor = await createActor(['Director de Escuela']);
+    const actor = await createActor(['ADMINISTRATOR']);
 
     const response = await request(app)
       .get('/stakeholder-lists/list-inexistente/pdf')
@@ -325,7 +337,7 @@ describe('GET /stakeholder-lists/:id/pdf (PostgreSQL real, HU-026, T-026-08)', (
   it('answers 409 for a second concurrent download of the same user and records one audit row', async () => {
     await seedPublishedFo03();
     await seedListsWithMembers();
-    const actor = await createActor(['Director de Escuela']);
+    const actor = await createActor(['ADMINISTRATOR']);
 
     const deferred = createDeferred<Buffer>();
     renderMock.mockImplementationOnce(() => deferred.promise);
