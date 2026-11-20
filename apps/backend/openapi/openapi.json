@@ -9714,6 +9714,214 @@
         }
       }
     },
+    "/process-executions/{id}/advance": {
+      "post": {
+        "tags": ["ProcessExecutions"],
+        "summary": "Avanzar el estado de una ejecución de proceso",
+        "description": "Valida las precondiciones del estado actual, avanza la ejecución al siguiente estado y registra auditoría STATE_CHANGE (HU-029, RF-029, RS-020).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdvanceProcessExecutionRequest"
+              },
+              "example": {}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ejecución avanzada correctamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvanceProcessExecutionResponse"
+                },
+                "example": {
+                  "executionId": "exec_cuid_1",
+                  "previousStatus": "PLANNED",
+                  "status": "IN_PROGRESS",
+                  "updatedAt": "2027-03-01T10:00:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin permiso ejecucion.avanzar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ejecución no encontrada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Transición inválida, conflicto de estado o precondiciones incumplidas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/process-executions/{id}/next-transition": {
+      "get": {
+        "tags": ["ProcessExecutions"],
+        "summary": "Consultar siguiente transición y precondiciones de una ejecución",
+        "description": "Devuelve el siguiente estado de avance posible y el estado de cumplimiento de cada precondición requerida (HU-029, T1-D8).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detalle de la siguiente transición.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NextTransitionResponse"
+                },
+                "example": {
+                  "executionId": "exec_cuid_1",
+                  "status": "PLANNED",
+                  "nextStatus": "IN_PROGRESS",
+                  "preconditions": [
+                    {
+                      "code": "SCHEDULE_HAS_ACTIVITY",
+                      "label": "El cronograma tiene al menos una actividad registrada",
+                      "state": "MET"
+                    }
+                  ],
+                  "canAdvance": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin permiso ejecucion.ver.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ejecución no encontrada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/process-executions/{id}/schedule": {
       "get": {
         "tags": ["Schedule"],
@@ -13468,6 +13676,94 @@
       "ProcessExecutionStatus": {
         "type": "string",
         "enum": ["PLANNED", "IN_PROGRESS", "CONSOLIDATING", "PENDING_APPROVAL", "CLOSED", "VOIDED"]
+      },
+      "ExecutionPreconditionCode": {
+        "type": "string",
+        "enum": [
+          "SCHEDULE_HAS_ACTIVITY",
+          "SESSIONS_SURVEYS_CLOSED",
+          "SESSIONS_MINUTES_SIGNED",
+          "MEASUREMENTS_REVIEWED",
+          "CONSOLIDATION_MINUTES_SIGNED",
+          "RESULTS_CALCULATED",
+          "IMPROVEMENT_ACTIONS_REGISTERED"
+        ]
+      },
+      "PreconditionState": {
+        "type": "string",
+        "enum": ["MET", "UNMET", "NOT_VERIFIABLE"]
+      },
+      "ExecutionPreconditionResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "label", "state"],
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ExecutionPreconditionCode"
+          },
+          "label": {
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/PreconditionState"
+          }
+        }
+      },
+      "AdvanceProcessExecutionRequest": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "AdvanceProcessExecutionResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["executionId", "previousStatus", "status", "updatedAt"],
+        "properties": {
+          "executionId": {
+            "type": "string"
+          },
+          "previousStatus": {
+            "$ref": "#/components/schemas/ProcessExecutionStatus"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ProcessExecutionStatus"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "NextTransitionResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["executionId", "status", "nextStatus", "preconditions", "canAdvance"],
+        "properties": {
+          "executionId": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ProcessExecutionStatus"
+          },
+          "nextStatus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProcessExecutionStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "preconditions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExecutionPreconditionResult"
+            }
+          },
+          "canAdvance": {
+            "type": "boolean"
+          }
+        }
       },
       "CreateProcessExecutionRequest": {
         "type": "object",

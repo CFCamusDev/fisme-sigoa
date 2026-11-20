@@ -448,6 +448,19 @@ const PROTECTED_ENDPOINTS: readonly ProtectedEndpointSpec[] = [
     },
   },
   {
+    method: 'post',
+    openApiPath: '/process-executions/{id}/advance',
+    requestPath: '/process-executions/exec-1/advance',
+    requiredPermission: 'ejecucion.avanzar',
+    sampleBody: {},
+  },
+  {
+    method: 'get',
+    openApiPath: '/process-executions/{id}/next-transition',
+    requestPath: '/process-executions/exec-1/next-transition',
+    requiredPermission: 'ejecucion.ver',
+  },
+  {
     method: 'get',
     openApiPath: '/process-executions/{id}/schedule',
     requestPath: '/process-executions/exec-1/schedule',
