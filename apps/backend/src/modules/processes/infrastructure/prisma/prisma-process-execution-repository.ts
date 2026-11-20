@@ -79,4 +79,12 @@ export class PrismaProcessExecutionRepository
       total,
     };
   }
+
+  async existsById(id: string): Promise<boolean> {
+    const row = await this.dbProvider.get().processExecution.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+    return row !== null;
+  }
 }
