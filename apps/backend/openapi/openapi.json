@@ -7272,7 +7272,7 @@
       "get": {
         "tags": ["Templates"],
         "summary": "Descargar un anexo oficial en PDF",
-        "description": "Genera en PDF (Puppeteer) cualquiera de los 11 anexos oficiales (FO-01 a FO-11) desde su versión de plantilla Publicada y registra la descarga en la auditoría (DOWNLOAD). Límite conocido: entrega el escudo institucional y textos base del programa; las colecciones y variables de procesos cuya HU dueña aún no registra proveedor se muestran con «—» o sin filas. Limita a una generación en vuelo por usuario (409). Requiere el permiso 'documento.descargar' con alcance GLOBAL (HU-070, RF-070, RS-002, RS-043, RS-063).",
+        "description": "Genera en PDF (Puppeteer) cualquiera de los 11 anexos oficiales (FO-01 a FO-11) desde su versión de plantilla Publicada y registra la descarga en la auditoría (DOWNLOAD). Límite conocido: entrega el escudo institucional y textos base del programa; las colecciones y variables de procesos cuya HU dueña aún no registra proveedor se muestran con «—» o sin filas (para el Anexo 3 con datos reales use GET /stakeholder-lists/{id}/pdf). Limita a una generación en vuelo por usuario (409). Requiere el permiso 'documento.descargar' con alcance GLOBAL (HU-070, RF-070, RS-002, RS-043, RS-063).",
         "operationId": "downloadAnnexPdf",
         "security": [
           {
@@ -8778,6 +8778,118 @@
           },
           "403": {
             "description": "Sin permiso constituyente.importar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stakeholder-lists/{id}/pdf": {
+      "get": {
+        "tags": ["StakeholderLists"],
+        "summary": "Exportar Anexo 3 en PDF",
+        "description": "Genera el PDF oficial del Anexo 3 (FO-03) consolidado para el programa y año de la lista solicitada, audita la descarga (DOWNLOAD) sobre la lista y limita a una generación en vuelo por usuario (409). Requiere `documento.descargar` (GLOBAL) (HU-026, RF-026, RS-002, RS-063).",
+        "operationId": "exportStakeholderListPdf",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "description": "Identificador de la lista de constituyentes."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PDF oficial del Anexo 3 generado correctamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store",
+                "description": "Evita almacenar la descarga en caché."
+              },
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "attachment; filename=\"fo-03-2026-v1.pdf\"",
+                "description": "Nombre de descarga del Anexo 3."
+              },
+              "X-Template-Version": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "1",
+                "description": "Número de versión de la plantilla Publicada utilizada."
+              }
+            },
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Identificador o parámetros de consulta inválidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin permiso documento.descargar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Lista o versión Publicada de FO-03 no encontrada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ya existe una descarga de anexo en curso para el usuario.",
             "content": {
               "application/json": {
                 "schema": {
