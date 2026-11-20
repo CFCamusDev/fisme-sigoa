@@ -6,6 +6,7 @@ import { AdvanceProcessExecutionUseCase } from './application/advance-process-ex
 import { ChangeScheduleActivityStatusUseCase } from './application/change-schedule-activity-status.js';
 import { CreateProcessExecutionUseCase } from './application/create-process-execution.js';
 import { ExecutionPreconditionEvaluator } from './application/execution-precondition-evaluator.js';
+import { GetNextTransitionUseCase } from './application/get-next-transition.js';
 import { ListProcessExecutionsUseCase } from './application/list-process-executions.js';
 import { ListScheduleUseCase } from './application/list-schedule.js';
 import { ProposeScheduleUseCase } from './application/propose-schedule.js';
@@ -143,8 +144,15 @@ export function createProcessesModule(deps?: ProcessesModuleDependencies): Proce
     clock: deps.clock,
   });
 
+  const getNextTransitionUseCase = new GetNextTransitionUseCase({
+    processExecutionRepository,
+    permissionChecker: deps.permissionChecker,
+    preconditionEvaluator,
+  });
+
   const executionTransitionsController = new ExecutionTransitionsController({
     advanceProcessExecutionUseCase,
+    getNextTransitionUseCase,
   });
 
   return {

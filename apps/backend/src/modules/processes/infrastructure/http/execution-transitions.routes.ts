@@ -25,6 +25,17 @@ export function createExecutionTransitionsRouter(
 ): Router {
   const router = Router();
 
+  // GET /process-executions/:id/next-transition (HU-029, T1-D8, RNF-008, RNF-009)
+  router.get(
+    '/:id/next-transition',
+    deps.authenticate,
+    deps.requirePermission('ejecucion.ver', 'GLOBAL'),
+    validateRequest({
+      params: processExecutionIdParamSchema,
+    }),
+    deps.controller.getNextTransition,
+  );
+
   // POST /process-executions/:id/advance (HU-029, RF-029, RNF-008, RNF-009)
   router.post(
     '/:id/advance',
