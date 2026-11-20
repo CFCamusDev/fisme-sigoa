@@ -13,6 +13,7 @@ import { PreviewStakeholderImportUseCase } from './application/preview-stakehold
 import { RegisterStakeholderUseCase } from './application/register-stakeholder.js';
 import { SearchStakeholdersUseCase } from './application/search-stakeholders.js';
 import { VoidStakeholderUseCase } from './application/void-stakeholder.js';
+import type { AnnexPdfGenerator } from './domain/ports/annex-pdf-generator.js';
 import type { StakeholderPermissionChecker } from './domain/ports/stakeholder-permission-checker.js';
 import { ExcelJsStakeholderImportFileReader } from './infrastructure/excel/exceljs-stakeholder-import-file-reader.js';
 import { ExcelJsStakeholderImportTemplateBuilder } from './infrastructure/excel/exceljs-stakeholder-import-template-builder.js';
@@ -38,6 +39,7 @@ export interface StakeholdersModuleDependencies {
     scope?: StakeholderRoutePermissionScope,
   ) => RequestHandler;
   readonly permissionChecker: StakeholderPermissionChecker;
+  readonly annexPdfGenerator?: AnnexPdfGenerator;
   readonly clock?: () => Date;
 }
 
