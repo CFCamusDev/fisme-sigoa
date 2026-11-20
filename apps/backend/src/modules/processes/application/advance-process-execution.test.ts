@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 import type { AuditLogger } from '../../../shared/audit/audit-logger.js';
 import { ForbiddenError } from '../../../shared/errors/app-error.js';
@@ -252,13 +252,12 @@ describe('AdvanceProcessExecutionUseCase (HU-029, T-029-02, T-029-09)', () => {
     repository.updateStatus.mockImplementation(async () => {
       order.push('update');
     });
-    const logSpy = vi.spyOn(auditLogger, 'log').mockImplementation(async () => {
+    auditLogger.log.mockImplementation(async () => {
       order.push('audit');
     });
 
     await useCase.execute({ executionId: 'exec-1', actorId: 'user-2' });
 
     expect(order).toEqual(['lock', 'evaluate', 'update', 'audit']);
-    logSpy.mockRestore();
   });
 });
