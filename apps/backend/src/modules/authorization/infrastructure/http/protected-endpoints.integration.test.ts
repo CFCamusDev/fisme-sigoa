@@ -337,6 +337,12 @@ const PROTECTED_ENDPOINTS: readonly ProtectedEndpointSpec[] = [
   },
   {
     method: 'get',
+    openApiPath: '/annexes/{code}/pdf',
+    requestPath: '/annexes/FO-01/pdf',
+    requiredPermission: 'documento.descargar',
+  },
+  {
+    method: 'get',
     openApiPath: '/stakeholders',
     requestPath: '/stakeholders',
     requiredPermission: 'constituyente.ver',

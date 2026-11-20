@@ -7,6 +7,7 @@ import {
   CalendarRange,
   ClipboardList,
   FileCheck,
+  FileDown,
   FileText,
   LayoutDashboard,
   ListChecks,
@@ -113,5 +114,11 @@ export const MAIN_NAV_ITEMS: readonly NavItem[] = [
     href: '/sesiones',
     icon: CalendarClock,
     permission: 'sesion.ver',
+  },
+  {
+    title: 'Anexos',
+    href: '/anexos',
+    icon: FileDown,
+    permission: 'documento.descargar',
   },
 ] as const;

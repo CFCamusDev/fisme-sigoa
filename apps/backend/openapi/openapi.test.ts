@@ -127,6 +127,8 @@ import { createResolutionsRouter } from '../src/modules/resolutions/infrastructu
 import type { ResolutionsController } from '../src/modules/resolutions/infrastructure/http/resolutions.controller.js';
 import { createTemplatesRouter } from '../src/modules/templates/infrastructure/http/templates.routes.js';
 import type { TemplatesController } from '../src/modules/templates/infrastructure/http/templates.controller.js';
+import { createAnnexesRouter } from '../src/modules/templates/infrastructure/http/annexes.routes.js';
+import type { AnnexesController } from '../src/modules/templates/infrastructure/http/annexes.controller.js';
 import { createSemestersRouter } from '../src/modules/parameters/infrastructure/http/semesters.routes.js';
 import type { SemestersController } from '../src/modules/parameters/infrastructure/http/semesters.controller.js';
 import { createStakeholdersRouter } from '../src/modules/stakeholders/infrastructure/http/stakeholders.routes.js';
@@ -2393,6 +2395,12 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
           'previewTemplate',
           ['200', '400', '401', '403', '404', '409'],
         ],
+        [
+          '/annexes/{code}/pdf',
+          'get',
+          'downloadAnnexPdf',
+          ['200', '400', '401', '403', '404', '409', '500'],
+        ],
       ];
       for (const [route, method, operationId, codes] of expectations) {
         const op = spec.paths[route][method];
@@ -2541,6 +2549,28 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
         'post /templates/:id/publish',
         'put /templates/:id/draft',
       ]);
+    });
+
+    it('has bidirectional parity between openapi spec and createAnnexesRouter (HU-070, T-070-05)', () => {
+      const router = createAnnexesRouter({
+        controller: {
+          downloadPdf: vi.fn(),
+        } as unknown as AnnexesController,
+        authenticate: vi.fn(),
+        requirePermission: vi.fn(() => vi.fn()),
+      });
+
+      const routerEndpoints: string[] = [];
+      for (const layer of router.stack) {
+        if (layer.route) {
+          for (const method of Object.keys(layer.route.methods)) {
+            routerEndpoints.push(`${method.toLowerCase()} /annexes${layer.route.path}`);
+          }
+        }
+      }
+
+      expect(routerEndpoints.sort()).toEqual(['get /annexes/:code/pdf']);
+      expect(spec.paths['/annexes/{code}/pdf'].get.operationId).toBe('downloadAnnexPdf');
     });
   });
 

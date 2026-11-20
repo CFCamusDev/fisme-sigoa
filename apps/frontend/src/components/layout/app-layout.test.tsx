@@ -404,4 +404,28 @@ describe('AppLayout Component', () => {
 
     expect(screen.queryByRole('link', { name: /Comité de Calidad/i })).not.toBeInTheDocument();
   });
+
+  it('renders the "Anexos" link to /anexos with documento.descargar (HU-070, T-070-07)', async () => {
+    renderWithProviders(
+      <AppLayout>
+        <p>Dashboard</p>
+      </AppLayout>,
+      { permissions: [{ code: 'documento.descargar', scope: 'GLOBAL' }] },
+    );
+
+    const annexesLink = await screen.findByRole('link', { name: /Anexos/i });
+    expect(annexesLink).toBeInTheDocument();
+    expect(annexesLink).toHaveAttribute('href', '/anexos');
+  });
+
+  it('hides the "Anexos" link without documento.descargar (HU-070, T-070-07)', () => {
+    renderWithProviders(
+      <AppLayout>
+        <p>Dashboard</p>
+      </AppLayout>,
+      { permissions: [{ code: 'catalogo.ver', scope: 'GLOBAL' }] },
+    );
+
+    expect(screen.queryByRole('link', { name: /Anexos/i })).not.toBeInTheDocument();
+  });
 });
