@@ -188,6 +188,7 @@ model User {
   userRoles        UserRole[]
   activationTokens ActivationToken[]
   userPermissions  UserPermission[]
+  committeeMembers CommitteeMember[]
 
   // Auditoría técnica de autoría
   createdBy String?
@@ -351,6 +352,7 @@ model Program {
   catalogVersions   CatalogVersion[]
   stakeholderLists  StakeholderList[]
   processExecutions ProcessExecution[]
+  qualityCommittees QualityCommittee[]
 
   @@map("programs")
 }
@@ -814,4 +816,48 @@ model Attendee {
   @@unique([sessionId, listMemberId])
   @@index([listMemberId])
   @@map("attendees")
+}
+
+// ==============================================================================
+// COMITÉ DE CALIDAD (HU-025, RF-025, RS-034, RN-062)
+// ==============================================================================
+
+model QualityCommittee {
+  id          String   @id @default(cuid())
+  programId   String
+  periodStart DateTime @db.Date
+  periodEnd   DateTime @db.Date
+  createdBy   String
+  updatedBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  program Program           @relation(fields: [programId], references: [id], onDelete: Restrict)
+  members CommitteeMember[]
+
+  @@index([programId, periodStart])
+  @@map("quality_committees")
+}
+
+enum CommitteeMemberPosition {
+  PRESIDENT
+  MEMBER
+}
+
+model CommitteeMember {
+  id          String                  @id @default(cuid())
+  committeeId String
+  fullName    String
+  degree      String
+  position    CommitteeMemberPosition
+  userId      String?
+  createdBy   String
+  createdAt   DateTime                @default(now())
+
+  committee QualityCommittee @relation(fields: [committeeId], references: [id], onDelete: Restrict)
+  user      User?            @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([committeeId, userId])
+  @@index([userId])
+  @@map("committee_members")
 }

@@ -478,6 +478,38 @@ const PROTECTED_ENDPOINTS: readonly ProtectedEndpointSpec[] = [
     requestPath: '/sessions/sess-1/attendees',
     requiredPermission: 'sesion.ver',
   },
+  {
+    method: 'post',
+    openApiPath: '/quality-committees',
+    requestPath: '/quality-committees',
+    requiredPermission: 'comite.editar',
+    sampleBody: {
+      periodStart: '2027-01-01',
+      periodEnd: '2027-12-31',
+      members: [{ fullName: 'Ana Torres', degree: 'Dr.', position: 'PRESIDENT' }],
+    },
+  },
+  {
+    method: 'get',
+    openApiPath: '/quality-committees',
+    requestPath: '/quality-committees',
+    requiredPermission: 'comite.ver',
+  },
+  {
+    method: 'get',
+    openApiPath: '/quality-committees/current',
+    requestPath: '/quality-committees/current',
+    requiredPermission: 'comite.ver',
+  },
+  {
+    method: 'put',
+    openApiPath: '/quality-committees/{id}/members',
+    requestPath: '/quality-committees/com-1/members',
+    requiredPermission: 'comite.editar',
+    sampleBody: {
+      members: [{ fullName: 'Ana Torres', degree: 'Dr.', position: 'PRESIDENT' }],
+    },
+  },
 ];
 
 describe('Protected Endpoints 403 Coverage & OpenAPI Drift Guard (PostgreSQL real, HU-008, T-008-06, CA1, RF-008, RNF-009, D11)', () => {

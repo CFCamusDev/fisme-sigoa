@@ -97,6 +97,11 @@ import {
   sessionAttendeesResponseSchema,
   sessionDtoSchema,
   updateSessionRequestSchema,
+  registerQualityCommitteeRequestSchema,
+  replaceCommitteeMembersRequestSchema,
+  qualityCommitteeSchema,
+  currentQualityCommitteeResponseSchema,
+  qualityCommitteeListResponseSchema,
 } from '@sigoa/shared';
 import { createAuthRouter } from '../src/modules/auth/infrastructure/http/auth.routes.js';
 import { createUsersRouter } from '../src/modules/users/infrastructure/http/users.routes.js';
@@ -2958,6 +2963,56 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
 
       const getResponseExample = getOp.responses['200'].content['application/json'].example;
       expect(sessionAttendeesResponseSchema.safeParse(getResponseExample).success).toBe(true);
+    });
+  });
+
+  describe('OpenAPI Specification for Quality Committees (HU-025, T-025-16, RF-025, RNF-032)', () => {
+    it('quality committee schemas validate their documented examples', () => {
+      const postOp = spec.paths['/quality-committees']?.post;
+      const listOp = spec.paths['/quality-committees']?.get;
+      const currentOp = spec.paths['/quality-committees/current']?.get;
+      const putOp = spec.paths['/quality-committees/{id}/members']?.put;
+
+      expect(postOp).toBeDefined();
+      expect(listOp).toBeDefined();
+      expect(currentOp).toBeDefined();
+      expect(putOp).toBeDefined();
+      expect(postOp.security).toEqual([{ bearerAuth: [] }]);
+      expect(listOp.security).toEqual([{ bearerAuth: [] }]);
+      expect(currentOp.security).toEqual([{ bearerAuth: [] }]);
+      expect(putOp.security).toEqual([{ bearerAuth: [] }]);
+
+      expect(
+        registerQualityCommitteeRequestSchema.safeParse(
+          postOp.requestBody.content['application/json'].example,
+        ).success,
+      ).toBe(true);
+      expect(
+        qualityCommitteeSchema.safeParse(
+          postOp.responses['201'].content['application/json'].example,
+        ).success,
+      ).toBe(true);
+
+      expect(
+        replaceCommitteeMembersRequestSchema.safeParse(
+          putOp.requestBody.content['application/json'].example,
+        ).success,
+      ).toBe(true);
+      expect(
+        qualityCommitteeSchema.safeParse(putOp.responses['200'].content['application/json'].example)
+          .success,
+      ).toBe(true);
+
+      expect(
+        currentQualityCommitteeResponseSchema.safeParse(
+          currentOp.responses['200'].content['application/json'].example,
+        ).success,
+      ).toBe(true);
+      expect(
+        qualityCommitteeListResponseSchema.safeParse(
+          listOp.responses['200'].content['application/json'].example,
+        ).success,
+      ).toBe(true);
     });
   });
 });

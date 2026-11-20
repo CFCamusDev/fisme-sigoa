@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as AppComiteCalidadRouteImport } from './routes/_app/comite-calidad'
 import { Route as AppConstituyentesRouteImport } from './routes/_app/constituyentes'
 import { Route as AppEjecucionesRouteImport } from './routes/_app/ejecuciones'
 import { Route as AppListasConstituyentesRouteImport } from './routes/_app/listas-constituyentes'
@@ -49,6 +50,11 @@ const AuthRoute = AuthRouteImport.update({
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppComiteCalidadRoute = AppComiteCalidadRouteImport.update({
+  id: '/comite-calidad',
+  path: '/comite-calidad',
   getParentRoute: () => AppRoute,
 } as any)
 const AppConstituyentesRoute = AppConstituyentesRouteImport.update({
@@ -183,6 +189,7 @@ const AppUsuariosUserIdEditarRoute = AppUsuariosUserIdEditarRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
+  '/comite-calidad': typeof AppComiteCalidadRoute
   '/constituyentes': typeof AppConstituyentesRoute
   '/ejecuciones': typeof AppEjecucionesRoute
   '/listas-constituyentes': typeof AppListasConstituyentesRoute
@@ -211,6 +218,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
+  '/comite-calidad': typeof AppComiteCalidadRoute
   '/constituyentes': typeof AppConstituyentesRoute
   '/ejecuciones': typeof AppEjecucionesRoute
   '/listas-constituyentes': typeof AppListasConstituyentesRoute
@@ -241,6 +249,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/_auth': typeof AuthRouteWithChildren
+  '/_app/comite-calidad': typeof AppComiteCalidadRoute
   '/_app/constituyentes': typeof AppConstituyentesRoute
   '/_app/ejecuciones': typeof AppEjecucionesRoute
   '/_app/listas-constituyentes': typeof AppListasConstituyentesRoute
@@ -272,6 +281,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/comite-calidad'
     | '/constituyentes'
     | '/ejecuciones'
     | '/listas-constituyentes'
@@ -300,6 +310,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/comite-calidad'
     | '/constituyentes'
     | '/ejecuciones'
     | '/listas-constituyentes'
@@ -329,6 +340,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_app'
     | '/_auth'
+    | '/_app/comite-calidad'
     | '/_app/constituyentes'
     | '/_app/ejecuciones'
     | '/_app/listas-constituyentes'
@@ -384,6 +396,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/comite-calidad': {
+      id: '/_app/comite-calidad'
+      path: '/comite-calidad'
+      fullPath: '/comite-calidad'
+      preLoaderRoute: typeof AppComiteCalidadRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/constituyentes': {
@@ -565,6 +584,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
+  AppComiteCalidadRoute: typeof AppComiteCalidadRoute
   AppConstituyentesRoute: typeof AppConstituyentesRoute
   AppEjecucionesRoute: typeof AppEjecucionesRoute
   AppListasConstituyentesRoute: typeof AppListasConstituyentesRoute
@@ -589,6 +609,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppComiteCalidadRoute: AppComiteCalidadRoute,
   AppConstituyentesRoute: AppConstituyentesRoute,
   AppEjecucionesRoute: AppEjecucionesRoute,
   AppListasConstituyentesRoute: AppListasConstituyentesRoute,
