@@ -23,7 +23,9 @@ describe('downloadAnnexPdf (T-070-06)', () => {
 
     expect(result.fileName).toBe('fo-01-v2.pdf');
     expect(result.versionNumber).toBe(2);
-    expect(result.blob.size).toBeGreaterThan(0);
+    const size =
+      result.blob instanceof Blob ? result.blob.size : Buffer.byteLength(result.blob as Uint8Array);
+    expect(size).toBeGreaterThan(0);
   });
 
   it('converts a blob error payload into a typed ApiError', async () => {
