@@ -31,7 +31,7 @@ describe('ScheduleEditorRoute (/cronograma/$executionId) (HU-028, T-028-24)', ()
         permissions: [{ code: 'cronograma.ver', scope: 'GLOBAL' }],
       });
       expect(
-        screen.getByRole('heading', { level: 1, name: /Cronograma de ejecución/i }),
+        await screen.findByRole('heading', { level: 1, name: /Cronograma de ejecución/i }),
       ).toBeInTheDocument();
       expect(
         await screen.findByText(/Aún no hay actividades en el cronograma/i),

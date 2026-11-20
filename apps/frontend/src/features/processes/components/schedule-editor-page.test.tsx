@@ -2,7 +2,7 @@ import { StrictMode } from 'react';
 import { cleanup, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, delay, http } from 'msw';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { server } from '@/test/msw/server';
 import { renderWithProviders } from '@/test/render';
 import { ScheduleEditorPage } from './schedule-editor-page';
@@ -39,11 +39,15 @@ const ALL_PERMS = [
 ];
 
 describe('ScheduleEditorPage (HU-028, T-028-24)', () => {
+  beforeEach(() => {
+    server.use(http.get('*/me/permissions', () => HttpResponse.json({ permissions: ALL_PERMS })));
+  });
+
   it('shows the loading, error and empty states', async () => {
     let shouldFail = false;
     server.use(
       http.get('*/process-executions/exec-1/schedule', async () => {
-        await delay(20);
+        await delay(40);
         if (shouldFail) {
           return HttpResponse.json(
             { error: { code: 'INTERNAL_ERROR', message: 'Error interno' } },
@@ -56,7 +60,7 @@ describe('ScheduleEditorPage (HU-028, T-028-24)', () => {
 
     renderWithProviders(<ScheduleEditorPage executionId="exec-1" />, { permissions: ALL_PERMS });
 
-    expect(screen.getByRole('status')).toHaveTextContent(/Cargando cronograma/i);
+    expect(await screen.findByRole('status')).toHaveTextContent(/Cargando cronograma/i);
     expect(await screen.findByText(/Aún no hay actividades en el cronograma/i)).toBeInTheDocument();
 
     cleanup();
@@ -242,14 +246,16 @@ describe('ScheduleEditorPage (HU-028, T-028-24)', () => {
   });
 
   it('hides the editing actions without cronograma.editar', async () => {
+    const viewOnlyPerms = [{ code: 'cronograma.ver', scope: 'GLOBAL' as const }];
     server.use(
+      http.get('*/me/permissions', () => HttpResponse.json({ permissions: viewOnlyPerms })),
       http.get('*/process-executions/exec-1/schedule', () =>
         HttpResponse.json({ items: [SAMPLE_PENDING] }),
       ),
     );
 
     renderWithProviders(<ScheduleEditorPage executionId="exec-1" />, {
-      permissions: [{ code: 'cronograma.ver', scope: 'GLOBAL' }],
+      permissions: viewOnlyPerms,
     });
 
     expect(await screen.findByText('Elaborar cronograma')).toBeInTheDocument();
