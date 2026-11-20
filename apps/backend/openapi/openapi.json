@@ -8896,12 +8896,18 @@
         "tags": ["Sessions"],
         "summary": "Registrar sesión con constituyentes",
         "description": "Registra una reunión vinculada a una o más ejecuciones de proceso abiertas (RF-032, RS-030).",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/CreateSessionRequest" },
+              "schema": {
+                "$ref": "#/components/schemas/CreateSessionRequest"
+              },
               "example": {
                 "stakeholderType": "EMPLOYER",
                 "stakeholderListId": "list_cuid_1",
@@ -8920,13 +8926,17 @@
             "description": "Sesión registrada correctamente.",
             "headers": {
               "Cache-Control": {
-                "schema": { "type": "string" },
+                "schema": {
+                  "type": "string"
+                },
                 "example": "no-store"
               }
             },
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Session" },
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                },
                 "example": {
                   "id": "sess_cuid_1",
                   "stakeholderType": "EMPLOYER",
@@ -8946,31 +8956,51 @@
           "400": {
             "description": "Datos de sesión inválidos.",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
             }
           },
           "401": {
             "description": "No autenticado.",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
             }
           },
           "403": {
             "description": "Sin permiso sesion.editar.",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
             }
           },
           "404": {
             "description": "Ejecución o lista de constituyentes inexistente.",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
             }
           },
           "409": {
             "description": "Sesión duplicada, ejecución no elegible o lista incompatible.",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
             }
           }
         }
@@ -8981,20 +9011,30 @@
         "tags": ["Sessions"],
         "summary": "Editar sesión con constituyentes",
         "description": "Actualiza los datos o ejecuciones vinculadas de una sesión abierta (RF-032, RS-020).",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string", "minLength": 1, "maxLength": 64 }
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
           }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/UpdateSessionRequest" },
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSessionRequest"
+              },
               "example": {
                 "startTime": "11:30",
                 "executionIds": ["exec_cuid_1", "exec_cuid_3"]
@@ -9007,13 +9047,17 @@
             "description": "Sesión actualizada correctamente.",
             "headers": {
               "Cache-Control": {
-                "schema": { "type": "string" },
+                "schema": {
+                  "type": "string"
+                },
                 "example": "no-store"
               }
             },
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Session" },
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                },
                 "example": {
                   "id": "sess_cuid_1",
                   "stakeholderType": "EMPLOYER",
@@ -9033,31 +9077,51 @@
           "400": {
             "description": "Datos de actualización inválidos.",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
             }
           },
           "401": {
             "description": "No autenticado.",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
             }
           },
           "403": {
             "description": "Sin permiso sesion.editar.",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
             }
           },
           "404": {
             "description": "Sesión, ejecución o lista inexistente.",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
             }
           },
           "409": {
             "description": "Sesión duplicada, ejecución no abierta o lista incompatible.",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
             }
           }
         }
@@ -9068,22 +9132,37 @@
         "tags": ["Sessions"],
         "summary": "Registrar asistentes de una sesión",
         "description": "Reemplaza el conjunto de asistentes de una sesión abierta usando miembros de su lista Anexo 3 (RF-033, RS-020).",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string", "minLength": 1, "maxLength": 64 }
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
           }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/RegisterSessionAttendeesRequest" },
+              "schema": {
+                "$ref": "#/components/schemas/RegisterSessionAttendeesRequest"
+              },
               "example": {
-                "attendees": [{ "listMemberId": "mem_cuid_1", "position": "Gerente de TI" }]
+                "attendees": [
+                  {
+                    "listMemberId": "mem_cuid_1",
+                    "position": "Gerente de TI"
+                  }
+                ]
               }
             }
           }
@@ -9093,13 +9172,17 @@
             "description": "Asistentes registrados correctamente.",
             "headers": {
               "Cache-Control": {
-                "schema": { "type": "string" },
+                "schema": {
+                  "type": "string"
+                },
                 "example": "no-store"
               }
             },
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/SessionAttendeesResponse" },
+                "schema": {
+                  "$ref": "#/components/schemas/SessionAttendeesResponse"
+                },
                 "example": {
                   "sessionId": "sess_cuid_1",
                   "stakeholderListId": "list_cuid_1",
@@ -9121,31 +9204,51 @@
           "400": {
             "description": "Datos de asistentes inválidos.",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
             }
           },
           "401": {
             "description": "No autenticado.",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
             }
           },
           "403": {
             "description": "Sin permiso sesion.editar.",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
             }
           },
           "404": {
             "description": "Sesión inexistente.",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
             }
           },
           "409": {
             "description": "Sesión sin lista, miembro fuera de lista o ejecución no abierta.",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
             }
           }
         }
@@ -9154,13 +9257,21 @@
         "tags": ["Sessions"],
         "summary": "Listar padrón y asistentes de una sesión",
         "description": "Devuelve el padrón de la lista Anexo 3 de la sesión con la marca de asistencia y el cargo registrado (RF-033).",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string", "minLength": 1, "maxLength": 64 }
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
           }
         ],
         "responses": {
@@ -9168,13 +9279,17 @@
             "description": "Padrón de asistentes obtenido correctamente.",
             "headers": {
               "Cache-Control": {
-                "schema": { "type": "string" },
+                "schema": {
+                  "type": "string"
+                },
                 "example": "no-store"
               }
             },
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/SessionAttendeesResponse" },
+                "schema": {
+                  "$ref": "#/components/schemas/SessionAttendeesResponse"
+                },
                 "example": {
                   "sessionId": "sess_cuid_1",
                   "stakeholderListId": "list_cuid_1",
@@ -9196,25 +9311,41 @@
           "400": {
             "description": "Parámetros inválidos.",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
             }
           },
           "401": {
             "description": "No autenticado.",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
             }
           },
           "403": {
             "description": "Sin permiso sesion.ver.",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
             }
           },
           "404": {
             "description": "Sesión inexistente.",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
             }
           }
         }
@@ -9225,25 +9356,43 @@
         "tags": ["Sessions"],
         "summary": "Listar sesiones de una ejecución",
         "description": "Lista de forma paginada las sesiones vinculadas a una ejecución de proceso (RF-032).",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string", "minLength": 1, "maxLength": 64 }
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
           },
           {
             "name": "page",
             "in": "query",
             "required": false,
-            "schema": { "type": "integer", "minimum": 1, "maximum": 10000, "default": 1 }
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000,
+              "default": 1
+            }
           },
           {
             "name": "pageSize",
             "in": "query",
             "required": false,
-            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
           }
         ],
         "responses": {
@@ -9251,7 +9400,9 @@
             "description": "Listado paginado de sesiones.",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ListSessionsResponse" },
+                "schema": {
+                  "$ref": "#/components/schemas/ListSessionsResponse"
+                },
                 "example": {
                   "items": [
                     {
@@ -9278,25 +9429,519 @@
           "400": {
             "description": "Parámetros de consulta inválidos.",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
             }
           },
           "401": {
             "description": "No autenticado.",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
             }
           },
           "403": {
             "description": "Sin permiso sesion.ver.",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
             }
           },
           "404": {
             "description": "Ejecución no encontrada.",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/quality-committees": {
+      "post": {
+        "tags": ["QualityCommittee"],
+        "summary": "Registrar un Comité de Calidad por periodo",
+        "description": "Registra un Comité de Calidad con sus miembros para un periodo no solapado en una transacción auditada (RF-025, RS-034, RS-020).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterQualityCommitteeRequest"
+              },
+              "example": {
+                "periodStart": "2027-01-01",
+                "periodEnd": "2027-12-31",
+                "members": [
+                  {
+                    "fullName": "Ana Torres",
+                    "degree": "Dr.",
+                    "position": "PRESIDENT",
+                    "userEmail": "ana.torres@example.test"
+                  },
+                  {
+                    "fullName": "Carlos Méndez",
+                    "degree": "Mg.",
+                    "position": "MEMBER"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Comité de Calidad registrado correctamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QualityCommittee"
+                },
+                "example": {
+                  "id": "com_cuid_2027",
+                  "periodStart": "2027-01-01",
+                  "periodEnd": "2027-12-31",
+                  "isCurrent": true,
+                  "members": [
+                    {
+                      "id": "mem_cuid_1",
+                      "fullName": "Ana Torres",
+                      "degree": "Dr.",
+                      "position": "PRESIDENT",
+                      "userId": "usr_cuid_1",
+                      "linkedUserName": "Ana Torres Quispe"
+                    },
+                    {
+                      "id": "mem_cuid_2",
+                      "fullName": "Carlos Méndez",
+                      "degree": "Mg.",
+                      "position": "MEMBER",
+                      "userId": null,
+                      "linkedUserName": null
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos de periodo o composición inválidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin permiso comite.editar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Periodo solapado, programa inexistente o usuario vinculado inválido/inactivo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": ["QualityCommittee"],
+        "summary": "Listar el historial de Comités de Calidad",
+        "description": "Devuelve el historial paginado de Comités de Calidad ordenados del periodo más reciente al más antiguo (RF-025, RN-062).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Historial de Comités obtenido correctamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QualityCommitteeListResponse"
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "com_cuid_2027",
+                      "periodStart": "2027-01-01",
+                      "periodEnd": "2027-12-31",
+                      "isCurrent": true,
+                      "members": [
+                        {
+                          "id": "mem_cuid_1",
+                          "fullName": "Ana Torres",
+                          "degree": "Dr.",
+                          "position": "PRESIDENT",
+                          "userId": "usr_cuid_1",
+                          "linkedUserName": "Ana Torres Quispe"
+                        },
+                        {
+                          "id": "mem_cuid_2",
+                          "fullName": "Carlos Méndez",
+                          "degree": "Mg.",
+                          "position": "MEMBER",
+                          "userId": null,
+                          "linkedUserName": null
+                        }
+                      ]
+                    }
+                  ],
+                  "page": 1,
+                  "pageSize": 10,
+                  "total": 1
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros de paginación inválidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin permiso comite.ver.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/quality-committees/current": {
+      "get": {
+        "tags": ["QualityCommittee"],
+        "summary": "Obtener el Comité de Calidad vigente y alertas de rol Presidente",
+        "description": "Devuelve el Comité de Calidad vigente a la fecha civil de America/Lima, la pertenencia del actor y las alertas de usuarios con rol Presidente que ya no son Presidente vigente (RF-025, RS-017, RS-034).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Estado del Comité vigente obtenido correctamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentQualityCommitteeResponse"
+                },
+                "example": {
+                  "committee": {
+                    "id": "com_cuid_2027",
+                    "periodStart": "2027-01-01",
+                    "periodEnd": "2027-12-31",
+                    "isCurrent": true,
+                    "members": [
+                      {
+                        "id": "mem_cuid_1",
+                        "fullName": "Ana Torres",
+                        "degree": "Dr.",
+                        "position": "PRESIDENT",
+                        "userId": "usr_cuid_1",
+                        "linkedUserName": "Ana Torres Quispe"
+                      },
+                      {
+                        "id": "mem_cuid_2",
+                        "fullName": "Carlos Méndez",
+                        "degree": "Mg.",
+                        "position": "MEMBER",
+                        "userId": null,
+                        "linkedUserName": null
+                      }
+                    ]
+                  },
+                  "actorMembership": {
+                    "memberId": "mem_cuid_1",
+                    "position": "PRESIDENT"
+                  },
+                  "alerts": [
+                    {
+                      "userId": "usr_cuid_old",
+                      "fullName": "Pedro Salas"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros de consulta inválidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin permiso comite.ver.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/quality-committees/{id}/members": {
+      "put": {
+        "tags": ["QualityCommittee"],
+        "summary": "Reemplazar los miembros de un Comité de Calidad vigente o futuro",
+        "description": "Reemplaza de forma idempotente y auditada el conjunto completo de miembros de un Comité cuyo periodo aún no finalizó (RF-025, RN-062, RS-020).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplaceCommitteeMembersRequest"
+              },
+              "example": {
+                "members": [
+                  {
+                    "fullName": "Ana Torres",
+                    "degree": "Dr.",
+                    "position": "PRESIDENT",
+                    "userId": "usr_cuid_1"
+                  },
+                  {
+                    "fullName": "Elena Paredes",
+                    "degree": "Ing.",
+                    "position": "MEMBER"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Miembros actualizados correctamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QualityCommittee"
+                },
+                "example": {
+                  "id": "com_cuid_2027",
+                  "periodStart": "2027-01-01",
+                  "periodEnd": "2027-12-31",
+                  "isCurrent": true,
+                  "members": [
+                    {
+                      "id": "mem_cuid_1",
+                      "fullName": "Ana Torres",
+                      "degree": "Dr.",
+                      "position": "PRESIDENT",
+                      "userId": "usr_cuid_1",
+                      "linkedUserName": "Ana Torres Quispe"
+                    },
+                    {
+                      "id": "mem_cuid_2",
+                      "fullName": "Carlos Méndez",
+                      "degree": "Mg.",
+                      "position": "MEMBER",
+                      "userId": null,
+                      "linkedUserName": null
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos de miembros inválidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin permiso comite.editar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Comité de Calidad inexistente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Comité ya finalizado o usuario vinculado inválido/inactivo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
             }
           }
         }
@@ -11962,13 +12607,24 @@
         "additionalProperties": false,
         "required": ["rowNumber", "status", "document", "fullName", "errors"],
         "properties": {
-          "rowNumber": { "type": "integer", "minimum": 2 },
-          "status": { "$ref": "#/components/schemas/StakeholderImportRowStatus" },
-          "document": { "type": ["string", "null"] },
-          "fullName": { "type": ["string", "null"] },
+          "rowNumber": {
+            "type": "integer",
+            "minimum": 2
+          },
+          "status": {
+            "$ref": "#/components/schemas/StakeholderImportRowStatus"
+          },
+          "document": {
+            "type": ["string", "null"]
+          },
+          "fullName": {
+            "type": ["string", "null"]
+          },
           "errors": {
             "type": "array",
-            "items": { "type": "string" }
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -11977,24 +12633,46 @@
         "additionalProperties": false,
         "required": ["listId", "listType", "totals", "rows"],
         "properties": {
-          "listId": { "type": "string", "minLength": 1 },
-          "listType": { "$ref": "#/components/schemas/StakeholderListType" },
+          "listId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "listType": {
+            "$ref": "#/components/schemas/StakeholderListType"
+          },
           "totals": {
             "type": "object",
             "additionalProperties": false,
             "required": ["total", "new", "existing", "alreadyInList", "invalid"],
             "properties": {
-              "total": { "type": "integer", "minimum": 0 },
-              "new": { "type": "integer", "minimum": 0 },
-              "existing": { "type": "integer", "minimum": 0 },
-              "alreadyInList": { "type": "integer", "minimum": 0 },
-              "invalid": { "type": "integer", "minimum": 0 }
+              "total": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "new": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "existing": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "alreadyInList": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "invalid": {
+                "type": "integer",
+                "minimum": 0
+              }
             }
           },
           "rows": {
             "type": "array",
             "maxItems": 500,
-            "items": { "$ref": "#/components/schemas/StakeholderImportRowDto" }
+            "items": {
+              "$ref": "#/components/schemas/StakeholderImportRowDto"
+            }
           }
         }
       },
@@ -12003,10 +12681,15 @@
         "additionalProperties": false,
         "required": ["rowNumber", "errors"],
         "properties": {
-          "rowNumber": { "type": "integer", "minimum": 2 },
+          "rowNumber": {
+            "type": "integer",
+            "minimum": 2
+          },
           "errors": {
             "type": "array",
-            "items": { "type": "string" }
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -12015,24 +12698,47 @@
         "additionalProperties": false,
         "required": ["importId", "listId", "totals", "rejectedRows"],
         "properties": {
-          "importId": { "type": "string", "minLength": 1 },
-          "listId": { "type": "string", "minLength": 1 },
+          "importId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "listId": {
+            "type": "string",
+            "minLength": 1
+          },
           "totals": {
             "type": "object",
             "additionalProperties": false,
             "required": ["created", "reused", "added", "alreadyInList", "rejected"],
             "properties": {
-              "created": { "type": "integer", "minimum": 0 },
-              "reused": { "type": "integer", "minimum": 0 },
-              "added": { "type": "integer", "minimum": 0 },
-              "alreadyInList": { "type": "integer", "minimum": 0 },
-              "rejected": { "type": "integer", "minimum": 0 }
+              "created": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "reused": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "added": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "alreadyInList": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "rejected": {
+                "type": "integer",
+                "minimum": 0
+              }
             }
           },
           "rejectedRows": {
             "type": "array",
             "maxItems": 500,
-            "items": { "$ref": "#/components/schemas/ConfirmStakeholderImportRejectedRow" }
+            "items": {
+              "$ref": "#/components/schemas/ConfirmStakeholderImportRejectedRow"
+            }
           }
         }
       },
@@ -12041,7 +12747,9 @@
         "additionalProperties": false,
         "required": ["type"],
         "properties": {
-          "type": { "$ref": "#/components/schemas/StakeholderListType" }
+          "type": {
+            "$ref": "#/components/schemas/StakeholderListType"
+          }
         }
       },
       "ProcessType": {
@@ -12057,11 +12765,28 @@
         "additionalProperties": false,
         "required": ["type", "year", "catalogVersionId"],
         "properties": {
-          "type": { "$ref": "#/components/schemas/ProcessType" },
-          "year": { "type": "integer", "minimum": 2000, "maximum": 2100 },
-          "semesterId": { "type": ["string", "null"], "minLength": 1, "maxLength": 64 },
-          "catalogVersionId": { "type": "string", "minLength": 1, "maxLength": 64 },
-          "name": { "type": ["string", "null"], "maxLength": 150 }
+          "type": {
+            "$ref": "#/components/schemas/ProcessType"
+          },
+          "year": {
+            "type": "integer",
+            "minimum": 2000,
+            "maximum": 2100
+          },
+          "semesterId": {
+            "type": ["string", "null"],
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "catalogVersionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "name": {
+            "type": ["string", "null"],
+            "maxLength": 150
+          }
         }
       },
       "ProcessExecution": {
@@ -12081,17 +12806,41 @@
           "updatedAt"
         ],
         "properties": {
-          "id": { "type": "string" },
-          "type": { "$ref": "#/components/schemas/ProcessType" },
-          "name": { "type": "string" },
-          "year": { "type": "integer" },
-          "semesterId": { "type": ["string", "null"] },
-          "semesterCode": { "type": ["string", "null"] },
-          "catalogVersionId": { "type": "string" },
-          "catalogVersionNumber": { "type": "integer" },
-          "status": { "$ref": "#/components/schemas/ProcessExecutionStatus" },
-          "createdAt": { "type": "string", "format": "date-time" },
-          "updatedAt": { "type": "string", "format": "date-time" }
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ProcessType"
+          },
+          "name": {
+            "type": "string"
+          },
+          "year": {
+            "type": "integer"
+          },
+          "semesterId": {
+            "type": ["string", "null"]
+          },
+          "semesterCode": {
+            "type": ["string", "null"]
+          },
+          "catalogVersionId": {
+            "type": "string"
+          },
+          "catalogVersionNumber": {
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ProcessExecutionStatus"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       },
       "ListProcessExecutionsResponse": {
@@ -12101,12 +12850,26 @@
         "properties": {
           "items": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/ProcessExecution" }
+            "items": {
+              "$ref": "#/components/schemas/ProcessExecution"
+            }
           },
-          "page": { "type": "integer", "minimum": 1 },
-          "pageSize": { "type": "integer", "minimum": 1 },
-          "total": { "type": "integer", "minimum": 0 },
-          "totalPages": { "type": "integer", "minimum": 0 }
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "totalPages": {
+            "type": "integer",
+            "minimum": 0
+          }
         }
       },
       "CreateSessionRequest": {
@@ -12118,17 +12881,40 @@
             "type": "string",
             "enum": ["ADVISORY_BOARD", "EMPLOYER", "GRADUATE", "STUDENT", "TEACHER"]
           },
-          "stakeholderListId": { "type": ["string", "null"], "minLength": 1, "maxLength": 64 },
-          "sessionDate": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
-          "startTime": { "type": "string", "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$" },
-          "modality": { "type": "string", "enum": ["VIRTUAL", "IN_PERSON", "HYBRID"] },
-          "meetingUrl": { "type": ["string", "null"], "maxLength": 500 },
-          "recordingUrl": { "type": ["string", "null"], "maxLength": 500 },
+          "stakeholderListId": {
+            "type": ["string", "null"],
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "sessionDate": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "startTime": {
+            "type": "string",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+          },
+          "modality": {
+            "type": "string",
+            "enum": ["VIRTUAL", "IN_PERSON", "HYBRID"]
+          },
+          "meetingUrl": {
+            "type": ["string", "null"],
+            "maxLength": 500
+          },
+          "recordingUrl": {
+            "type": ["string", "null"],
+            "maxLength": 500
+          },
           "executionIds": {
             "type": "array",
             "minItems": 1,
             "maxItems": 20,
-            "items": { "type": "string", "minLength": 1, "maxLength": 64 }
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
           }
         }
       },
@@ -12141,17 +12927,40 @@
             "type": "string",
             "enum": ["ADVISORY_BOARD", "EMPLOYER", "GRADUATE", "STUDENT", "TEACHER"]
           },
-          "stakeholderListId": { "type": ["string", "null"], "minLength": 1, "maxLength": 64 },
-          "sessionDate": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
-          "startTime": { "type": "string", "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$" },
-          "modality": { "type": "string", "enum": ["VIRTUAL", "IN_PERSON", "HYBRID"] },
-          "meetingUrl": { "type": ["string", "null"], "maxLength": 500 },
-          "recordingUrl": { "type": ["string", "null"], "maxLength": 500 },
+          "stakeholderListId": {
+            "type": ["string", "null"],
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "sessionDate": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "startTime": {
+            "type": "string",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+          },
+          "modality": {
+            "type": "string",
+            "enum": ["VIRTUAL", "IN_PERSON", "HYBRID"]
+          },
+          "meetingUrl": {
+            "type": ["string", "null"],
+            "maxLength": 500
+          },
+          "recordingUrl": {
+            "type": ["string", "null"],
+            "maxLength": 500
+          },
           "executionIds": {
             "type": "array",
             "minItems": 1,
             "maxItems": 20,
-            "items": { "type": "string", "minLength": 1, "maxLength": 64 }
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
           }
         }
       },
@@ -12172,20 +12981,46 @@
           "updatedAt"
         ],
         "properties": {
-          "id": { "type": "string" },
+          "id": {
+            "type": "string"
+          },
           "stakeholderType": {
             "type": "string",
             "enum": ["ADVISORY_BOARD", "EMPLOYER", "GRADUATE", "STUDENT", "TEACHER"]
           },
-          "stakeholderListId": { "type": ["string", "null"] },
-          "sessionDate": { "type": "string" },
-          "startTime": { "type": "string" },
-          "modality": { "type": "string", "enum": ["VIRTUAL", "IN_PERSON", "HYBRID"] },
-          "meetingUrl": { "type": ["string", "null"] },
-          "recordingUrl": { "type": ["string", "null"] },
-          "executionIds": { "type": "array", "items": { "type": "string" } },
-          "createdAt": { "type": "string", "format": "date-time" },
-          "updatedAt": { "type": "string", "format": "date-time" }
+          "stakeholderListId": {
+            "type": ["string", "null"]
+          },
+          "sessionDate": {
+            "type": "string"
+          },
+          "startTime": {
+            "type": "string"
+          },
+          "modality": {
+            "type": "string",
+            "enum": ["VIRTUAL", "IN_PERSON", "HYBRID"]
+          },
+          "meetingUrl": {
+            "type": ["string", "null"]
+          },
+          "recordingUrl": {
+            "type": ["string", "null"]
+          },
+          "executionIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       },
       "ListSessionsResponse": {
@@ -12195,11 +13030,22 @@
         "properties": {
           "items": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/Session" }
+            "items": {
+              "$ref": "#/components/schemas/Session"
+            }
           },
-          "total": { "type": "integer", "minimum": 0 },
-          "page": { "type": "integer", "minimum": 1 },
-          "pageSize": { "type": "integer", "minimum": 1 }
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1
+          }
         }
       },
       "RegisterSessionAttendeeEntry": {
@@ -12207,8 +13053,15 @@
         "additionalProperties": false,
         "required": ["listMemberId"],
         "properties": {
-          "listMemberId": { "type": "string", "minLength": 1, "maxLength": 64 },
-          "position": { "type": ["string", "null"], "maxLength": 120 }
+          "listMemberId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "position": {
+            "type": ["string", "null"],
+            "maxLength": 120
+          }
         }
       },
       "RegisterSessionAttendeesRequest": {
@@ -12219,7 +13072,9 @@
           "attendees": {
             "type": "array",
             "maxItems": 500,
-            "items": { "$ref": "#/components/schemas/RegisterSessionAttendeeEntry" }
+            "items": {
+              "$ref": "#/components/schemas/RegisterSessionAttendeeEntry"
+            }
           }
         }
       },
@@ -12235,12 +13090,24 @@
           "position"
         ],
         "properties": {
-          "listMemberId": { "type": "string" },
-          "fullName": { "type": "string" },
-          "institution": { "type": ["string", "null"] },
-          "memberPosition": { "type": ["string", "null"] },
-          "attended": { "type": "boolean" },
-          "position": { "type": ["string", "null"] }
+          "listMemberId": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "institution": {
+            "type": ["string", "null"]
+          },
+          "memberPosition": {
+            "type": ["string", "null"]
+          },
+          "attended": {
+            "type": "boolean"
+          },
+          "position": {
+            "type": ["string", "null"]
+          }
         }
       },
       "SessionAttendeesResponse": {
@@ -12248,12 +13115,228 @@
         "additionalProperties": false,
         "required": ["sessionId", "stakeholderListId", "attendeeCount", "items"],
         "properties": {
-          "sessionId": { "type": "string" },
-          "stakeholderListId": { "type": ["string", "null"] },
-          "attendeeCount": { "type": "integer", "minimum": 0 },
+          "sessionId": {
+            "type": "string"
+          },
+          "stakeholderListId": {
+            "type": ["string", "null"]
+          },
+          "attendeeCount": {
+            "type": "integer",
+            "minimum": 0
+          },
           "items": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/SessionAttendeeRosterItem" }
+            "items": {
+              "$ref": "#/components/schemas/SessionAttendeeRosterItem"
+            }
+          }
+        }
+      },
+      "CommitteeMemberInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["fullName", "degree", "position"],
+        "properties": {
+          "fullName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "degree": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "position": {
+            "type": "string",
+            "enum": ["PRESIDENT", "MEMBER"]
+          },
+          "userId": {
+            "type": "string",
+            "maxLength": 64,
+            "nullable": true
+          },
+          "userEmail": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254,
+            "nullable": true
+          }
+        }
+      },
+      "RegisterQualityCommitteeRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["periodStart", "periodEnd", "members"],
+        "properties": {
+          "periodStart": {
+            "type": "string",
+            "format": "date"
+          },
+          "periodEnd": {
+            "type": "string",
+            "format": "date"
+          },
+          "members": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 30,
+            "items": {
+              "$ref": "#/components/schemas/CommitteeMemberInput"
+            }
+          }
+        }
+      },
+      "ReplaceCommitteeMembersRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["members"],
+        "properties": {
+          "members": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 30,
+            "items": {
+              "$ref": "#/components/schemas/CommitteeMemberInput"
+            }
+          }
+        }
+      },
+      "CommitteeMember": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "fullName", "degree", "position", "userId", "linkedUserName"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "degree": {
+            "type": "string"
+          },
+          "position": {
+            "type": "string",
+            "enum": ["PRESIDENT", "MEMBER"]
+          },
+          "userId": {
+            "type": "string",
+            "nullable": true
+          },
+          "linkedUserName": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "QualityCommittee": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "periodStart", "periodEnd", "isCurrent", "members"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "periodStart": {
+            "type": "string",
+            "format": "date"
+          },
+          "periodEnd": {
+            "type": "string",
+            "format": "date"
+          },
+          "isCurrent": {
+            "type": "boolean"
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommitteeMember"
+            }
+          }
+        }
+      },
+      "ActorCommitteeMembership": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["memberId", "position"],
+        "properties": {
+          "memberId": {
+            "type": "string"
+          },
+          "position": {
+            "type": "string",
+            "enum": ["PRESIDENT", "MEMBER"]
+          }
+        }
+      },
+      "PresidentRoleAlert": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["userId", "fullName"],
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          }
+        }
+      },
+      "CurrentQualityCommitteeResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["committee", "actorMembership", "alerts"],
+        "properties": {
+          "committee": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/QualityCommittee"
+              }
+            ],
+            "nullable": true
+          },
+          "actorMembership": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ActorCommitteeMembership"
+              }
+            ],
+            "nullable": true
+          },
+          "alerts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PresidentRoleAlert"
+            }
+          }
+        }
+      },
+      "QualityCommitteeListResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["items", "page", "pageSize", "total"],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QualityCommittee"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
           }
         }
       }
