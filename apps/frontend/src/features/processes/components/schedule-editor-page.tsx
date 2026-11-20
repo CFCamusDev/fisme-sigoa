@@ -9,6 +9,7 @@ import { useProposeSchedule } from '../hooks/use-propose-schedule';
 import { useSaveSchedule } from '../hooks/use-save-schedule';
 import { useSchedule } from '../hooks/use-schedule';
 import { getScheduleErrorMessage } from '../lib/schedule-error-message';
+import { ExecutionStatusBar } from './execution-status-bar';
 import { ScheduleEditor } from './schedule-editor';
 
 export interface ScheduleEditorPageProps {
@@ -38,6 +39,8 @@ export function ScheduleEditorPage({ executionId }: ScheduleEditorPageProps) {
           </Button>
         }
       />
+
+      <ExecutionStatusBar executionId={executionId} />
 
       {query.isPending ? (
         <LoadingState message="Cargando cronograma…" />
