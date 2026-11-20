@@ -12,10 +12,10 @@ describe('AnnexesPage (T-070-11, CA1)', () => {
     vi.restoreAllMocks();
   });
 
-  it('lists the eleven annexes and names each button after its annex', () => {
+  it('lists the eleven annexes and names each button after its annex', async () => {
     renderWithProviders(<AnnexesPage />);
 
-    expect(screen.getByRole('heading', { name: 'Anexos oficiales' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Anexos oficiales' })).toBeInTheDocument();
 
     for (const entry of ANNEX_CATALOG) {
       expect(screen.getByText(entry.code)).toBeInTheDocument();
@@ -47,7 +47,9 @@ describe('AnnexesPage (T-070-11, CA1)', () => {
     const user = userEvent.setup();
     renderWithProviders(<AnnexesPage />);
 
-    await user.click(screen.getByRole('button', { name: 'Descargar PDF del Anexo 1. Cronograma' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Descargar PDF del Anexo 1. Cronograma' }),
+    );
 
     const status = await screen.findByRole('status');
     expect(status).toHaveTextContent('Se descargó Anexo 1. Cronograma (versión 2).');
@@ -84,7 +86,7 @@ describe('AnnexesPage (T-070-11, CA1)', () => {
     const user = userEvent.setup();
     renderWithProviders(<AnnexesPage />);
 
-    const button = screen.getByRole('button', { name: 'Descargar PDF del Anexo 2. Acta' });
+    const button = await screen.findByRole('button', { name: 'Descargar PDF del Anexo 2. Acta' });
     await user.click(button);
 
     await waitFor(() => {
@@ -119,7 +121,9 @@ describe('AnnexesPage (T-070-11, CA1)', () => {
     renderWithProviders(<AnnexesPage />);
 
     await user.click(
-      screen.getByRole('button', { name: 'Descargar PDF del Anexo 4. Acciones de mejora' }),
+      await screen.findByRole('button', {
+        name: 'Descargar PDF del Anexo 4. Acciones de mejora',
+      }),
     );
 
     const alert = await screen.findByRole('alert');
