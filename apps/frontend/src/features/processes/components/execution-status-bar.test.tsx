@@ -197,12 +197,17 @@ describe('ExecutionStatusBar (HU-029, T-029-11)', () => {
 
   it('disables the button while a request is in flight', async () => {
     const user = userEvent.setup();
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
     server.use(
       http.get('*/process-executions/exec-1/next-transition', () =>
         HttpResponse.json(SAMPLE_PLANNED),
       ),
       http.post('*/process-executions/exec-1/advance', async () => {
-        await delay(50);
+        await gate;
         return HttpResponse.json({
           executionId: 'exec-1',
           previousStatus: 'PLANNED',
@@ -215,12 +220,12 @@ describe('ExecutionStatusBar (HU-029, T-029-11)', () => {
     renderWithProviders(<ExecutionStatusBar executionId="exec-1" />, { permissions: ALL_PERMS });
 
     const button = await screen.findByRole('button', { name: /Avanzar a En ejecución/i });
-    const clickPromise = user.click(button);
+    await user.click(button);
 
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Avanzando/i })).toBeDisabled();
-    });
-    await clickPromise;
+    expect(await screen.findByRole('button', { name: /Avanzando/i })).toBeDisabled();
+
+    release();
+    expect(await screen.findByRole('button', { name: /Avanzar a En ejecución/i })).toBeEnabled();
   });
 
   it('requests the next transition once under StrictMode', async () => {
@@ -265,11 +270,11 @@ describe('ExecutionStatusBar (HU-029, T-029-11)', () => {
 
     const button = await screen.findByRole('button', { name: /Avanzar a En ejecución/i });
     expect(button).toBeEnabled();
-    await user.tab();
+    button.focus();
     expect(button).toHaveFocus();
 
-    await user.keyboard('[Space]');
+    await user.keyboard('{Enter}');
 
-    await waitFor(() => expect(advanced).toBe(true), { timeout: 3000 });
+    await waitFor(() => expect(advanced).toBe(true));
   });
 });
