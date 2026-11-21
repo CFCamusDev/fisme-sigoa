@@ -265,7 +265,7 @@ describe('ExecutionStatusBar (HU-029, T-029-11)', () => {
 
     const button = await screen.findByRole('button', { name: /Avanzar a En ejecución/i });
     expect(button).toBeEnabled();
-    button.focus();
+    await user.tab();
     expect(button).toHaveFocus();
 
     await user.keyboard('{Enter}');
