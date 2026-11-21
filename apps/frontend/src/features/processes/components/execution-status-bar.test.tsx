@@ -268,7 +268,7 @@ describe('ExecutionStatusBar (HU-029, T-029-11)', () => {
     await user.tab();
     expect(button).toHaveFocus();
 
-    await user.keyboard('{Enter}');
+    await user.keyboard('{ }');
 
     await waitFor(() => expect(advanced).toBe(true), { timeout: 3000 });
   });
