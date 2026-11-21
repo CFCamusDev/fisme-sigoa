@@ -105,6 +105,7 @@ const UI_LOGIN_REGEX =
 const DOM_IMPORT_REGEX =
   /(?:from\s+['"]|import\s*\(\s*['"]|require\s*\(\s*['"])(?:@testing-library\/|jsdom\b|happy-dom\b|react-dom\b|@\/test\/render\b)/;
 const DOM_GLOBAL_REGEX = /\b(?:window|document|localStorage)\b/;
+const UNAWAITED_USER_CLICK_REGEX = /\b(?:const|let|var)\s+[A-Za-z_$][\w$]*\s*=\s*user\.click\s*\(/;
 
 export function normalizePath(p) {
   return p.replace(/\\/g, '/');
@@ -244,6 +245,15 @@ export function findFixedPauseViolations(files, exclusions = RULE_EXCLUSIONS) {
           file: filePath,
           line: index + 1,
           message: 'Prohibido sleep() en pruebas; usa tiempo simulado (vi.useFakeTimers) o esperas por señal.',
+        });
+      }
+      if (UNAWAITED_USER_CLICK_REGEX.test(text)) {
+        violations.push({
+          rule: 'fixed-pause',
+          file: filePath,
+          line: index + 1,
+          message:
+            'No guardes user.click() en una variable (no espera la petición HTTP en vuelo); haz await user.click() con una promesa controlada (gate/release) y espera a que la mutación termine.',
         });
       }
     });

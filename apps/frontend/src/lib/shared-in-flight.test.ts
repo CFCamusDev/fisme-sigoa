@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { shareInFlight } from './shared-in-flight';
+import { drainInFlightForTests, shareInFlight } from './shared-in-flight';
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -58,5 +58,24 @@ describe('shareInFlight', () => {
     const retry = vi.fn(async () => 'recuperado');
     await expect(shareInFlight('fails', retry)).resolves.toBe('recuperado');
     expect(retry).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports and clears pending keys when drained for tests without letting late settlement delete a new entry', async () => {
+    const firstGate = deferred<string>();
+    const secondGate = deferred<string>();
+
+    const first = shareInFlight('leaked', () => firstGate.promise);
+    expect(drainInFlightForTests()).toEqual(['leaked']);
+    expect(drainInFlightForTests()).toEqual([]);
+
+    const second = shareInFlight('leaked', () => secondGate.promise);
+    firstGate.resolve('primera');
+    await expect(first).resolves.toBe('primera');
+
+    // La resolución tardía de la primera promesa no debe haber eliminado la segunda de inFlight
+    const joinedSecond = shareInFlight('leaked', () => Promise.resolve('otra'));
+    secondGate.resolve('segunda');
+    await expect(second).resolves.toBe('segunda');
+    await expect(joinedSecond).resolves.toBe('segunda');
   });
 });

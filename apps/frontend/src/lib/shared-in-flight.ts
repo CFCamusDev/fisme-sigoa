@@ -12,8 +12,21 @@ export function shareInFlight<T>(key: string, start: () => Promise<T>): Promise<
     return existing as Promise<T>;
   }
   const promise = start().finally(() => {
-    inFlight.delete(key);
+    if (inFlight.get(key) === promise) {
+      inFlight.delete(key);
+    }
   });
   inFlight.set(key, promise);
   return promise;
+}
+
+/**
+ * Drena y devuelve las claves de operaciones `shareInFlight` que quedaron pendientes al cerrar una
+ * prueba. Usado por el `afterEach` global de Vitest para detectar en local cualquier petición en
+ * vuelo no esperada antes de que contamine la siguiente prueba en CI.
+ */
+export function drainInFlightForTests(): string[] {
+  const leakedKeys = [...inFlight.keys()];
+  inFlight.clear();
+  return leakedKeys;
 }

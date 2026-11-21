@@ -1,3 +1,4 @@
+export type { ExecutionPreconditionProvider } from './execution-precondition-provider.js';
 export type {
   ProcessCatalogVersionReader,
   ProcessCatalogVersionRecord,

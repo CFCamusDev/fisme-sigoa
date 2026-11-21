@@ -40,7 +40,18 @@ const ALL_PERMS = [
 
 describe('ScheduleEditorPage (HU-028, T-028-24)', () => {
   beforeEach(() => {
-    server.use(http.get('*/me/permissions', () => HttpResponse.json({ permissions: ALL_PERMS })));
+    server.use(
+      http.get('*/me/permissions', () => HttpResponse.json({ permissions: ALL_PERMS })),
+      http.get('*/process-executions/exec-1/next-transition', () =>
+        HttpResponse.json({
+          executionId: 'exec-1',
+          status: 'PLANNED',
+          nextStatus: 'IN_PROGRESS',
+          preconditions: [],
+          canAdvance: false,
+        }),
+      ),
+    );
   });
 
   it('shows the loading, error and empty states', async () => {

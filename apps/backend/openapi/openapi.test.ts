@@ -90,7 +90,10 @@ import {
   stakeholderImportTemplateQuerySchema,
   createProcessExecutionRequestSchema,
   createSessionRequestSchema,
+  advanceProcessExecutionRequestSchema,
+  advanceProcessExecutionResponseSchema,
   listProcessExecutionsResponseSchema,
+  nextTransitionResponseSchema,
   listSessionsResponseSchema,
   saveScheduleRequestSchema,
   changeScheduleActivityStatusRequestSchema,
@@ -3034,6 +3037,28 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
       );
       const patchResExample = patchOp.responses['200'].content['application/json'].example;
       expect(scheduleActivityDtoSchema.safeParse(patchResExample).success).toBe(true);
+    });
+  });
+
+  describe('OpenAPI Specification for Process Execution Transitions (HU-029, T-029-05, RF-029, RNF-032)', () => {
+    it('process execution transition schemas validate their documented examples', () => {
+      const advanceOp = spec.paths['/process-executions/{id}/advance']?.post;
+      const nextOp = spec.paths['/process-executions/{id}/next-transition']?.get;
+
+      expect(advanceOp).toBeDefined();
+      expect(nextOp).toBeDefined();
+
+      expect(advanceOp.security).toEqual([{ bearerAuth: [] }]);
+      expect(nextOp.security).toEqual([{ bearerAuth: [] }]);
+
+      const advanceReqExample = advanceOp.requestBody.content['application/json'].example;
+      expect(advanceProcessExecutionRequestSchema.safeParse(advanceReqExample).success).toBe(true);
+
+      const advanceResExample = advanceOp.responses['200'].content['application/json'].example;
+      expect(advanceProcessExecutionResponseSchema.safeParse(advanceResExample).success).toBe(true);
+
+      const nextResExample = nextOp.responses['200'].content['application/json'].example;
+      expect(nextTransitionResponseSchema.safeParse(nextResExample).success).toBe(true);
     });
   });
 

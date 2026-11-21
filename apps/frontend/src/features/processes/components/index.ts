@@ -1,3 +1,4 @@
+export * from './execution-status-bar';
 export * from './process-execution-form';
 export * from './process-executions-filters';
 export * from './process-executions-page';

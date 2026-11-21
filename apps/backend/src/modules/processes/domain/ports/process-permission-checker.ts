@@ -1,5 +1,9 @@
 export type ProcessPermission =
-  'ejecucion.ver' | 'ejecucion.crear' | 'cronograma.ver' | 'cronograma.editar';
+  | 'ejecucion.ver'
+  | 'ejecucion.crear'
+  | 'ejecucion.avanzar'
+  | 'cronograma.ver'
+  | 'cronograma.editar';
 
 export interface ProcessPermissionChecker {
   assertAllowed(params: {

@@ -20,6 +20,15 @@ describe('ScheduleEditorRoute (/cronograma/$executionId) (HU-028, T-028-24)', ()
   it('renders the editor with cronograma.ver', async () => {
     server.use(
       http.get('*/process-executions/exec-1/schedule', () => HttpResponse.json({ items: [] })),
+      http.get('*/process-executions/exec-1/next-transition', () =>
+        HttpResponse.json({
+          executionId: 'exec-1',
+          status: 'PLANNED',
+          nextStatus: 'IN_PROGRESS',
+          preconditions: [],
+          canAdvance: false,
+        }),
+      ),
     );
 
     vi.spyOn(Route, 'useParams').mockReturnValue({ executionId: 'exec-1' });

@@ -1,5 +1,8 @@
 export { CatalogVersionNotAllowedError } from './catalog-version-not-allowed-error.js';
 export { DuplicateProcessExecutionError } from './duplicate-process-execution-error.js';
+export { ExecutionPreconditionsNotMetError } from './execution-preconditions-not-met-error.js';
+export { ExecutionStatusConflictError } from './execution-status-conflict-error.js';
+export { InvalidExecutionTransitionError } from './invalid-execution-transition-error.js';
 export { InvalidProcessExecutionDataError } from './invalid-process-execution-data-error.js';
 export { InvalidScheduleDataError } from './invalid-schedule-data-error.js';
 export { InvalidScheduleTransitionError } from './invalid-schedule-transition-error.js';

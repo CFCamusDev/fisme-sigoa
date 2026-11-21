@@ -1,7 +1,12 @@
-import type { Prisma } from '../../../../shared/prisma/generated/client.js';
+import type {
+  Prisma,
+  ProcessExecution as PrismaProcessExecutionRow,
+} from '../../../../shared/prisma/generated/client.js';
 import type { DbProvider } from '../../../../shared/prisma/prisma-unit-of-work.js';
 import type { ProcessExecution } from '../../domain/entities/process-execution.js';
+import type { ProcessExecutionStatus } from '../../domain/entities/process-execution-status.js';
 import { DuplicateProcessExecutionError } from '../../domain/errors/duplicate-process-execution-error.js';
+import { ExecutionStatusConflictError } from '../../domain/errors/execution-status-conflict-error.js';
 import type {
   ListProcessExecutionsFilter,
   ProcessExecutionPage,
@@ -42,6 +47,58 @@ export class PrismaProcessExecutionRepository
         throw new DuplicateProcessExecutionError(execution.name);
       }
       throw error;
+    }
+  }
+
+  async findById(id: string): Promise<ProcessExecution | null> {
+    const row = await this.dbProvider.get().processExecution.findUnique({
+      where: { id },
+    });
+    return row ? mapPrismaProcessExecutionRowToDomain(row) : null;
+  }
+
+  async findByIdForUpdate(id: string): Promise<ProcessExecution | null> {
+    const rows = await this.dbProvider.get().$queryRaw<PrismaProcessExecutionRow[]>`
+      SELECT
+        "id",
+        "programId",
+        "type",
+        "name",
+        "year",
+        "semesterId",
+        "catalogVersionId",
+        "status",
+        "createdBy",
+        "updatedBy",
+        "createdAt",
+        "updatedAt"
+      FROM "process_executions"
+      WHERE "id" = ${id}
+      FOR UPDATE
+    `;
+
+    const row = rows[0];
+    return row ? mapPrismaProcessExecutionRowToDomain(row) : null;
+  }
+
+  async updateStatus(
+    execution: ProcessExecution,
+    expectedStatus: ProcessExecutionStatus,
+  ): Promise<void> {
+    const result = await this.dbProvider.get().processExecution.updateMany({
+      where: {
+        id: execution.id,
+        status: expectedStatus,
+      },
+      data: {
+        status: execution.status,
+        updatedBy: execution.updatedBy,
+        updatedAt: execution.updatedAt,
+      },
+    });
+
+    if (result.count !== 1) {
+      throw new ExecutionStatusConflictError();
     }
   }
 
