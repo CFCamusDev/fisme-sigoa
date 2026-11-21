@@ -180,6 +180,7 @@ describe('check-test-patterns fast rules (HU-080, T-080-20, T-080-21)', () => {
       content: [
         'await sleep(50);',
         'await new Promise((resolve) => setTimeout(resolve, 200));',
+        'const clickPromise = user.click(button);',
       ].join('\n'),
     };
     const shortMockUnitFile = {
@@ -188,11 +189,12 @@ describe('check-test-patterns fast rules (HU-080, T-080-20, T-080-21)', () => {
     };
 
     const violations = findFixedPauseViolations([e2eFile, unitFile, shortMockUnitFile], []);
-    expect(violations).toHaveLength(4);
+    expect(violations).toHaveLength(5);
     expect(violations.map((v: { file: string; line: number }) => [v.file, v.line])).toEqual([
       [specPath, 2],
       [specPath, 3],
       ['apps/frontend/src/sample.test.ts', 1],
+      ['apps/frontend/src/sample.test.ts', 3],
       ['apps/frontend/src/sample.test.ts', 2],
     ]);
   });
