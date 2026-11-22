@@ -3,6 +3,7 @@ export * from './schedule-keys';
 export * from './use-advance-process-execution';
 export * from './use-change-schedule-activity-status';
 export * from './use-create-process-execution';
+export * from './use-execution-board';
 export * from './use-next-transition';
 export * from './use-process-executions';
 export * from './use-propose-schedule';

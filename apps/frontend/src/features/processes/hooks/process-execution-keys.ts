@@ -6,4 +6,5 @@ export const processExecutionKeys = {
     [...processExecutionKeys.all, 'list', params] as const,
   nextTransition: (executionId: string) =>
     [...processExecutionKeys.all, 'next-transition', executionId] as const,
+  board: (executionId: string) => [...processExecutionKeys.all, 'board', executionId] as const,
 };
