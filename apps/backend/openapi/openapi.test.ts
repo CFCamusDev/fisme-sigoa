@@ -93,8 +93,12 @@ import {
   createSessionRequestSchema,
   advanceProcessExecutionRequestSchema,
   advanceProcessExecutionResponseSchema,
+  closeProcessExecutionRequestSchema,
+  closeProcessExecutionResponseSchema,
   listProcessExecutionsResponseSchema,
   nextTransitionResponseSchema,
+  voidProcessExecutionRequestSchema,
+  voidProcessExecutionResponseSchema,
   listSessionsResponseSchema,
   saveScheduleRequestSchema,
   changeScheduleActivityStatusRequestSchema,
@@ -3120,6 +3124,40 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
       expect(
         qualityCommitteeListResponseSchema.safeParse(
           listOp.responses['200'].content['application/json'].example,
+        ).success,
+      ).toBe(true);
+    });
+  });
+
+  describe('OpenAPI Specification for Process Execution Closure (HU-030, T-030-07, RF-030, RNF-032)', () => {
+    it('close and void schemas validate their documented examples', () => {
+      const closeOp = spec.paths['/process-executions/{id}/close']?.post;
+      const voidOp = spec.paths['/process-executions/{id}/void']?.post;
+
+      expect(closeOp).toBeDefined();
+      expect(voidOp).toBeDefined();
+      expect(closeOp.security).toEqual([{ bearerAuth: [] }]);
+      expect(voidOp.security).toEqual([{ bearerAuth: [] }]);
+
+      expect(
+        closeProcessExecutionRequestSchema.safeParse(
+          closeOp.requestBody.content['application/json'].example,
+        ).success,
+      ).toBe(true);
+      expect(
+        closeProcessExecutionResponseSchema.safeParse(
+          closeOp.responses['200'].content['application/json'].example,
+        ).success,
+      ).toBe(true);
+
+      expect(
+        voidProcessExecutionRequestSchema.safeParse(
+          voidOp.requestBody.content['application/json'].example,
+        ).success,
+      ).toBe(true);
+      expect(
+        voidProcessExecutionResponseSchema.safeParse(
+          voidOp.responses['200'].content['application/json'].example,
         ).success,
       ).toBe(true);
     });
