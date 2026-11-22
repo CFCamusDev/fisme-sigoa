@@ -1,5 +1,6 @@
 export { CatalogVersionNotAllowedError } from './catalog-version-not-allowed-error.js';
 export { DuplicateProcessExecutionError } from './duplicate-process-execution-error.js';
+export { ExecutionContentFrozenError } from './execution-content-frozen-error.js';
 export { ExecutionPreconditionsNotMetError } from './execution-preconditions-not-met-error.js';
 export { ExecutionStatusConflictError } from './execution-status-conflict-error.js';
 export { InvalidExecutionTransitionError } from './invalid-execution-transition-error.js';
