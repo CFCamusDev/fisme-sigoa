@@ -116,6 +116,7 @@ describe('Execution content immutability (PostgreSQL real, HU-030, T-030-10)', (
         executions: {
           create: {
             processExecutionId: executionId,
+            createdBy: 'user-1',
           },
         },
       },
