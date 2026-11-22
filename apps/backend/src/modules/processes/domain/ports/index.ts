@@ -1,3 +1,10 @@
+export type {
+  ExecutionBoardSessionModality,
+  ExecutionBoardSessionStakeholderType,
+  ExecutionBoardSessionSummaryItem,
+  ExecutionBoardSessionsReader,
+  ExecutionBoardSessionsSummary,
+} from './execution-board-sessions-reader.js';
 export type { ExecutionPreconditionProvider } from './execution-precondition-provider.js';
 export type {
   ProcessCatalogVersionReader,
