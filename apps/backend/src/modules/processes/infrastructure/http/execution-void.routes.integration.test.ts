@@ -185,7 +185,7 @@ describe('POST /process-executions/:id/void (PostgreSQL real, HU-030, T-030-15)'
   }, 5_000);
 
   it('returns 403 without ejecucion.anular', async () => {
-    const member = await createActor(['QUALITY_COMMITTEE_MEMBER']);
+    const member = await createActor(['COMMITTEE_MEMBER']);
     const executionId = await seedExecution();
 
     const response = await request(app)

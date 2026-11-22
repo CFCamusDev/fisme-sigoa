@@ -209,7 +209,7 @@ describe('POST /process-executions/:id/close (PostgreSQL real, HU-030, T-030-14)
   }, 5_000);
 
   it('returns 403 without ejecucion.cerrar', async () => {
-    const member = await createActor(['QUALITY_COMMITTEE_MEMBER']);
+    const member = await createActor(['COMMITTEE_MEMBER']);
     const executionId = await seedExecution({
       status: 'PENDING_APPROVAL',
       withApprovedResolution: true,
