@@ -40,7 +40,7 @@ export function ProcessExecutionsTable({ items }: ProcessExecutionsTableProps) {
               Estado
             </TableHead>
             <TableHead scope="col" className="text-foreground">
-              Cronograma
+              Acciones
             </TableHead>
           </TableRow>
         </TableHeader>
@@ -61,13 +61,22 @@ export function ProcessExecutionsTable({ items }: ProcessExecutionsTableProps) {
                   <StatusBadge status={item.status} />
                 </TableCell>
                 <TableCell>
-                  <Can permission="cronograma.ver">
-                    <Button variant="outline" size="sm" asChild>
-                      <Link to="/cronograma/$executionId" params={{ executionId: item.id }}>
-                        Cronograma
-                      </Link>
-                    </Button>
-                  </Can>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Can permission="ejecucion.ver">
+                      <Button variant="outline" size="sm" asChild>
+                        <Link to="/ejecuciones/$executionId" params={{ executionId: item.id }}>
+                          Ver tablero
+                        </Link>
+                      </Button>
+                    </Can>
+                    <Can permission="cronograma.ver">
+                      <Button variant="outline" size="sm" asChild>
+                        <Link to="/cronograma/$executionId" params={{ executionId: item.id }}>
+                          Cronograma
+                        </Link>
+                      </Button>
+                    </Can>
+                  </div>
                 </TableCell>
               </TableRow>
             );
