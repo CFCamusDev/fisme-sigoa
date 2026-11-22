@@ -80,6 +80,12 @@ describe('PrismaExecutionBoardSessionsReader Integration (PostgreSQL real)', () 
           sessionDate: new Date(`${f.date}T00:00:00.000Z`),
           startTime: f.time,
           modality: f.modality,
+          ...(f.modality === 'VIRTUAL'
+            ? {
+                meetingUrl: `https://meet.example.com/${f.id}`,
+                recordingUrl: `https://video.example.com/${f.id}`,
+              }
+            : {}),
           createdBy: 'user-1',
           executions: {
             create: {
@@ -98,6 +104,8 @@ describe('PrismaExecutionBoardSessionsReader Integration (PostgreSQL real)', () 
         sessionDate: new Date('2027-05-01T00:00:00.000Z'),
         startTime: '15:00',
         modality: 'VIRTUAL',
+        meetingUrl: 'https://meet.example.com/s-other',
+        recordingUrl: 'https://video.example.com/s-other',
         createdBy: 'user-1',
         executions: {
           create: {
