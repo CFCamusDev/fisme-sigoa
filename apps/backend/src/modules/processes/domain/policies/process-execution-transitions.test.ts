@@ -68,7 +68,7 @@ describe('process-execution-transitions', () => {
     expect(nextAdvanceStatus('CLOSED')).toBeNull();
     expect(nextAdvanceStatus('VOIDED')).toBeNull();
 
-    expect(requiredPreconditions('P612', 'PENDING_APPROVAL')).toEqual([]);
+    expect(requiredPreconditions('P612', 'PENDING_APPROVAL')).toEqual(['RESOLUTION_APPROVED']);
     expect(requiredPreconditions('P612', 'CLOSED')).toEqual([]);
     expect(requiredPreconditions('P612', 'VOIDED')).toEqual([]);
   });
