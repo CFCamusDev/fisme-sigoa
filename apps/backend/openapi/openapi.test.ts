@@ -6,6 +6,7 @@ import {
   activateAccountRequestSchema,
   activateAccountResponseSchema,
   apiErrorResponseSchema,
+  executionBoardResponseSchema,
   changeUserStatusRequestSchema,
   createRoleRequestSchema,
   createUserRequestSchema,
@@ -3059,6 +3060,18 @@ describe('OpenAPI Specification for Auth (T-001-13, T-002-08, RNF-032)', () => {
 
       const nextResExample = nextOp.responses['200'].content['application/json'].example;
       expect(nextTransitionResponseSchema.safeParse(nextResExample).success).toBe(true);
+    });
+  });
+
+  describe('OpenAPI Specification for Execution Board (HU-031, T-031-04, RF-031, RNF-032)', () => {
+    it('execution board schema validates its documented example', () => {
+      const boardOp = spec.paths['/process-executions/{id}/board']?.get;
+
+      expect(boardOp).toBeDefined();
+      expect(boardOp.security).toEqual([{ bearerAuth: [] }]);
+
+      const boardExample = boardOp.responses['200'].content['application/json'].example;
+      expect(executionBoardResponseSchema.safeParse(boardExample).success).toBe(true);
     });
   });
 
