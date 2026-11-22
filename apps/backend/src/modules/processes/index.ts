@@ -4,6 +4,7 @@ import type { DbProvider } from '../../shared/prisma/prisma-unit-of-work.js';
 import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
 import { AdvanceProcessExecutionUseCase } from './application/advance-process-execution.js';
 import { ChangeScheduleActivityStatusUseCase } from './application/change-schedule-activity-status.js';
+import { CloseProcessExecutionUseCase } from './application/close-process-execution.js';
 import { CreateProcessExecutionUseCase } from './application/create-process-execution.js';
 import { ExecutionPreconditionEvaluator } from './application/execution-precondition-evaluator.js';
 import { GetExecutionBoardUseCase } from './application/get-execution-board.js';
@@ -151,6 +152,15 @@ export function createProcessesModule(deps?: ProcessesModuleDependencies): Proce
     clock: deps.clock,
   });
 
+  const closeProcessExecutionUseCase = new CloseProcessExecutionUseCase({
+    processExecutionRepository,
+    permissionChecker: deps.permissionChecker,
+    preconditionEvaluator,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+    clock: deps.clock,
+  });
+
   const getNextTransitionUseCase = new GetNextTransitionUseCase({
     processExecutionRepository,
     permissionChecker: deps.permissionChecker,
@@ -159,6 +169,7 @@ export function createProcessesModule(deps?: ProcessesModuleDependencies): Proce
 
   const executionTransitionsController = new ExecutionTransitionsController({
     advanceProcessExecutionUseCase,
+    closeProcessExecutionUseCase,
     getNextTransitionUseCase,
   });
 

@@ -1,4 +1,8 @@
-import { advanceProcessExecutionRequestSchema, processExecutionIdParamSchema } from '@sigoa/shared';
+import {
+  advanceProcessExecutionRequestSchema,
+  closeProcessExecutionRequestSchema,
+  processExecutionIdParamSchema,
+} from '@sigoa/shared';
 import { Router, type RequestHandler } from 'express';
 import { validateRequest } from '../../../../shared/middleware/validate-request.js';
 import type { ExecutionTransitionsController } from './execution-transitions.controller.js';
@@ -47,6 +51,19 @@ export function createExecutionTransitionsRouter(
       body: advanceProcessExecutionRequestSchema,
     }),
     deps.controller.advanceProcessExecution,
+  );
+
+  // POST /process-executions/:id/close (HU-030, RF-030, RNF-008, RNF-009)
+  router.post(
+    '/:id/close',
+    deps.authenticate,
+    deps.requirePermission('ejecucion.cerrar', 'GLOBAL'),
+    normalizeEmptyBody,
+    validateRequest({
+      params: processExecutionIdParamSchema,
+      body: closeProcessExecutionRequestSchema,
+    }),
+    deps.controller.closeProcessExecution,
   );
 
   return router;
