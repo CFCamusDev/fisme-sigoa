@@ -112,6 +112,7 @@ describe('Execution content immutability (PostgreSQL real, HU-030, T-030-10)', (
         startTime: '10:00',
         modality: 'VIRTUAL',
         meetingUrl: 'https://meet.example.test/original',
+        recordingUrl: 'https://meet.example.test/recording',
         createdBy: 'user-1',
         executions: {
           create: {
@@ -167,6 +168,7 @@ describe('Execution content immutability (PostgreSQL real, HU-030, T-030-10)', (
         startTime: '15:00',
         modality: 'VIRTUAL',
         meetingUrl: 'https://meet.example.test/new',
+        recordingUrl: 'https://meet.example.test/new-recording',
         processExecutionIds: [executionId],
       });
     expect(createSessionRes.status).toBe(409);
