@@ -149,7 +149,7 @@ describe('POST /process-executions/:id/close (PostgreSQL real, HU-030, T-030-14)
       .send({});
 
     expect(response.status).toBe(409);
-    expect(response.body.details).toEqual([
+    expect(response.body.error.details).toEqual([
       {
         path: 'RESOLUTION_APPROVED',
         message: 'La resolución que aprueba el proceso está aprobada con su PDF',
