@@ -383,4 +383,31 @@ describe('PrismaProcessExecutionRepository Integration (PostgreSQL real, T-027-1
     const reloaded = await repository.findById('exec-conflict-1');
     expect(reloaded?.status).toBe('PLANNED');
   }, 5_000);
+
+  it('findReadItemById returns the execution with semesterCode and catalogVersionNumber or null', async () => {
+    const programId = await createProgram();
+    const version = await createCatalogVersion({ programId, number: 5, status: 'APPROVED' });
+    const semester = await createSemester('sem-read-1', '2027-I');
+
+    const execution = ProcessExecution.create({
+      id: 'exec-read-1',
+      programId,
+      type: 'P622',
+      year: 2027,
+      semester,
+      catalogVersion: version,
+      actorId: 'user-1',
+      now: NOW,
+    });
+    await repository.save(execution);
+
+    const found = await repository.findReadItemById('exec-read-1');
+    expect(found).not.toBeNull();
+    expect(found?.execution.id).toBe('exec-read-1');
+    expect(found?.semesterCode).toBe('2027-I');
+    expect(found?.catalogVersionNumber).toBe(5);
+
+    const missing = await repository.findReadItemById('exec-read-missing');
+    expect(missing).toBeNull();
+  }, 5_000);
 });
