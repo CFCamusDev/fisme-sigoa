@@ -69,6 +69,7 @@ export class PrismaProcessExecutionRepository
         "semesterId",
         "catalogVersionId",
         "status",
+        "voidReason",
         "createdBy",
         "updatedBy",
         "createdAt",
@@ -93,6 +94,7 @@ export class PrismaProcessExecutionRepository
       },
       data: {
         status: execution.status,
+        voidReason: execution.voidReason,
         updatedBy: execution.updatedBy,
         updatedAt: execution.updatedAt,
       },

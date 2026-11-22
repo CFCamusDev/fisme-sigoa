@@ -736,6 +736,7 @@ model ProcessExecution {
   semesterId       String?
   catalogVersionId String
   status           ProcessExecutionStatus @default(PLANNED)
+  voidReason       String?
   createdBy        String
   updatedBy        String?
   createdAt        DateTime               @default(now())
