@@ -102,11 +102,9 @@ describe('PrismaResolutionApprovedPreconditionProvider Integration (PostgreSQL r
         type: 'EDUCATIONAL_OBJECTIVE',
         number: 'R-003-2027',
         issuedOn: new Date('2027-01-15T00:00:00.000Z'),
-        status: 'APPROVED',
+        status: 'REGISTERED',
         catalogVersionId: 'cv-nopdf',
         pdfFileId: null,
-        approvedAt: new Date('2027-01-16T00:00:00.000Z'),
-        approvedBy: 'user-1',
         createdBy: 'user-1',
       },
     });
@@ -117,7 +115,7 @@ describe('PrismaResolutionApprovedPreconditionProvider Integration (PostgreSQL r
 
   it('ignores an approved resolution of another version or type', async () => {
     await seedCatalogVersion('cv-target', 4);
-    await seedCatalogVersion('cv-other', 5);
+    await seedCatalogVersion('cv-other', 5, 'prog-other');
     await seedPdfFile('file-other');
     await seedPdfFile('file-wrong-type');
 
