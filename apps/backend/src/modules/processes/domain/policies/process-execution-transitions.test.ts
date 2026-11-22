@@ -4,6 +4,8 @@ import {
   PRECONDITION_LABELS,
 } from '../entities/process-execution-precondition.js';
 import {
+  canVoid,
+  closeTargetStatus,
   evaluatePreconditions,
   nextAdvanceStatus,
   requiredPreconditions,
@@ -109,6 +111,27 @@ describe('process-execution-transitions', () => {
       const label = PRECONDITION_LABELS[code];
       expect(typeof label).toBe('string');
       expect(label.trim().length).toBeGreaterThan(10);
+    }
+  });
+
+  it('closes only from PENDING_APPROVAL', () => {
+    expect(closeTargetStatus('PENDING_APPROVAL')).toBe('CLOSED');
+    for (const status of ['PLANNED', 'IN_PROGRESS', 'CONSOLIDATING', 'CLOSED', 'VOIDED'] as const) {
+      expect(closeTargetStatus(status)).toBeNull();
+    }
+  });
+
+  it('allows voiding from any open status', () => {
+    for (const status of ['PLANNED', 'IN_PROGRESS', 'CONSOLIDATING', 'PENDING_APPROVAL'] as const) {
+      expect(canVoid(status)).toBe(true);
+    }
+    expect(canVoid('CLOSED')).toBe(false);
+    expect(canVoid('VOIDED')).toBe(false);
+  });
+
+  it('requires RESOLUTION_APPROVED to close', () => {
+    for (const type of ['P611', 'P612', 'P613', 'P621', 'P622', 'P623'] as const) {
+      expect(requiredPreconditions(type, 'PENDING_APPROVAL')).toEqual(['RESOLUTION_APPROVED']);
     }
   });
 });
