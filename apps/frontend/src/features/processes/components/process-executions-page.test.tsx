@@ -36,7 +36,7 @@ describe('ProcessExecutionsPage (HU-027, T-027-21)', () => {
       ],
     });
 
-    expect(screen.getByRole('status')).toHaveTextContent(/Cargando ejecuciones de proceso/i);
+    expect(await screen.findByRole('status')).toHaveTextContent(/Cargando ejecuciones de proceso/i);
     expect(
       await screen.findByText(/Aún no hay ejecuciones\. Crea la primera/i),
     ).toBeInTheDocument();
