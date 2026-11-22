@@ -13,6 +13,7 @@ import { ListProcessExecutionsUseCase } from './application/list-process-executi
 import { ListScheduleUseCase } from './application/list-schedule.js';
 import { ProposeScheduleUseCase } from './application/propose-schedule.js';
 import { SaveScheduleUseCase } from './application/save-schedule.js';
+import { VoidProcessExecutionUseCase } from './application/void-process-execution.js';
 import type { ExecutionBoardSessionsReader } from './domain/ports/execution-board-sessions-reader.js';
 import type { ExecutionPreconditionProvider } from './domain/ports/execution-precondition-provider.js';
 import type { ProcessPermissionChecker } from './domain/ports/process-permission-checker.js';
@@ -167,10 +168,19 @@ export function createProcessesModule(deps?: ProcessesModuleDependencies): Proce
     preconditionEvaluator,
   });
 
+  const voidProcessExecutionUseCase = new VoidProcessExecutionUseCase({
+    processExecutionRepository,
+    permissionChecker: deps.permissionChecker,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+    clock: deps.clock,
+  });
+
   const executionTransitionsController = new ExecutionTransitionsController({
     advanceProcessExecutionUseCase,
     closeProcessExecutionUseCase,
     getNextTransitionUseCase,
+    voidProcessExecutionUseCase,
   });
 
   const getExecutionBoardUseCase = new GetExecutionBoardUseCase({
