@@ -94,7 +94,7 @@ describe('ExecutionClosureActions (HU-030, T-030-16)', () => {
       { permissions: ALL_CLOSURE_PERMS },
     );
 
-    await user.click(screen.getByRole('button', { name: /Cerrar ejecución/i }));
+    await user.click(await screen.findByRole('button', { name: /Cerrar ejecución/i }));
     await user.click(screen.getByRole('button', { name: /Confirmar cierre/i }));
 
     expect(
@@ -117,7 +117,7 @@ describe('ExecutionClosureActions (HU-030, T-030-16)', () => {
       permissions: ALL_CLOSURE_PERMS,
     });
 
-    await user.click(screen.getByRole('button', { name: /Anular ejecución/i }));
+    await user.click(await screen.findByRole('button', { name: /Anular ejecución/i }));
     await user.click(screen.getByRole('button', { name: /Confirmar anulación/i }));
 
     expect(await screen.findByText(/Ingresa el motivo de anulación/i)).toBeInTheDocument();
@@ -145,7 +145,7 @@ describe('ExecutionClosureActions (HU-030, T-030-16)', () => {
       permissions: ALL_CLOSURE_PERMS,
     });
 
-    await user.click(screen.getByRole('button', { name: /Anular ejecución/i }));
+    await user.click(await screen.findByRole('button', { name: /Anular ejecución/i }));
     await user.type(
       screen.getByLabelText(/Motivo de anulación/i),
       '  Ejecución duplicada por error  ',
@@ -156,22 +156,24 @@ describe('ExecutionClosureActions (HU-030, T-030-16)', () => {
     expect(receivedBody).toEqual({ reason: 'Ejecución duplicada por error' });
   });
 
-  it('hides the close button without ejecucion.cerrar and outside pending approval', () => {
+  it('hides the close button without ejecucion.cerrar and outside pending approval', async () => {
     const { rerender } = renderWithProviders(
       <ExecutionClosureActions executionId="exec-1" status="PENDING_APPROVAL" />,
       { permissions: VOID_ONLY_PERMS },
     );
+    expect(await screen.findByRole('button', { name: /Anular ejecución/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Cerrar ejecución/i })).not.toBeInTheDocument();
 
     rerender(<ExecutionClosureActions executionId="exec-1" status="IN_PROGRESS" />);
     expect(screen.queryByRole('button', { name: /Cerrar ejecución/i })).not.toBeInTheDocument();
   });
 
-  it('hides the void button without ejecucion.anular and on a closed or voided execution', () => {
+  it('hides the void button without ejecucion.anular and on a closed or voided execution', async () => {
     const { rerender } = renderWithProviders(
-      <ExecutionClosureActions executionId="exec-1" status="IN_PROGRESS" />,
+      <ExecutionClosureActions executionId="exec-1" status="PENDING_APPROVAL" />,
       { permissions: CLOSE_ONLY_PERMS },
     );
+    expect(await screen.findByRole('button', { name: /Cerrar ejecución/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Anular ejecución/i })).not.toBeInTheDocument();
 
     rerender(<ExecutionClosureActions executionId="exec-1" status="CLOSED" />);
@@ -229,7 +231,7 @@ describe('ExecutionClosureActions (HU-030, T-030-16)', () => {
       { permissions: ALL_CLOSURE_PERMS },
     );
 
-    await user.click(screen.getByRole('button', { name: /Cerrar ejecución/i }));
+    await user.click(await screen.findByRole('button', { name: /Cerrar ejecución/i }));
     await user.click(screen.getByRole('button', { name: /Confirmar cierre/i }));
 
     expect(await screen.findByRole('button', { name: /Cerrando/i })).toBeDisabled();
@@ -248,7 +250,7 @@ describe('ExecutionClosureActions (HU-030, T-030-16)', () => {
       { permissions: ALL_CLOSURE_PERMS },
     );
 
-    const closeTrigger = screen.getByRole('button', { name: /Cerrar ejecución/i });
+    const closeTrigger = await screen.findByRole('button', { name: /Cerrar ejecución/i });
     await user.click(closeTrigger);
     expect(screen.getByRole('button', { name: /Cancelar/i })).toHaveFocus();
 
@@ -277,7 +279,7 @@ describe('ExecutionClosureActions (HU-030, T-030-16)', () => {
       permissions: ALL_CLOSURE_PERMS,
     });
 
-    await user.click(screen.getByRole('button', { name: /Anular ejecución/i }));
+    await user.click(await screen.findByRole('button', { name: /Anular ejecución/i }));
     await user.type(screen.getByLabelText(/Motivo de anulación/i), 'Motivo válido');
     await user.click(screen.getByRole('button', { name: /Confirmar anulación/i }));
 
