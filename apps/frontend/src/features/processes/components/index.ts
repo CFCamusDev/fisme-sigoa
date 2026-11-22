@@ -1,3 +1,5 @@
+export * from './execution-board-page';
+export * from './execution-board-sections';
 export * from './execution-status-bar';
 export * from './process-execution-form';
 export * from './process-executions-filters';
