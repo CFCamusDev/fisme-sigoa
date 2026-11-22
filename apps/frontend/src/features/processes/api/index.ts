@@ -1,6 +1,7 @@
 export * from './advance-process-execution';
 export * from './change-schedule-activity-status';
 export * from './create-process-execution';
+export * from './get-execution-board';
 export * from './get-next-transition';
 export * from './get-process-executions';
 export * from './get-schedule';

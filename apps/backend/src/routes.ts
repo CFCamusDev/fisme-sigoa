@@ -49,7 +49,10 @@ import {
   type ExecutionPreconditionProvider,
 } from './modules/processes/index.js';
 import { createQualityCommitteeModule } from './modules/quality-committee/index.js';
-import { createSessionsModule } from './modules/sessions/index.js';
+import {
+  createSessionsModule,
+  PrismaExecutionBoardSessionsReader,
+} from './modules/sessions/index.js';
 import { createUsersModule, EmailActivationSender } from './modules/users/index.js';
 import {
   LoginAttemptsParameterProvider,
@@ -340,6 +343,7 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
       clock: deps.clock,
     }),
   );
+  const boardSessionsReader = new PrismaExecutionBoardSessionsReader(deps.dbProvider);
   const processesModule = createProcessesModule({
     unitOfWork: deps.unitOfWork,
     auditLogger: deps.auditLogger,
@@ -347,12 +351,14 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
     authenticate: authServices.authenticate,
     requirePermission: authorizationServices.requirePermission,
     permissionChecker: authorizationServices.authorizer,
+    boardSessionsReader,
     preconditionProviders: deps.processPreconditionProviders,
     clock: deps.clock,
   });
   app.use('/process-executions', processesModule.processExecutions);
   app.use('/process-executions', processesModule.executionSchedule);
   app.use('/process-executions', processesModule.executionTransitions);
+  app.use('/process-executions', processesModule.executionBoard);
   app.use('/schedule-activities', processesModule.scheduleActivities);
   const sessionsModule = createSessionsModule({
     unitOfWork: deps.unitOfWork,

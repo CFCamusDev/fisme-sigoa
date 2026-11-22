@@ -462,6 +462,12 @@ const PROTECTED_ENDPOINTS: readonly ProtectedEndpointSpec[] = [
   },
   {
     method: 'get',
+    openApiPath: '/process-executions/{id}/board',
+    requestPath: '/process-executions/exec-1/board',
+    requiredPermission: 'ejecucion.ver',
+  },
+  {
+    method: 'get',
     openApiPath: '/process-executions/{id}/schedule',
     requestPath: '/process-executions/exec-1/schedule',
     requiredPermission: 'cronograma.ver',

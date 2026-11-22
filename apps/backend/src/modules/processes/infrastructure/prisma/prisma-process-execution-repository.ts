@@ -10,6 +10,7 @@ import { ExecutionStatusConflictError } from '../../domain/errors/execution-stat
 import type {
   ListProcessExecutionsFilter,
   ProcessExecutionPage,
+  ProcessExecutionReadItem,
   ProcessExecutionReader,
 } from '../../domain/ports/process-execution-reader.js';
 import type { ProcessExecutionRepository } from '../../domain/ports/process-execution-repository.js';
@@ -143,5 +144,23 @@ export class PrismaProcessExecutionRepository
       select: { id: true },
     });
     return row !== null;
+  }
+
+  async findReadItemById(id: string): Promise<ProcessExecutionReadItem | null> {
+    const row = await this.dbProvider.get().processExecution.findUnique({
+      where: { id },
+      include: {
+        semester: { select: { code: true } },
+        catalogVersion: { select: { number: true } },
+      },
+    });
+    if (!row) {
+      return null;
+    }
+    return {
+      execution: mapPrismaProcessExecutionRowToDomain(row),
+      semesterCode: row.semester?.code ?? null,
+      catalogVersionNumber: row.catalogVersion.number,
+    };
   }
 }

@@ -30,14 +30,13 @@ describe('ProcessExecutionsPage (HU-027, T-027-21)', () => {
     );
 
     renderWithProviders(<ProcessExecutionsPage />, {
-      withRouter: false,
       permissions: [
         { code: 'ejecucion.ver', scope: 'GLOBAL' },
         { code: 'ejecucion.crear', scope: 'GLOBAL' },
       ],
     });
 
-    expect(screen.getByRole('status')).toHaveTextContent(/Cargando ejecuciones de proceso/i);
+    expect(await screen.findByRole('status')).toHaveTextContent(/Cargando ejecuciones de proceso/i);
     expect(
       await screen.findByText(/Aún no hay ejecuciones\. Crea la primera/i),
     ).toBeInTheDocument();
@@ -45,7 +44,6 @@ describe('ProcessExecutionsPage (HU-027, T-027-21)', () => {
     cleanup();
     failRequest = true;
     renderWithProviders(<ProcessExecutionsPage />, {
-      withRouter: false,
       permissions: [{ code: 'ejecucion.ver', scope: 'GLOBAL' }],
     });
 
@@ -68,7 +66,6 @@ describe('ProcessExecutionsPage (HU-027, T-027-21)', () => {
     );
 
     renderWithProviders(<ProcessExecutionsPage />, {
-      withRouter: false,
       permissions: [{ code: 'ejecucion.ver', scope: 'GLOBAL' }],
     });
 
@@ -91,7 +88,6 @@ describe('ProcessExecutionsPage (HU-027, T-027-21)', () => {
     );
 
     renderWithProviders(<ProcessExecutionsPage />, {
-      withRouter: false,
       permissions: [{ code: 'ejecucion.ver', scope: 'GLOBAL' }],
     });
 
@@ -129,7 +125,6 @@ describe('ProcessExecutionsPage (HU-027, T-027-21)', () => {
     );
 
     renderWithProviders(<ProcessExecutionsPage />, {
-      withRouter: false,
       permissions: [{ code: 'ejecucion.ver', scope: 'GLOBAL' }],
     });
 
@@ -145,7 +140,6 @@ describe('ProcessExecutionsPage (HU-027, T-027-21)', () => {
     );
 
     renderWithProviders(<ProcessExecutionsPage />, {
-      withRouter: false,
       permissions: [{ code: 'ejecucion.ver', scope: 'GLOBAL' }],
     });
 
@@ -172,7 +166,6 @@ describe('ProcessExecutionsPage (HU-027, T-027-21)', () => {
     );
 
     renderWithProviders(<ProcessExecutionsPage />, {
-      withRouter: false,
       permissions: [
         { code: 'ejecucion.ver', scope: 'GLOBAL' },
         { code: 'ejecucion.crear', scope: 'GLOBAL' },

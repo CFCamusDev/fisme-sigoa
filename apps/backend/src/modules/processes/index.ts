@@ -6,13 +6,17 @@ import { AdvanceProcessExecutionUseCase } from './application/advance-process-ex
 import { ChangeScheduleActivityStatusUseCase } from './application/change-schedule-activity-status.js';
 import { CreateProcessExecutionUseCase } from './application/create-process-execution.js';
 import { ExecutionPreconditionEvaluator } from './application/execution-precondition-evaluator.js';
+import { GetExecutionBoardUseCase } from './application/get-execution-board.js';
 import { GetNextTransitionUseCase } from './application/get-next-transition.js';
 import { ListProcessExecutionsUseCase } from './application/list-process-executions.js';
 import { ListScheduleUseCase } from './application/list-schedule.js';
 import { ProposeScheduleUseCase } from './application/propose-schedule.js';
 import { SaveScheduleUseCase } from './application/save-schedule.js';
+import type { ExecutionBoardSessionsReader } from './domain/ports/execution-board-sessions-reader.js';
 import type { ExecutionPreconditionProvider } from './domain/ports/execution-precondition-provider.js';
 import type { ProcessPermissionChecker } from './domain/ports/process-permission-checker.js';
+import { ExecutionBoardController } from './infrastructure/http/execution-board.controller.js';
+import { createExecutionBoardRouter } from './infrastructure/http/execution-board.routes.js';
 import { createExecutionScheduleRouter } from './infrastructure/http/execution-schedule.routes.js';
 import { ExecutionTransitionsController } from './infrastructure/http/execution-transitions.controller.js';
 import { createExecutionTransitionsRouter } from './infrastructure/http/execution-transitions.routes.js';
@@ -41,6 +45,7 @@ export interface ProcessesModuleDependencies {
     scope?: ProcessRoutePermissionScope,
   ) => RequestHandler;
   readonly permissionChecker: ProcessPermissionChecker;
+  readonly boardSessionsReader: ExecutionBoardSessionsReader;
   readonly preconditionProviders?: readonly ExecutionPreconditionProvider[];
   readonly clock?: () => Date;
 }
@@ -50,6 +55,7 @@ export interface ProcessesModuleRouters {
   readonly executionSchedule: Router;
   readonly scheduleActivities: Router;
   readonly executionTransitions: Router;
+  readonly executionBoard: Router;
 }
 
 export function createProcessesModule(deps?: ProcessesModuleDependencies): ProcessesModuleRouters {
@@ -59,6 +65,7 @@ export function createProcessesModule(deps?: ProcessesModuleDependencies): Proce
       executionSchedule: Router(),
       scheduleActivities: Router(),
       executionTransitions: Router(),
+      executionBoard: Router(),
     };
   }
 
@@ -155,6 +162,19 @@ export function createProcessesModule(deps?: ProcessesModuleDependencies): Proce
     getNextTransitionUseCase,
   });
 
+  const getExecutionBoardUseCase = new GetExecutionBoardUseCase({
+    processExecutionReader: processExecutionRepository,
+    scheduleActivityRepository,
+    boardSessionsReader: deps.boardSessionsReader,
+    permissionChecker: deps.permissionChecker,
+    preconditionEvaluator,
+    clock: deps.clock,
+  });
+
+  const executionBoardController = new ExecutionBoardController({
+    getExecutionBoardUseCase,
+  });
+
   return {
     processExecutions: createProcessExecutionsRouter({
       controller,
@@ -176,6 +196,11 @@ export function createProcessesModule(deps?: ProcessesModuleDependencies): Proce
       authenticate: deps.authenticate,
       requirePermission: deps.requirePermission,
     }),
+    executionBoard: createExecutionBoardRouter({
+      controller: executionBoardController,
+      authenticate: deps.authenticate,
+      requirePermission: deps.requirePermission,
+    }),
   };
 }
 
@@ -185,6 +210,7 @@ export * from './domain/entities/process-execution.js';
 export * from './domain/entities/process-type.js';
 export * from './domain/entities/schedule-activity-status.js';
 export * from './domain/entities/schedule-activity.js';
+export * from './domain/policies/execution-board-targets.js';
 export * from './domain/policies/procedure-steps.js';
 export * from './domain/policies/process-catalog-version-rule.js';
 export * from './domain/policies/process-execution-transitions.js';
@@ -196,6 +222,8 @@ export * from './domain/ports/index.js';
 export * from './application/advance-process-execution.js';
 export * from './application/advance-process-execution.types.js';
 export * from './application/execution-precondition-evaluator.js';
+export * from './application/get-execution-board.js';
+export * from './application/get-execution-board.types.js';
 export * from './application/get-next-transition.js';
 export * from './application/get-next-transition.types.js';
 export * from './application/process-execution-dto.js';
@@ -216,6 +244,8 @@ export * from './infrastructure/http/process-executions.controller.js';
 export * from './infrastructure/http/process-executions.routes.js';
 export * from './infrastructure/http/schedule.controller.js';
 export * from './infrastructure/http/execution-schedule.routes.js';
+export * from './infrastructure/http/execution-board.controller.js';
+export * from './infrastructure/http/execution-board.routes.js';
 export * from './infrastructure/http/execution-transitions.controller.js';
 export * from './infrastructure/http/execution-transitions.routes.js';
 export * from './infrastructure/http/schedule-activities.routes.js';

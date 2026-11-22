@@ -143,3 +143,4 @@ export * from './application/list-sessions-by-execution.types.js';
 export * from './infrastructure/http/sessions.controller.js';
 export * from './infrastructure/http/sessions.routes.js';
 export * from './infrastructure/http/execution-sessions.routes.js';
+export * from './infrastructure/prisma/prisma-execution-board-sessions-reader.js';

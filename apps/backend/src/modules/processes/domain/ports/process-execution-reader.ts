@@ -24,4 +24,5 @@ export interface ProcessExecutionPage {
 export interface ProcessExecutionReader {
   list(filter: ListProcessExecutionsFilter): Promise<ProcessExecutionPage>;
   existsById(id: string): Promise<boolean>;
+  findReadItemById(id: string): Promise<ProcessExecutionReadItem | null>;
 }
