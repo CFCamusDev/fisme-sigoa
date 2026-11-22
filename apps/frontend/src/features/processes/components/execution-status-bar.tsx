@@ -1,4 +1,4 @@
-import { ArrowRight, Check, CircleAlert, CircleCheck, CircleX, RefreshCw } from 'lucide-react';
+import { ArrowRight, Check, RefreshCw } from 'lucide-react';
 import type { ExecutionPreconditionResultDto } from '@sigoa/shared';
 import { StatusBadge } from '@/components/common/status-badge';
 import { Button } from '@/components/ui/button';
@@ -12,35 +12,15 @@ import {
   getExecutionStatusLabel,
   getTransitionErrorMessage,
 } from '../lib/execution-status-labels';
+import { ExecutionClosureActions } from './execution-closure-actions';
+import {
+  PreconditionIcon,
+  extractConflictDetails,
+  type ConflictDetail,
+} from './execution-precondition-helpers';
 
 export interface ExecutionStatusBarProps {
   readonly executionId: string;
-}
-
-interface ConflictDetail {
-  readonly path?: string;
-  readonly message: string;
-}
-
-function extractConflictDetails(details: unknown): readonly ConflictDetail[] | undefined {
-  if (!Array.isArray(details)) {
-    return undefined;
-  }
-  const parsed: ConflictDetail[] = [];
-  for (const item of details) {
-    if (
-      item &&
-      typeof item === 'object' &&
-      typeof (item as { message?: unknown }).message === 'string'
-    ) {
-      const rawPath = (item as { path?: unknown }).path;
-      parsed.push({
-        ...(typeof rawPath === 'string' ? { path: rawPath } : {}),
-        message: (item as { message: string }).message,
-      });
-    }
-  }
-  return parsed.length > 0 ? parsed : undefined;
 }
 
 function resolveDisplayedPreconditions(
@@ -59,16 +39,6 @@ function resolveDisplayedPreconditions(
     }));
   }
   return queryPreconditions;
-}
-
-function PreconditionIcon({ state }: { readonly state: 'MET' | 'UNMET' | 'NOT_VERIFIABLE' }) {
-  if (state === 'MET') {
-    return <CircleCheck className="size-4 shrink-0 text-success" aria-hidden="true" />;
-  }
-  if (state === 'NOT_VERIFIABLE') {
-    return <CircleAlert className="size-4 shrink-0 text-warning" aria-hidden="true" />;
-  }
-  return <CircleX className="size-4 shrink-0 text-danger" aria-hidden="true" />;
 }
 
 export function ExecutionStatusBar({ executionId }: ExecutionStatusBarProps) {
@@ -189,7 +159,11 @@ export function ExecutionStatusBar({ executionId }: ExecutionStatusBarProps) {
 
         {nextStatus === null ? (
           <p className="text-sm text-muted-foreground">
-            Esta ejecución no tiene transiciones de avance pendientes.
+            {status === 'CLOSED'
+              ? 'La ejecución está Cerrada y es de solo lectura.'
+              : status === 'VOIDED'
+                ? 'La ejecución está Anulada y es de solo lectura.'
+                : 'Esta ejecución no tiene transiciones de avance pendientes.'}
           </p>
         ) : (
           <div className="space-y-1.5">
@@ -215,6 +189,8 @@ export function ExecutionStatusBar({ executionId }: ExecutionStatusBarProps) {
           </div>
         )}
       </div>
+
+      <ExecutionClosureActions executionId={executionId} status={status} />
     </section>
   );
 }
