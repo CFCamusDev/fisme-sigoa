@@ -6,6 +6,7 @@ export const EXECUTION_PRECONDITION_CODES = [
   'CONSOLIDATION_MINUTES_SIGNED',
   'RESULTS_CALCULATED',
   'IMPROVEMENT_ACTIONS_REGISTERED',
+  'RESOLUTION_APPROVED',
 ] as const;
 
 export type ExecutionPreconditionCode = (typeof EXECUTION_PRECONDITION_CODES)[number];
@@ -28,4 +29,5 @@ export const PRECONDITION_LABELS: Record<ExecutionPreconditionCode, string> = {
   CONSOLIDATION_MINUTES_SIGNED: 'El acta de consolidación está firmada',
   RESULTS_CALCULATED: 'Los resultados del proceso han sido calculados',
   IMPROVEMENT_ACTIONS_REGISTERED: 'Las acciones de mejora están registradas',
+  RESOLUTION_APPROVED: 'La resolución que aprueba el proceso está aprobada con su PDF',
 };

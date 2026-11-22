@@ -254,4 +254,113 @@ describe('ProcessExecution', () => {
       ).toThrow(InvalidExecutionTransitionError);
     }
   });
+
+  it('closes from PENDING_APPROVAL without mutating the original', () => {
+    const execution = ProcessExecution.rehydrate({
+      id: 'exec-close',
+      programId: PROGRAM_ID,
+      type: 'P611',
+      name: 'Establecer OE 2027',
+      year: 2027,
+      semesterId: null,
+      catalogVersionId: 'cv-1',
+      status: 'PENDING_APPROVAL',
+      createdBy: ACTOR_ID,
+      updatedBy: null,
+      createdAt: BASE_NOW,
+      updatedAt: BASE_NOW,
+    });
+    const closedNow = new Date('2027-02-01T10:00:00.000Z');
+
+    const closed = execution.close({ actorId: 'user-2', now: closedNow });
+
+    expect(closed.status).toBe('CLOSED');
+    expect(closed.updatedBy).toBe('user-2');
+    expect(closed.updatedAt).toBe(closedNow);
+    expect(execution.status).toBe('PENDING_APPROVAL');
+  });
+
+  it('refuses to close or void a CLOSED execution', () => {
+    for (const status of ['CLOSED', 'VOIDED'] as const) {
+      const execution = ProcessExecution.rehydrate({
+        id: `exec-terminal-${status}`,
+        programId: PROGRAM_ID,
+        type: 'P611',
+        name: 'Establecer OE 2027',
+        year: 2027,
+        semesterId: null,
+        catalogVersionId: 'cv-1',
+        status,
+        voidReason: status === 'VOIDED' ? 'Motivo previo' : null,
+        createdBy: ACTOR_ID,
+        updatedBy: ACTOR_ID,
+        createdAt: BASE_NOW,
+        updatedAt: BASE_NOW,
+      });
+
+      expect(() =>
+        execution.close({ actorId: 'user-2', now: new Date('2027-02-01T10:00:00.000Z') }),
+      ).toThrow(InvalidExecutionTransitionError);
+
+      expect(() =>
+        execution.void({
+          actorId: 'user-2',
+          now: new Date('2027-02-01T10:00:00.000Z'),
+          reason: 'Nuevo motivo',
+        }),
+      ).toThrow(InvalidExecutionTransitionError);
+    }
+  });
+
+  it('requires a non empty reason of at most 500 characters to void', () => {
+    const execution = ProcessExecution.create({
+      id: 'exec-void-val',
+      programId: PROGRAM_ID,
+      type: 'P612',
+      year: 2027,
+      catalogVersion: { id: 'cv-1', programId: PROGRAM_ID, status: 'APPROVED' },
+      actorId: ACTOR_ID,
+      now: BASE_NOW,
+    });
+    const voidNow = new Date('2027-02-01T10:00:00.000Z');
+
+    expect(() => execution.void({ actorId: 'user-2', now: voidNow, reason: '   ' })).toThrow(
+      InvalidProcessExecutionDataError,
+    );
+
+    expect(() =>
+      execution.void({ actorId: 'user-2', now: voidNow, reason: 'A'.repeat(501) }),
+    ).toThrow(InvalidProcessExecutionDataError);
+  });
+
+  it('records the void reason in the snapshot', () => {
+    const execution = ProcessExecution.rehydrate({
+      id: 'exec-void-ok',
+      programId: PROGRAM_ID,
+      type: 'P612',
+      name: 'Medición anual de OE 2027',
+      year: 2027,
+      semesterId: null,
+      catalogVersionId: 'cv-1',
+      status: 'IN_PROGRESS',
+      createdBy: ACTOR_ID,
+      updatedBy: null,
+      createdAt: BASE_NOW,
+      updatedAt: BASE_NOW,
+    });
+    const voidNow = new Date('2027-02-01T10:00:00.000Z');
+
+    const voided = execution.void({
+      actorId: 'user-2',
+      now: voidNow,
+      reason: '  Ejecución duplicada por error de registro  ',
+    });
+
+    expect(voided.status).toBe('VOIDED');
+    expect(voided.voidReason).toBe('Ejecución duplicada por error de registro');
+    expect(voided.snapshot()).toMatchObject({
+      status: 'VOIDED',
+      voidReason: 'Ejecución duplicada por error de registro',
+    });
+  });
 });

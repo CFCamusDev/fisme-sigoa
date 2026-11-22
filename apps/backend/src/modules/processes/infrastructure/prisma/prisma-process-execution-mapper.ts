@@ -15,6 +15,7 @@ export function mapPrismaProcessExecutionRowToDomain(
     semesterId: row.semesterId,
     catalogVersionId: row.catalogVersionId,
     status: row.status as ProcessExecutionStatus,
+    voidReason: row.voidReason,
     createdBy: row.createdBy,
     updatedBy: row.updatedBy,
     createdAt: row.createdAt,

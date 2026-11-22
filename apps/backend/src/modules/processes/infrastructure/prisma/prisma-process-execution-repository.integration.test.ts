@@ -410,4 +410,34 @@ describe('PrismaProcessExecutionRepository Integration (PostgreSQL real, T-027-1
     const missing = await repository.findReadItemById('exec-read-missing');
     expect(missing).toBeNull();
   }, 5_000);
+
+  it('persists the void reason and reads it back', async () => {
+    const programId = await createProgram();
+    const version = await createCatalogVersion({ programId, status: 'APPROVED' });
+    const execution = ProcessExecution.create({
+      id: 'exec-void-repo',
+      programId,
+      type: 'P612',
+      year: 2027,
+      catalogVersion: version,
+      actorId: 'user-1',
+      now: NOW,
+    });
+    await repository.save(execution);
+
+    const voided = execution.void({
+      actorId: 'user-2',
+      now: new Date('2027-01-20T10:00:00.000Z'),
+      reason: 'Ejecución cancelada por reprogramación',
+    });
+
+    await repository.updateStatus(voided, 'PLANNED');
+
+    const reloaded = await repository.findById('exec-void-repo');
+    expect(reloaded?.status).toBe('VOIDED');
+    expect(reloaded?.voidReason).toBe('Ejecución cancelada por reprogramación');
+
+    const locked = await uow.run(async () => repository.findByIdForUpdate('exec-void-repo'));
+    expect(locked?.voidReason).toBe('Ejecución cancelada por reprogramación');
+  }, 5_000);
 });

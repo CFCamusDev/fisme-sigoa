@@ -32,6 +32,7 @@ import {
 } from './modules/catalog/index.js';
 import {
   createResolutionsModule,
+  PrismaResolutionApprovedPreconditionProvider,
   type ResolutionApprovedSubscriber,
 } from './modules/resolutions/index.js';
 import {
@@ -46,6 +47,7 @@ import {
 import { createStakeholderAnnexPdfGenerator } from './stakeholder-annex-pdf-adapter.js';
 import {
   createProcessesModule,
+  PrismaSchedulePreconditionProvider,
   type ExecutionPreconditionProvider,
 } from './modules/processes/index.js';
 import { createQualityCommitteeModule } from './modules/quality-committee/index.js';
@@ -344,6 +346,10 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
     }),
   );
   const boardSessionsReader = new PrismaExecutionBoardSessionsReader(deps.dbProvider);
+  const processPreconditionProviders = deps.processPreconditionProviders ?? [
+    new PrismaSchedulePreconditionProvider(deps.dbProvider),
+    new PrismaResolutionApprovedPreconditionProvider(deps.dbProvider),
+  ];
   const processesModule = createProcessesModule({
     unitOfWork: deps.unitOfWork,
     auditLogger: deps.auditLogger,
@@ -352,7 +358,7 @@ export function setupAppRoutes(app: Express, deps: AppRoutesDependencies): void 
     requirePermission: authorizationServices.requirePermission,
     permissionChecker: authorizationServices.authorizer,
     boardSessionsReader,
-    preconditionProviders: deps.processPreconditionProviders,
+    preconditionProviders: processPreconditionProviders,
     clock: deps.clock,
   });
   app.use('/process-executions', processesModule.processExecutions);

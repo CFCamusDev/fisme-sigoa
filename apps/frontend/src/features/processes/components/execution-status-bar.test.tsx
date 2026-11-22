@@ -81,7 +81,7 @@ describe('ExecutionStatusBar (HU-029, T-029-11)', () => {
     renderWithProviders(<ExecutionStatusBar executionId="exec-1" />, { permissions: ALL_PERMS });
 
     expect(
-      await screen.findByText(/Esta ejecución no tiene transiciones de avance pendientes/i),
+      await screen.findByText(/La ejecución está Cerrada y es de solo lectura/i),
     ).toBeInTheDocument();
   });
 

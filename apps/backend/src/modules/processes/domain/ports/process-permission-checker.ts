@@ -2,6 +2,8 @@ export type ProcessPermission =
   | 'ejecucion.ver'
   | 'ejecucion.crear'
   | 'ejecucion.avanzar'
+  | 'ejecucion.cerrar'
+  | 'ejecucion.anular'
   | 'cronograma.ver'
   | 'cronograma.editar';
 

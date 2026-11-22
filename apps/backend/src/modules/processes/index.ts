@@ -4,6 +4,7 @@ import type { DbProvider } from '../../shared/prisma/prisma-unit-of-work.js';
 import type { UnitOfWork } from '../../shared/unit-of-work/unit-of-work.js';
 import { AdvanceProcessExecutionUseCase } from './application/advance-process-execution.js';
 import { ChangeScheduleActivityStatusUseCase } from './application/change-schedule-activity-status.js';
+import { CloseProcessExecutionUseCase } from './application/close-process-execution.js';
 import { CreateProcessExecutionUseCase } from './application/create-process-execution.js';
 import { ExecutionPreconditionEvaluator } from './application/execution-precondition-evaluator.js';
 import { GetExecutionBoardUseCase } from './application/get-execution-board.js';
@@ -12,6 +13,7 @@ import { ListProcessExecutionsUseCase } from './application/list-process-executi
 import { ListScheduleUseCase } from './application/list-schedule.js';
 import { ProposeScheduleUseCase } from './application/propose-schedule.js';
 import { SaveScheduleUseCase } from './application/save-schedule.js';
+import { VoidProcessExecutionUseCase } from './application/void-process-execution.js';
 import type { ExecutionBoardSessionsReader } from './domain/ports/execution-board-sessions-reader.js';
 import type { ExecutionPreconditionProvider } from './domain/ports/execution-precondition-provider.js';
 import type { ProcessPermissionChecker } from './domain/ports/process-permission-checker.js';
@@ -151,15 +153,34 @@ export function createProcessesModule(deps?: ProcessesModuleDependencies): Proce
     clock: deps.clock,
   });
 
+  const closeProcessExecutionUseCase = new CloseProcessExecutionUseCase({
+    processExecutionRepository,
+    permissionChecker: deps.permissionChecker,
+    preconditionEvaluator,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+    clock: deps.clock,
+  });
+
   const getNextTransitionUseCase = new GetNextTransitionUseCase({
     processExecutionRepository,
     permissionChecker: deps.permissionChecker,
     preconditionEvaluator,
   });
 
+  const voidProcessExecutionUseCase = new VoidProcessExecutionUseCase({
+    processExecutionRepository,
+    permissionChecker: deps.permissionChecker,
+    unitOfWork: deps.unitOfWork,
+    auditLogger: deps.auditLogger,
+    clock: deps.clock,
+  });
+
   const executionTransitionsController = new ExecutionTransitionsController({
     advanceProcessExecutionUseCase,
+    closeProcessExecutionUseCase,
     getNextTransitionUseCase,
+    voidProcessExecutionUseCase,
   });
 
   const getExecutionBoardUseCase = new GetExecutionBoardUseCase({
@@ -211,6 +232,7 @@ export * from './domain/entities/process-type.js';
 export * from './domain/entities/schedule-activity-status.js';
 export * from './domain/entities/schedule-activity.js';
 export * from './domain/policies/execution-board-targets.js';
+export * from './domain/policies/execution-immutability.js';
 export * from './domain/policies/procedure-steps.js';
 export * from './domain/policies/process-catalog-version-rule.js';
 export * from './domain/policies/process-execution-transitions.js';
@@ -221,6 +243,10 @@ export * from './domain/errors/index.js';
 export * from './domain/ports/index.js';
 export * from './application/advance-process-execution.js';
 export * from './application/advance-process-execution.types.js';
+export * from './application/close-process-execution.js';
+export * from './application/close-process-execution.types.js';
+export * from './application/void-process-execution.js';
+export * from './application/void-process-execution.types.js';
 export * from './application/execution-precondition-evaluator.js';
 export * from './application/get-execution-board.js';
 export * from './application/get-execution-board.types.js';
@@ -249,3 +275,4 @@ export * from './infrastructure/http/execution-board.routes.js';
 export * from './infrastructure/http/execution-transitions.controller.js';
 export * from './infrastructure/http/execution-transitions.routes.js';
 export * from './infrastructure/http/schedule-activities.routes.js';
+export * from './infrastructure/prisma/prisma-schedule-precondition-provider.js';

@@ -16,6 +16,7 @@ describe('execution-board-targets policy', () => {
       CONSOLIDATION_MINUTES_SIGNED: 'MINUTES',
       RESULTS_CALCULATED: 'RESULTS',
       IMPROVEMENT_ACTIONS_REGISTERED: 'IMPROVEMENT_PLAN',
+      RESOLUTION_APPROVED: 'IMPROVEMENT_PLAN',
     });
   });
 

@@ -15,6 +15,8 @@ export const EXECUTION_BOARD_PENDING_TARGET_BY_CODE: Readonly<
   CONSOLIDATION_MINUTES_SIGNED: 'MINUTES',
   RESULTS_CALCULATED: 'RESULTS',
   IMPROVEMENT_ACTIONS_REGISTERED: 'IMPROVEMENT_PLAN',
+  // El tablero solo evalúa precondiciones de avance; RESOLUTION_APPROVED es de cierre.
+  RESOLUTION_APPROVED: 'IMPROVEMENT_PLAN',
 };
 
 export function getExecutionBoardPendingTarget(

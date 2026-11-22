@@ -9825,6 +9825,231 @@
         }
       }
     },
+    "/process-executions/{id}/close": {
+      "post": {
+        "tags": ["ProcessExecutions"],
+        "summary": "Cerrar una ejecución de proceso",
+        "description": "Verifica la precondición RESOLUTION_APPROVED desde PENDING_APPROVAL, cierra la ejecución (CLOSED), congela su contenido y registra auditoría STATE_CHANGE (HU-030, RF-030, RS-020).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CloseProcessExecutionRequest"
+              },
+              "example": {}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ejecución cerrada correctamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloseProcessExecutionResponse"
+                },
+                "example": {
+                  "executionId": "exec_cuid_1",
+                  "previousStatus": "PENDING_APPROVAL",
+                  "status": "CLOSED",
+                  "updatedAt": "2027-03-01T10:00:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin permiso ejecucion.cerrar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ejecución no encontrada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Transición inválida, conflicto de estado o resolución aprobada faltante.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/process-executions/{id}/void": {
+      "post": {
+        "tags": ["ProcessExecutions"],
+        "summary": "Anular una ejecución de proceso",
+        "description": "Anula una ejecución abierta con motivo obligatorio, la deja en estado VOIDED y registra auditoría STATE_CHANGE (HU-030, RF-030, RS-020).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoidProcessExecutionRequest"
+              },
+              "example": {
+                "reason": "Ejecución duplicada por error de registro"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ejecución anulada correctamente.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoidProcessExecutionResponse"
+                },
+                "example": {
+                  "executionId": "exec_cuid_1",
+                  "previousStatus": "IN_PROGRESS",
+                  "status": "VOIDED",
+                  "voidReason": "Ejecución duplicada por error de registro",
+                  "updatedAt": "2027-03-01T10:00:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin permiso ejecucion.anular.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ejecución no encontrada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "La ejecución ya está Cerrada o Anulada, o hubo conflicto de estado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/process-executions/{id}/next-transition": {
       "get": {
         "tags": ["ProcessExecutions"],
@@ -13825,7 +14050,8 @@
           "MEASUREMENTS_REVIEWED",
           "CONSOLIDATION_MINUTES_SIGNED",
           "RESULTS_CALCULATED",
-          "IMPROVEMENT_ACTIONS_REGISTERED"
+          "IMPROVEMENT_ACTIONS_REGISTERED",
+          "RESOLUTION_APPROVED"
         ]
       },
       "PreconditionState": {
@@ -13865,6 +14091,69 @@
           },
           "status": {
             "$ref": "#/components/schemas/ProcessExecutionStatus"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CloseProcessExecutionRequest": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "CloseProcessExecutionResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["executionId", "previousStatus", "status", "updatedAt"],
+        "properties": {
+          "executionId": {
+            "type": "string"
+          },
+          "previousStatus": {
+            "$ref": "#/components/schemas/ProcessExecutionStatus"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["CLOSED"]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "VoidProcessExecutionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["reason"],
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        }
+      },
+      "VoidProcessExecutionResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["executionId", "previousStatus", "status", "voidReason", "updatedAt"],
+        "properties": {
+          "executionId": {
+            "type": "string"
+          },
+          "previousStatus": {
+            "$ref": "#/components/schemas/ProcessExecutionStatus"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["VOIDED"]
+          },
+          "voidReason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
           },
           "updatedAt": {
             "type": "string",

@@ -17,6 +17,21 @@ export function nextAdvanceStatus(status: ProcessExecutionStatus): ProcessExecut
   return ADVANCE_TRANSITIONS[status] ?? null;
 }
 
+export function closeTargetStatus(status: ProcessExecutionStatus): 'CLOSED' | null {
+  return status === 'PENDING_APPROVAL' ? 'CLOSED' : null;
+}
+
+export const VOIDABLE_EXECUTION_STATUSES: readonly ProcessExecutionStatus[] = [
+  'PLANNED',
+  'IN_PROGRESS',
+  'CONSOLIDATING',
+  'PENDING_APPROVAL',
+];
+
+export function canVoid(status: ProcessExecutionStatus): boolean {
+  return VOIDABLE_EXECUTION_STATUSES.includes(status);
+}
+
 export function requiredPreconditions(
   type: ProcessType,
   from: ProcessExecutionStatus,
@@ -32,6 +47,9 @@ export function requiredPreconditions(
   }
   if (from === 'CONSOLIDATING') {
     return ['CONSOLIDATION_MINUTES_SIGNED', 'RESULTS_CALCULATED', 'IMPROVEMENT_ACTIONS_REGISTERED'];
+  }
+  if (from === 'PENDING_APPROVAL') {
+    return ['RESOLUTION_APPROVED'];
   }
   return [];
 }

@@ -455,6 +455,20 @@ const PROTECTED_ENDPOINTS: readonly ProtectedEndpointSpec[] = [
     sampleBody: {},
   },
   {
+    method: 'post',
+    openApiPath: '/process-executions/{id}/close',
+    requestPath: '/process-executions/exec-1/close',
+    requiredPermission: 'ejecucion.cerrar',
+    sampleBody: {},
+  },
+  {
+    method: 'post',
+    openApiPath: '/process-executions/{id}/void',
+    requestPath: '/process-executions/exec-1/void',
+    requiredPermission: 'ejecucion.anular',
+    sampleBody: { reason: 'Motivo de prueba' },
+  },
+  {
     method: 'get',
     openApiPath: '/process-executions/{id}/next-transition',
     requestPath: '/process-executions/exec-1/next-transition',

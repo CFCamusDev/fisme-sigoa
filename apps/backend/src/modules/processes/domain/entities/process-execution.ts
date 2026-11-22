@@ -15,7 +15,13 @@ import {
   assertCatalogVersionAllowed,
   type ProcessCatalogVersionRef,
 } from '../policies/process-catalog-version-rule.js';
-import { nextAdvanceStatus } from '../policies/process-execution-transitions.js';
+import {
+  canVoid,
+  closeTargetStatus,
+  nextAdvanceStatus,
+} from '../policies/process-execution-transitions.js';
+
+const VOID_REASON_MAX = 500;
 
 export interface ProcessExecutionProps {
   readonly id: string;
@@ -26,6 +32,7 @@ export interface ProcessExecutionProps {
   readonly semesterId: string | null;
   readonly catalogVersionId: string;
   readonly status: ProcessExecutionStatus;
+  readonly voidReason?: string | null;
   readonly createdBy: string;
   readonly updatedBy: string | null;
   readonly createdAt: Date;
@@ -142,8 +149,51 @@ export class ProcessExecution {
     });
   }
 
+  close(input: { readonly actorId: string; readonly now: Date }): ProcessExecution {
+    const nextStatus = closeTargetStatus(this.props.status);
+    if (!nextStatus) {
+      throw new InvalidExecutionTransitionError(
+        `La ejecución en estado ${this.props.status} no puede cerrarse`,
+      );
+    }
+
+    return new ProcessExecution({
+      ...this.props,
+      status: nextStatus,
+      updatedBy: input.actorId,
+      updatedAt: input.now,
+    });
+  }
+
+  void(input: {
+    readonly actorId: string;
+    readonly now: Date;
+    readonly reason: string;
+  }): ProcessExecution {
+    if (!canVoid(this.props.status)) {
+      throw new InvalidExecutionTransitionError(
+        `La ejecución en estado ${this.props.status} no puede anularse`,
+      );
+    }
+
+    const trimmedReason = input.reason.trim();
+    if (trimmedReason.length === 0 || trimmedReason.length > VOID_REASON_MAX) {
+      throw new InvalidProcessExecutionDataError(
+        `El motivo de anulación debe tener entre 1 y ${VOID_REASON_MAX} caracteres`,
+      );
+    }
+
+    return new ProcessExecution({
+      ...this.props,
+      status: 'VOIDED',
+      voidReason: trimmedReason,
+      updatedBy: input.actorId,
+      updatedAt: input.now,
+    });
+  }
+
   snapshot(): Record<string, unknown> {
-    return {
+    const base: Record<string, unknown> = {
       id: this.props.id,
       programId: this.props.programId,
       type: this.props.type,
@@ -153,6 +203,10 @@ export class ProcessExecution {
       catalogVersionId: this.props.catalogVersionId,
       status: this.props.status,
     };
+    if (this.props.voidReason) {
+      base.voidReason = this.props.voidReason;
+    }
+    return base;
   }
 
   get id(): string {
@@ -185,6 +239,10 @@ export class ProcessExecution {
 
   get status(): ProcessExecutionStatus {
     return this.props.status;
+  }
+
+  get voidReason(): string | null {
+    return this.props.voidReason ?? null;
   }
 
   get createdBy(): string {
