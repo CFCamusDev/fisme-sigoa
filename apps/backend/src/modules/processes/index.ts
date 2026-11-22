@@ -224,6 +224,8 @@ export * from './application/advance-process-execution.js';
 export * from './application/advance-process-execution.types.js';
 export * from './application/close-process-execution.js';
 export * from './application/close-process-execution.types.js';
+export * from './application/void-process-execution.js';
+export * from './application/void-process-execution.types.js';
 export * from './application/execution-precondition-evaluator.js';
 export * from './application/get-execution-board.js';
 export * from './application/get-execution-board.types.js';
