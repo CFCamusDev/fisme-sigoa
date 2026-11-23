@@ -244,8 +244,8 @@ describe('POST /stakeholder-lists/:id/import/preview (PostgreSQL real, HU-023, T
     const member = await createActor(['COMMITTEE_MEMBER']);
     const headers = getStakeholderImportColumns('EMPLOYER').map((col) => col.header);
     const buffer = await buildWorkbookBuffer(headers, [
-      ['123', 'Empresa Mal', 'Tecnologia', 'Carlos', 'Gerente', 'correo-malo', '12345'],
-      ['20123456789', 'Empresa Ok', 'Tecnologia', 'Ana', 'Gerente', 'ana@ok.test', '987654321'],
+      ['123', 'Empresa Mal', 'Tecnologia', 'Carlos', 'correo-malo', '12345', 'Gerente'],
+      ['20123456789', 'Empresa Ok', 'Tecnologia', 'Ana', 'ana@ok.test', '987654321', 'Gerente'],
     ]);
 
     const response = await postPreview(listId, member.token).send(buffer);
