@@ -86,7 +86,12 @@ describe('ExecutionBoardPage (HU-031, T-031-09)', () => {
   });
 
   it('shows the status, the schedule progress and every section', async () => {
+    const voidPermissions = [
+      ...BOARD_PERMS,
+      { code: 'ejecucion.anular', scope: 'GLOBAL' as const },
+    ];
     server.use(
+      http.get('*/me/permissions', () => HttpResponse.json({ permissions: voidPermissions })),
       http.get('*/process-executions/exec-1/board', () => HttpResponse.json(buildBoardResponse())),
     );
 
@@ -111,7 +116,12 @@ describe('ExecutionBoardPage (HU-031, T-031-09)', () => {
   });
 
   it('shows unavailable sections as not available yet', async () => {
+    const voidPermissions = [
+      ...BOARD_PERMS,
+      { code: 'ejecucion.anular', scope: 'GLOBAL' as const },
+    ];
     server.use(
+      http.get('*/me/permissions', () => HttpResponse.json({ permissions: voidPermissions })),
       http.get('*/process-executions/exec-1/board', () => HttpResponse.json(buildBoardResponse())),
     );
 
@@ -122,7 +132,12 @@ describe('ExecutionBoardPage (HU-031, T-031-09)', () => {
   });
 
   it('links each pending item to its section', async () => {
+    const voidPermissions = [
+      ...BOARD_PERMS,
+      { code: 'ejecucion.anular', scope: 'GLOBAL' as const },
+    ];
     server.use(
+      http.get('*/me/permissions', () => HttpResponse.json({ permissions: voidPermissions })),
       http.get('*/process-executions/exec-1/board', () => HttpResponse.json(buildBoardResponse())),
     );
 
@@ -227,7 +242,12 @@ describe('ExecutionBoardPage (HU-031, T-031-09)', () => {
     let voided = false;
     const voidReason = 'Ejecución duplicada por error de registro';
 
+    const voidPermissions = [
+      ...BOARD_PERMS,
+      { code: 'ejecucion.anular', scope: 'GLOBAL' as const },
+    ];
     server.use(
+      http.get('*/me/permissions', () => HttpResponse.json({ permissions: voidPermissions })),
       http.get('*/process-executions/exec-1/board', () => {
         const base = buildBoardResponse();
         return HttpResponse.json({
@@ -274,7 +294,12 @@ describe('ExecutionBoardPage (HU-031, T-031-09)', () => {
     });
     const voidReason = 'Ejecución duplicada por error de registro';
 
+    const voidPermissions = [
+      ...BOARD_PERMS,
+      { code: 'ejecucion.anular', scope: 'GLOBAL' as const },
+    ];
     server.use(
+      http.get('*/me/permissions', () => HttpResponse.json({ permissions: voidPermissions })),
       http.get('*/process-executions/exec-1/board', () => HttpResponse.json(buildBoardResponse())),
       http.post('*/process-executions/exec-1/void', async () => {
         postCalls += 1;
