@@ -276,16 +276,12 @@ describe('StakeholderListsPage (HU-022, T-022-28)', () => {
 
     const importButton = await screen.findByRole('button', { name: /Importar desde Excel/i });
     await user.click(importButton);
-    expect(
-      screen.getByRole('region', { name: /Importar constituyentes desde Excel/i }),
-    ).toBeInTheDocument();
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toHaveClass('w-[960px]');
+    expect(dialog).toHaveTextContent(/Importar constituyentes desde Excel/i);
 
     await user.keyboard('{Escape}');
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('region', { name: /Importar constituyentes desde Excel/i }),
-      ).not.toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(importButton).toHaveFocus();
   });
 

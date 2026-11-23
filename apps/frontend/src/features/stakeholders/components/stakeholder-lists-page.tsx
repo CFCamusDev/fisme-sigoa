@@ -49,6 +49,7 @@ export function StakeholderListsPage() {
   const [pdfError, setPdfError] = useState<string | null>(null);
   const successAlertRef = useRef<HTMLDivElement>(null);
   const importButtonRef = useRef<HTMLButtonElement>(null);
+  const submittedImportRef = useRef(false);
   const { remember: rememberFocus, restore: restoreFocus } = useRestoreFocus();
 
   const query = useStakeholderLists({
@@ -112,6 +113,7 @@ export function StakeholderListsPage() {
   }
 
   function handleImported(result: ConfirmStakeholderImportResponse) {
+    submittedImportRef.current = true;
     setActivePanel('none');
     setSkippedItems([]);
     setSuccessMessage(null);
@@ -120,7 +122,6 @@ export function StakeholderListsPage() {
 
   function handleCancelImport() {
     setActivePanel('none');
-    importButtonRef.current?.focus();
   }
 
   return (
@@ -354,13 +355,33 @@ export function StakeholderListsPage() {
             ) : null}
           </FormSheet>
 
-          {activePanel === 'import' ? (
-            <StakeholderImportWizard
-              list={list}
-              onImported={handleImported}
-              onCancel={handleCancelImport}
-            />
-          ) : null}
+          <FormDialog
+            open={activePanel === 'import'}
+            onOpenChange={(open) => {
+              if (!open) {
+                handleCancelImport();
+              }
+            }}
+            title={`Importar constituyentes desde Excel — ${STAKEHOLDER_LIST_TYPE_LABELS[list.type]} ${list.year}`}
+            description="Descarga la plantilla oficial, llénala con tus registros (máximo 500 filas y 2 MiB) y revisa la vista previa antes de confirmar."
+            size="lg"
+            onRestoreFocus={() => {
+              if (submittedImportRef.current) {
+                submittedImportRef.current = false;
+                return;
+              }
+              importButtonRef.current?.focus();
+            }}
+          >
+            {activePanel === 'import' ? (
+              <StakeholderImportWizard
+                list={list}
+                inDialog
+                onImported={handleImported}
+                onCancel={handleCancelImport}
+              />
+            ) : null}
+          </FormDialog>
 
           {members.length > 0 ? (
             <StakeholderListMembersTable type={list.type} year={list.year} members={members} />
