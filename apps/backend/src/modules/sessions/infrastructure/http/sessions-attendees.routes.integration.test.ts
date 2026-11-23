@@ -234,6 +234,8 @@ describe('PUT & GET /sessions/:id/attendees (PostgreSQL real, HU-033, T-033-13, 
         listMemberId: 'mem-1',
         fullName: 'Ana Pérez',
         institution: 'Empresa A',
+        ruc: null,
+        representative: null,
         memberPosition: 'Analista',
         attended: true,
         position: 'Gerente de TI',
@@ -242,6 +244,8 @@ describe('PUT & GET /sessions/:id/attendees (PostgreSQL real, HU-033, T-033-13, 
         listMemberId: 'mem-2',
         fullName: 'Luis Torres',
         institution: 'Empresa B',
+        ruc: null,
+        representative: null,
         memberPosition: 'Jefe',
         attended: false,
         position: null,
@@ -454,6 +458,8 @@ describe('PUT & GET /sessions/:id/attendees (PostgreSQL real, HU-033, T-033-13, 
         'listMemberId',
         'memberPosition',
         'position',
+        'representative',
+        'ruc',
       ]);
     }
 
@@ -518,5 +524,30 @@ describe('PUT & GET /sessions/:id/attendees (PostgreSQL real, HU-033, T-033-13, 
       where: { entity: 'SessionAttendees', entityId: 'sess-1' },
     });
     expect(audits).toHaveLength(0);
+  }, 5_000);
+
+  it('GET returns ruc and representative of employer members', async () => {
+    await seedDomainData();
+    const member = await createActor(['COMMITTEE_MEMBER']);
+
+    await prisma.stakeholderListMember.update({
+      where: { id: 'mem-1' },
+      data: {
+        fullName: 'Tech Amazonas SAC',
+        institution: 'Tech Amazonas SAC',
+        ruc: '20123456789',
+        representative: 'Carlos Mendoza',
+      },
+    });
+
+    const res = await request(app)
+      .get('/sessions/sess-1/attendees')
+      .set('Authorization', `Bearer ${member.token}`);
+
+    expect(res.status).toBe(200);
+    const parsed = sessionAttendeesResponseSchema.parse(res.body);
+    const employer = parsed.items.find((item) => item.listMemberId === 'mem-1');
+    expect(employer?.ruc).toBe('20123456789');
+    expect(employer?.representative).toBe('Carlos Mendoza');
   }, 5_000);
 });

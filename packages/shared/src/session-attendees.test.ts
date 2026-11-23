@@ -75,7 +75,7 @@ describe('registerSessionAttendeesRequestSchema', () => {
 });
 
 describe('sessionAttendeesResponseSchema', () => {
-  it('validates strict roster items without extra fields', () => {
+  it('validates strict roster items without extra fields and accepts null ruc and representative', () => {
     const valid = sessionAttendeesResponseSchema.safeParse({
       sessionId: 'sess-1',
       stakeholderListId: 'list-1',
@@ -85,9 +85,21 @@ describe('sessionAttendeesResponseSchema', () => {
           listMemberId: 'mem-1',
           fullName: 'Ana Pérez',
           institution: 'Empresa SAC',
+          ruc: null,
+          representative: null,
           memberPosition: 'Analista',
           attended: true,
           position: 'Gerente',
+        },
+        {
+          listMemberId: 'mem-2',
+          fullName: 'Tech Amazonas SAC',
+          institution: 'Tech Amazonas SAC',
+          ruc: '20123456789',
+          representative: 'Carlos Mendoza',
+          memberPosition: 'Gerente',
+          attended: false,
+          position: null,
         },
       ],
     });
@@ -102,6 +114,8 @@ describe('sessionAttendeesResponseSchema', () => {
           listMemberId: 'mem-1',
           fullName: 'Ana Pérez',
           institution: null,
+          ruc: null,
+          representative: null,
           memberPosition: null,
           attended: false,
           position: null,

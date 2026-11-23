@@ -29,6 +29,8 @@ export function buildSessionAttendeesResponse(
         listMemberId: member.id,
         fullName: member.fullName,
         institution: member.institution,
+        ruc: member.ruc,
+        representative: member.representative,
         memberPosition: member.position,
         attended: attendee !== undefined,
         position: attendee ? attendee.position : null,

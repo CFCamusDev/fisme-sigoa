@@ -9439,6 +9439,8 @@
                       "listMemberId": "mem_cuid_1",
                       "fullName": "Ana Pérez",
                       "institution": "Empresa A",
+                      "ruc": null,
+                      "representative": null,
                       "memberPosition": "Analista",
                       "attended": true,
                       "position": "Gerente de TI"
@@ -9546,6 +9548,8 @@
                       "listMemberId": "mem_cuid_1",
                       "fullName": "Ana Pérez",
                       "institution": "Empresa A",
+                      "ruc": null,
+                      "representative": null,
                       "memberPosition": "Analista",
                       "attended": true,
                       "position": "Gerente de TI"
@@ -14668,6 +14672,8 @@
           "listMemberId",
           "fullName",
           "institution",
+          "ruc",
+          "representative",
           "memberPosition",
           "attended",
           "position"
@@ -14680,6 +14686,12 @@
             "type": "string"
           },
           "institution": {
+            "type": ["string", "null"]
+          },
+          "ruc": {
+            "type": ["string", "null"]
+          },
+          "representative": {
             "type": ["string", "null"]
           },
           "memberPosition": {
