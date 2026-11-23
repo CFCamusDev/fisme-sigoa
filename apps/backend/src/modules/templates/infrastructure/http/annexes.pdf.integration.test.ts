@@ -139,7 +139,7 @@ describe('GET /annexes/:code/pdf (PostgreSQL real, HU-070, T-070-10, RF-070, RNF
 
     const bodyText = (response.body as Buffer).toString('utf8');
     expect(bodyText.startsWith('%PDF-1.4')).toBe(true);
-    expect(bodyText).toContain('<p>—</p>');
+    expect(bodyText).toContain('<p>(sin periodo definido)</p>');
     expect(bodyText).not.toContain('{{');
   });
 
