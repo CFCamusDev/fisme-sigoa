@@ -229,4 +229,71 @@ describe('CatalogComparisonPage Component (HU-017, T-017-11, CA1, CA2, RNF-036)'
 
     expect(await screen.findByText('Versión no encontrada')).toBeInTheDocument();
   });
+
+  it('shows the change count in each tab label', async () => {
+    mockVersions();
+    server.use(
+      http.get(`${BASE}/cv-1/compare/cv-2`, () =>
+        HttpResponse.json(
+          buildCatalogComparison({
+            objectives: [
+              {
+                code: 'OEP1',
+                change: 'ADDED',
+                before: null,
+                after: { code: 'OEP1', name: 'A', statement: 'A' },
+              },
+              {
+                code: 'OEP2',
+                change: 'UNCHANGED',
+                before: { code: 'OEP2', name: 'B', statement: 'B' },
+                after: { code: 'OEP2', name: 'B', statement: 'B' },
+              },
+            ],
+            attributes: [
+              {
+                code: 'AG-C01',
+                change: 'MODIFIED',
+                before: { code: 'AG-C01', name: 'X', statement: '1' },
+                after: { code: 'AG-C01', name: 'X', statement: '2' },
+              },
+              {
+                code: 'AG-C02',
+                change: 'REMOVED',
+                before: { code: 'AG-C02', name: 'Y', statement: 'Y' },
+                after: null,
+              },
+            ],
+          }),
+        ),
+      ),
+    );
+
+    renderPage({ base: 'cv-1', target: 'cv-2' });
+
+    expect(
+      await screen.findByRole('tab', { name: 'Objetivos educacionales (1)' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Atributos del graduado (2)' })).toBeInTheDocument();
+  });
+
+  it('keeps the tab when the selected versions change', async () => {
+    const user = userEvent.setup();
+    mockVersions();
+    server.use(
+      http.get(`${BASE}/cv-1/compare/cv-2`, () => HttpResponse.json(buildCatalogComparison())),
+    );
+
+    renderPage({ base: 'cv-1', target: 'cv-2' });
+
+    const attrTab = await screen.findByRole('tab', { name: /Atributos del graduado/i });
+    await user.click(attrTab);
+    expect(attrTab).toHaveAttribute('aria-selected', 'true');
+
+    await user.selectOptions(screen.getByLabelText('Versión base'), 'cv-2');
+    expect(screen.getByRole('tab', { name: /Atributos del graduado/i })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+  });
 });
