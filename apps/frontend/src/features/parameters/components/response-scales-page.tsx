@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import type { ResponseScaleDto } from '@sigoa/shared';
 import { PageHeader, LoadingState, ErrorState } from '@/components/common';
 import { Can } from '@/components/common/can';
@@ -6,6 +6,7 @@ import { EmptyState } from '@/components/common/empty-state';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { usePermission } from '@/hooks/use-permission';
+import { useRestoreFocus } from '@/hooks/use-restore-focus';
 import { useResponseScales } from '../hooks/use-response-scales';
 import { DuplicateScaleForm } from './duplicate-scale-form';
 import { ResponseScaleCard } from './response-scale-card';
@@ -26,25 +27,17 @@ export function ResponseScalesPage() {
 
   const [panel, setPanel] = useState<Panel>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const openerRef = useRef<HTMLElement | null>(null);
-  const [restoreTick, setRestoreTick] = useState(0);
-
-  // Al cerrar un panel el foco vuelve al botón que lo abrió.
-  useEffect(() => {
-    if (restoreTick > 0) {
-      openerRef.current?.focus();
-    }
-  }, [restoreTick]);
+  const { remember, restore } = useRestoreFocus();
 
   const open = (next: Exclude<Panel, null>, opener: HTMLElement) => {
-    openerRef.current = opener;
+    remember(opener);
     setSuccess(null);
     setPanel(next);
   };
 
   const close = () => {
     setPanel(null);
-    setRestoreTick((tick) => tick + 1);
+    restore();
   };
 
   const saved = (message: string) => {
