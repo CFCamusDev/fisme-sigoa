@@ -30,6 +30,7 @@ export function QualityCommitteePage() {
   const [formState, setFormState] = useState<FormState>({ kind: 'closed' });
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
+  const [mutationErrorDetail, setMutationErrorDetail] = useState<unknown>(null);
 
   const currentQuery = useCurrentQualityCommittee();
   const historyQuery = useQualityCommittees({ page, pageSize: 10 });
@@ -40,40 +41,47 @@ export function QualityCommitteePage() {
 
   async function handleCreateSubmit(payload: RegisterQualityCommitteeRequest) {
     setMutationError(null);
+    setMutationErrorDetail(null);
     try {
       await registerMutation.mutateAsync(payload);
       setStatusMessage('Comité de Calidad registrado correctamente.');
       setFormState({ kind: 'closed' });
     } catch (error) {
       setMutationError(getCommitteeErrorMessage(error));
+      setMutationErrorDetail(error);
     }
   }
 
   async function handleEditSubmit(committeeId: string, payload: ReplaceCommitteeMembersRequest) {
     setMutationError(null);
+    setMutationErrorDetail(null);
     try {
       await replaceMutation.mutateAsync({ committeeId, body: payload });
       setStatusMessage('Miembros del Comité de Calidad actualizados correctamente.');
       setFormState({ kind: 'closed' });
     } catch (error) {
       setMutationError(getCommitteeErrorMessage(error));
+      setMutationErrorDetail(error);
     }
   }
 
   function handleOpenCreate() {
     setStatusMessage(null);
     setMutationError(null);
+    setMutationErrorDetail(null);
     setFormState({ kind: 'create' });
   }
 
   function handleOpenEdit(committee: QualityCommitteeDto) {
     setStatusMessage(null);
     setMutationError(null);
+    setMutationErrorDetail(null);
     setFormState({ kind: 'edit', committee });
   }
 
   function handleCloseForm() {
     setMutationError(null);
+    setMutationErrorDetail(null);
     setFormState({ kind: 'closed' });
   }
 
@@ -144,6 +152,7 @@ export function QualityCommitteePage() {
               initialCommittee={formState.kind === 'edit' ? formState.committee : null}
               isSubmitting={isSubmitting}
               serverError={mutationError}
+              serverErrorDetail={mutationErrorDetail}
               onCancel={handleCloseForm}
               onSubmitCreate={handleCreateSubmit}
               onSubmitEdit={handleEditSubmit}

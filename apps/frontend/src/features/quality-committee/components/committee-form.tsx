@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { Plus, Trash2, Unlink, UserCheck } from 'lucide-react';
+import { ZodError } from 'zod';
 import {
   COMMITTEE_MEMBERS_MAX,
   registerQualityCommitteeRequestSchema,
@@ -14,6 +15,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ApiError } from '@/lib/api-error';
 import { formatCommitteePeriod } from '../lib/committee-dates';
 
 interface MemberFormRow {
@@ -36,12 +38,52 @@ export interface CommitteeFormProps {
   readonly initialCommittee?: QualityCommitteeDto | null;
   readonly isSubmitting: boolean;
   readonly serverError: string | null;
+  readonly serverErrorDetail?: unknown;
   readonly onCancel: () => void;
   readonly onSubmitCreate: (payload: RegisterQualityCommitteeRequest) => Promise<void> | void;
   readonly onSubmitEdit: (
     committeeId: string,
     payload: ReplaceCommitteeMembersRequest,
   ) => Promise<void> | void;
+}
+
+function getCommitteeFieldErrors(error: unknown): Record<string, string> {
+  const result: Record<string, string> = {};
+  if (!error) {
+    return result;
+  }
+
+  if (error instanceof ZodError) {
+    for (const issue of error.issues) {
+      const key = issue.path.map(String).join('.');
+      if (key && !(key in result)) {
+        result[key] = issue.message;
+      }
+    }
+    return result;
+  }
+
+  if (error instanceof ApiError && Array.isArray(error.details)) {
+    for (const detail of error.details) {
+      if (
+        typeof detail === 'object' &&
+        detail !== null &&
+        'path' in detail &&
+        'message' in detail &&
+        typeof detail.path === 'string' &&
+        typeof detail.message === 'string'
+      ) {
+        const normalizedPath = detail.path.startsWith('body.')
+          ? detail.path.slice('body.'.length)
+          : detail.path;
+        if (normalizedPath && !(normalizedPath in result)) {
+          result[normalizedPath] = detail.message;
+        }
+      }
+    }
+  }
+
+  return result;
 }
 
 function buildDefaultValues(
@@ -84,11 +126,13 @@ export function CommitteeForm({
   initialCommittee,
   isSubmitting,
   serverError,
+  serverErrorDetail,
   onCancel,
   onSubmitCreate,
   onSubmitEdit,
 }: CommitteeFormProps) {
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [validationFieldErrors, setValidationFieldErrors] = useState<Record<string, string>>({});
 
   const { register, control, handleSubmit, setValue } = useForm<CommitteeFormValues>({
     defaultValues: buildDefaultValues(mode, initialCommittee),
@@ -103,6 +147,7 @@ export function CommitteeForm({
 
   const onFormSubmit = handleSubmit(async (values) => {
     setValidationError(null);
+    setValidationFieldErrors({});
 
     const normalizedMembers = values.members.map((row) => ({
       fullName: row.fullName.trim(),
@@ -123,8 +168,13 @@ export function CommitteeForm({
       });
 
       if (!parsed.success) {
+        const mapped = getCommitteeFieldErrors(parsed.error);
+        setValidationFieldErrors(mapped);
         setValidationError(
-          parsed.error.issues[0]?.message ?? 'Revisa los datos ingresados del Comité de Calidad.',
+          Object.keys(mapped).length > 0
+            ? 'Revisa los campos marcados en el formulario.'
+            : (parsed.error.issues[0]?.message ??
+                'Revisa los datos ingresados del Comité de Calidad.'),
         );
         return;
       }
@@ -142,8 +192,13 @@ export function CommitteeForm({
     });
 
     if (!parsed.success) {
+      const mapped = getCommitteeFieldErrors(parsed.error);
+      setValidationFieldErrors(mapped);
       setValidationError(
-        parsed.error.issues[0]?.message ?? 'Revisa los miembros ingresados del Comité de Calidad.',
+        Object.keys(mapped).length > 0
+          ? 'Revisa los campos marcados en el formulario.'
+          : (parsed.error.issues[0]?.message ??
+              'Revisa los miembros ingresados del Comité de Calidad.'),
       );
       return;
     }
@@ -152,6 +207,10 @@ export function CommitteeForm({
   });
 
   const activeError = validationError ?? serverError;
+  const fieldErrors =
+    Object.keys(validationFieldErrors).length > 0
+      ? validationFieldErrors
+      : getCommitteeFieldErrors(serverErrorDetail);
 
   return (
     <section
@@ -191,8 +250,21 @@ export function CommitteeForm({
                 type="date"
                 required
                 disabled={isSubmitting}
+                aria-invalid={Boolean(fieldErrors.periodStart)}
+                aria-describedby={
+                  fieldErrors.periodStart ? 'committee-period-start-error' : undefined
+                }
                 {...register('periodStart')}
               />
+              {fieldErrors.periodStart && (
+                <p
+                  id="committee-period-start-error"
+                  role="alert"
+                  className="text-xs text-destructive"
+                >
+                  {fieldErrors.periodStart}
+                </p>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -202,8 +274,19 @@ export function CommitteeForm({
                 type="date"
                 required
                 disabled={isSubmitting}
+                aria-invalid={Boolean(fieldErrors.periodEnd)}
+                aria-describedby={fieldErrors.periodEnd ? 'committee-period-end-error' : undefined}
                 {...register('periodEnd')}
               />
+              {fieldErrors.periodEnd && (
+                <p
+                  id="committee-period-end-error"
+                  role="alert"
+                  className="text-xs text-destructive"
+                >
+                  {fieldErrors.periodEnd}
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -219,6 +302,11 @@ export function CommitteeForm({
               const linkedUserId = currentRow?.userId ?? null;
               const linkedUserName = currentRow?.linkedUserName ?? null;
               const rowNumber = index + 1;
+              const fullNameError = fieldErrors[`members.${index}.fullName`];
+              const degreeError = fieldErrors[`members.${index}.degree`];
+              const userEmailError =
+                fieldErrors[`members.${index}.userEmail`] ?? fieldErrors[`members.${index}.userId`];
+              const membersError = fieldErrors.members;
 
               return (
                 <div
@@ -252,8 +340,21 @@ export function CommitteeForm({
                         type="text"
                         placeholder="Ej. Ana Torres Quispe"
                         disabled={isSubmitting}
+                        aria-invalid={Boolean(fullNameError)}
+                        aria-describedby={
+                          fullNameError ? `member-${index}-fullName-error` : undefined
+                        }
                         {...register(`members.${index}.fullName`)}
                       />
+                      {fullNameError && (
+                        <p
+                          id={`member-${index}-fullName-error`}
+                          role="alert"
+                          className="text-xs text-destructive"
+                        >
+                          {fullNameError}
+                        </p>
+                      )}
                     </div>
 
                     <div className="space-y-1.5">
@@ -263,8 +364,19 @@ export function CommitteeForm({
                         type="text"
                         placeholder="Ej. Dr., Mg., Ing."
                         disabled={isSubmitting}
+                        aria-invalid={Boolean(degreeError)}
+                        aria-describedby={degreeError ? `member-${index}-degree-error` : undefined}
                         {...register(`members.${index}.degree`)}
                       />
+                      {degreeError && (
+                        <p
+                          id={`member-${index}-degree-error`}
+                          role="alert"
+                          className="text-xs text-destructive"
+                        >
+                          {degreeError}
+                        </p>
+                      )}
                     </div>
 
                     <div className="space-y-1.5">
@@ -272,6 +384,8 @@ export function CommitteeForm({
                       <select
                         id={`member-${index}-position`}
                         disabled={isSubmitting}
+                        aria-invalid={Boolean(membersError)}
+                        aria-describedby={membersError ? 'committee-members-error' : undefined}
                         className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                         {...register(`members.${index}.position`)}
                       >
@@ -311,9 +425,23 @@ export function CommitteeForm({
                         type="email"
                         placeholder="nombre.apellido@untrm.edu.pe"
                         disabled={isSubmitting}
-                        aria-describedby={`member-${index}-email-help`}
+                        aria-invalid={Boolean(userEmailError)}
+                        aria-describedby={
+                          userEmailError
+                            ? `member-${index}-email-help member-${index}-userEmail-error`
+                            : `member-${index}-email-help`
+                        }
                         {...register(`members.${index}.userEmail`)}
                       />
+                      {userEmailError && (
+                        <p
+                          id={`member-${index}-userEmail-error`}
+                          role="alert"
+                          className="text-xs text-destructive"
+                        >
+                          {userEmailError}
+                        </p>
+                      )}
                       <p
                         id={`member-${index}-email-help`}
                         className="text-xs text-muted-foreground"
@@ -326,6 +454,12 @@ export function CommitteeForm({
               );
             })}
           </div>
+
+          {fieldErrors.members && (
+            <p id="committee-members-error" role="alert" className="text-xs text-destructive">
+              {fieldErrors.members}
+            </p>
+          )}
 
           <Button
             type="button"
