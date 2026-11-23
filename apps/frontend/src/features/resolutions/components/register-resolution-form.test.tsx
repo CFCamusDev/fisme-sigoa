@@ -117,7 +117,7 @@ describe('RegisterResolutionForm (HU-081, T-081-21)', () => {
     await waitFor(() => {
       expect(dateInput).toHaveAttribute('aria-invalid', 'true');
     });
-    expect(screen.getByText('Ingresa la fecha de la resolución.')).toBeInTheDocument();
+    expect(screen.getByText('Indica la fecha de la resolución')).toBeInTheDocument();
   });
 
   it('sends a single request on double submit', async () => {
