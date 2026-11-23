@@ -74,6 +74,22 @@ describe('AppLayout Component', () => {
     expect(aside).toHaveTextContent(/Versión/i);
   });
 
+  it('fills the viewport so an empty page does not scroll', async () => {
+    const { container } = renderWithProviders(
+      <AppLayout>
+        <p data-testid="empty-content">Sin contenido</p>
+      </AppLayout>,
+    );
+
+    const root = container.firstElementChild as HTMLElement;
+    const main = await screen.findByRole('main');
+    const inner = screen.getByTestId('empty-content').parentElement;
+
+    expect(root).toHaveClass('min-h-dvh');
+    expect(main).toHaveClass('min-h-[calc(100dvh-4rem)]');
+    expect(inner).toHaveClass('mx-auto', 'w-full', 'max-w-[1280px]');
+  });
+
   it('renders navigation item "Panel" linking to root', async () => {
     renderWithProviders(
       <AppLayout>

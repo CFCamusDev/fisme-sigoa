@@ -11,7 +11,7 @@ export function AppLayout({ children, userMenu }: AppLayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
+    <div className="min-h-dvh bg-background text-foreground flex flex-col">
       {/* Enlace accesible para saltar directo al contenido */}
       <a
         href="#main-content"
@@ -35,9 +35,9 @@ export function AppLayout({ children, userMenu }: AppLayoutProps) {
         <main
           id="main-content"
           tabIndex={-1}
-          className="flex-1 p-4 lg:p-8 max-w-[1280px] focus:outline-hidden"
+          className="min-w-0 flex-1 min-h-[calc(100dvh-4rem)] p-4 lg:p-8 focus:outline-hidden"
         >
-          {children}
+          <div className="mx-auto w-full max-w-[1280px]">{children}</div>
         </main>
       </div>
     </div>
