@@ -5,6 +5,7 @@ import {
   listUsersQuerySchema,
   updateUserRequestSchema,
   userDtoSchema,
+  userEditFormSchema,
   type CreateUserRequest,
   type UserDto,
 } from './users.js';
@@ -59,6 +60,31 @@ describe('Users Schemas (T-003-09, RF-003, RNF-008, CA1-CA4)', () => {
           dni: '1234567a',
         }),
       ).toThrow();
+    });
+
+    it('userEditFormSchema rejects an invalid dni with the signup message', () => {
+      const invalid = userEditFormSchema.safeParse({
+        names: 'Ana',
+        firstSurname: 'Torres',
+        secondSurname: '',
+        email: 'ana@untrm.edu.pe',
+        dni: '123',
+      });
+      expect(invalid.success).toBe(false);
+      if (!invalid.success) {
+        expect(invalid.error.issues[0]?.message).toBe(
+          'El DNI debe contener exactamente 8 dígitos numéricos',
+        );
+      }
+
+      const emptyDni = userEditFormSchema.safeParse({
+        names: 'Ana',
+        firstSurname: 'Torres',
+        secondSurname: '',
+        email: 'ana@untrm.edu.pe',
+        dni: '',
+      });
+      expect(emptyDni.success).toBe(true);
     });
 
     it('rejects an empty or oversized name', () => {

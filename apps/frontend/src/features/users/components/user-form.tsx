@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link } from '@tanstack/react-router';
-import { z } from 'zod';
 import {
   createUserRequestSchema,
+  userEditFormSchema,
   type CreateUserRequest,
   type UpdateUserRequest,
   type UserDto,
+  type UserEditForm,
 } from '@sigoa/shared';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,16 +19,6 @@ import { Can } from '@/components/common/can';
 import { cn } from '@/lib/utils';
 import { useCreateUser, useRoles, useUpdateUser } from '../hooks';
 import { extractUserConflictField, getUserErrorMessage } from '../lib/user-error-message';
-
-const editFormSchema = z.object({
-  names: z.string().min(1, 'El nombre es obligatorio'),
-  firstSurname: z.string().min(1, 'El primer apellido es obligatorio'),
-  secondSurname: z.string().optional().nullable(),
-  email: z.string().email('El correo no es válido'),
-  dni: z.string().optional().nullable(),
-});
-
-type EditFormData = z.infer<typeof editFormSchema>;
 
 export interface UserFormCreateProps {
   mode: 'create';
@@ -77,9 +68,9 @@ export function UserForm({ mode, initialUser, onSuccess }: UserFormProps) {
   });
 
   // Formulario en modo editar
-  const editForm = useForm<EditFormData>({
-    resolver: zodResolver(editFormSchema),
-    mode: 'onSubmit',
+  const editForm = useForm<UserEditForm>({
+    resolver: zodResolver(userEditFormSchema),
+    mode: 'onTouched',
     defaultValues: {
       names: initialUser?.names ?? '',
       firstSurname: initialUser?.firstSurname ?? '',
@@ -123,7 +114,7 @@ export function UserForm({ mode, initialUser, onSuccess }: UserFormProps) {
   };
 
   // Manejo de submit en modo edición
-  const handleEditSubmit = (values: EditFormData) => {
+  const handleEditSubmit = (values: UserEditForm) => {
     setGeneralError(null);
     if (!initialUser) return;
 

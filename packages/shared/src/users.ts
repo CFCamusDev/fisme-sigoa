@@ -12,7 +12,7 @@ export const USER_ROLE_ID_MAX_LENGTH = 64;
 export const userStatusSchema = z.enum(['PENDING_ACTIVATION', 'ACTIVE', 'INACTIVE']);
 export type UserStatus = z.infer<typeof userStatusSchema>;
 
-const emailSchema = z
+export const userEmailSchema = z
   .string()
   .trim()
   .min(1, 'El correo electrónico es obligatorio')
@@ -23,10 +23,33 @@ const emailSchema = z
   .email('El formato del correo electrónico es inválido')
   .transform((val) => val.toLowerCase());
 
-const dniSchema = z
+export const userDniSchema = z
   .string()
   .trim()
   .regex(DNI_PATTERN, 'El DNI debe contener exactamente 8 dígitos numéricos');
+
+export const userNamesSchema = z
+  .string()
+  .trim()
+  .min(1, 'Los nombres son obligatorios')
+  .max(USER_NAME_MAX_LENGTH, `Los nombres no pueden exceder ${USER_NAME_MAX_LENGTH} caracteres`);
+
+export const userFirstSurnameSchema = z
+  .string()
+  .trim()
+  .min(1, 'El primer apellido es obligatorio')
+  .max(
+    USER_NAME_MAX_LENGTH,
+    `El primer apellido no puede exceder ${USER_NAME_MAX_LENGTH} caracteres`,
+  );
+
+export const userSecondSurnameSchema = z
+  .string()
+  .trim()
+  .max(
+    USER_NAME_MAX_LENGTH,
+    `El segundo apellido no puede exceder ${USER_NAME_MAX_LENGTH} caracteres`,
+  );
 
 export const roleIdsSchema = z
   .array(
@@ -47,38 +70,34 @@ export const roleIdsSchema = z
 
 export const createUserRequestSchema = z
   .object({
-    names: z
-      .string()
-      .trim()
-      .min(1, 'Los nombres son obligatorios')
-      .max(
-        USER_NAME_MAX_LENGTH,
-        `Los nombres no pueden exceder ${USER_NAME_MAX_LENGTH} caracteres`,
-      ),
-    firstSurname: z
-      .string()
-      .trim()
-      .min(1, 'El primer apellido es obligatorio')
-      .max(
-        USER_NAME_MAX_LENGTH,
-        `El primer apellido no puede exceder ${USER_NAME_MAX_LENGTH} caracteres`,
-      ),
-    secondSurname: z
-      .string()
-      .trim()
-      .max(
-        USER_NAME_MAX_LENGTH,
-        `El segundo apellido no puede exceder ${USER_NAME_MAX_LENGTH} caracteres`,
-      )
-      .nullable()
-      .optional(),
-    email: emailSchema,
-    dni: dniSchema,
+    names: userNamesSchema,
+    firstSurname: userFirstSurnameSchema,
+    secondSurname: userSecondSurnameSchema.nullable().optional(),
+    email: userEmailSchema,
+    dni: userDniSchema,
     roleIds: roleIdsSchema,
   })
   .strict();
 
 export type CreateUserRequest = z.infer<typeof createUserRequestSchema>;
+
+export const userEditFormSchema = z.object({
+  names: userNamesSchema,
+  firstSurname: userFirstSurnameSchema,
+  secondSurname: userSecondSurnameSchema.nullable().optional(),
+  email: userEmailSchema,
+  dni: z
+    .string()
+    .trim()
+    .refine(
+      (val) => val === '' || DNI_PATTERN.test(val),
+      'El DNI debe contener exactamente 8 dígitos numéricos',
+    )
+    .nullable()
+    .optional(),
+});
+
+export type UserEditForm = z.infer<typeof userEditFormSchema>;
 
 export const updateUserRequestSchema = z
   .object({
@@ -97,17 +116,9 @@ export const updateUserRequestSchema = z
         `El primer apellido no puede exceder ${USER_NAME_MAX_LENGTH} caracteres`,
       )
       .optional(),
-    secondSurname: z
-      .string()
-      .trim()
-      .max(
-        USER_NAME_MAX_LENGTH,
-        `El segundo apellido no puede exceder ${USER_NAME_MAX_LENGTH} caracteres`,
-      )
-      .nullable()
-      .optional(),
-    email: emailSchema.optional(),
-    dni: dniSchema.optional(),
+    secondSurname: userSecondSurnameSchema.nullable().optional(),
+    email: userEmailSchema.optional(),
+    dni: userDniSchema.optional(),
   })
   .strict()
   .refine(
