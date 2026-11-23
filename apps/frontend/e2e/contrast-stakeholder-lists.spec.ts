@@ -71,7 +71,11 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Stakeholder Lists'
       page.getByRole('button', { name: 'Confirmar' }).click(),
     ]);
 
-    await page.getByRole('dialog').getByRole('button', { name: 'Cerrar', exact: true }).click();
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Cerrar', exact: true })
+      .first()
+      .click();
     await expect(page.getByRole('cell', { name: 'Tech Amazonas SAC' })).toBeVisible();
     await expectNoContrastViolations(page, { context: 'stakeholder-lists-table-desktop' });
 

@@ -25,10 +25,10 @@ async function openCreatedEmployersList2027(page: import('@playwright/test').Pag
     page.getByRole('button', { name: 'Ver lista' }).click(),
   ]);
 
-  await page.getByLabel(/N\.° de plan de estudios/i).fill('2024-II');
   await page.getByRole('button', { name: 'Crear lista' }).click();
   const createDialog = page.getByRole('dialog');
   await expect(createDialog).toBeVisible();
+  await createDialog.getByLabel(/N\.° de plan de estudios/i).fill('2024-II');
   await Promise.all([
     page.waitForResponse(
       (res) =>

@@ -191,6 +191,7 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Catalog', () => {
         ),
         page.getByRole('link', { name: 'Ver V1' }).click(),
       ]);
+      await page.getByRole('tab', { name: 'Historial' }).click();
       await expect(page.getByRole('region', { name: 'Resolución y vigencia' })).toBeVisible();
       await expectNoContrastViolations(page, { context: 'catalog-editor-history-desktop' });
     } finally {
