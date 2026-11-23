@@ -185,8 +185,6 @@ describe('RolePermissionsPage component (T-006-22c)', () => {
     // Cambiamos al módulo M02 Catálogo y modificamos catalogo.ver a GLOBAL
     const moduleNav = screen.getByRole('navigation', { name: 'Módulos de permisos' });
     await user.click(within(moduleNav).getByRole('button', { name: /M02 Catálogo/i }));
-    const moduleNav = screen.getByRole('navigation', { name: 'Módulos de permisos' });
-    await user.click(within(moduleNav).getByRole('button', { name: /M02 Catálogo/i }));
     const catalogoSelect = screen.getByRole('combobox', { name: 'Acceso a catalogo.ver' });
     await user.selectOptions(catalogoSelect, 'GLOBAL');
 
