@@ -15,12 +15,12 @@ describe('Collapsible', () => {
 
     const trigger = screen.getByRole('button', { name: 'Mostrar detalle' });
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
-    const controlsId = trigger.getAttribute('aria-controls');
-    expect(controlsId).toBeTruthy();
 
     await user.click(trigger);
 
     expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    const controlsId = trigger.getAttribute('aria-controls');
+    expect(controlsId).toBeTruthy();
     const content = screen.getByText('Contenido colapsable');
     expect(content).toBeVisible();
     expect(content).toHaveAttribute('id', controlsId);
