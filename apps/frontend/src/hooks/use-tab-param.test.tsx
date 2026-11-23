@@ -31,12 +31,11 @@ function TabHarness() {
 
 function createTestRouter(initialEntry: string, withStrictSchema: boolean) {
   const rootRoute = createRootRoute();
+  const strictSchema = z.object({ page: z.number().optional() }).merge(tabSearchSchema);
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
-    validateSearch: withStrictSchema
-      ? z.object({ page: z.number().optional() }).merge(tabSearchSchema)
-      : undefined,
+    validateSearch: withStrictSchema ? (search) => strictSchema.parse(search) : undefined,
     component: TabHarness,
   });
 
