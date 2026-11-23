@@ -144,8 +144,10 @@ export function StakeholderListMemberPicker({
         <div className="space-y-1">
           <h3 className="text-lg font-semibold">Agregar constituyentes del registro maestro</h3>
           <p className="text-sm text-muted-foreground">
-            Lista de {STAKEHOLDER_LIST_TYPE_LABELS[list.type]} {list.year}. Solo se muestran
-            constituyentes activos.
+            Lista de {STAKEHOLDER_LIST_TYPE_LABELS[list.type]} {list.year}.{' '}
+            {list.type === 'EMPLOYER'
+              ? 'Solo se muestran instituciones activas del registro maestro.'
+              : 'Solo se muestran constituyentes activos.'}
           </p>
         </div>
         {onClose ? (
@@ -213,10 +215,22 @@ export function StakeholderListMemberPicker({
         ) : null}
 
         {!query.isLoading && !query.isError && items.length === 0 ? (
-          <EmptyState
-            title="No se encontraron constituyentes activos"
-            description="Prueba con otro término de búsqueda o registra el constituyente en el maestro."
-          />
+          list.type === 'EMPLOYER' ? (
+            <EmptyState
+              title="No se encontraron instituciones activas"
+              description="Registra la institución en Constituyentes o prueba con otro término de búsqueda."
+              action={
+                <Button type="button" variant="outline" asChild>
+                  <Link to="/constituyentes">Ir a Constituyentes</Link>
+                </Button>
+              }
+            />
+          ) : (
+            <EmptyState
+              title="No se encontraron constituyentes activos"
+              description="Prueba con otro término de búsqueda o registra el constituyente en el maestro."
+            />
+          )
         ) : null}
 
         {!query.isLoading && !query.isError && items.length > 0 ? (

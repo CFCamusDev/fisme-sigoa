@@ -158,4 +158,32 @@ describe('StakeholderListMemberPicker (HU-022, T-022-28)', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/constituyente anulado/i);
   });
+
+  it('explains that employers list only active institutions', async () => {
+    server.use(
+      http.get('*/stakeholders', () =>
+        HttpResponse.json(makeListResponse([INSTITUTION_STAKEHOLDER])),
+      ),
+    );
+
+    renderWithProviders(<StakeholderListMemberPicker list={EMPLOYER_LIST_DTO} />);
+
+    expect(
+      await screen.findByText(/Solo se muestran instituciones activas del registro maestro/i),
+    ).toBeInTheDocument();
+  });
+
+  it('invites to register institutions when none', async () => {
+    server.use(http.get('*/stakeholders', () => HttpResponse.json(makeListResponse([]))));
+
+    renderWithProviders(<StakeholderListMemberPicker list={EMPLOYER_LIST_DTO} />);
+
+    expect(
+      await screen.findByText(/Registra la institución en Constituyentes/i),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Ir a Constituyentes/i })).toHaveAttribute(
+      'href',
+      '/constituyentes',
+    );
+  });
 });
