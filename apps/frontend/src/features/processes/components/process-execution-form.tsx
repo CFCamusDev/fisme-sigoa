@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
+import { useReportBusy } from '@/components/common/form-busy-context';
 import { useCatalogVersions } from '@/features/catalog';
 import { useSemesters } from '@/features/parameters';
 import { useCreateProcessExecution } from '../hooks/use-create-process-execution';
@@ -31,6 +32,7 @@ import { getProcessExecutionErrorMessage } from '../lib/process-execution-error-
 import { PROCESS_TYPE_LABELS, getSuggestedExecutionName } from '../lib/process-type-labels';
 
 export interface ProcessExecutionFormProps {
+  readonly inDialog?: boolean;
   readonly onCreated: (execution: ProcessExecutionDto) => void;
   readonly onCancel: () => void;
 }
@@ -51,7 +53,11 @@ interface ProcessExecutionFormValues {
   name?: string | null;
 }
 
-export function ProcessExecutionForm({ onCreated, onCancel }: ProcessExecutionFormProps) {
+export function ProcessExecutionForm({
+  inDialog = false,
+  onCreated,
+  onCancel,
+}: ProcessExecutionFormProps) {
   const uid = useId();
   const [serverError, setServerError] = useState<string | null>(null);
   const currentYear = new Date().getFullYear();
@@ -63,6 +69,7 @@ export function ProcessExecutionForm({ onCreated, onCancel }: ProcessExecutionFo
   const catalogQuery = useCatalogVersions();
   const semestersQuery = useSemesters();
   const createMutation = useCreateProcessExecution();
+  useReportBusy(createMutation.isPending);
 
   const {
     register,
@@ -183,20 +190,8 @@ export function ProcessExecutionForm({ onCreated, onCancel }: ProcessExecutionFo
     }
   });
 
-  return (
-    <section
-      aria-labelledby={`${uid}-title`}
-      className="space-y-4 rounded-lg border border-border bg-card p-6 text-card-foreground"
-    >
-      <div className="space-y-1">
-        <h2 id={`${uid}-title`} className="text-lg font-semibold">
-          Nueva ejecución de proceso
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Selecciona el proceso, periodo y versión de catálogo para iniciar en estado Planificado.
-        </p>
-      </div>
-
+  const content = (
+    <>
       {missingPermissionMessage ? (
         <Alert variant="danger" role="alert">
           <AlertTriangle className="size-4" aria-hidden="true" />
@@ -351,11 +346,37 @@ export function ProcessExecutionForm({ onCreated, onCancel }: ProcessExecutionFo
           >
             {createMutation.isPending ? 'Guardando…' : 'Crear ejecución'}
           </Button>
-          <Button type="button" variant="outline" onClick={onCancel}>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={createMutation.isPending}
+            onClick={onCancel}
+          >
             Cancelar
           </Button>
         </div>
       </form>
+    </>
+  );
+
+  if (inDialog) {
+    return <div className="space-y-4">{content}</div>;
+  }
+
+  return (
+    <section
+      aria-labelledby={`${uid}-title`}
+      className="space-y-4 rounded-lg border border-border bg-card p-6 text-card-foreground"
+    >
+      <div className="space-y-1">
+        <h2 id={`${uid}-title`} className="text-lg font-semibold">
+          Nueva ejecución de proceso
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Selecciona el proceso, periodo y versión de catálogo para iniciar en estado Planificado.
+        </p>
+      </div>
+      {content}
     </section>
   );
 }

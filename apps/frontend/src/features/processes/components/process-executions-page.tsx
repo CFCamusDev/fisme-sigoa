@@ -8,10 +8,12 @@ import { CheckCircle2, Plus } from 'lucide-react';
 import { Can } from '@/components/common/can';
 import { EmptyState } from '@/components/common/empty-state';
 import { ErrorState } from '@/components/common/error-state';
+import { FormDialog } from '@/components/common/form-dialog';
 import { LoadingState } from '@/components/common/loading-state';
 import { PageHeader } from '@/components/common/page-header';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { useRestoreFocus } from '@/hooks/use-restore-focus';
 import { useProcessExecutions } from '../hooks/use-process-executions';
 import { getProcessExecutionErrorMessage } from '../lib/process-execution-error-message';
 import { ProcessExecutionForm } from './process-execution-form';
@@ -36,6 +38,8 @@ export function ProcessExecutionsPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const successAlertRef = useRef<HTMLDivElement>(null);
+  const createdJustNowRef = useRef(false);
+  const { remember, restore } = useRestoreFocus();
 
   const parsedYear = Number.parseInt(filters.year, 10);
   const validYear =
@@ -71,6 +75,7 @@ export function ProcessExecutionsPage() {
   }
 
   function handleCreated(execution: ProcessExecutionDto) {
+    createdJustNowRef.current = true;
     setIsCreating(false);
     setSuccessMessage(`Ejecución «${execution.name}» creada en estado Planificado.`);
   }
@@ -89,7 +94,9 @@ export function ProcessExecutionsPage() {
           <Can permission="ejecucion.crear">
             <Button
               type="button"
-              onClick={() => {
+              onClick={(event) => {
+                remember(event.currentTarget);
+                createdJustNowRef.current = false;
                 setSuccessMessage(null);
                 setIsCreating(true);
               }}
@@ -108,9 +115,24 @@ export function ProcessExecutionsPage() {
         </Alert>
       ) : null}
 
-      {isCreating ? (
-        <ProcessExecutionForm onCreated={handleCreated} onCancel={() => setIsCreating(false)} />
-      ) : null}
+      <FormDialog
+        open={isCreating}
+        onOpenChange={setIsCreating}
+        title="Nueva ejecución"
+        description="Selecciona el proceso, periodo y versión de catálogo para iniciar en estado Planificado."
+        size="md"
+        onRestoreFocus={() => {
+          if (!createdJustNowRef.current) {
+            restore();
+          }
+        }}
+      >
+        <ProcessExecutionForm
+          inDialog
+          onCreated={handleCreated}
+          onCancel={() => setIsCreating(false)}
+        />
+      </FormDialog>
 
       <ProcessExecutionsFilters
         value={filters}
