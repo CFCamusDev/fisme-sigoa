@@ -44,7 +44,10 @@ describe('PUT and GET /process-executions/:id/schedule (PostgreSQL real, HU-028,
   const createActor = (roles: string[]) =>
     createAuthenticatedActor({ prisma, jwtSecret: env.AUTH_JWT_SECRET, roles });
 
-  async function seedExecution(id = 'exec-1') {
+  async function seedExecution(
+    id = 'exec-1',
+    status: 'PLANNED' | 'IN_PROGRESS' | 'CLOSED' | 'VOIDED' = 'PLANNED',
+  ) {
     await prisma.program.create({
       data: {
         id: `prog-${id}`,
@@ -69,7 +72,7 @@ describe('PUT and GET /process-executions/:id/schedule (PostgreSQL real, HU-028,
         name: `Ejecución ${id}`,
         year: 2027,
         catalogVersionId: `cv-${id}`,
-        status: 'PLANNED',
+        status,
         createdBy: 'user-1',
       },
     });
@@ -440,5 +443,52 @@ describe('PUT and GET /process-executions/:id/schedule (PostgreSQL real, HU-028,
       .set('Authorization', `Bearer ${member.token}`);
 
     expect(response.status).toBe(404);
+  }, 5_000);
+
+  it('returns 409 when saving or changing activity status of a voided execution', async () => {
+    const executionId = await seedExecution('exec-voided', 'VOIDED');
+    const member = await createActor(['COMMITTEE_MEMBER']);
+
+    await prisma.scheduleActivity.create({
+      data: {
+        id: 'act-voided-1',
+        processExecutionId: executionId,
+        number: 1,
+        activity: 'Actividad congelada',
+        responsible: 'Presidente',
+        status: 'PENDING',
+        createdBy: 'user-1',
+      },
+    });
+
+    const saveResponse = await request(app)
+      .put(`/process-executions/${executionId}/schedule`)
+      .set('Authorization', `Bearer ${member.token}`)
+      .send({
+        activities: [{ activity: 'Cambio', responsible: 'Presidente' }],
+      });
+
+    expect(saveResponse.status).toBe(409);
+
+    const statusResponse = await request(app)
+      .patch('/schedule-activities/act-voided-1/status')
+      .set('Authorization', `Bearer ${member.token}`)
+      .send({ status: 'IN_PROGRESS' });
+
+    expect(statusResponse.status).toBe(409);
+  }, 5_000);
+
+  it('returns 403 when saving schedule without cronograma.editar', async () => {
+    const executionId = await seedExecution('exec-save-403', 'VOIDED');
+    const actorWithoutPerm = await createActor([]);
+
+    const response = await request(app)
+      .put(`/process-executions/${executionId}/schedule`)
+      .set('Authorization', `Bearer ${actorWithoutPerm.token}`)
+      .send({
+        activities: [{ activity: 'Cambio', responsible: 'Presidente' }],
+      });
+
+    expect(response.status).toBe(403);
   }, 5_000);
 });

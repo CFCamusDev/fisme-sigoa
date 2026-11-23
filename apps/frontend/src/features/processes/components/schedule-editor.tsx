@@ -24,6 +24,7 @@ import { ScheduleActivityRow } from './schedule-activity-row';
 
 export interface ScheduleEditorProps {
   readonly items: readonly ScheduleActivityDto[];
+  readonly readOnly?: boolean;
   readonly isProposing: boolean;
   readonly isSaving: boolean;
   readonly isChangingStatus: boolean;
@@ -63,6 +64,7 @@ function collectValidationMessages(errors: FieldErrors<ScheduleEditorFormValues>
 
 export function ScheduleEditor({
   items,
+  readOnly = false,
   isProposing,
   isSaving,
   isChangingStatus,
@@ -133,14 +135,14 @@ export function ScheduleEditor({
           action={
             <Can permission="cronograma.editar">
               <div className="flex flex-wrap justify-center gap-2">
-                <Button type="button" disabled={isBusy} onClick={onPropose}>
+                <Button type="button" disabled={isBusy || readOnly} onClick={onPropose}>
                   <Sparkles className="size-4" aria-hidden="true" />
                   {isProposing ? 'Proponiendo…' : 'Proponer actividades'}
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
-                  disabled={isBusy}
+                  disabled={isBusy || readOnly}
                   onClick={() => append(createEmptyFormItem())}
                 >
                   <Plus className="size-4" aria-hidden="true" />
@@ -181,7 +183,7 @@ export function ScheduleEditor({
         </Alert>
       ) : null}
 
-      {canEdit && isDirty ? (
+      {canEdit && isDirty && !readOnly ? (
         <Alert role="status">
           <AlertDescription>Guarda los cambios antes de cambiar el estado.</AlertDescription>
         </Alert>
@@ -231,6 +233,7 @@ export function ScheduleEditor({
                 total={fields.length}
                 item={field}
                 canEdit={canEdit}
+                readOnly={readOnly}
                 isDirty={isDirty}
                 isSaving={isSaving}
                 isChangingStatus={isChangingStatus}
@@ -262,14 +265,14 @@ export function ScheduleEditor({
           <Button
             type="button"
             variant="outline"
-            disabled={isBusy || fields.length >= SCHEDULE_MAX_ITEMS}
+            disabled={isBusy || readOnly || fields.length >= SCHEDULE_MAX_ITEMS}
             onClick={() => append(createEmptyFormItem())}
           >
             <Plus className="size-4" aria-hidden="true" />
             Agregar actividad
           </Button>
 
-          <Button type="submit" disabled={isBusy}>
+          <Button type="submit" disabled={isBusy || readOnly}>
             <Save className="size-4" aria-hidden="true" />
             {isSaving ? 'Guardando…' : 'Guardar cronograma'}
           </Button>

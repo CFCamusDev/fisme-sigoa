@@ -18,6 +18,7 @@ export interface ScheduleActivityRowProps {
   readonly total: number;
   readonly item: ScheduleActivityFormItem;
   readonly canEdit: boolean;
+  readonly readOnly?: boolean;
   readonly isDirty: boolean;
   readonly isSaving: boolean;
   readonly isChangingStatus: boolean;
@@ -35,6 +36,7 @@ export function ScheduleActivityRow({
   total,
   item,
   canEdit,
+  readOnly = false,
   isDirty,
   isSaving,
   isChangingStatus,
@@ -51,6 +53,7 @@ export function ScheduleActivityRow({
 
   const rowNumber = index + 1;
   const statusDisplay = SCHEDULE_ACTIVITY_STATUS_DISPLAY[item.status];
+  const isInputDisabled = isSaving || readOnly;
   const canRemove = canEdit && (!item.id || item.status === 'PENDING');
   const canStart = canEdit && Boolean(item.id) && item.status === 'PENDING';
   const canComplete = canEdit && Boolean(item.id) && item.status === 'IN_PROGRESS';
@@ -73,7 +76,7 @@ export function ScheduleActivityRow({
               aria-label={`Actividad ${rowNumber}`}
               aria-invalid={Boolean(errors?.activity)}
               {...register(`activities.${index}.activity`)}
-              disabled={isSaving}
+              disabled={isInputDisabled}
             />
             {errors?.activity?.message ? (
               <p className="text-xs text-destructive" role="alert">
@@ -93,7 +96,7 @@ export function ScheduleActivityRow({
               aria-label={`Responsable ${rowNumber}`}
               aria-invalid={Boolean(errors?.responsible)}
               {...register(`activities.${index}.responsible`)}
-              disabled={isSaving}
+              disabled={isInputDisabled}
             />
             {errors?.responsible?.message ? (
               <p className="text-xs text-destructive" role="alert">
@@ -113,7 +116,7 @@ export function ScheduleActivityRow({
               aria-label={`Meta ${rowNumber}`}
               aria-invalid={Boolean(errors?.goal)}
               {...register(`activities.${index}.goal`)}
-              disabled={isSaving}
+              disabled={isInputDisabled}
             />
             {errors?.goal?.message ? (
               <p className="text-xs text-destructive" role="alert">
@@ -133,7 +136,7 @@ export function ScheduleActivityRow({
               aria-label={`Indicador ${rowNumber}`}
               aria-invalid={Boolean(errors?.indicator)}
               {...register(`activities.${index}.indicator`)}
-              disabled={isSaving}
+              disabled={isInputDisabled}
             />
             {errors?.indicator?.message ? (
               <p className="text-xs text-destructive" role="alert">
@@ -154,7 +157,7 @@ export function ScheduleActivityRow({
               aria-label={`Fecha de inicio ${rowNumber}`}
               aria-invalid={Boolean(errors?.startDate)}
               {...register(`activities.${index}.startDate`)}
-              disabled={isSaving}
+              disabled={isInputDisabled}
             />
             {errors?.startDate?.message ? (
               <p className="text-xs text-destructive" role="alert">
@@ -175,7 +178,7 @@ export function ScheduleActivityRow({
               aria-label={`Fecha de fin ${rowNumber}`}
               aria-invalid={Boolean(errors?.endDate)}
               {...register(`activities.${index}.endDate`)}
-              disabled={isSaving}
+              disabled={isInputDisabled}
             />
             {errors?.endDate?.message ? (
               <p className="text-xs text-destructive" role="alert">
@@ -216,7 +219,7 @@ export function ScheduleActivityRow({
                 variant="outline"
                 size="sm"
                 aria-label={`Subir actividad ${rowNumber}`}
-                disabled={index === 0 || isSaving}
+                disabled={index === 0 || isInputDisabled}
                 onClick={onMoveUp}
               >
                 <ArrowUp className="size-3.5" aria-hidden="true" />
@@ -227,7 +230,7 @@ export function ScheduleActivityRow({
                 variant="outline"
                 size="sm"
                 aria-label={`Bajar actividad ${rowNumber}`}
-                disabled={index === total - 1 || isSaving}
+                disabled={index === total - 1 || isInputDisabled}
                 onClick={onMoveDown}
               >
                 <ArrowDown className="size-3.5" aria-hidden="true" />
@@ -239,7 +242,7 @@ export function ScheduleActivityRow({
                   variant="outline"
                   size="sm"
                   aria-label={`Quitar actividad ${rowNumber}`}
-                  disabled={isSaving}
+                  disabled={isInputDisabled}
                   onClick={onRemove}
                 >
                   <Trash2 className="size-3.5" aria-hidden="true" />
@@ -251,7 +254,7 @@ export function ScheduleActivityRow({
                   type="button"
                   variant="secondary"
                   size="sm"
-                  disabled={isDirty || isSaving || isChangingStatus}
+                  disabled={isDirty || isInputDisabled || isChangingStatus}
                   onClick={onStart}
                 >
                   <Play className="size-3.5" aria-hidden="true" />
@@ -263,7 +266,7 @@ export function ScheduleActivityRow({
                   type="button"
                   variant="secondary"
                   size="sm"
-                  disabled={isDirty || isSaving || isChangingStatus}
+                  disabled={isDirty || isInputDisabled || isChangingStatus}
                   onClick={() => setCompleting(true)}
                 >
                   <Check className="size-3.5" aria-hidden="true" />

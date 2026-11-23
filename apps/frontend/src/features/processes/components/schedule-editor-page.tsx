@@ -4,8 +4,10 @@ import { ArrowLeft } from 'lucide-react';
 import { ErrorState } from '@/components/common/error-state';
 import { LoadingState } from '@/components/common/loading-state';
 import { PageHeader } from '@/components/common/page-header';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useChangeScheduleActivityStatus } from '../hooks/use-change-schedule-activity-status';
+import { useNextTransition } from '../hooks/use-next-transition';
 import { useProposeSchedule } from '../hooks/use-propose-schedule';
 import { useSaveSchedule } from '../hooks/use-save-schedule';
 import { useSchedule } from '../hooks/use-schedule';
@@ -20,9 +22,14 @@ export interface ScheduleEditorPageProps {
 export function ScheduleEditorPage({ executionId }: ScheduleEditorPageProps) {
   const [showSavedNotice, setShowSavedNotice] = useState(false);
   const query = useSchedule(executionId);
+  const nextTransitionQuery = useNextTransition(executionId);
   const proposeMutation = useProposeSchedule(executionId);
   const saveMutation = useSaveSchedule(executionId);
   const statusMutation = useChangeScheduleActivityStatus(executionId);
+
+  const executionStatus = nextTransitionQuery.data?.status;
+  const isReadOnly = executionStatus === 'VOIDED' || executionStatus === 'CLOSED';
+  const readOnlyStatusLabel = executionStatus === 'VOIDED' ? 'Anulada' : 'Cerrada';
 
   const mutationError = proposeMutation.error ?? saveMutation.error ?? statusMutation.error ?? null;
   const errorMessage = mutationError ? getScheduleErrorMessage(mutationError) : null;
@@ -44,6 +51,14 @@ export function ScheduleEditorPage({ executionId }: ScheduleEditorPageProps) {
 
       <ExecutionStatusBar executionId={executionId} />
 
+      {isReadOnly ? (
+        <Alert variant="warning">
+          <AlertDescription>
+            La ejecución está {readOnlyStatusLabel}; el cronograma es de solo lectura.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
       {query.isPending ? (
         <LoadingState message="Cargando cronograma…" />
       ) : query.isError ? (
@@ -55,6 +70,7 @@ export function ScheduleEditorPage({ executionId }: ScheduleEditorPageProps) {
       ) : (
         <ScheduleEditor
           items={query.data?.items ?? []}
+          readOnly={isReadOnly}
           isProposing={proposeMutation.isPending}
           isSaving={saveMutation.isPending}
           isChangingStatus={statusMutation.isPending}
