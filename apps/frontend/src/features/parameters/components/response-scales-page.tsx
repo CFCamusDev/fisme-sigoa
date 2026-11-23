@@ -1,17 +1,10 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import type { ResponseScaleDto } from '@sigoa/shared';
-import { PageHeader, LoadingState, ErrorState } from '@/components/common';
+import { PageHeader, LoadingState, ErrorState, FormDialog } from '@/components/common';
 import { Can } from '@/components/common/can';
 import { EmptyState } from '@/components/common/empty-state';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { usePermission } from '@/hooks/use-permission';
 import { useRestoreFocus } from '@/hooks/use-restore-focus';
 import { useResponseScales } from '../hooks/use-response-scales';
@@ -34,7 +27,6 @@ export function ResponseScalesPage() {
 
   const [panel, setPanel] = useState<Panel>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const dialogTitleRef = useRef<HTMLHeadingElement>(null);
   const { remember, restore } = useRestoreFocus();
 
   const open = (next: Exclude<Panel, null>, opener: HTMLElement) => {
@@ -145,53 +137,38 @@ export function ResponseScalesPage() {
         </div>
       )}
 
-      <Dialog
+      <FormDialog
         open={canEdit && panel !== null}
         onOpenChange={(isOpen) => {
           if (!isOpen) {
             close();
           }
         }}
+        title={dialogTitle}
+        description={dialogDescription}
+        size="md"
+        onRestoreFocus={restore}
       >
-        <DialogContent
-          size="md"
-          onOpenAutoFocus={(event) => {
-            event.preventDefault();
-            dialogTitleRef.current?.focus();
-          }}
-          onCloseAutoFocus={(event) => {
-            event.preventDefault();
-            restore();
-          }}
-        >
-          <DialogHeader>
-            <DialogTitle ref={dialogTitleRef} tabIndex={-1} className="focus:outline-none">
-              {dialogTitle}
-            </DialogTitle>
-            <DialogDescription>{dialogDescription}</DialogDescription>
-          </DialogHeader>
+        {panel && (panel.kind === 'create' || panel.kind === 'edit') && (
+          <ResponseScaleForm
+            key={panel.kind === 'edit' ? panel.scale.id : 'create'}
+            mode={panel}
+            inDialog
+            onCancel={close}
+            onSaved={saved}
+          />
+        )}
 
-          {panel && (panel.kind === 'create' || panel.kind === 'edit') && (
-            <ResponseScaleForm
-              key={panel.kind === 'edit' ? panel.scale.id : 'create'}
-              mode={panel}
-              inDialog
-              onCancel={close}
-              onSaved={saved}
-            />
-          )}
-
-          {panel?.kind === 'duplicate' && (
-            <DuplicateScaleForm
-              key={panel.scale.id}
-              scale={panel.scale}
-              inDialog
-              onCancel={close}
-              onDuplicated={(created) => saved(`Escala duplicada como ${created.code}.`)}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+        {panel?.kind === 'duplicate' && (
+          <DuplicateScaleForm
+            key={panel.scale.id}
+            scale={panel.scale}
+            inDialog
+            onCancel={close}
+            onDuplicated={(created) => saved(`Escala duplicada como ${created.code}.`)}
+          />
+        )}
+      </FormDialog>
     </div>
   );
 }
