@@ -512,7 +512,7 @@ describe('PUT & GET /sessions/:id/attendees (PostgreSQL real, HU-033, T-033-13, 
 
     expect(res.status).toBe(409);
 
-    const count = await prisma.sessionAttendee.count({ where: { sessionId: 'sess-1' } });
+    const count = await prisma.attendee.count({ where: { sessionId: 'sess-1' } });
     expect(count).toBe(0);
     const audits = await prisma.auditLog.findMany({
       where: { entity: 'SessionAttendees', entityId: 'sess-1' },
