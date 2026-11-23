@@ -1,4 +1,5 @@
 import type { ApiError } from '@/lib/api-error';
+import { readableApiMessage } from '@/lib/validation-errors';
 
 const GENERIC = 'Ha ocurrido un error inesperado. Por favor, intenta de nuevo.';
 const SERVER_DOWN =
@@ -6,9 +7,8 @@ const SERVER_DOWN =
 const GENERIC_VALIDATION = 'La solicitud contiene errores de validación';
 
 function serverMessage(error: Partial<ApiError>): string | null {
-  return typeof error.message === 'string' && error.message.trim().length > 0
-    ? error.message
-    : null;
+  const candidate = readableApiMessage(error, '');
+  return candidate.length > 0 ? candidate : null;
 }
 
 function capitalizeField(field: string): string {

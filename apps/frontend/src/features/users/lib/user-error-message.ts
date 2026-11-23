@@ -1,4 +1,5 @@
 import type { ApiError } from '@/lib/api-error';
+import { readableApiMessage } from '@/lib/validation-errors';
 
 export function getUserErrorMessage(error: unknown): string {
   if (!error || typeof error !== 'object') {
@@ -13,16 +14,19 @@ export function getUserErrorMessage(error: unknown): string {
     return 'El usuario solicitado no fue encontrado.';
   }
   if (apiErr.status === 409) {
-    return apiErr.message || 'Ya existe un usuario con estos datos.';
+    return readableApiMessage(apiErr, 'Ya existe un usuario con estos datos.');
   }
   if (apiErr.status === 400) {
     if (apiErr.details && typeof apiErr.details === 'string') {
-      return apiErr.details;
+      return readableApiMessage(apiErr.details, 'Los datos proporcionados son inválidos.');
     }
-    return apiErr.message || 'Los datos proporcionados son inválidos.';
+    return readableApiMessage(apiErr, 'Los datos proporcionados son inválidos.');
   }
   if (apiErr.message) {
-    return apiErr.message;
+    return readableApiMessage(
+      apiErr,
+      'Ha ocurrido un error inesperado. Por favor, intenta de nuevo.',
+    );
   }
 
   return 'Ha ocurrido un error inesperado. Por favor, intenta de nuevo.';
