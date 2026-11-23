@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
+import { useReportBusy } from '@/components/common/form-busy-context';
 import { ApiError } from '@/lib/api-error';
 import { cn } from '@/lib/utils';
 import { useRegisterResolution } from '../hooks/use-register-resolution';
@@ -29,6 +30,7 @@ export interface RegisterResolutionFormProps {
   readonly versionsLoading: boolean;
   /** El usuario no puede consultar las versiones (sin `catalogo.ver`). */
   readonly versionsDenied: boolean;
+  readonly inDialog?: boolean;
   readonly onCancel: () => void;
   readonly onRegistered: (resolution: ResolutionDto) => void;
 }
@@ -37,11 +39,13 @@ export function RegisterResolutionForm({
   versions,
   versionsLoading,
   versionsDenied,
+  inDialog = false,
   onCancel,
   onRegistered,
 }: RegisterResolutionFormProps) {
   const uid = useId();
   const mutation = useRegisterResolution();
+  useReportBusy(mutation.isPending);
   const [formError, setFormError] = useState<string | null>(null);
   const alertRef = useRef<HTMLDivElement>(null);
   const {
@@ -132,9 +136,14 @@ export function RegisterResolutionForm({
       onSubmit={handleSubmit(submit)}
       noValidate
       aria-label="Registrar resolución"
-      className="space-y-4 rounded-lg border border-border bg-card p-4 text-card-foreground sm:p-6"
+      className={cn(
+        'space-y-4',
+        !inDialog && 'rounded-lg border border-border bg-card p-4 text-card-foreground sm:p-6',
+      )}
     >
-      <h2 className="text-base font-semibold text-foreground">Registrar resolución</h2>
+      {!inDialog && (
+        <h2 className="text-base font-semibold text-foreground">Registrar resolución</h2>
+      )}
 
       {formError && (
         <div ref={alertRef} tabIndex={-1} className="outline-none focus-visible:outline-2">
