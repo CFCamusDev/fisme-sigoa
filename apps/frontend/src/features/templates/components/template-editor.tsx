@@ -169,7 +169,7 @@ export function TemplateEditor({
         <h3 className="text-base font-semibold text-foreground">
           {detail.code} · {detail.name}
         </h3>
-        <p id={helpId} className="text-sm text-muted-foreground">
+        <p id={helpId} className="text-sm text-foreground">
           {!canEdit
             ? 'Solo lectura: no tienes permiso para editar plantillas.'
             : draft
@@ -211,7 +211,7 @@ export function TemplateEditor({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p
             id={counterId}
-            className={overLimit ? 'text-sm text-destructive' : 'text-sm text-muted-foreground'}
+            className={overLimit ? 'text-sm text-destructive' : 'text-sm text-foreground'}
           >
             {COUNT_FORMAT.format(content.length)} / {MAX_LABEL} caracteres
           </p>
