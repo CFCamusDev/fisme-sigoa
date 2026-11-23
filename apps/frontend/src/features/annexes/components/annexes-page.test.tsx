@@ -129,4 +129,11 @@ describe('AnnexesPage (T-070-11, CA1)', () => {
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('Ya estás generando un anexo. Espera a que termine.');
   });
+
+  it('renders the title with the shared page header', async () => {
+    renderWithProviders(<AnnexesPage />);
+
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Anexos oficiales' });
+    expect(heading).toHaveClass('text-h2', 'sm:text-h1');
+  });
 });

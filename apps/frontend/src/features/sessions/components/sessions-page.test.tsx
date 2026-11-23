@@ -129,4 +129,21 @@ describe('SessionsPage (HU-032, T-032-25)', () => {
     expect(screen.queryByRole('button', { name: 'Editar' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Asistentes' })).not.toBeInTheDocument();
   });
+
+  it('renders the title with the shared page header', async () => {
+    setupExecutionsHandler();
+    server.use(
+      http.get('*/process-executions/:id/sessions', () =>
+        HttpResponse.json(makeSessionsResponse([SAMPLE_SESSION_DTO])),
+      ),
+    );
+
+    renderWithProviders(<SessionsPage />, {
+      withRouter: true,
+      permissions: [{ code: 'sesion.ver', scope: 'GLOBAL' }],
+    });
+
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Sesiones' });
+    expect(heading).toHaveClass('text-h2', 'sm:text-h1');
+  });
 });

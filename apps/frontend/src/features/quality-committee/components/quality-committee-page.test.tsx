@@ -425,4 +425,23 @@ describe('QualityCommitteePage (HU-025, T-025-28)', () => {
     await user.tab();
     expect(document.activeElement).not.toBe(document.body);
   });
+
+  it('renders the title with the shared page header', async () => {
+    server.use(
+      http.get('*/quality-committees/current', () =>
+        HttpResponse.json(makeCurrentCommitteeResponse({ committee: null })),
+      ),
+      http.get('*/quality-committees', () =>
+        HttpResponse.json(makeCommitteeListResponse({ items: [], total: 0 })),
+      ),
+    );
+
+    renderWithProviders(<QualityCommitteePage />, {
+      withRouter: true,
+      permissions: [{ code: 'comite.ver', scope: 'GLOBAL' }],
+    });
+
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Comité de Calidad' });
+    expect(heading).toHaveClass('text-h2', 'sm:text-h1');
+  });
 });

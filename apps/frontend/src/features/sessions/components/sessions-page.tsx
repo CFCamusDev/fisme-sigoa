@@ -1,6 +1,7 @@
 import { useId, useMemo, useState } from 'react';
 import type { SessionAttendeesResponse, SessionDto } from '@sigoa/shared';
 import { AlertTriangle, Plus } from 'lucide-react';
+import { PageHeader } from '@/components/common';
 import { Can } from '@/components/common/can';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -90,29 +91,25 @@ export function SessionsPage() {
 
   return (
     <div className="space-y-6 bg-background text-foreground">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Sesiones</h1>
-          <p className="text-sm text-muted-foreground">
-            Registra y consulta reuniones con constituyentes vinculadas a las ejecuciones de
-            proceso.
-          </p>
-        </div>
-
-        <Can permission="sesion.editar">
-          <Button
-            type="button"
-            disabled={!activeExecutionId}
-            onClick={() => {
-              setStatusMessage(null);
-              setPanelState({ mode: 'create' });
-            }}
-          >
-            <Plus className="mr-2 size-4" />
-            Nueva sesión
-          </Button>
-        </Can>
-      </div>
+      <PageHeader
+        title="Sesiones"
+        description="Registra y consulta reuniones con constituyentes vinculadas a las ejecuciones de proceso."
+        actions={
+          <Can permission="sesion.editar">
+            <Button
+              type="button"
+              disabled={!activeExecutionId}
+              onClick={() => {
+                setStatusMessage(null);
+                setPanelState({ mode: 'create' });
+              }}
+            >
+              <Plus className="mr-2 size-4" />
+              Nueva sesión
+            </Button>
+          </Can>
+        }
+      />
 
       {statusMessage && (
         <div

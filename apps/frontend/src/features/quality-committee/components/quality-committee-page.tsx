@@ -5,6 +5,7 @@ import type {
   RegisterQualityCommitteeRequest,
   ReplaceCommitteeMembersRequest,
 } from '@sigoa/shared';
+import { PageHeader } from '@/components/common';
 import { Can } from '@/components/common/can';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -87,25 +88,20 @@ export function QualityCommitteePage() {
 
   return (
     <section className="space-y-6 bg-background text-foreground">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            Comité de Calidad
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Gestiona la conformación vigente y el historial del Comité de Calidad por periodo.
-          </p>
-        </div>
-
-        {formState.kind === 'closed' && (
-          <Can permission="comite.editar">
-            <Button type="button" onClick={handleOpenCreate}>
-              <Plus className="mr-2 size-4" aria-hidden="true" />
-              Registrar Comité
-            </Button>
-          </Can>
-        )}
-      </header>
+      <PageHeader
+        title="Comité de Calidad"
+        description="Gestiona la conformación vigente y el historial del Comité de Calidad por periodo."
+        actions={
+          formState.kind === 'closed' ? (
+            <Can permission="comite.editar">
+              <Button type="button" onClick={handleOpenCreate}>
+                <Plus className="mr-2 size-4" aria-hidden="true" />
+                Registrar Comité
+              </Button>
+            </Can>
+          ) : undefined
+        }
+      />
 
       {statusMessage && (
         <Alert variant="success" role="status">
