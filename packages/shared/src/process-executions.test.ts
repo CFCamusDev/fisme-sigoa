@@ -48,6 +48,33 @@ describe('process-executions schemas', () => {
     expect(p612WithSemester.success).toBe(false);
   });
 
+  it('reports the three select messages when process, semester or catalog version are missing', () => {
+    const emptyResult = createProcessExecutionRequestSchema.safeParse({
+      type: '',
+      year: 2027,
+      catalogVersionId: '',
+    });
+    expect(emptyResult.success).toBe(false);
+    if (!emptyResult.success) {
+      const messages = emptyResult.error.issues.map((issue) => issue.message);
+      expect(messages).toContain('Selecciona un proceso');
+      expect(messages).toContain('Selecciona una versión de catálogo');
+    }
+
+    const missingSemester = createProcessExecutionRequestSchema.safeParse({
+      type: 'P622',
+      year: 2027,
+      semesterId: '',
+      catalogVersionId: 'cv-1',
+    });
+    expect(missingSemester.success).toBe(false);
+    if (!missingSemester.success) {
+      expect(missingSemester.error.issues.map((i) => i.message)).toContain(
+        'Selecciona un semestre',
+      );
+    }
+  });
+
   it('rejects a year out of range', () => {
     expect(
       createProcessExecutionRequestSchema.safeParse({

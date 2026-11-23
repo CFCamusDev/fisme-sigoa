@@ -8,6 +8,7 @@ import {
   createProcessExecutionRequestSchema,
   type CreateProcessExecutionRequest,
   type ProcessExecutionDto,
+  type ProcessTypeValue,
 } from '@sigoa/shared';
 import { AlertTriangle } from 'lucide-react';
 import { useForm, useWatch } from 'react-hook-form';
@@ -40,6 +41,14 @@ function parseSemesterYear(code?: string | null): number | null {
   return match?.[1] ? Number.parseInt(match[1], 10) : null;
 }
 
+interface ProcessExecutionFormValues {
+  type: ProcessTypeValue | '';
+  year: number;
+  semesterId?: string | null;
+  catalogVersionId: string;
+  name?: string | null;
+}
+
 export function ProcessExecutionForm({ onCreated, onCancel }: ProcessExecutionFormProps) {
   const uid = useId();
   const [serverError, setServerError] = useState<string | null>(null);
@@ -59,12 +68,12 @@ export function ProcessExecutionForm({ onCreated, onCancel }: ProcessExecutionFo
     setValue,
     control,
     formState: { errors },
-  } = useForm<CreateProcessExecutionRequest>({
-    resolver: zodResolver(createProcessExecutionRequestSchema),
+  } = useForm<ProcessExecutionFormValues>({
+    resolver: zodResolver(createProcessExecutionRequestSchema) as never,
     defaultValues: {
-      type: 'P612',
+      type: '',
       year: defaultYear,
-      semesterId: undefined,
+      semesterId: '',
       catalogVersionId: '',
       name: '',
     },
@@ -129,7 +138,10 @@ export function ProcessExecutionForm({ onCreated, onCancel }: ProcessExecutionFo
   const semestersForbidden =
     isP622 && semestersQuery.isError && semestersQuery.error.status === 403;
   const noEligibleVersion =
-    !catalogQuery.isLoading && !catalogForbidden && eligibleVersions.length === 0;
+    selectedType !== '' &&
+    !catalogQuery.isLoading &&
+    !catalogForbidden &&
+    eligibleVersions.length === 0;
   const noSemestersAvailable =
     isP622 && !semestersQuery.isLoading && !semestersForbidden && semesters.length === 0;
 
@@ -139,13 +151,18 @@ export function ProcessExecutionForm({ onCreated, onCancel }: ProcessExecutionFo
       ? 'No tienes el permiso necesario (parametro.ver) para consultar los semestres.'
       : null;
 
-  const suggestedName = getSuggestedExecutionName(
-    selectedType,
-    Number.isFinite(selectedYear) ? selectedYear : defaultYear,
-    selectedSemester?.code ?? null,
-  );
+  const suggestedName = selectedType
+    ? getSuggestedExecutionName(
+        selectedType,
+        Number.isFinite(selectedYear) ? selectedYear : defaultYear,
+        selectedSemester?.code ?? null,
+      )
+    : `Ejecución ${Number.isFinite(selectedYear) ? selectedYear : defaultYear}`;
 
   const onSubmit = handleSubmit(async (data) => {
+    if (!data.type) {
+      return;
+    }
     setServerError(null);
     const trimmedName = data.name?.trim() ?? '';
     const payload: CreateProcessExecutionRequest = {
@@ -197,6 +214,7 @@ export function ProcessExecutionForm({ onCreated, onCancel }: ProcessExecutionFo
           <div className="space-y-1.5">
             <Label htmlFor={`${uid}-type`}>Proceso</Label>
             <Select id={`${uid}-type`} aria-invalid={Boolean(errors.type)} {...register('type')}>
+              <option value="">Selecciona un proceso</option>
               {PROCESS_TYPES.map((type) => (
                 <option key={type} value={type}>
                   {PROCESS_TYPE_LABELS[type]}

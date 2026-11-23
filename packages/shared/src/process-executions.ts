@@ -30,15 +30,6 @@ export const processExecutionStatusSchema = z.enum(PROCESS_EXECUTION_STATUSES, {
     'El estado de la ejecución debe ser PLANNED, IN_PROGRESS, CONSOLIDATING, PENDING_APPROVAL, CLOSED o VOIDED',
 });
 
-const identifierSchema = z
-  .string()
-  .trim()
-  .min(1, 'El identificador es obligatorio')
-  .max(
-    PROCESS_EXECUTION_ID_MAX_LENGTH,
-    `El identificador no puede exceder ${PROCESS_EXECUTION_ID_MAX_LENGTH} caracteres`,
-  );
-
 const executionYearSchema = z
   .number()
   .int('El año debe ser un número entero')
@@ -47,10 +38,27 @@ const executionYearSchema = z
 
 export const createProcessExecutionRequestSchema = z
   .object({
-    type: processTypeSchema,
+    type: z.enum(PROCESS_TYPES, {
+      message: 'Selecciona un proceso',
+    }),
     year: executionYearSchema,
-    semesterId: identifierSchema.nullable().optional(),
-    catalogVersionId: identifierSchema,
+    semesterId: z
+      .string()
+      .trim()
+      .max(
+        PROCESS_EXECUTION_ID_MAX_LENGTH,
+        `El identificador no puede exceder ${PROCESS_EXECUTION_ID_MAX_LENGTH} caracteres`,
+      )
+      .nullable()
+      .optional(),
+    catalogVersionId: z
+      .string()
+      .trim()
+      .min(1, 'Selecciona una versión de catálogo')
+      .max(
+        PROCESS_EXECUTION_ID_MAX_LENGTH,
+        `El identificador no puede exceder ${PROCESS_EXECUTION_ID_MAX_LENGTH} caracteres`,
+      ),
     name: z
       .string()
       .trim()
@@ -68,7 +76,7 @@ export const createProcessExecutionRequestSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['semesterId'],
-        message: 'El proceso P622 requiere seleccionar un semestre',
+        message: 'Selecciona un semestre',
       });
     }
     if (data.type !== 'P622' && hasSemester) {

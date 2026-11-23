@@ -19,9 +19,12 @@ export const REQUIRED_CATALOG_VERSION_STATUS_BY_PROCESS: Record<
 };
 
 export function filterEligibleCatalogVersions(
-  type: ProcessTypeValue,
+  type: ProcessTypeValue | '',
   versions: readonly CatalogVersionDto[],
 ): CatalogVersionDto[] {
+  if (!type) {
+    return [];
+  }
   const required = REQUIRED_CATALOG_VERSION_STATUS_BY_PROCESS[type];
   return versions.filter((version) => version.status === required);
 }
@@ -31,7 +34,10 @@ export function formatCatalogVersionOptionLabel(version: CatalogVersionDto): str
   return `v${version.number} · ${statusLabel}`;
 }
 
-export function getRequiredVersionLabel(type: ProcessTypeValue): string {
+export function getRequiredVersionLabel(type: ProcessTypeValue | ''): string {
+  if (!type) {
+    return '';
+  }
   return REQUIRED_CATALOG_VERSION_STATUS_BY_PROCESS[type] === 'IN_VALIDATION'
     ? 'En validación'
     : 'Vigente';
