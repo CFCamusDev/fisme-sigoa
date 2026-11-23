@@ -26,11 +26,11 @@ test.describe('Keyboard Navigation and Focus Indicator (WCAG 2.1 AA)', () => {
     await expect(skipLink).toBeFocused();
     await expectVisibleFocusIndicator(skipLink);
 
-    // 2. Botón de cerrar sesión en el Header
+    // 2. Disparador del menú de usuario en el Header
     await page.keyboard.press('Tab');
-    const logoutBtn = page.getByRole('button', { name: /Cerrar sesión/i });
-    await expect(logoutBtn).toBeFocused();
-    await expectVisibleFocusIndicator(logoutBtn);
+    const userMenuBtn = page.getByRole('button', { name: /Menú de usuario/i });
+    await expect(userMenuBtn).toBeFocused();
+    await expectVisibleFocusIndicator(userMenuBtn);
 
     // 3. Controles de navegación en el sidebar (recorrido dinámico)
     const mainNav = page.getByRole('navigation', { name: 'Navegación principal' });

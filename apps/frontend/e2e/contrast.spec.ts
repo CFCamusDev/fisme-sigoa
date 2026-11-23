@@ -40,7 +40,7 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Auth & Layout', ()
     await loginAsTestUser(page);
 
     await expect(page.getByRole('heading', { name: 'FISME-SIGOA' })).toBeVisible();
-    await expect(page.getByRole('button', { name: /cerrar sesión/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /menú de usuario/i })).toBeVisible();
     await expectNoContrastViolations(page, { context: 'authenticated-layout-desktop' });
 
     await page.setViewportSize(MOBILE);
@@ -52,5 +52,21 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Auth & Layout', ()
     await expectNoContrastViolations(page, {
       context: 'authenticated-layout-mobile-menu-open',
     });
+  });
+
+  test('sidebar groups and user menu have no contrast violations', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await loginAsTestUser(page, { roles: ['ADMINISTRATOR'] });
+
+    const adminGroup = page
+      .getByRole('navigation', { name: 'Navegación principal' })
+      .getByRole('button', { name: 'Administración' });
+    await adminGroup.click();
+    await expect(page.getByRole('link', { name: 'Usuarios' })).toBeVisible();
+
+    await page.getByRole('button', { name: /menú de usuario/i }).click();
+    await expect(page.getByRole('menuitem', { name: /cerrar sesión/i })).toBeVisible();
+
+    await expectNoContrastViolations(page, { context: 'sidebar-group-and-user-menu-open' });
   });
 });
