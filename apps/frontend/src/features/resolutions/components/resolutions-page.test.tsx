@@ -67,10 +67,23 @@ describe('ResolutionsPage Component (HU-048, T-048-23, CA1-CA3)', () => {
   it('renders the empty state without a table', async () => {
     useResolutionsServer();
 
+    renderWithProviders(<ResolutionsPage />, { permissions: president });
+
+    expect(await screen.findByText('Aún no hay resoluciones registradas')).toBeInTheDocument();
+    expect(screen.getByText(/Usa «Registrar resolución»/i)).toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  });
+
+  it('hides the register hint without the register permission', async () => {
+    useResolutionsServer();
+
     renderWithProviders(<ResolutionsPage />, { permissions: viewer });
 
     expect(await screen.findByText('Aún no hay resoluciones registradas')).toBeInTheDocument();
-    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Usa «Registrar resolución»/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByText('Cuando se registren resoluciones del Decano aparecerán aquí.'),
+    ).toBeInTheDocument();
   });
 
   it('shows the resolutions in an accessible table with status and pdf text', async () => {
