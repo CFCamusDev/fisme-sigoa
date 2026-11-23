@@ -363,6 +363,18 @@ describe('ConfirmStakeholderImportUseCase (HU-023, T-023-03, T-023-14)', () => {
           mobile: '12345',
         },
       },
+      {
+        rowNumber: 3,
+        values: {
+          document: '20123456789',
+          fullName: 'Empresa Ok',
+          sector: 'Tecnologia',
+          position: 'Gerente',
+          representative: 'Ana',
+          email: 'ana@ok.test',
+          mobile: '987654321',
+        },
+      },
     ]);
     stakeholderDocumentLookup.findByDocuments.mockResolvedValueOnce([]);
     stakeholderListMemberRepository.listByListId.mockResolvedValueOnce([]);
