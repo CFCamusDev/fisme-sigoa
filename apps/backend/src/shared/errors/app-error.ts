@@ -51,8 +51,11 @@ export class ForbiddenError extends AppError {
 }
 
 export class ConflictError extends AppError {
-  constructor(message = 'El recurso presenta un conflicto con el estado actual') {
-    super(message, 'CONFLICT', 409);
+  constructor(
+    message = 'El recurso presenta un conflicto con el estado actual',
+    details?: ValidationDetail[],
+  ) {
+    super(message, 'CONFLICT', 409, details);
   }
 }
 
