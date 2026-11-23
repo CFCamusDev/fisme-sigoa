@@ -130,6 +130,7 @@ describe('PreviewTemplateUseCase (T-019-09, RF-019)', () => {
         preferCSSPageSize: true,
         printBackground: true,
         displayHeaderFooter: true,
+        headerTemplate: '<span></span>',
         footerTemplate: PREVIEW_FOOTER_TEMPLATE,
       },
     });

@@ -1,5 +1,6 @@
 import { previewTemplateResponseSchema } from '@sigoa/shared';
 import type { PdfGenerator } from '../../../shared/pdf/pdf-generator.js';
+import { withEmptyPdfHeader } from '../../../shared/pdf/pdf-options.js';
 import { TemplateNotFoundError, TemplatePreviewInProgressError } from '../domain/errors/index.js';
 import { validateTemplateStructure } from '../domain/policies/template-content-policy.js';
 import { renderTemplateHtml } from '../domain/policies/template-renderer.js';
@@ -54,13 +55,13 @@ export class PreviewTemplateUseCase {
 
       const pdfBuffer = await this.deps.pdfGenerator.render({
         html,
-        options: {
+        options: withEmptyPdfHeader({
           format: 'A4',
           preferCSSPageSize: true,
           printBackground: true,
           displayHeaderFooter: true,
           footerTemplate: PREVIEW_FOOTER_TEMPLATE,
-        },
+        }),
       });
 
       const warnings = unrecognized.slice(0, 100).map((variable) => ({
