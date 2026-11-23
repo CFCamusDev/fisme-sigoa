@@ -214,8 +214,8 @@ describe('POST /resolutions (PostgreSQL real, HU-048, T-048-20, RF-048, RNF-009)
     });
 
     it('answers 409 for a duplicated number and type and keeps the first one', async () => {
-      const versionId1 = await createInValidationCatalogVersion(prisma);
-      const versionId2 = await createInValidationCatalogVersion(prisma);
+      const versionId1 = await createInValidationCatalogVersion(prisma, 'res-prog-1');
+      const versionId2 = await createInValidationCatalogVersion(prisma, 'res-prog-2');
       await createRegisteredResolution(prisma, versionId1, { number: 'RD-012/2027' });
       const president = await createActor(['COMMITTEE_PRESIDENT']);
 
@@ -259,9 +259,9 @@ describe('POST /resolutions (PostgreSQL real, HU-048, T-048-20, RF-048, RNF-009)
   describe('Concurrency', () => {
     it('lets exactly one of N concurrent registrations with the same number win', async () => {
       const versionIds = await Promise.all([
-        createInValidationCatalogVersion(prisma),
-        createInValidationCatalogVersion(prisma),
-        createInValidationCatalogVersion(prisma),
+        createInValidationCatalogVersion(prisma, 'conc-prog-1'),
+        createInValidationCatalogVersion(prisma, 'conc-prog-2'),
+        createInValidationCatalogVersion(prisma, 'conc-prog-3'),
       ]);
       const president = await createActor(['COMMITTEE_PRESIDENT']);
 

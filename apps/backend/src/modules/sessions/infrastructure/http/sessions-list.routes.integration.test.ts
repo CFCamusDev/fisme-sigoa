@@ -174,11 +174,19 @@ describe('GET /process-executions/:id/sessions (PostgreSQL real, HU-032, T-032-2
         createdBy: member.user.id,
       },
     });
+    const stakeholder = await prisma.stakeholder.create({
+      data: {
+        id: 'st-http-1',
+        kind: 'EMPLOYER',
+        fullName: 'Ana Empleadora',
+        createdBy: member.user.id,
+      },
+    });
     const listMember = await prisma.stakeholderListMember.create({
       data: {
         id: 'lm-http-1',
         listId: list.id,
-        stakeholderId: 'st-http-1',
+        stakeholderId: stakeholder.id,
         fullName: 'Ana Empleadora',
         createdBy: member.user.id,
       },

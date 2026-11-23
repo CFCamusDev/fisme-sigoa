@@ -185,7 +185,7 @@ describe('PuppeteerPdfGenerator Integration (RNF-021, RS-063)', () => {
     });
 
     const latin1 = pdfBuffer.toString('latin1');
-    const chunks: string[] = [latin1];
+    const chunks: string[] = [];
     let cursor = 0;
     while (true) {
       const streamIdx = latin1.indexOf('stream', cursor);
