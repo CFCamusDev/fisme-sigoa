@@ -80,9 +80,20 @@ describe('ParametersForm Component (HU-011, T-011-21)', () => {
     expect(screen.getByLabelText('Peso de la medición directa')).toHaveValue(70);
     expect(screen.getByLabelText('Peso de la medición indirecta')).toHaveValue(30);
     expect(screen.getByLabelText('Participación mínima')).toHaveValue(3);
-    expect(screen.getByLabelText('Días de vigencia del token')).toHaveValue(7);
+    expect(screen.getByLabelText('Vigencia de la invitación a encuestas (días)')).toHaveValue(7);
     expect(screen.getByLabelText('Intentos de inicio de sesión')).toHaveValue(5);
     expect(screen.getByText(/suma actual: 100 de 100/i)).toBeInTheDocument();
+  });
+
+  it('explains it is not the recovery link', async () => {
+    useHandlers();
+    renderWithProviders(<ParametersForm />, { withRouter: false, permissions: editPermissions });
+
+    expect(
+      await screen.findByText(
+        /No afecta el enlace de recuperación de contraseña, que vence a las 48 horas\./i,
+      ),
+    ).toBeInTheDocument();
   });
 
   it('sends only the changed key and confirms the semester it rules from (CA2)', async () => {

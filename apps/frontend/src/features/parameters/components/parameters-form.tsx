@@ -40,7 +40,8 @@ const OTHER_KEYS = PARAMETER_KEYS.filter((key) => !WEIGHT_KEYS.includes(key));
 
 /** Ayuda de cada campo; TOKEN_DIAS no promete efecto en otros flujos (bitácora B-01). */
 const EXTRA_HELP: Partial<Record<ParameterKey, string>> = {
-  TOKEN_DIAS: 'Vigencia del enlace de invitación a encuestas.',
+  TOKEN_DIAS:
+    'Días que una invitación a una encuesta permanece abierta (por defecto 7). No afecta el enlace de recuperación de contraseña, que vence a las 48 horas.',
   LOGIN_INTENTOS: 'Intentos fallidos de inicio de sesión antes de bloquear la cuenta.',
 };
 

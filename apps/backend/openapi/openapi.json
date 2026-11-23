@@ -3487,7 +3487,7 @@
                     },
                     {
                       "key": "TOKEN_DIAS",
-                      "label": "Días de vigencia del token",
+                      "label": "Vigencia de la invitación a encuestas (días)",
                       "unit": "DAYS",
                       "value": 7,
                       "effectiveFromSemesterCode": null,
@@ -3720,7 +3720,7 @@
                     },
                     {
                       "key": "TOKEN_DIAS",
-                      "label": "Días de vigencia del token",
+                      "label": "Vigencia de la invitación a encuestas (días)",
                       "unit": "DAYS",
                       "value": 7,
                       "effectiveFromSemesterCode": null,
