@@ -216,4 +216,77 @@ describe('StakeholdersPage (HU-021, T-021-17, T-021-29)', () => {
     expect(await screen.findByText(/motivo de anulación:/i)).toBeInTheDocument();
     expect(screen.getAllByText('Anulado').length).toBeGreaterThanOrEqual(2);
   });
+
+  it('registers and edits a stakeholder in a dialog', async () => {
+    const user = userEvent.setup();
+    let current = PERSON_STAKEHOLDER;
+
+    server.use(
+      http.get('*/stakeholders', () => HttpResponse.json(makeListResponse([current]))),
+      http.patch('*/stakeholders/:id', () => {
+        current = { ...PERSON_STAKEHOLDER, fullName: 'Ana Lucia Editada' };
+        return HttpResponse.json(current);
+      }),
+    );
+
+    renderWithProviders(<StakeholdersPage />, {
+      withRouter: false,
+      permissions: FULL_PERMS,
+    });
+    await screen.findByText('Ana Lucia Torres');
+
+    await user.click(screen.getByRole('button', { name: /registrar constituyente/i }));
+    const registerDialog = await screen.findByRole('dialog');
+    expect(registerDialog).toHaveClass('w-[640px]');
+    expect(registerDialog).toHaveTextContent('Registrar constituyente');
+    await user.click(screen.getByRole('button', { name: /^cancelar$/i }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+
+    await user.click(screen.getByRole('button', { name: /editar/i }));
+    const editDialog = await screen.findByRole('dialog');
+    expect(editDialog).toHaveClass('w-[640px]');
+    expect(editDialog).toHaveTextContent('Editar constituyente');
+
+    const nameInput = screen.getByLabelText(/nombres y apellidos/i);
+    await user.clear(nameInput);
+    await user.type(nameInput, 'Ana Lucia Editada');
+    await user.click(screen.getByRole('button', { name: /guardar cambios/i }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(await screen.findByText(/actualizado correctamente/i)).toBeInTheDocument();
+  });
+
+  it('switches the dialog to edit mode for a duplicate', async () => {
+    const user = userEvent.setup();
+
+    server.use(
+      http.get('*/stakeholders', () => HttpResponse.json(makeListResponse([PERSON_STAKEHOLDER]))),
+      http.post('*/stakeholders', () =>
+        HttpResponse.json(
+          { error: { code: 'DUPLICATE_DOCUMENT', message: 'Ya existe un constituyente.' } },
+          { status: 409 },
+        ),
+      ),
+    );
+
+    renderWithProviders(<StakeholdersPage />, {
+      withRouter: false,
+      permissions: FULL_PERMS,
+    });
+    await screen.findByText('Ana Lucia Torres');
+
+    await user.click(screen.getByRole('button', { name: /registrar constituyente/i }));
+    const dialog = await screen.findByRole('dialog');
+    await user.type(screen.getByLabelText(/nombres y apellidos/i), 'Ana Lucia Duplicada');
+    await user.type(screen.getByLabelText(/^dni$/i), '45678912');
+    await user.click(screen.getByRole('button', { name: /guardar constituyente/i }));
+
+    const editExistingBtn = await screen.findByRole('button', {
+      name: /editar este constituyente/i,
+    });
+    await user.click(editExistingBtn);
+
+    expect(screen.getByRole('dialog')).toBe(dialog);
+    expect(dialog).toHaveTextContent('Editar constituyente');
+  });
 });

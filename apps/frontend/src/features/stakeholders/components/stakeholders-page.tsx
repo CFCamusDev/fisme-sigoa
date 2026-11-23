@@ -9,8 +9,10 @@ import { Can } from '@/components/common/can';
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import { EmptyState } from '@/components/common/empty-state';
 import { ErrorState } from '@/components/common/error-state';
+import { FormDialog } from '@/components/common/form-dialog';
 import { LoadingState } from '@/components/common/loading-state';
 import { PageHeader } from '@/components/common/page-header';
+import { useRestoreFocus } from '@/components/common/use-restore-focus';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useStakeholders } from '../hooks/use-stakeholders';
@@ -45,6 +47,8 @@ export function StakeholdersPage({ initialEditId }: StakeholdersPageProps = {}) 
   const [dismissedEditId, setDismissedEditId] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const successAlertRef = useRef<HTMLDivElement>(null);
+  const submittedJustNowRef = useRef(false);
+  const { capture: captureFocus, restore: restoreFocus } = useRestoreFocus();
   const voidMutation = useVoidStakeholder();
 
   const query = useStakeholders({
@@ -74,6 +78,7 @@ export function StakeholdersPage({ initialEditId }: StakeholdersPageProps = {}) 
   }
 
   function handleSaved(stakeholder: StakeholderDto, mode: 'register' | 'edit') {
+    submittedJustNowRef.current = true;
     setPanel({ type: 'none' });
     setSuccessMessage(
       mode === 'register'
@@ -121,6 +126,7 @@ export function StakeholdersPage({ initialEditId }: StakeholdersPageProps = {}) 
             <Button
               type="button"
               onClick={() => {
+                captureFocus();
                 setSuccessMessage(null);
                 setPanel({ type: 'register' });
               }}
@@ -145,26 +151,49 @@ export function StakeholdersPage({ initialEditId }: StakeholdersPageProps = {}) 
         </Alert>
       ) : null}
 
-      {panel.type === 'register' ? (
-        <StakeholderForm
-          key="register-new"
-          mode="register"
-          onCancel={() => setPanel({ type: 'none' })}
-          onSaved={handleSaved}
-          onSelectExisting={(existing) => setPanel({ type: 'edit', stakeholder: existing })}
-        />
-      ) : null}
-
-      {panel.type === 'edit' ? (
-        <StakeholderForm
-          key={`edit-${panel.stakeholder.id}`}
-          mode="edit"
-          initialStakeholder={panel.stakeholder}
-          onCancel={() => setPanel({ type: 'none' })}
-          onSaved={handleSaved}
-          onSelectExisting={(existing) => setPanel({ type: 'edit', stakeholder: existing })}
-        />
-      ) : null}
+      <FormDialog
+        open={panel.type === 'register' || panel.type === 'edit'}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPanel({ type: 'none' });
+          }
+        }}
+        title={panel.type === 'edit' ? 'Editar constituyente' : 'Registrar constituyente'}
+        description={
+          panel.type === 'edit'
+            ? 'Actualiza los datos de contacto y rol del constituyente.'
+            : 'Registra una persona o institución vinculada al programa.'
+        }
+        size="md"
+        onRestoreFocus={() => {
+          if (submittedJustNowRef.current) {
+            submittedJustNowRef.current = false;
+            return;
+          }
+          restoreFocus();
+        }}
+      >
+        {panel.type === 'register' ? (
+          <StakeholderForm
+            key="register-new"
+            mode="register"
+            inDialog
+            onCancel={() => setPanel({ type: 'none' })}
+            onSaved={handleSaved}
+            onSelectExisting={(existing) => setPanel({ type: 'edit', stakeholder: existing })}
+          />
+        ) : panel.type === 'edit' ? (
+          <StakeholderForm
+            key={`edit-${panel.stakeholder.id}`}
+            mode="edit"
+            inDialog
+            initialStakeholder={panel.stakeholder}
+            onCancel={() => setPanel({ type: 'none' })}
+            onSaved={handleSaved}
+            onSelectExisting={(existing) => setPanel({ type: 'edit', stakeholder: existing })}
+          />
+        ) : null}
+      </FormDialog>
 
       <ConfirmDialog
         open={panel.type === 'void'}
@@ -243,6 +272,7 @@ export function StakeholdersPage({ initialEditId }: StakeholdersPageProps = {}) 
           <StakeholdersTable
             items={items}
             onEdit={(stakeholder) => {
+              captureFocus();
               setSuccessMessage(null);
               setPanel({ type: 'edit', stakeholder });
             }}

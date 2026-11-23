@@ -3,6 +3,7 @@ import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CircleAlert } from 'lucide-react';
 import type { StakeholderDto } from '@sigoa/shared';
+import { useReportBusy } from '@/components/common/form-busy-context';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +27,7 @@ import { DuplicateStakeholderAlert } from './duplicate-stakeholder-alert';
 export interface StakeholderFormProps {
   readonly mode: 'register' | 'edit';
   readonly initialStakeholder?: StakeholderDto;
+  readonly inDialog?: boolean;
   readonly onCancel: () => void;
   readonly onSaved: (stakeholder: StakeholderDto, mode: 'register' | 'edit') => void;
   readonly onSelectExisting?: (stakeholder: StakeholderDto) => void;
@@ -34,6 +36,7 @@ export interface StakeholderFormProps {
 export function StakeholderForm({
   mode,
   initialStakeholder,
+  inDialog = false,
   onCancel,
   onSaved,
   onSelectExisting,
@@ -42,6 +45,8 @@ export function StakeholderForm({
   const registerMutation = useRegisterStakeholder();
   const editMutation = useEditStakeholder();
   const isPending = registerMutation.isPending || editMutation.isPending;
+
+  useReportBusy(isPending);
 
   const [formError, setFormError] = useState<string | null>(null);
   const [duplicateStakeholder, setDuplicateStakeholder] = useState<StakeholderDto | null>(null);
@@ -135,13 +140,19 @@ export function StakeholderForm({
     <form
       onSubmit={handleSubmit(submit)}
       noValidate
-      className="space-y-4 rounded-lg border border-border bg-card p-6 text-card-foreground"
+      aria-label={mode === 'register' ? 'Registrar constituyente' : 'Editar constituyente'}
+      className={cn(
+        'space-y-4',
+        !inDialog && 'rounded-lg border border-border bg-card p-6 text-card-foreground',
+      )}
     >
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold text-foreground">
-          {mode === 'register' ? 'Registrar constituyente' : 'Editar constituyente'}
-        </h2>
-      </div>
+      {!inDialog ? (
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-lg font-semibold text-foreground">
+            {mode === 'register' ? 'Registrar constituyente' : 'Editar constituyente'}
+          </h2>
+        </div>
+      ) : null}
 
       {formError ? (
         <Alert ref={alertRef} variant="danger" tabIndex={-1}>
