@@ -1,11 +1,14 @@
 import { Link } from '@tanstack/react-router';
 import { ArrowLeft, Lock } from 'lucide-react';
+import { EmptyState } from '@/components/common/empty-state';
 import { ErrorState } from '@/components/common/error-state';
 import { LoadingState } from '@/components/common/loading-state';
 import { PageHeader } from '@/components/common/page-header';
 import { StatusBadge } from '@/components/common/status-badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePermission } from '@/hooks/use-permission';
+import { useTabParam } from '@/hooks/use-tab-param';
 import { useCatalogVersionDetail } from '../hooks/use-catalog-version-detail';
 import { useCatalogVersions } from '../hooks/use-catalog-versions';
 import { getCatalogErrorMessage } from '../lib/catalog-error-message';
@@ -13,6 +16,8 @@ import { formatVersionLabel } from './catalog-versions-table';
 import { CatalogItemSection } from './catalog-item-section';
 import { CatalogSendToValidation } from './catalog-send-to-validation';
 import { CatalogVersionHistoryPanel } from './catalog-version-history-panel';
+
+const CATALOG_EDITOR_TABS = ['objetivos', 'atributos', 'historial'] as const;
 
 export interface CatalogVersionEditorPageProps {
   readonly versionId: string;
@@ -25,6 +30,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export function CatalogVersionEditorPage({ versionId }: CatalogVersionEditorPageProps) {
+  const [tab, setTab] = useTabParam(CATALOG_EDITOR_TABS, 'objetivos');
   const detailQuery = useCatalogVersionDetail(versionId);
   const versionsQuery = useCatalogVersions();
   const { allowed: canEdit } = usePermission('catalogo.editar', 'GLOBAL');
@@ -111,25 +117,6 @@ export function CatalogVersionEditorPage({ versionId }: CatalogVersionEditorPage
         </Alert>
       )}
 
-      {(version.status === 'APPROVED' || version.status === 'HISTORICAL') && (
-        <CatalogVersionHistoryPanel history={history} status={version.status} />
-      )}
-
-      <CatalogItemSection
-        kind="OBJECTIVES"
-        versionId={version.id}
-        items={objectives}
-        currentItems={current?.objectives ?? []}
-        editable={editable}
-      />
-      <CatalogItemSection
-        kind="ATTRIBUTES"
-        versionId={version.id}
-        items={attributes}
-        currentItems={current?.attributes ?? []}
-        editable={editable}
-      />
-
       {editable && (
         <CatalogSendToValidation
           versionId={version.id}
@@ -137,6 +124,46 @@ export function CatalogVersionEditorPage({ versionId }: CatalogVersionEditorPage
           attributeCount={version.attributeCount}
         />
       )}
+
+      <Tabs value={tab} onValueChange={setTab} className="space-y-4">
+        <TabsList aria-label="Secciones de la versión del catálogo">
+          <TabsTrigger value="objetivos">Objetivos educacionales</TabsTrigger>
+          <TabsTrigger value="atributos">Atributos del graduado</TabsTrigger>
+          <TabsTrigger value="historial">Historial</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="objetivos" forceMount className="data-[state=inactive]:hidden">
+          <CatalogItemSection
+            kind="OBJECTIVES"
+            versionId={version.id}
+            items={objectives}
+            currentItems={current?.objectives ?? []}
+            editable={editable}
+          />
+        </TabsContent>
+
+        <TabsContent value="atributos" forceMount className="data-[state=inactive]:hidden">
+          <CatalogItemSection
+            kind="ATTRIBUTES"
+            versionId={version.id}
+            items={attributes}
+            currentItems={current?.attributes ?? []}
+            editable={editable}
+          />
+        </TabsContent>
+
+        <TabsContent value="historial" forceMount className="data-[state=inactive]:hidden">
+          {version.status === 'APPROVED' || version.status === 'HISTORICAL' ? (
+            <CatalogVersionHistoryPanel history={history} status={version.status} />
+          ) : (
+            <EmptyState
+              title="Sin historial disponible"
+              description="El historial se genera cuando se aprueba la versión."
+              illustration="empty"
+            />
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
