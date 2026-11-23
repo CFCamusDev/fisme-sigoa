@@ -1,3 +1,9 @@
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 import { EmptyState } from '@/components/common/empty-state';
 import type { EffectiveAccessEntry, ListPermissionsResponse } from '@sigoa/shared';
 import { groupEntriesByModule } from '../lib/effective-access-view';
@@ -27,68 +33,81 @@ export function EffectivePermissionsView({
 
   const moduleGroups = groupEntriesByModule(entries, catalog);
   const HeadingTag = headingLevel;
+  const firstModule = moduleGroups[0]?.module;
 
   return (
     <div className={className}>
-      <div className="space-y-6">
+      <Accordion type="multiple" defaultValue={firstModule ? [firstModule] : []}>
         {moduleGroups.map((group) => (
-          <div key={group.module} className="rounded-lg border border-border bg-card p-4">
-            <HeadingTag className="mb-3 text-base font-semibold text-foreground">
-              {group.module}
-            </HeadingTag>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-brand-50/50 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    <th scope="col" className="px-3 py-2">
-                      Permiso
-                    </th>
-                    <th scope="col" className="px-3 py-2">
-                      Alcance
-                    </th>
-                    <th scope="col" className="px-3 py-2">
-                      Origen
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/60">
-                  {group.entries.map((entry) => (
-                    <tr key={entry.permissionCode} className="hover:bg-muted/40 transition-colors">
-                      <td className="px-3 py-2.5">
-                        <div className="font-mono text-xs font-semibold text-foreground">
-                          {entry.permissionCode}
-                        </div>
-                        {entry.description && (
-                          <div className="mt-0.5 text-xs text-muted-foreground">
-                            {entry.description}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <span className="inline-block text-xs font-medium text-foreground">
-                          {entry.scopeLabel}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <div className="flex flex-wrap gap-1.5">
-                          {entry.sourceLabels.map((label, idx) => (
-                            <span
-                              key={idx}
-                              className="inline-flex items-center rounded bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700"
-                            >
-                              {label}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
+          <AccordionItem key={group.module} value={group.module}>
+            <AccordionTrigger>
+              <span className="flex flex-wrap items-center gap-2">
+                <HeadingTag className="text-base font-semibold text-foreground">
+                  {group.module}
+                </HeadingTag>
+                <span className="rounded-full bg-brand-100 px-2.5 py-0.5 text-meta font-semibold text-brand-700">
+                  {group.entries.length === 1 ? '1 permiso' : `${group.entries.length} permisos`}
+                </span>
+              </span>
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-brand-50/50 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      <th scope="col" className="px-3 py-2">
+                        Permiso
+                      </th>
+                      <th scope="col" className="px-3 py-2">
+                        Alcance
+                      </th>
+                      <th scope="col" className="px-3 py-2">
+                        Origen
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                  </thead>
+                  <tbody className="divide-y divide-border/60">
+                    {group.entries.map((entry) => (
+                      <tr
+                        key={entry.permissionCode}
+                        className="transition-colors hover:bg-muted/40"
+                      >
+                        <td className="px-3 py-2.5">
+                          <div className="font-mono text-xs font-semibold text-foreground">
+                            {entry.permissionCode}
+                          </div>
+                          {entry.description && (
+                            <div className="mt-0.5 text-xs text-muted-foreground">
+                              {entry.description}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <span className="inline-block text-xs font-medium text-foreground">
+                            {entry.scopeLabel}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <div className="flex flex-wrap gap-1.5">
+                            {entry.sourceLabels.map((label, idx) => (
+                              <span
+                                key={idx}
+                                className="inline-flex items-center rounded bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700"
+                              >
+                                {label}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
         ))}
-      </div>
+      </Accordion>
     </div>
   );
 }
