@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { useAuthStore } from '@/stores/auth.store';
 import { server } from '@/test/msw/server';
 import { renderWithProviders } from '@/test/render';
+import { APP_VERSION } from '@/lib/app-version';
 import { NAV_OPEN_GROUPS_STORAGE_KEY, Sidebar } from './sidebar';
 
 const ADMIN_PERMISSIONS = [
@@ -194,5 +195,13 @@ describe('Sidebar grouped navigation (HU-082, T-082-12)', () => {
     expect(await screen.findByRole('button', { name: 'Administración' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Configuración' })).toBeInTheDocument();
     expect(requestCount).toBe(1);
+  });
+
+  it('shows the build version', async () => {
+    renderWithProviders(<Sidebar isOpen={false} onClose={vi.fn()} />, {
+      permissions: ADMIN_PERMISSIONS,
+    });
+
+    expect(await screen.findByText(`Versión ${APP_VERSION}`)).toBeInTheDocument();
   });
 });

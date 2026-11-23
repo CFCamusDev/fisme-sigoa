@@ -3,6 +3,7 @@ import { Link, useRouterState } from '@tanstack/react-router';
 import { ChevronDown, X } from 'lucide-react';
 import { z } from 'zod';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { APP_VERSION } from '@/lib/app-version';
 import { isNavItemActive } from '@/lib/nav-filter';
 import { NAV_GROUPS, type NavGroup, type NavItem } from './nav-items';
 import { useNavGroups } from './use-nav-groups';
@@ -255,7 +256,7 @@ export function Sidebar({ isOpen, onClose, groups = NAV_GROUPS }: SidebarProps) 
 
         <div className="border-t border-border p-4 text-meta text-muted-foreground">
           <p className="font-semibold text-foreground">UNTRM · EPIS</p>
-          <p className="mt-0.5 text-meta text-muted-foreground">Versión 0.1.0</p>
+          <p className="mt-0.5 text-meta text-muted-foreground">Versión {APP_VERSION}</p>
         </div>
       </aside>
     </>
