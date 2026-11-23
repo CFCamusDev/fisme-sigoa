@@ -262,8 +262,10 @@ describe('ProcessExecutionForm (HU-027, T-027-21)', () => {
 
     await user.click(screen.getByRole('button', { name: /Crear ejecución/i }));
 
-    expect(await screen.findByText('Selecciona un proceso')).toBeInTheDocument();
-    expect(screen.getByText('Selecciona una versión de catálogo')).toBeInTheDocument();
+    const alerts = await screen.findAllByRole('alert');
+    const alertTexts = alerts.map((a) => a.textContent);
+    expect(alertTexts).toContain('Selecciona un proceso');
+    expect(alertTexts).toContain('Selecciona una versión de catálogo');
     expect(postCalls).toBe(0);
 
     await user.selectOptions(typeSelect, 'P622');
@@ -271,7 +273,8 @@ describe('ProcessExecutionForm (HU-027, T-027-21)', () => {
     await user.selectOptions(semesterSelect, '');
     await user.click(screen.getByRole('button', { name: /Crear ejecución/i }));
 
-    expect(await screen.findByText('Selecciona un semestre')).toBeInTheDocument();
+    const nextAlerts = await screen.findAllByRole('alert');
+    expect(nextAlerts.map((a) => a.textContent)).toContain('Selecciona un semestre');
     expect(postCalls).toBe(0);
   });
 
@@ -286,7 +289,7 @@ describe('ProcessExecutionForm (HU-027, T-027-21)', () => {
       withRouter: true,
     });
 
-    await user.selectOptions(screen.getByLabelText(/^Proceso$/i), 'P611');
+    await user.selectOptions(await screen.findByLabelText(/^Proceso$/i), 'P611');
 
     expect(
       await screen.findByText(/Envía una versión a validación para crear este proceso/i),
