@@ -89,7 +89,7 @@ describe('process-executions schemas', () => {
     expect(listProcessExecutionsQuerySchema.safeParse({ pageSize: 101 }).success).toBe(false);
   });
 
-  it('accepts nullable semester fields in the DTO', () => {
+  it('accepts nullable semester and voidReason fields in the DTO', () => {
     const dto = processExecutionDtoSchema.parse({
       id: 'exec-1',
       type: 'P612',
@@ -100,12 +100,14 @@ describe('process-executions schemas', () => {
       catalogVersionId: 'cv-1',
       catalogVersionNumber: 1,
       status: 'PLANNED',
+      voidReason: null,
       createdAt: '2027-01-15T10:00:00.000Z',
       updatedAt: '2027-01-15T10:00:00.000Z',
     });
 
     expect(dto.semesterId).toBeNull();
     expect(dto.semesterCode).toBeNull();
+    expect(dto.voidReason).toBeNull();
 
     const list = listProcessExecutionsResponseSchema.parse({
       items: [dto],

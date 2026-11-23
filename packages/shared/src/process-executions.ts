@@ -129,6 +129,7 @@ export const processExecutionDtoSchema = z
     catalogVersionId: z.string(),
     catalogVersionNumber: z.number().int(),
     status: processExecutionStatusSchema,
+    voidReason: z.string().nullable(),
     createdAt: z.string(),
     updatedAt: z.string(),
   })

@@ -135,6 +135,7 @@ describe('GetExecutionBoardUseCase (HU-031)', () => {
       catalogVersionId: 'cv-1',
       catalogVersionNumber: 2,
       status: 'IN_PROGRESS',
+      voidReason: null,
       createdAt: CREATED_AT.toISOString(),
       updatedAt: UPDATED_AT.toISOString(),
     });

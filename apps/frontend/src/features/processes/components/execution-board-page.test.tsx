@@ -26,6 +26,7 @@ function buildBoardResponse(
       catalogVersionId: 'cv-1',
       catalogVersionNumber: 2,
       status: 'IN_PROGRESS',
+      voidReason: null,
       createdAt: '2027-01-10T10:00:00.000Z',
       updatedAt: '2027-01-15T12:00:00.000Z',
     },

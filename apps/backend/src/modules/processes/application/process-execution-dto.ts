@@ -15,6 +15,7 @@ export function buildProcessExecutionDto(
     catalogVersionId: execution.catalogVersionId,
     catalogVersionNumber: refs.catalogVersionNumber,
     status: execution.status,
+    voidReason: execution.voidReason,
     createdAt: execution.createdAt.toISOString(),
     updatedAt: execution.updatedAt.toISOString(),
   });

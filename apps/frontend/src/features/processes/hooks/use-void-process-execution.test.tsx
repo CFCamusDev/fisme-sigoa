@@ -61,6 +61,7 @@ describe('useVoidProcessExecution (HU-030, T-030-08)', () => {
             catalogVersionId: 'cv-1',
             catalogVersionNumber: 1,
             status: 'IN_PROGRESS',
+            voidReason: null,
             createdBy: 'user-1',
             updatedBy: null,
             createdAt: '2027-01-10T10:00:00.000Z',
