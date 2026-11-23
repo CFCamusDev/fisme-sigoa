@@ -28,12 +28,24 @@ describe('process-execution-closure schemas', () => {
     expect(closeProcessExecutionRequestSchema.safeParse({ extra: true }).success).toBe(false);
   });
 
-  it('requires a reason to void', () => {
+  it('requires a reason of at least 10 characters to void', () => {
     expect(voidProcessExecutionRequestSchema.safeParse({}).success).toBe(false);
     expect(voidProcessExecutionRequestSchema.safeParse({ reason: '' }).success).toBe(false);
     expect(voidProcessExecutionRequestSchema.safeParse({ reason: '   ' }).success).toBe(false);
+
+    const shortResult = voidProcessExecutionRequestSchema.safeParse({ reason: '123456789' });
+    expect(shortResult.success).toBe(false);
+    if (!shortResult.success) {
+      expect(shortResult.error.issues[0]?.message).toBe(
+        'El motivo debe tener al menos 10 caracteres',
+      );
+    }
+
     expect(
-      voidProcessExecutionRequestSchema.safeParse({ reason: 'Motivo', extra: true }).success,
+      voidProcessExecutionRequestSchema.safeParse({
+        reason: 'Motivo válido',
+        extra: true,
+      }).success,
     ).toBe(false);
   });
 

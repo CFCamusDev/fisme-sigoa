@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { processExecutionStatusSchema } from './process-executions.js';
+import { STAKEHOLDER_VOID_REASON_MIN_LENGTH } from './stakeholders.js';
 
+export const VOID_REASON_MIN_LENGTH = STAKEHOLDER_VOID_REASON_MIN_LENGTH;
 export const VOID_REASON_MAX_LENGTH = 500;
 
 export const closeProcessExecutionRequestSchema = z.object({}).strict();
@@ -23,7 +25,10 @@ export const voidProcessExecutionRequestSchema = z
     reason: z
       .string({ message: 'Ingresa el motivo de anulación' })
       .trim()
-      .min(1, 'Ingresa el motivo de anulación')
+      .min(
+        VOID_REASON_MIN_LENGTH,
+        `El motivo debe tener al menos ${VOID_REASON_MIN_LENGTH} caracteres`,
+      )
       .max(
         VOID_REASON_MAX_LENGTH,
         `El motivo no puede superar ${VOID_REASON_MAX_LENGTH} caracteres`,

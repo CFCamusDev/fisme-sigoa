@@ -57,6 +57,8 @@ describe('process execution closure API client (HU-030, T-030-08)', () => {
     );
 
     await expect(closeProcessExecution('exec-1')).rejects.toThrow();
-    await expect(voidProcessExecution('exec-1', { reason: 'Motivo' })).rejects.toThrow();
+    await expect(
+      voidProcessExecution('exec-1', { reason: 'Motivo válido de prueba' }),
+    ).rejects.toThrow();
   });
 });

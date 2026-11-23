@@ -144,7 +144,11 @@ describe('VoidProcessExecutionUseCase (HU-030, T-030-03, T-030-13)', () => {
     permissionChecker.assertAllowed.mockRejectedValue(new ForbiddenError());
 
     await expect(
-      useCase.execute({ executionId: 'exec-1', reason: 'Motivo', actorId: 'user-2' }),
+      useCase.execute({
+        executionId: 'exec-1',
+        reason: 'Motivo válido de anulación',
+        actorId: 'user-2',
+      }),
     ).rejects.toThrow(ForbiddenError);
     expect(permissionChecker.assertAllowed).toHaveBeenCalledWith({
       actorId: 'user-2',
@@ -159,7 +163,11 @@ describe('VoidProcessExecutionUseCase (HU-030, T-030-03, T-030-13)', () => {
     repository.findByIdForUpdate.mockResolvedValue(null);
 
     await expect(
-      useCase.execute({ executionId: 'missing', reason: 'Motivo', actorId: 'user-2' }),
+      useCase.execute({
+        executionId: 'missing',
+        reason: 'Motivo válido de anulación',
+        actorId: 'user-2',
+      }),
     ).rejects.toThrow(ScheduleExecutionNotFoundError);
     expect(repository.updateStatus).not.toHaveBeenCalled();
     expect(auditLogger.log).not.toHaveBeenCalled();
@@ -170,8 +178,22 @@ describe('VoidProcessExecutionUseCase (HU-030, T-030-03, T-030-13)', () => {
     repository.updateStatus.mockRejectedValue(new ExecutionStatusConflictError());
 
     await expect(
-      useCase.execute({ executionId: 'exec-1', reason: 'Motivo', actorId: 'user-2' }),
+      useCase.execute({
+        executionId: 'exec-1',
+        reason: 'Motivo válido de anulación',
+        actorId: 'user-2',
+      }),
     ).rejects.toThrow(ExecutionStatusConflictError);
+    expect(auditLogger.log).not.toHaveBeenCalled();
+  });
+
+  it('rejects a reason shorter than 10 characters in the use case', async () => {
+    repository.findByIdForUpdate.mockResolvedValue(makeExecution('IN_PROGRESS'));
+
+    await expect(
+      useCase.execute({ executionId: 'exec-1', reason: 'Corto', actorId: 'user-2' }),
+    ).rejects.toThrow('El motivo de anulación debe tener entre 10 y 500 caracteres');
+    expect(repository.updateStatus).not.toHaveBeenCalled();
     expect(auditLogger.log).not.toHaveBeenCalled();
   });
 });

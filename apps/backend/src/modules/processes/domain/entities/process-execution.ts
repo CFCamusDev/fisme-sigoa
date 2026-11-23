@@ -21,6 +21,7 @@ import {
   nextAdvanceStatus,
 } from '../policies/process-execution-transitions.js';
 
+const VOID_REASON_MIN = 10;
 const VOID_REASON_MAX = 500;
 
 export interface ProcessExecutionProps {
@@ -177,9 +178,9 @@ export class ProcessExecution {
     }
 
     const trimmedReason = input.reason.trim();
-    if (trimmedReason.length === 0 || trimmedReason.length > VOID_REASON_MAX) {
+    if (trimmedReason.length < VOID_REASON_MIN || trimmedReason.length > VOID_REASON_MAX) {
       throw new InvalidProcessExecutionDataError(
-        `El motivo de anulación debe tener entre 1 y ${VOID_REASON_MAX} caracteres`,
+        `El motivo de anulación debe tener entre ${VOID_REASON_MIN} y ${VOID_REASON_MAX} caracteres`,
       );
     }
 
