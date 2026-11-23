@@ -324,6 +324,7 @@ describe('PrismaSessionExecutionRepository & Readers Integration (PostgreSQL rea
         listId: 'list-count',
         stakeholderId: 'st-1',
         fullName: 'Persona 1',
+        createdBy: 'user-1',
       },
     });
     const m2 = await prisma.stakeholderListMember.create({
@@ -332,6 +333,7 @@ describe('PrismaSessionExecutionRepository & Readers Integration (PostgreSQL rea
         listId: 'list-count',
         stakeholderId: 'st-2',
         fullName: 'Persona 2',
+        createdBy: 'user-1',
       },
     });
 

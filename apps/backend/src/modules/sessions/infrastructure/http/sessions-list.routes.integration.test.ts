@@ -180,6 +180,7 @@ describe('GET /process-executions/:id/sessions (PostgreSQL real, HU-032, T-032-2
         listId: list.id,
         stakeholderId: 'st-http-1',
         fullName: 'Ana Empleadora',
+        createdBy: member.user.id,
       },
     });
     const s1 = await createSessionViaApi(member.token, {
