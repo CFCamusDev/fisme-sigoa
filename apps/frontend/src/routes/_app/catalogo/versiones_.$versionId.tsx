@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { CatalogVersionEditorPage } from '@/features/catalog';
 import { guardPermission } from '@/lib/permission-guard';
 
-export const Route = createFileRoute('/_app/catalog/versions/$versionId')({
+export const Route = createFileRoute('/_app/catalogo/versiones_/$versionId')({
   beforeLoad: () => guardPermission('catalogo.ver'),
   component: CatalogVersionEditorRouteComponent,
 });
