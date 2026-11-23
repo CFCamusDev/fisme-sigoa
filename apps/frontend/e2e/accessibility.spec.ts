@@ -32,18 +32,18 @@ test.describe('Keyboard Navigation and Focus Indicator (WCAG 2.1 AA)', () => {
     await expect(logoutBtn).toBeFocused();
     await expectVisibleFocusIndicator(logoutBtn);
 
-    // 3. Enlaces de navegación en el sidebar (recorrido dinámico)
+    // 3. Controles de navegación en el sidebar (recorrido dinámico)
     const mainNav = page.getByRole('navigation', { name: 'Navegación principal' });
-    await expect(mainNav.getByRole('link', { name: /Usuarios/i })).toBeVisible();
-    const navLinks = mainNav.getByRole('link');
-    const navCount = await navLinks.count();
+    await expect(mainNav.getByRole('link', { name: /Panel/i })).toBeVisible();
+    const navControls = mainNav.getByRole('link').or(mainNav.getByRole('button'));
+    const navCount = await navControls.count();
     expect(navCount).toBeGreaterThan(0);
 
     for (let i = 0; i < navCount; i++) {
       await page.keyboard.press('Tab');
-      const currentLink = navLinks.nth(i);
-      await expect(currentLink).toBeFocused();
-      await expectVisibleFocusIndicator(currentLink);
+      const currentControl = navControls.nth(i);
+      await expect(currentControl).toBeFocused();
+      await expectVisibleFocusIndicator(currentControl);
     }
 
     // 4. Botón de acción en el dashboard (primer control interactivo del contenido principal)
@@ -77,10 +77,13 @@ test.describe('Keyboard Navigation and Focus Indicator (WCAG 2.1 AA)', () => {
     await page.keyboard.press('Tab');
     await page.keyboard.press('Tab');
 
-    // Navegar con Tab a través de los enlaces de la barra lateral hasta llegar a «Usuarios»
-    const usersLink = page
-      .getByRole('navigation', { name: 'Navegación principal' })
-      .getByRole('link', { name: /Usuarios/i });
+    // Abrir grupo Administración con el teclado y navegar con Tab hasta «Usuarios»
+    const mainNav = page.getByRole('navigation', { name: 'Navegación principal' });
+    const adminButton = mainNav.getByRole('button', { name: 'Administración' });
+    await adminButton.focus();
+    await page.keyboard.press('Enter');
+
+    const usersLink = mainNav.getByRole('link', { name: /Usuarios/i });
     await expect(usersLink).toBeVisible();
 
     let isFocused = await usersLink.evaluate((el) => document.activeElement === el);
@@ -111,10 +114,13 @@ test.describe('Keyboard Navigation and Focus Indicator (WCAG 2.1 AA)', () => {
     await page.keyboard.press('Tab');
     await page.keyboard.press('Tab');
 
-    // Navegar con Tab a través de los enlaces de la barra lateral hasta llegar a «Roles»
-    const rolesLink = page
-      .getByRole('navigation', { name: 'Navegación principal' })
-      .getByRole('link', { name: /Roles/i });
+    // Abrir grupo Administración con el teclado y navegar con Tab hasta «Roles»
+    const mainNav = page.getByRole('navigation', { name: 'Navegación principal' });
+    const adminButton = mainNav.getByRole('button', { name: 'Administración' });
+    await adminButton.focus();
+    await page.keyboard.press('Enter');
+
+    const rolesLink = mainNav.getByRole('link', { name: /Roles/i });
     await expect(rolesLink).toBeVisible();
 
     let isFocused = await rolesLink.evaluate((el) => document.activeElement === el);

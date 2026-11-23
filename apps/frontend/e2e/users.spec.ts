@@ -52,6 +52,7 @@ test.describe('HU-003 — Gestión de usuarios E2E', () => {
     await expect(page.getByRole('heading', { name: 'FISME-SIGOA' })).toBeVisible();
 
     // 3. Navega al módulo de usuarios
+    await page.getByRole('button', { name: 'Administración' }).click();
     const usersNavItem = page.getByRole('link', { name: /^usuarios$/i });
     await usersNavItem.click();
 

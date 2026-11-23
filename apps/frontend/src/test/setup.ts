@@ -13,6 +13,9 @@ beforeAll(() => {
 
 afterEach(() => {
   cleanup();
+  if (typeof window !== 'undefined' && typeof window.localStorage?.clear === 'function') {
+    window.localStorage.clear();
+  }
   server.resetHandlers();
   const leaked = drainInFlightForTests();
   if (leaked.length > 0) {

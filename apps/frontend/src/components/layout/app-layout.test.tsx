@@ -1,10 +1,14 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { openAllNavGroups } from '@/test/nav-helpers';
 import { renderWithProviders } from '@/test/render';
 import { AppLayout } from './app-layout';
 
 describe('AppLayout Component', () => {
+  beforeEach(() => {
+    openAllNavGroups();
+  });
   it('renders skip-to-content accessible link pointing to #main-content', async () => {
     renderWithProviders(
       <AppLayout>

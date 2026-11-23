@@ -163,6 +163,10 @@ test.describe('HU-008 — Autorización por permiso y alcance E2E', () => {
 
     const mainNav = page.getByRole('navigation', { name: 'Navegación principal' });
     await expect(mainNav.getByRole('link', { name: 'Panel' })).toBeVisible();
+    await mainNav.getByRole('button', { name: 'Administración' }).click();
+    await mainNav.getByRole('button', { name: 'Configuración' }).click();
+    await mainNav.getByRole('button', { name: 'Catálogo y documentos' }).click();
+
     await expect(mainNav.getByRole('link', { name: 'Usuarios' })).toBeVisible();
     await expect(mainNav.getByRole('link', { name: 'Roles' })).toBeVisible();
     await expect(mainNav.getByRole('link', { name: 'Programa' })).toBeVisible();

@@ -173,5 +173,3 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     ],
   },
 ] as const;
-
-export const MAIN_NAV_ITEMS: readonly NavItem[] = NAV_GROUPS.flatMap((group) => group.items);

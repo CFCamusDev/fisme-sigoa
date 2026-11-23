@@ -1,14 +1,109 @@
 import React from 'react';
 import { screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
 import { useAuthStore } from '@/stores/auth.store';
 import { server } from '@/test/msw/server';
 import { renderWithProviders } from '@/test/render';
-import { Sidebar } from './sidebar';
+import { NAV_OPEN_GROUPS_STORAGE_KEY, Sidebar } from './sidebar';
 
-describe('Sidebar permission-aware menu filtering (HU-008, T-008-08, CA3)', () => {
-  it('renders skeletons while permissions are loading and then reveals permitted links', async () => {
+const ADMIN_PERMISSIONS = [
+  { code: 'usuario.ver', scope: 'GLOBAL' },
+  { code: 'rol.ver', scope: 'GLOBAL' },
+  { code: 'parametro.ver', scope: 'GLOBAL' },
+  { code: 'catalogo.ver', scope: 'GLOBAL' },
+  { code: 'resolucion.ver', scope: 'GLOBAL' },
+  { code: 'plantilla.ver', scope: 'GLOBAL' },
+  { code: 'documento.descargar', scope: 'GLOBAL' },
+  { code: 'constituyente.ver', scope: 'GLOBAL' },
+  { code: 'comite.ver', scope: 'GLOBAL' },
+  { code: 'ejecucion.ver', scope: 'GLOBAL' },
+  { code: 'sesion.ver', scope: 'GLOBAL' },
+] as const;
+
+describe('Sidebar grouped navigation (HU-082, T-082-12)', () => {
+  it('renders six groups for an administrator', async () => {
+    renderWithProviders(<Sidebar isOpen={false} onClose={vi.fn()} />, {
+      permissions: ADMIN_PERMISSIONS,
+    });
+
+    expect(await screen.findByRole('link', { name: 'Panel' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Administración' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Configuración' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Catálogo y documentos' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Grupos de interés' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Gestión de calidad' })).toBeInTheDocument();
+  });
+
+  it('opens the group of the active route', async () => {
+    renderWithProviders(<Sidebar isOpen={false} onClose={vi.fn()} />, {
+      initialEntries: ['/usuarios'],
+      permissions: ADMIN_PERMISSIONS,
+    });
+
+    const adminGroup = await screen.findByRole('button', { name: 'Administración' });
+    expect(adminGroup).toHaveAttribute('aria-expanded', 'true');
+    const usersLink = screen.getByRole('link', { name: 'Usuarios' });
+    expect(usersLink).toBeVisible();
+    expect(usersLink).toHaveAttribute('aria-current', 'page');
+
+    const configGroup = screen.getByRole('button', { name: 'Configuración' });
+    expect(configGroup).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('remembers the open groups across mounts', async () => {
+    const user = userEvent.setup();
+    const { unmount } = renderWithProviders(<Sidebar isOpen={false} onClose={vi.fn()} />, {
+      permissions: ADMIN_PERMISSIONS,
+    });
+
+    const configGroup = await screen.findByRole('button', { name: 'Configuración' });
+    expect(configGroup).toHaveAttribute('aria-expanded', 'false');
+
+    await user.click(configGroup);
+    expect(configGroup).toHaveAttribute('aria-expanded', 'true');
+    expect(JSON.parse(window.localStorage.getItem(NAV_OPEN_GROUPS_STORAGE_KEY) ?? '[]')).toContain(
+      'configuracion',
+    );
+
+    unmount();
+
+    renderWithProviders(<Sidebar isOpen={false} onClose={vi.fn()} />, {
+      permissions: ADMIN_PERMISSIONS,
+    });
+
+    expect(await screen.findByRole('button', { name: 'Configuración' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    expect(screen.getByRole('link', { name: 'Parámetros' })).toBeVisible();
+  });
+
+  it('ignores a corrupt or blocked stored value', async () => {
+    window.localStorage.setItem(NAV_OPEN_GROUPS_STORAGE_KEY, '{not-valid-json');
+
+    renderWithProviders(<Sidebar isOpen={false} onClose={vi.fn()} />, {
+      permissions: ADMIN_PERMISSIONS,
+    });
+
+    const adminGroup = await screen.findByRole('button', { name: 'Administración' });
+    expect(adminGroup).toHaveAttribute('aria-expanded', 'false');
+
+    const getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('SecurityError');
+    });
+    try {
+      renderWithProviders(<Sidebar isOpen={false} onClose={vi.fn()} />, {
+        permissions: ADMIN_PERMISSIONS,
+      });
+      expect(await screen.findAllByRole('link', { name: 'Panel' })).toHaveLength(2);
+    } finally {
+      getItemSpy.mockRestore();
+    }
+  });
+
+  it('shows a skeleton per group while loading', async () => {
     let resolvePermissions!: () => void;
     const pendingPromise = new Promise<void>((resolve) => {
       resolvePermissions = resolve;
@@ -21,7 +116,6 @@ describe('Sidebar permission-aware menu filtering (HU-008, T-008-08, CA3)', () =
           permissions: [
             { code: 'usuario.ver', scope: 'GLOBAL' },
             { code: 'rol.ver', scope: 'GLOBAL' },
-            { code: 'parametro.ver', scope: 'GLOBAL' },
           ],
         });
       }),
@@ -32,82 +126,17 @@ describe('Sidebar permission-aware menu filtering (HU-008, T-008-08, CA3)', () =
     });
 
     expect(await screen.findByRole('link', { name: 'Panel' })).toBeInTheDocument();
-    expect(screen.getByTestId('sidebar-skeleton-/usuarios')).toBeInTheDocument();
-    expect(screen.getByTestId('sidebar-skeleton-/roles')).toBeInTheDocument();
-    expect(screen.getByTestId('sidebar-skeleton-/configuracion/programa')).toBeInTheDocument();
-    expect(screen.getByTestId('sidebar-skeleton-/configuracion/semestres')).toBeInTheDocument();
-    expect(screen.getByTestId('sidebar-skeleton-/configuracion/parametros')).toBeInTheDocument();
-    expect(screen.getByTestId('sidebar-skeleton-/configuracion/escalas')).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Usuarios' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Roles' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Programa' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Semestres' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Parámetros' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Escalas' })).not.toBeInTheDocument();
+    expect(screen.getByTestId('sidebar-group-skeleton-administracion')).toBeInTheDocument();
+    expect(screen.getByTestId('sidebar-group-skeleton-configuracion')).toBeInTheDocument();
 
     resolvePermissions();
 
-    expect(await screen.findByRole('link', { name: 'Usuarios' })).toBeInTheDocument();
-    expect(await screen.findByRole('link', { name: 'Roles' })).toBeInTheDocument();
-    expect(await screen.findByRole('link', { name: 'Programa' })).toBeInTheDocument();
-    expect(await screen.findByRole('link', { name: 'Semestres' })).toBeInTheDocument();
-    expect(await screen.findByRole('link', { name: 'Parámetros' })).toBeInTheDocument();
-    expect(await screen.findByRole('link', { name: 'Escalas' })).toBeInTheDocument();
-    expect(screen.queryByTestId('sidebar-skeleton-/usuarios')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('sidebar-skeleton-/roles')).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId('sidebar-skeleton-/configuracion/programa'),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId('sidebar-skeleton-/configuracion/semestres'),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId('sidebar-skeleton-/configuracion/parametros'),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByTestId('sidebar-skeleton-/configuracion/escalas')).not.toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Administración' })).toBeInTheDocument();
+    expect(screen.queryByTestId('sidebar-group-skeleton-administracion')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Configuración' })).not.toBeInTheDocument();
   });
 
-  it('hides menu entries the user cannot access (e.g. Teacher role)', async () => {
-    renderWithProviders(<Sidebar isOpen={false} onClose={vi.fn()} />, {
-      permissions: [
-        { code: 'medicion_directa.registrar', scope: 'OWN' },
-        { code: 'encuesta.responder', scope: 'OWN' },
-      ],
-    });
-
-    expect(await screen.findByRole('link', { name: 'Panel' })).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Usuarios' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Roles' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Programa' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Semestres' })).not.toBeInTheDocument();
-  });
-
-  it('renders only permitted entries when the user has partial permissions (usuario.ver only)', async () => {
-    renderWithProviders(<Sidebar isOpen={false} onClose={vi.fn()} />, {
-      permissions: [{ code: 'usuario.ver', scope: 'GLOBAL' }],
-    });
-
-    expect(await screen.findByRole('link', { name: 'Panel' })).toBeInTheDocument();
-    expect(await screen.findByRole('link', { name: 'Usuarios' })).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Roles' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Programa' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Semestres' })).not.toBeInTheDocument();
-  });
-
-  it('shows Programa, Semestres and Parámetros when user has parametro.ver and hides it when missing (HU-009, HU-010, HU-011)', async () => {
-    renderWithProviders(<Sidebar isOpen={false} onClose={vi.fn()} />, {
-      permissions: [{ code: 'parametro.ver', scope: 'GLOBAL' }],
-    });
-
-    expect(await screen.findByRole('link', { name: 'Panel' })).toBeInTheDocument();
-    expect(await screen.findByRole('link', { name: 'Programa' })).toBeInTheDocument();
-    expect(await screen.findByRole('link', { name: 'Semestres' })).toBeInTheDocument();
-    expect(await screen.findByRole('link', { name: 'Parámetros' })).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Usuarios' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Roles' })).not.toBeInTheDocument();
-  });
-
-  it('fails closed and hides permission-gated links when /me/permissions returns 500', async () => {
+  it('fails closed and hides permission-gated groups when /me/permissions returns 500', async () => {
     server.use(
       http.get('http://localhost:3000/me/permissions', () =>
         HttpResponse.json(
@@ -124,17 +153,14 @@ describe('Sidebar permission-aware menu filtering (HU-008, T-008-08, CA3)', () =
     expect(await screen.findByRole('link', { name: 'Panel' })).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.queryByTestId('sidebar-skeleton-/usuarios')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('sidebar-group-skeleton-administracion')).not.toBeInTheDocument();
     });
 
-    expect(screen.queryByRole('link', { name: 'Usuarios' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Roles' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Programa' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Semestres' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Parámetros' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Administración' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Configuración' })).not.toBeInTheDocument();
   });
 
-  it('shares a single /me/permissions request across all sidebar items under React.StrictMode', async () => {
+  it('shares a single /me/permissions request across all sidebar groups under React.StrictMode', async () => {
     useAuthStore.getState().setAuthSession({
       accessToken: 'strict-token',
       accessTokenExpiresAt: new Date(Date.now() + 900_000).toISOString(),
@@ -153,11 +179,7 @@ describe('Sidebar permission-aware menu filtering (HU-008, T-008-08, CA3)', () =
       http.get('http://localhost:3000/me/permissions', () => {
         requestCount += 1;
         return HttpResponse.json({
-          permissions: [
-            { code: 'usuario.ver', scope: 'GLOBAL' },
-            { code: 'rol.ver', scope: 'GLOBAL' },
-            { code: 'parametro.ver', scope: 'GLOBAL' },
-          ],
+          permissions: ADMIN_PERMISSIONS,
         });
       }),
     );
@@ -169,10 +191,8 @@ describe('Sidebar permission-aware menu filtering (HU-008, T-008-08, CA3)', () =
       { permissions: null },
     );
 
-    expect(await screen.findByRole('link', { name: 'Usuarios' })).toBeInTheDocument();
-    expect(await screen.findByRole('link', { name: 'Roles' })).toBeInTheDocument();
-    expect(await screen.findByRole('link', { name: 'Programa' })).toBeInTheDocument();
-    expect(await screen.findByRole('link', { name: 'Semestres' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Administración' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Configuración' })).toBeInTheDocument();
     expect(requestCount).toBe(1);
   });
 });
