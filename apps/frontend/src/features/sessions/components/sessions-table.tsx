@@ -1,11 +1,13 @@
-import type { ProcessExecutionStatusValue, SessionDto } from '@sigoa/shared';
+import type { ProcessExecutionStatusValue, SessionDto, SessionListItemDto } from '@sigoa/shared';
 import { Can } from '@/components/common/can';
 import { Button } from '@/components/ui/button';
 import { STAKEHOLDER_LIST_TYPE_LABELS } from '@/features/stakeholders';
 import { SESSION_MODALITY_LABELS, formatSessionDate } from '../lib/session-labels';
 
+const ATTENDEE_COUNT_FORMAT = new Intl.NumberFormat('es-PE');
+
 export interface SessionsTableProps {
-  readonly items: readonly SessionDto[];
+  readonly items: readonly SessionListItemDto[];
   readonly executionNamesById: ReadonlyMap<string, string>;
   readonly executionStatusesById?: ReadonlyMap<string, ProcessExecutionStatusValue>;
   readonly onEdit: (session: SessionDto) => void;
@@ -38,6 +40,9 @@ export function SessionsTable({
             </th>
             <th scope="col" className="px-4 py-3 font-medium">
               Enlaces
+            </th>
+            <th scope="col" className="px-4 py-3 font-medium">
+              Asistentes
             </th>
             <th scope="col" className="px-4 py-3 font-medium">
               Ejecuciones
@@ -96,6 +101,9 @@ export function SessionsTable({
                       )}
                     </div>
                   )}
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap tabular-nums">
+                  {ATTENDEE_COUNT_FORMAT.format(session.attendeeCount)}
                 </td>
                 <td className="px-4 py-3">
                   <ul className="space-y-0.5">
