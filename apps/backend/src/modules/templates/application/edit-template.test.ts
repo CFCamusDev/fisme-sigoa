@@ -121,6 +121,15 @@ describe('EditTemplateUseCase (T-018-21, RF-018, RS-020)', () => {
     expect(unitOfWork.run).toHaveBeenCalledTimes(1);
   });
 
+  it('stores and renders the sanitized content', async () => {
+    const result = await useCase.execute({
+      ...command,
+      content: '<!-- nota interna --><p>{{program.name}}</p>',
+    });
+
+    expect(result.version.content).toBe('<p>{{program.name}}</p>');
+  });
+
   it('updates the existing draft and audits an UPDATE with before and after', async () => {
     versionReader.findDraft.mockResolvedValue(draftVersion());
 

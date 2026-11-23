@@ -136,6 +136,20 @@ describe('PreviewTemplateUseCase (T-019-09, RF-019)', () => {
     });
   });
 
+  it('stores and renders the sanitized content', async () => {
+    await useCase.execute({
+      actorId: 'user-1',
+      templateId: 't1',
+      content: '<!-- comentario --><p>{{program.name}}</p>',
+    });
+
+    expect(pdfGenerator.render).toHaveBeenCalledWith(
+      expect.objectContaining({
+        html: '<p>Programa (ejemplo)</p>',
+      }),
+    );
+  });
+
   it('rejects a second preview from the same actor while one is in flight', async () => {
     let releaseFirst!: () => void;
     pdfGenerator.render.mockImplementationOnce(

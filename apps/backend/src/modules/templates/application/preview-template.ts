@@ -2,7 +2,10 @@ import { previewTemplateResponseSchema } from '@sigoa/shared';
 import type { PdfGenerator } from '../../../shared/pdf/pdf-generator.js';
 import { withEmptyPdfHeader } from '../../../shared/pdf/pdf-options.js';
 import { TemplateNotFoundError, TemplatePreviewInProgressError } from '../domain/errors/index.js';
-import { validateTemplateStructure } from '../domain/policies/template-content-policy.js';
+import {
+  sanitizeTemplateContent,
+  validateTemplateStructure,
+} from '../domain/policies/template-content-policy.js';
 import { renderTemplateHtml } from '../domain/policies/template-renderer.js';
 import { buildTemplateSampleData } from '../domain/policies/template-sample-data.js';
 import { detectUnrecognizedVariables } from '../domain/policies/unrecognized-variable-detector.js';
@@ -46,12 +49,13 @@ export class PreviewTemplateUseCase {
         throw new TemplateNotFoundError();
       }
 
-      validateTemplateStructure(command.content);
+      const sanitizedContent = sanitizeTemplateContent(command.content);
+      validateTemplateStructure(sanitizedContent);
 
       const allowedKeys = template.variables.map((variable) => variable.key);
-      const { unrecognized } = detectUnrecognizedVariables(command.content, allowedKeys);
-      const sampleData = buildTemplateSampleData(command.content, template.variables);
-      const html = renderTemplateHtml(command.content, sampleData);
+      const { unrecognized } = detectUnrecognizedVariables(sanitizedContent, allowedKeys);
+      const sampleData = buildTemplateSampleData(sanitizedContent, template.variables);
+      const html = renderTemplateHtml(sanitizedContent, sampleData);
 
       const pdfBuffer = await this.deps.pdfGenerator.render({
         html,

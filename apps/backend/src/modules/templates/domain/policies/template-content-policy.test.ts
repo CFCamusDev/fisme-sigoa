@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { InvalidTemplateDataError } from '../errors/index.js';
-import { validateTemplateContent, validateTemplateStructure } from './template-content-policy.js';
+import {
+  sanitizeTemplateContent,
+  validateTemplateContent,
+  validateTemplateStructure,
+} from './template-content-policy.js';
 
 const KEYS = ['program.name', 'logo.url', 'minutes.number'];
 
@@ -123,13 +127,51 @@ describe('validateTemplateContent (T-018-21, D8)', () => {
     });
   });
 
-  describe('malformed markup', () => {
-    it.each(['<p>a<b</p>', '<!-- comentario -->', '<?php echo 1 ?>', '<p class="a>x</p>'])(
-      'rejects %s',
+  describe('malformed markup and comments', () => {
+    it.each(['<p>a<b</p>', '<?php echo 1 ?>', '<p class="a>x</p>'])(
+      'still rejects a malformed tag (%s)',
       (content) => {
         rejects(content);
       },
     );
+
+    it('accepts a well formed comment and drops it when sanitizing', () => {
+      const html = '<!-- encabezado --><p>{{program.name}}</p><!-- fin -->';
+      accepts(html);
+      expect(sanitizeTemplateContent(html)).toBe('<p>{{program.name}}</p>');
+    });
+
+    it('drops conditional comments', () => {
+      const html = '<!--[if IE]><p>legacy</p><![endif]--><p>ok</p>';
+      accepts(html);
+      expect(sanitizeTemplateContent(html)).toBe('<p>ok</p>');
+    });
+
+    it('rejects an unclosed comment and names the fragment', () => {
+      expect(() =>
+        validateTemplateContent('<p>hola</p><!-- comentario sin cierre aqui', KEYS),
+      ).toThrow(/<!-- comentario sin cierre/);
+    });
+
+    it('rejects <!--> and <!---> openers', () => {
+      rejects('<!--><script>alert(1)</script>');
+      rejects('<!---><script>alert(1)</script>');
+    });
+
+    it('rejects a comment closed by --!>', () => {
+      rejects('<!-- intento --!><script>alert(1)</script><!-- -->');
+    });
+
+    it('does not let a comment hide a script tag', () => {
+      expect(sanitizeTemplateContent('<!-- <script>alert(1)</script> --><p>ok</p>')).toBe(
+        '<p>ok</p>',
+      );
+      rejects('<!-- ok --><script>alert(1)</script>');
+    });
+
+    it('ignores variables inside comments', () => {
+      accepts('<!-- {{variable.desconocida}} --><p>{{program.name}}</p>');
+    });
 
     it('accepts a doctype and plain comparison text', () => {
       accepts('<!DOCTYPE html><p>3 < 5 y 7 > 2</p>');
