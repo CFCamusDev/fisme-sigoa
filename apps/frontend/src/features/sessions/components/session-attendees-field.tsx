@@ -2,6 +2,7 @@ import { useId, useMemo, useState } from 'react';
 import {
   SESSION_ATTENDEE_POSITION_MAX_LENGTH,
   type SessionAttendeeRosterItem,
+  type StakeholderListTypeValue,
 } from '@sigoa/shared';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -10,6 +11,7 @@ import { Label } from '@/components/ui/label';
 export interface SessionAttendeesFieldProps {
   readonly items: readonly SessionAttendeeRosterItem[];
   readonly selected: ReadonlyMap<string, string>;
+  readonly stakeholderType?: StakeholderListTypeValue;
   readonly disabled?: boolean;
   readonly onToggle: (member: SessionAttendeeRosterItem, checked: boolean) => void;
   readonly onPositionChange: (listMemberId: string, position: string) => void;
@@ -18,6 +20,7 @@ export interface SessionAttendeesFieldProps {
 export function SessionAttendeesField({
   items,
   selected,
+  stakeholderType,
   disabled = false,
   onToggle,
   onPositionChange,
@@ -34,7 +37,9 @@ export function SessionAttendeesField({
     return items.filter((member) => {
       const nameMatch = member.fullName.toLowerCase().includes(query);
       const institutionMatch = member.institution?.toLowerCase().includes(query) ?? false;
-      return nameMatch || institutionMatch;
+      const rucMatch = member.ruc?.toLowerCase().includes(query) ?? false;
+      const repMatch = member.representative?.toLowerCase().includes(query) ?? false;
+      return nameMatch || institutionMatch || rucMatch || repMatch;
     });
   }, [items, search]);
 
@@ -90,8 +95,28 @@ export function SessionAttendeesField({
                     />
                     <Label htmlFor={checkboxId} className="cursor-pointer font-normal">
                       <span className="font-medium text-foreground">{member.fullName}</span>
-                      {member.institution && (
-                        <span className="ml-1.5 text-muted-foreground">· {member.institution}</span>
+                      {stakeholderType === 'EMPLOYER' ? (
+                        <>
+                          {member.ruc && (
+                            <span className="ml-1.5 text-muted-foreground">· RUC {member.ruc}</span>
+                          )}
+                          {member.representative && (
+                            <span className="ml-1.5 text-muted-foreground">
+                              · Representante: {member.representative}
+                            </span>
+                          )}
+                          {member.institution && member.institution !== member.fullName && (
+                            <span className="ml-1.5 text-muted-foreground">
+                              · {member.institution}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        member.institution && (
+                          <span className="ml-1.5 text-muted-foreground">
+                            · {member.institution}
+                          </span>
+                        )
                       )}
                     </Label>
                   </div>
