@@ -106,10 +106,12 @@ describe('quality-committees schemas', () => {
     });
     expect(emptyDates.success).toBe(false);
     if (!emptyDates.success) {
-      expect(emptyDates.error.issues.map((i) => i.message)).toEqual([
+      expect(emptyDates.error.issues.find((i) => i.path[0] === 'periodStart')?.message).toBe(
         'Indica la fecha de inicio',
+      );
+      expect(emptyDates.error.issues.find((i) => i.path[0] === 'periodEnd')?.message).toBe(
         'Indica la fecha de fin',
-      ]);
+      );
     }
 
     const brokenFormat = registerQualityCommitteeRequestSchema.safeParse({
@@ -119,10 +121,12 @@ describe('quality-committees schemas', () => {
     });
     expect(brokenFormat.success).toBe(false);
     if (!brokenFormat.success) {
-      expect(brokenFormat.error.issues[0]?.message).toBe(
+      expect(brokenFormat.error.issues.find((i) => i.path[0] === 'periodStart')?.message).toBe(
         'La fecha de inicio no es válida. Elígela en el calendario',
       );
-      expect(brokenFormat.error.issues[1]?.message).toContain('día válido');
+      expect(brokenFormat.error.issues.find((i) => i.path[0] === 'periodEnd')?.message).toContain(
+        'día válido',
+      );
     }
   });
 
