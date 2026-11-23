@@ -367,7 +367,7 @@ describe('ExecutionBoardPage (HU-031, T-031-09)', () => {
     renderWithProviders(<ExecutionBoardPage executionId="exec-1" />, { permissions: BOARD_PERMS });
 
     await user.click(await screen.findByRole('tab', { name: 'Cronograma' }));
-    const openScheduleLink = await screen.findByRole('link', { name: /Abrir cronograma/i });
+    const openScheduleLink = await screen.findByRole('link', { name: /Ver cronograma/i });
     expect(openScheduleLink).toHaveAttribute('href', '/cronograma/exec-1');
   });
 

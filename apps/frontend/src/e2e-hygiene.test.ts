@@ -105,6 +105,8 @@ const EXPECTED_CONTRAST_CONTEXTS = [
   'resolutions-empty-desktop',
   'resolutions-readonly-desktop',
   'resolutions-readonly-mobile',
+  'resolutions-register-dialog-desktop',
+  'resolutions-register-dialog-mobile',
   'resolutions-registered-approval-desktop',
   'resolutions-registered-approval-mobile',
   'role-permissions-matrix-desktop',

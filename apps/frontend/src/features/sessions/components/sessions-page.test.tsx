@@ -208,11 +208,11 @@ describe('SessionsPage (HU-032, T-032-25)', () => {
     await user.click(screen.getByRole('button', { name: 'Asistentes' }));
 
     const sheet = await screen.findByRole('dialog');
-    expect(sheet).toHaveClass('sm:w-[640px]');
+    expect(sheet).toHaveClass('w-[640px]');
     expect(await screen.findByText('Ana Pérez')).toBeInTheDocument();
 
     const saveButton = screen.getByRole('button', { name: 'Guardar asistentes' });
-    expect(saveButton.closest('[data-slot="sheet-footer"]')).not.toBeNull();
+    expect(saveButton.parentElement).toHaveClass('shrink-0', 'border-t');
 
     await user.click(saveButton);
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
@@ -249,7 +249,7 @@ describe('SessionsPage (HU-032, T-032-25)', () => {
     });
 
     expect(await screen.findByText('20/11/2026')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Editar' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Asistentes' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Editar' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Asistentes' })).toBeDisabled();
   });
 });
