@@ -1,6 +1,10 @@
+import { ConflictError } from '../../../../shared/errors/app-error.js';
 import type { DbProvider } from '../../../../shared/prisma/prisma-unit-of-work.js';
 import type { Resolution, ResolutionPdf } from '../../domain/entities/resolution.js';
-import { DuplicateResolutionError } from '../../domain/errors/index.js';
+import {
+  CatalogVersionResolutionExistsError,
+  DuplicateResolutionNumberError,
+} from '../../domain/errors/index.js';
 import type {
   ListResolutionsFilter,
   ResolutionPage,
@@ -11,6 +15,21 @@ import { mapPrismaResolutionRowToDomain } from './prisma-resolution-mapper.js';
 
 function isUniqueViolation(error: unknown): boolean {
   return !!error && typeof error === 'object' && (error as { code?: string }).code === 'P2002';
+}
+
+function classifyUniqueViolation(error: unknown): ConflictError {
+  const { meta, message } = error as { meta?: unknown; message?: string };
+  const text = `${JSON.stringify(meta ?? {})} ${message ?? ''}`;
+
+  if (text.includes('catalogVersionId') || text.includes('catalog_version_id')) {
+    return new CatalogVersionResolutionExistsError();
+  }
+  if (text.includes('number')) {
+    return new DuplicateResolutionNumberError();
+  }
+  return new ConflictError(
+    'Ya existe una resolución con ese número y tipo, o la versión del catálogo ya tiene una resolución de ese tipo.',
+  );
 }
 
 export class PrismaResolutionRepository implements ResolutionReader, ResolutionRepository {
@@ -55,7 +74,7 @@ export class PrismaResolutionRepository implements ResolutionReader, ResolutionR
       });
     } catch (error) {
       if (isUniqueViolation(error)) {
-        throw new DuplicateResolutionError();
+        throw classifyUniqueViolation(error);
       }
       throw error;
     }

@@ -16,7 +16,8 @@ import {
   RESOLUTION_TYPES,
 } from '../domain/entities/resolution-enums.js';
 import {
-  DuplicateResolutionError,
+  CatalogVersionResolutionExistsError,
+  DuplicateResolutionNumberError,
   InvalidResolutionDataError,
   ResolutionTypeNotAvailableError,
   ResolutionVersionNotFoundError,
@@ -148,13 +149,27 @@ describe('RegisterResolutionUseCase (T-048-06, RF-048, RS-020)', () => {
     },
   );
 
-  it('propagates a duplicate and does not audit', async () => {
-    resolutionRepository.save.mockRejectedValue(new DuplicateResolutionError());
+  it.each([
+    [
+      'duplicate number',
+      DuplicateResolutionNumberError,
+      () => new DuplicateResolutionNumberError(),
+    ],
+    [
+      'existing catalog version resolution',
+      CatalogVersionResolutionExistsError,
+      () => new CatalogVersionResolutionExistsError(),
+    ],
+  ])(
+    'propagates the specific duplicate error (%s) and does not audit',
+    async (_label, ErrorClass, makeError) => {
+      resolutionRepository.save.mockRejectedValue(makeError());
 
-    await expect(useCase.execute(command)).rejects.toBeInstanceOf(DuplicateResolutionError);
+      await expect(useCase.execute(command)).rejects.toBeInstanceOf(ErrorClass);
 
-    expect(auditLogger.log).not.toHaveBeenCalled();
-  });
+      expect(auditLogger.log).not.toHaveBeenCalled();
+    },
+  );
 
   it('rejects the improvement plan type until it is available, without reading anything', async () => {
     await expect(useCase.execute({ ...command, type: 'IMPROVEMENT_PLAN' })).rejects.toBeInstanceOf(

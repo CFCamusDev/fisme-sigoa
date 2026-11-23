@@ -3,7 +3,10 @@ import { PrismaUnitOfWork } from '../../../../shared/prisma/prisma-unit-of-work.
 import { useTestDatabase } from '../../../../test/db/use-test-database.js';
 import { Resolution, type ResolutionPdf } from '../../domain/entities/resolution.js';
 import type { ResolutionType } from '../../domain/entities/resolution-enums.js';
-import { DuplicateResolutionError } from '../../domain/errors/index.js';
+import {
+  CatalogVersionResolutionExistsError,
+  DuplicateResolutionNumberError,
+} from '../../domain/errors/index.js';
 import { PrismaResolutionCatalogVersionReader } from './prisma-resolution-catalog-version-reader.js';
 import { PrismaResolutionRepository } from './prisma-resolution-repository.js';
 
@@ -69,30 +72,22 @@ describe('PrismaResolutionRepository Integration (PostgreSQL real, T-048-19)', (
     expect(await repository.findById('missing')).toBeNull();
   }, 20_000);
 
-  it('rejects a duplicated number for the same type but allows it for another type', async () => {
+  it('classifies the duplicate by number or by catalog version', async () => {
     await seedVersion('v1');
     await seedVersion('v2');
     await repository.save(registered('r1', { number: 'RD-1', versionId: 'v1' }));
 
     await expect(
       repository.save(registered('r2', { number: 'RD-1', versionId: 'v2' })),
-    ).rejects.toBeInstanceOf(DuplicateResolutionError);
+    ).rejects.toBeInstanceOf(DuplicateResolutionNumberError);
+
+    await expect(
+      repository.save(registered('r3', { number: 'RD-2', versionId: 'v1' })),
+    ).rejects.toBeInstanceOf(CatalogVersionResolutionExistsError);
 
     await repository.save(
-      registered('r3', { type: 'GRADUATE_ATTRIBUTE', number: 'RD-1', versionId: 'v1' }),
+      registered('r4', { type: 'GRADUATE_ATTRIBUTE', number: 'RD-1', versionId: 'v1' }),
     );
-    expect((await repository.list({ page: 1, pageSize: 10 })).total).toBe(2);
-  }, 20_000);
-
-  it('rejects a second resolution of the same type for the same version', async () => {
-    await seedVersion('v1');
-    await repository.save(registered('r1', { number: 'RD-1' }));
-
-    await expect(repository.save(registered('r2', { number: 'RD-2' }))).rejects.toBeInstanceOf(
-      DuplicateResolutionError,
-    );
-
-    await repository.save(registered('r3', { type: 'GRADUATE_ATTRIBUTE', number: 'RD-3' }));
     expect((await repository.list({ page: 1, pageSize: 10 })).total).toBe(2);
   }, 20_000);
 
@@ -114,7 +109,7 @@ describe('PrismaResolutionRepository Integration (PostgreSQL real, T-048-19)', (
     );
     expect(rejected).toHaveLength(4);
     for (const result of rejected) {
-      expect(result.reason).toBeInstanceOf(DuplicateResolutionError);
+      expect(result.reason).toBeInstanceOf(DuplicateResolutionNumberError);
     }
     expect(await prisma.resolution.count({ where: { number: 'RD-SAME' } })).toBe(1);
   }, 20_000);

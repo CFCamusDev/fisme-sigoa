@@ -214,13 +214,23 @@ describe('POST /resolutions (PostgreSQL real, HU-048, T-048-20, RF-048, RNF-009)
     });
 
     it('answers 409 for a duplicated number and type and keeps the first one', async () => {
-      const versionId = await createInValidationCatalogVersion(prisma);
-      await createRegisteredResolution(prisma, versionId, { number: 'RD-012/2027' });
+      const versionId1 = await createInValidationCatalogVersion(prisma);
+      const versionId2 = await createInValidationCatalogVersion(prisma);
+      await createRegisteredResolution(prisma, versionId1, { number: 'RD-012/2027' });
       const president = await createActor(['COMMITTEE_PRESIDENT']);
 
-      const response = await post(president.token).send(body(versionId));
+      const response = await post(president.token).send(body(versionId2));
 
       expect(response.status).toBe(409);
+      expect(response.body.error.message).toBe(
+        'Ya existe una resolución con ese número para este tipo.',
+      );
+      expect(response.body.error.details).toEqual([
+        {
+          path: 'number',
+          message: 'Ya existe una resolución con ese número para este tipo.',
+        },
+      ]);
       expect(await count()).toBe(1);
       expect(await audits()).toBe(0);
     });
@@ -233,21 +243,64 @@ describe('POST /resolutions (PostgreSQL real, HU-048, T-048-20, RF-048, RNF-009)
       const response = await post(president.token).send(body(versionId, { number: 'RD-002/2027' }));
 
       expect(response.status).toBe(409);
+      expect(response.body.error.message).toBe(
+        'Esta versión del catálogo ya tiene una resolución de ese tipo.',
+      );
+      expect(response.body.error.details).toEqual([
+        {
+          path: 'catalogVersionId',
+          message: 'Esta versión del catálogo ya tiene una resolución de ese tipo.',
+        },
+      ]);
       expect(await count()).toBe(1);
     });
   });
 
   describe('Concurrency', () => {
-    it('accepts one of N simultaneous registrations of the same number and type', async () => {
-      const versionId = await createInValidationCatalogVersion(prisma);
+    it('lets exactly one of N concurrent registrations with the same number win', async () => {
+      const versionIds = await Promise.all([
+        createInValidationCatalogVersion(prisma),
+        createInValidationCatalogVersion(prisma),
+        createInValidationCatalogVersion(prisma),
+      ]);
       const president = await createActor(['COMMITTEE_PRESIDENT']);
 
       const responses = await Promise.all(
-        Array.from({ length: 5 }, () => post(president.token).send(body(versionId))),
+        versionIds.map((versionId) => post(president.token).send(body(versionId))),
       );
 
-      const statuses = responses.map((response) => response.status).sort();
-      expect(statuses).toEqual([201, 409, 409, 409, 409]);
+      const created = responses.filter((response) => response.status === 201);
+      const conflicts = responses.filter((response) => response.status === 409);
+      expect(created).toHaveLength(1);
+      expect(conflicts).toHaveLength(2);
+      for (const conflict of conflicts) {
+        expect(conflict.body.error.message).toBe(
+          'Ya existe una resolución con ese número para este tipo.',
+        );
+      }
+      expect(await count()).toBe(1);
+      expect(await audits()).toBe(1);
+    }, 20_000);
+
+    it('lets exactly one of N concurrent registrations for the same catalog version and type win', async () => {
+      const versionId = await createInValidationCatalogVersion(prisma);
+      const president = await createActor(['COMMITTEE_PRESIDENT']);
+
+      const responses = await Promise.all([
+        post(president.token).send(body(versionId, { number: 'RD-001/2027' })),
+        post(president.token).send(body(versionId, { number: 'RD-002/2027' })),
+        post(president.token).send(body(versionId, { number: 'RD-003/2027' })),
+      ]);
+
+      const created = responses.filter((response) => response.status === 201);
+      const conflicts = responses.filter((response) => response.status === 409);
+      expect(created).toHaveLength(1);
+      expect(conflicts).toHaveLength(2);
+      for (const conflict of conflicts) {
+        expect(conflict.body.error.message).toBe(
+          'Esta versión del catálogo ya tiene una resolución de ese tipo.',
+        );
+      }
       expect(await count()).toBe(1);
       expect(await audits()).toBe(1);
     }, 20_000);
