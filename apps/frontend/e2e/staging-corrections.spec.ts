@@ -118,9 +118,7 @@ test.describe('HU-081 — Correcciones de staging', () => {
     await page.goto('/ejecuciones');
 
     await page.getByRole('button', { name: /nueva ejecución/i }).click();
-    await expect(
-      page.getByRole('heading', { level: 2, name: /nueva ejecución de proceso/i }),
-    ).toBeVisible();
+    await expect(page.getByRole('heading', { level: 2, name: /nueva ejecución/i })).toBeVisible();
 
     await page.getByRole('button', { name: /crear ejecución/i }).click();
 

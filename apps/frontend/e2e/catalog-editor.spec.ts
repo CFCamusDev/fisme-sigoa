@@ -66,6 +66,7 @@ test.describe('HU-014 — Editar OE y AG de una versión E2E', () => {
     await expect(
       page.getByRole('heading', { level: 1, name: /Versión V2 del catálogo/ }),
     ).toBeVisible();
+    await page.getByRole('tab', { name: 'Atributos del graduado' }).click();
     const attributes = page.getByRole('list', { name: 'Atributos del graduado' });
     await expect(attributes.getByRole('listitem')).toHaveCount(12);
     await expect(attributes.getByText('Modificado')).toHaveCount(0);
@@ -117,6 +118,7 @@ test.describe('HU-014 — Editar OE y AG de una versión E2E', () => {
       ),
       page.reload(),
     ]);
+    await page.getByRole('tab', { name: 'Atributos del graduado' }).click();
     const reloaded = page
       .getByRole('list', { name: 'Atributos del graduado' })
       .getByRole('listitem')

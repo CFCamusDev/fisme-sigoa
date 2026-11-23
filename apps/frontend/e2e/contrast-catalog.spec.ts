@@ -98,6 +98,7 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Catalog', () => {
       ]);
 
       // Un AG modificado y uno nuevo muestran las dos insignias de cambio
+      await page.getByRole('tab', { name: 'Atributos del graduado' }).click();
       await page.getByRole('button', { name: 'Editar AG-C01' }).click();
       await page.getByLabel('Enunciado').fill('Enunciado modificado para la prueba de contraste.');
       await Promise.all([

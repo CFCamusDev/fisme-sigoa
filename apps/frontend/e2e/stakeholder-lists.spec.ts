@@ -52,6 +52,9 @@ test.describe('Stakeholder Lists Flow (HU-022, T-022-29, CA1, CA2, CA3)', () => 
     ]);
 
     await page.getByLabel(/N\.° de plan de estudios/i).fill('2024-II');
+    await page.getByRole('button', { name: 'Crear lista' }).click();
+    const createDialog = page.getByRole('dialog');
+    await expect(createDialog).toBeVisible();
     await Promise.all([
       page.waitForResponse(
         (res) =>
@@ -59,7 +62,7 @@ test.describe('Stakeholder Lists Flow (HU-022, T-022-29, CA1, CA2, CA3)', () => 
           res.request().method() === 'POST' &&
           res.status() === 201,
       ),
-      page.getByRole('button', { name: 'Crear lista' }).click(),
+      createDialog.getByRole('button', { name: 'Crear lista' }).click(),
     ]);
 
     await expect(page.getByRole('status')).toContainText('creada correctamente');
@@ -106,7 +109,7 @@ test.describe('Stakeholder Lists Flow (HU-022, T-022-29, CA1, CA2, CA3)', () => 
       page.getByRole('button', { name: 'Confirmar' }).click(),
     ]);
 
-    await page.getByRole('button', { name: 'Cerrar selector' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Cerrar', exact: true }).click();
     await expect(page.getByRole('cell', { name: 'Tech Amazonas SAC' })).toBeVisible();
     await expect(page.getByRole('cell', { name: '20123456789' })).toBeVisible();
     await expect(page.getByRole('cell', { name: 'Carlos Mendoza' })).toBeVisible();
