@@ -18,7 +18,7 @@ const READONLY_TABS = ['vigentes', 'historial'] as const;
 export function ParametersPage() {
   /** Vacío = «Hoy»: rige el último semestre iniciado hasta la fecha. */
   const [semesterCode, setSemesterCode] = useState('');
-  const { allowed: canEdit } = usePermission('parametro.editar');
+  const { allowed: canEdit, isLoading: permissionLoading } = usePermission('parametro.editar');
   const allowedTabs = useMemo(() => (canEdit ? EDITABLE_TABS : READONLY_TABS), [canEdit]);
   const [activeTab, setActiveTab] = useTabParam(allowedTabs, 'vigentes');
 
@@ -31,6 +31,14 @@ export function ParametersPage() {
         title="Parámetros"
         description="Umbrales, metas, pesos y mínimos que usa el sistema. Cada cambio rige desde un semestre."
       />
+
+      {!permissionLoading && !canEdit && (
+        <div className="rounded-lg border border-border bg-card p-4 text-card-foreground">
+          <p className="text-sm text-foreground">
+            Solo lectura: no tienes permiso para modificar los parámetros.
+          </p>
+        </div>
+      )}
 
       <div className="rounded-lg border border-border bg-card p-4 text-card-foreground shadow-sm sm:p-6">
         <div className="max-w-xs space-y-1.5">
