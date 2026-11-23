@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { PermissionDto, RoleGrant } from '@sigoa/shared';
 import { renderWithProviders } from '@/test/render';
@@ -58,6 +58,7 @@ describe('UserDirectPermissionsEditor Component (HU-007, T-007-16)', () => {
     );
 
     const editarSelect = screen.getByLabelText('Acceso a academico.editar');
+    await user.click(screen.getByRole('button', { name: /M09 Gestión Académica/i }));
     await user.selectOptions(editarSelect, 'OWN');
 
     expect(screen.getByText('1 cambio sin guardar')).toBeInTheDocument();
@@ -98,7 +99,8 @@ describe('UserDirectPermissionsEditor Component (HU-007, T-007-16)', () => {
     expect((verSelect as HTMLSelectElement).value).toBe('GLOBAL');
   });
 
-  it('disables controls and displays loading text while isSaving is true', () => {
+  it('disables controls and displays loading text while isSaving is true', async () => {
+    const user = userEvent.setup();
     renderWithProviders(
       <UserDirectPermissionsEditor
         directPermissions={[]}
@@ -109,7 +111,97 @@ describe('UserDirectPermissionsEditor Component (HU-007, T-007-16)', () => {
       { withRouter: false },
     );
 
+    await user.click(screen.getByRole('button', { name: /M09 Gestión Académica/i }));
     expect(screen.getByText('Guardando…')).toBeInTheDocument();
     expect(screen.getByLabelText('Acceso a academico.ver')).toBeDisabled();
+  });
+
+  it('groups direct permissions by module with an assigned counter', () => {
+    const multiCatalog: PermissionDto[] = [
+      ...mockCatalog,
+      { code: 'catalogo.ver', description: 'Ver catálogo', module: 'M02 Catálogo' },
+    ];
+    const directPermissions: RoleGrant[] = [{ permissionCode: 'academico.ver', scope: 'GLOBAL' }];
+
+    renderWithProviders(
+      <UserDirectPermissionsEditor
+        directPermissions={directPermissions}
+        catalog={multiCatalog}
+        onSave={vi.fn()}
+      />,
+      { withRouter: false },
+    );
+
+    const m09Trigger = screen.getByRole('button', { name: /M09 Gestión Académica/i });
+    const m02Trigger = screen.getByRole('button', { name: /M02 Catálogo/i });
+
+    expect(m09Trigger).toHaveTextContent('1 asignado');
+    expect(m09Trigger).toHaveAttribute('aria-expanded', 'true');
+    expect(m02Trigger).toHaveTextContent('0 asignados');
+    expect(m02Trigger).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('opens modules with matches', async () => {
+    const user = userEvent.setup();
+    const multiCatalog: PermissionDto[] = [
+      ...mockCatalog,
+      { code: 'catalogo.ver', description: 'Ver catálogo', module: 'M02 Catálogo' },
+    ];
+
+    renderWithProviders(
+      <UserDirectPermissionsEditor
+        directPermissions={[]}
+        catalog={multiCatalog}
+        onSave={vi.fn()}
+      />,
+      { withRouter: false },
+    );
+
+    await user.type(screen.getByLabelText('Buscar permisos'), 'catálogo');
+
+    const m02Trigger = screen.getByRole('button', { name: /M02 Catálogo/i });
+    expect(m02Trigger).toHaveAttribute('aria-expanded', 'true');
+    expect(
+      screen.queryByRole('button', { name: /M09 Gestión Académica/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows an empty state for no matches', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <UserDirectPermissionsEditor directPermissions={[]} catalog={mockCatalog} onSave={vi.fn()} />,
+      { withRouter: false },
+    );
+
+    await user.type(screen.getByLabelText('Buscar permisos'), 'inexistente');
+
+    expect(screen.getByText('Ningún permiso coincide con “inexistente”')).toBeInTheDocument();
+  });
+
+  it('saves from the sticky bar', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    const directPermissions: RoleGrant[] = [{ permissionCode: 'academico.ver', scope: 'GLOBAL' }];
+
+    renderWithProviders(
+      <UserDirectPermissionsEditor
+        directPermissions={directPermissions}
+        catalog={mockCatalog}
+        onSave={onSave}
+      />,
+      { withRouter: false },
+    );
+
+    await user.selectOptions(screen.getByLabelText('Acceso a academico.editar'), 'OWN');
+
+    const stickyBar = screen.getByTestId('sticky-action-bar');
+    expect(stickyBar).toHaveTextContent('1 cambio sin guardar');
+
+    await user.click(within(stickyBar).getByRole('button', { name: 'Guardar permisos directos' }));
+
+    expect(onSave).toHaveBeenCalledWith([
+      { permissionCode: 'academico.ver', scope: 'GLOBAL' },
+      { permissionCode: 'academico.editar', scope: 'OWN' },
+    ]);
   });
 });
