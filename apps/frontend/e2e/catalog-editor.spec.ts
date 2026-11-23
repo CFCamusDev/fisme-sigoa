@@ -62,7 +62,7 @@ test.describe('HU-014 — Editar OE y AG de una versión E2E', () => {
       ),
       page.getByRole('link', { name: 'Editar V2' }).click(),
     ]);
-    await expect(page).toHaveURL(/\/catalog\/versions\/[^/]+$/);
+    await expect(page).toHaveURL(/\/catalogo\/versiones\/[^/]+$/);
     await expect(
       page.getByRole('heading', { level: 1, name: /Versión V2 del catálogo/ }),
     ).toBeVisible();
