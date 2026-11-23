@@ -320,8 +320,8 @@ describe('PrismaSessionExecutionRepository & Readers Integration (PostgreSQL rea
     });
     await prisma.stakeholder.createMany({
       data: [
-        { id: 'st-1', kind: 'EMPLOYER', fullName: 'Persona 1', createdBy: 'user-1' },
-        { id: 'st-2', kind: 'EMPLOYER', fullName: 'Persona 2', createdBy: 'user-1' },
+        { id: 'st-1', kind: 'LEGAL', fullName: 'Persona 1', createdBy: 'user-1' },
+        { id: 'st-2', kind: 'LEGAL', fullName: 'Persona 2', createdBy: 'user-1' },
       ],
     });
     const m1 = await prisma.stakeholderListMember.create({

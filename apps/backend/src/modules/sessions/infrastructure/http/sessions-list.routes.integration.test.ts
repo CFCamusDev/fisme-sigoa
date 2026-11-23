@@ -177,7 +177,7 @@ describe('GET /process-executions/:id/sessions (PostgreSQL real, HU-032, T-032-2
     const stakeholder = await prisma.stakeholder.create({
       data: {
         id: 'st-http-1',
-        kind: 'EMPLOYER',
+        kind: 'LEGAL',
         fullName: 'Ana Empleadora',
         createdBy: member.user.id,
       },
