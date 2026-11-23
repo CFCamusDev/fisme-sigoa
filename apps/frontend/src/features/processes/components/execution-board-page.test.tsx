@@ -1,3 +1,4 @@
+import { StrictMode } from 'react';
 import type { ExecutionBoardResponse } from '@sigoa/shared';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -86,6 +87,7 @@ describe('ExecutionBoardPage (HU-031, T-031-09)', () => {
   });
 
   it('shows the status, the schedule progress and every section', async () => {
+    const user = userEvent.setup();
     const voidPermissions = [
       ...BOARD_PERMS,
       { code: 'ejecucion.anular', scope: 'GLOBAL' as const },
@@ -101,21 +103,30 @@ describe('ExecutionBoardPage (HU-031, T-031-09)', () => {
       await screen.findByRole('heading', { name: 'Medición anual OE 2027' }),
     ).toBeInTheDocument();
     expect(screen.getByText('En ejecución')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Pendientes' })).toBeInTheDocument();
 
+    await user.click(screen.getByRole('tab', { name: 'Cronograma' }));
     const progress = screen.getByRole('progressbar', { name: /Avance del cronograma/i });
     expect(progress).toHaveAttribute('aria-valuenow', '50');
     expect(screen.getByText('50%')).toBeInTheDocument();
-
     expect(screen.getByRole('heading', { name: 'Cronograma' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'Sesiones' }));
     expect(screen.getByRole('heading', { name: 'Sesiones' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Encuestas' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Actas' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Resultados' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Pendientes' })).toBeInTheDocument();
     expect(screen.getByText(/Empleadores/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'Encuestas' }));
+    expect(screen.getByRole('heading', { name: 'Encuestas' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'Actas' }));
+    expect(screen.getByRole('heading', { name: 'Actas' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'Resultados' }));
+    expect(screen.getByRole('heading', { name: 'Resultados' })).toBeInTheDocument();
   });
 
   it('shows unavailable sections as not available yet', async () => {
+    const user = userEvent.setup();
     const voidPermissions = [
       ...BOARD_PERMS,
       { code: 'ejecucion.anular', scope: 'GLOBAL' as const },
@@ -127,8 +138,10 @@ describe('ExecutionBoardPage (HU-031, T-031-09)', () => {
 
     renderWithProviders(<ExecutionBoardPage executionId="exec-1" />, { permissions: BOARD_PERMS });
 
-    const badges = await screen.findAllByText('Aún no disponible');
-    expect(badges).toHaveLength(3);
+    for (const tabName of ['Encuestas', 'Actas', 'Resultados']) {
+      await user.click(await screen.findByRole('tab', { name: tabName }));
+      expect(await screen.findByText('Aún no disponible')).toBeInTheDocument();
+    }
   });
 
   it('links each pending item to its section', async () => {
@@ -329,5 +342,57 @@ describe('ExecutionBoardPage (HU-031, T-031-09)', () => {
 
     release();
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
+  it('shows the six tabs with the summary first', async () => {
+    server.use(
+      http.get('*/process-executions/exec-1/board', () => HttpResponse.json(buildBoardResponse())),
+    );
+
+    renderWithProviders(<ExecutionBoardPage executionId="exec-1" />, { permissions: BOARD_PERMS });
+
+    const summaryTab = await screen.findByRole('tab', { name: 'Resumen' });
+    expect(summaryTab).toHaveAttribute('aria-selected', 'true');
+    for (const label of ['Cronograma', 'Sesiones', 'Encuestas', 'Actas', 'Resultados']) {
+      expect(screen.getByRole('tab', { name: label })).toBeInTheDocument();
+    }
+  });
+
+  it('links the schedule tab to the schedule screen', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get('*/process-executions/exec-1/board', () => HttpResponse.json(buildBoardResponse())),
+    );
+
+    renderWithProviders(<ExecutionBoardPage executionId="exec-1" />, { permissions: BOARD_PERMS });
+
+    await user.click(await screen.findByRole('tab', { name: 'Cronograma' }));
+    const openScheduleLink = await screen.findByRole('link', { name: /Abrir cronograma/i });
+    expect(openScheduleLink).toHaveAttribute('href', '/cronograma/exec-1');
+  });
+
+  it('shares a single board request across tabs under React.StrictMode', async () => {
+    const user = userEvent.setup();
+    let boardCalls = 0;
+    server.use(
+      http.get('*/process-executions/exec-1/board', () => {
+        boardCalls += 1;
+        return HttpResponse.json(buildBoardResponse());
+      }),
+    );
+
+    renderWithProviders(
+      <StrictMode>
+        <ExecutionBoardPage executionId="exec-1" />
+      </StrictMode>,
+      { permissions: BOARD_PERMS },
+    );
+
+    expect(await screen.findByRole('tab', { name: 'Resumen' })).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: 'Cronograma' }));
+    await user.click(screen.getByRole('tab', { name: 'Sesiones' }));
+    await user.click(screen.getByRole('tab', { name: 'Resumen' }));
+
+    expect(boardCalls).toBe(1);
   });
 });

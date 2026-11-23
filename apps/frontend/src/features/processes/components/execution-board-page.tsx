@@ -6,6 +6,8 @@ import { PageHeader } from '@/components/common/page-header';
 import { StatusBadge } from '@/components/common/status-badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useTabParam } from '@/hooks/use-tab-param';
 import { useExecutionBoard } from '../hooks/use-execution-board';
 import { getExecutionBoardErrorMessage } from '../lib/execution-board-labels';
 import { PROCESS_TYPE_LABELS } from '../lib/process-type-labels';
@@ -17,11 +19,21 @@ import {
 } from './execution-board-sections';
 import { ExecutionClosureActions } from './execution-closure-actions';
 
+const BOARD_TABS = [
+  'resumen',
+  'cronograma',
+  'sesiones',
+  'encuestas',
+  'actas',
+  'resultados',
+] as const;
+
 export interface ExecutionBoardPageProps {
   readonly executionId: string;
 }
 
 export function ExecutionBoardPage({ executionId }: ExecutionBoardPageProps) {
+  const [tab, setTab] = useTabParam(BOARD_TABS, 'resumen');
   const query = useExecutionBoard(executionId);
 
   return (
@@ -74,35 +86,55 @@ export function ExecutionBoardPage({ executionId }: ExecutionBoardPageProps) {
           onRetry={() => void query.refetch()}
         />
       ) : (
-        <div className="space-y-6">
-          <BoardPendingSection executionId={executionId} pending={query.data.pending} />
+        <Tabs value={tab} onValueChange={setTab} className="space-y-4">
+          <TabsList aria-label="Secciones del tablero de ejecución">
+            <TabsTrigger value="resumen">Resumen</TabsTrigger>
+            <TabsTrigger value="cronograma">Cronograma</TabsTrigger>
+            <TabsTrigger value="sesiones">Sesiones</TabsTrigger>
+            <TabsTrigger value="encuestas">Encuestas</TabsTrigger>
+            <TabsTrigger value="actas">Actas</TabsTrigger>
+            <TabsTrigger value="resultados">Resultados</TabsTrigger>
+          </TabsList>
 
-          <div className="grid gap-6 lg:grid-cols-2">
+          <TabsContent value="resumen">
+            <BoardPendingSection executionId={executionId} pending={query.data.pending} />
+          </TabsContent>
+
+          <TabsContent value="cronograma">
             <BoardScheduleSection executionId={executionId} schedule={query.data.schedule} />
-            <BoardSessionsSection sessions={query.data.sessions} />
-          </div>
+          </TabsContent>
 
-          <div className="grid gap-6 md:grid-cols-3">
+          <TabsContent value="sesiones">
+            <BoardSessionsSection sessions={query.data.sessions} />
+          </TabsContent>
+
+          <TabsContent value="encuestas">
             <BoardUnavailableSectionCard
               id="board-surveys-heading"
               title="Encuestas"
               reason="Disponible cuando se implemente el módulo de encuestas de constituyentes."
               data={query.data.surveys}
             />
+          </TabsContent>
+
+          <TabsContent value="actas">
             <BoardUnavailableSectionCard
               id="board-minutes-heading"
               title="Actas"
               reason="Disponible cuando se implemente el módulo de actas y firmas."
               data={query.data.minutes}
             />
+          </TabsContent>
+
+          <TabsContent value="resultados">
             <BoardUnavailableSectionCard
               id="board-results-heading"
               title="Resultados"
               reason="Disponible cuando se implemente el módulo de resultados y logros."
               data={query.data.results}
             />
-          </div>
-        </div>
+          </TabsContent>
+        </Tabs>
       )}
     </section>
   );
