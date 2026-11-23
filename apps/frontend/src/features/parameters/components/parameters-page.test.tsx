@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
@@ -226,7 +226,7 @@ describe('ParametersPage Component (HU-011, T-011-21)', () => {
         return HttpResponse.json(buildParametersResponse(code ?? '2027-I'));
       }),
       http.post('http://localhost:3000/parameters', () =>
-        HttpResponse.json({ effectiveFromSemester: '2027-I' }, { status: 201 }),
+        HttpResponse.json(buildParametersResponse('2027-I'), { status: 201 }),
       ),
     );
 
@@ -238,14 +238,22 @@ describe('ParametersPage Component (HU-011, T-011-21)', () => {
       ],
     });
 
+    const semesterSelect = await screen.findByLabelText('Vigente desde el semestre');
+    await waitFor(() =>
+      expect(within(semesterSelect).getByRole('option', { name: '2027-I' })).toBeInTheDocument(),
+    );
+    await user.selectOptions(semesterSelect, '2027-I');
     const input = await screen.findByRole('spinbutton', { name: 'Umbral de logrado' });
+    await waitFor(() => expect(input).toHaveValue(14));
     await user.clear(input);
     await user.type(input, '15');
     await user.click(screen.getByRole('button', { name: 'Guardar parámetros' }));
 
-    expect(await screen.findByRole('tab', { name: 'Valores vigentes' })).toHaveAttribute(
-      'aria-selected',
-      'true',
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: 'Valores vigentes' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      ),
     );
   });
 });

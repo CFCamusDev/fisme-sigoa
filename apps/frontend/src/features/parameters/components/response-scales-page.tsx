@@ -45,7 +45,6 @@ export function ResponseScalesPage() {
 
   const close = () => {
     setPanel(null);
-    restore();
   };
 
   const saved = (message: string) => {
@@ -159,6 +158,10 @@ export function ResponseScalesPage() {
           onOpenAutoFocus={(event) => {
             event.preventDefault();
             dialogTitleRef.current?.focus();
+          }}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            restore();
           }}
         >
           <DialogHeader>

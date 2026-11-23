@@ -87,6 +87,7 @@ describe('DashboardPage integration with MSW', () => {
             },
           ],
           total: 1,
+          totalPages: 1,
           page: 1,
           pageSize: 5,
         }),
