@@ -9666,6 +9666,7 @@
                       "meetingUrl": null,
                       "recordingUrl": null,
                       "executionIds": ["exec_cuid_1"],
+                      "attendeeCount": 0,
                       "createdAt": "2026-11-17T15:00:00.000Z",
                       "updatedAt": "2026-11-17T15:00:00.000Z"
                     }

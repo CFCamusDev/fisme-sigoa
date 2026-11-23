@@ -162,6 +162,41 @@ describe('GET /process-executions/:id/sessions (PostgreSQL real, HU-032, T-032-2
     expect(parsed.items[0]?.executionIds).toEqual(['exec-1', 'exec-2']);
   }, 5_000);
 
+  it('lists sessions with attendeeCount', async () => {
+    await seedExecutions();
+    const member = await createActor(['COMMITTEE_MEMBER']);
+    const list = await prisma.stakeholderList.create({
+      data: {
+        id: 'list-http-count',
+        programId: 'prog-1',
+        type: 'EMPLOYER',
+        year: 2026,
+        createdBy: member.user.id,
+      },
+    });
+    const listMember = await prisma.stakeholderListMember.create({
+      data: {
+        id: 'lm-http-1',
+        listId: list.id,
+        stakeholderId: 'st-http-1',
+        fullName: 'Ana Empleadora',
+      },
+    });
+    const s1 = await createSessionViaApi(member.token, {
+      sessionDate: '2026-11-20',
+      startTime: '10:00',
+      executionIds: ['exec-1'],
+    });
+    await prisma.attendee.create({
+      data: { sessionId: s1.id, listMemberId: listMember.id, createdBy: member.user.id },
+    });
+
+    const response = await getSessions(member.token, 'exec-1');
+    expect(response.status).toBe(200);
+    const parsed = listSessionsResponseSchema.parse(response.body);
+    expect(parsed.items[0]?.attendeeCount).toBe(1);
+  }, 5_000);
+
   it('paginates with page and pageSize', async () => {
     await seedExecutions();
     const member = await createActor(['COMMITTEE_MEMBER']);

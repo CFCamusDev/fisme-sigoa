@@ -306,4 +306,74 @@ describe('PrismaSessionExecutionRepository & Readers Integration (PostgreSQL rea
     });
     expect(await stakeholderListReader.findById('list-unknown')).toBeNull();
   }, 5_000);
+
+  it('counts attendees per session in one query including zero attendees', async () => {
+    await seedBaseExecutions([{ id: 'exec-1', name: 'Ejecución 1' }]);
+    await prisma.stakeholderList.create({
+      data: {
+        id: 'list-count',
+        programId: 'prog-1',
+        type: 'EMPLOYER',
+        year: 2026,
+        createdBy: 'user-1',
+      },
+    });
+    const m1 = await prisma.stakeholderListMember.create({
+      data: {
+        id: 'lm-1',
+        listId: 'list-count',
+        stakeholderId: 'st-1',
+        fullName: 'Persona 1',
+      },
+    });
+    const m2 = await prisma.stakeholderListMember.create({
+      data: {
+        id: 'lm-2',
+        listId: 'list-count',
+        stakeholderId: 'st-2',
+        fullName: 'Persona 2',
+      },
+    });
+
+    for (const [id, date] of [
+      ['sess-c0', '2026-11-18'],
+      ['sess-c1', '2026-11-19'],
+      ['sess-c2', '2026-11-20'],
+    ] as const) {
+      await sessionRepository.save(
+        Session.create({
+          id,
+          stakeholderType: 'EMPLOYER',
+          stakeholderList: { id: 'list-count', type: 'EMPLOYER' },
+          sessionDate: date,
+          startTime: '10:00',
+          modality: 'IN_PERSON',
+          executions: [{ id: 'exec-1', name: 'Ejecución 1', status: 'PLANNED' }],
+          actorId: 'user-1',
+          now: NOW,
+        }),
+      );
+      await executionRepository.replaceLinks({
+        sessionId: id,
+        executionIds: ['exec-1'],
+        actorId: 'user-1',
+        now: NOW,
+      });
+    }
+
+    await prisma.attendee.createMany({
+      data: [
+        { sessionId: 'sess-c1', listMemberId: m1.id, createdBy: 'user-1' },
+        { sessionId: 'sess-c2', listMemberId: m1.id, createdBy: 'user-1' },
+        { sessionId: 'sess-c2', listMemberId: m2.id, createdBy: 'user-1' },
+      ],
+    });
+
+    const page = await executionRepository.listByExecution('exec-1', { page: 1, pageSize: 10 });
+    expect(page.items.map((item) => ({ id: item.id, attendeeCount: item.attendeeCount }))).toEqual([
+      { id: 'sess-c2', attendeeCount: 2 },
+      { id: 'sess-c1', attendeeCount: 1 },
+      { id: 'sess-c0', attendeeCount: 0 },
+    ]);
+  }, 5_000);
 });

@@ -11,6 +11,7 @@ export interface SessionListItem {
   readonly meetingUrl: string | null;
   readonly recordingUrl: string | null;
   readonly executionIds: readonly string[];
+  readonly attendeeCount: number;
   readonly createdAt: Date;
   readonly updatedAt: Date;
 }

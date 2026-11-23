@@ -238,9 +238,17 @@ export const sessionDtoSchema = z
 
 export type SessionDto = z.infer<typeof sessionDtoSchema>;
 
+export const sessionListItemSchema = sessionDtoSchema
+  .extend({
+    attendeeCount: z.number().int().nonnegative(),
+  })
+  .strict();
+
+export type SessionListItemDto = z.infer<typeof sessionListItemSchema>;
+
 export const listSessionsResponseSchema = z
   .object({
-    items: z.array(sessionDtoSchema),
+    items: z.array(sessionListItemSchema),
     total: z.number().int().nonnegative(),
     page: z.number().int().min(1),
     pageSize: z.number().int().min(1),

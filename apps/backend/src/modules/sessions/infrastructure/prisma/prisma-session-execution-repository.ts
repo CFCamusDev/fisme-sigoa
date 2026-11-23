@@ -97,6 +97,9 @@ export class PrismaSessionExecutionRepository implements SessionExecutionReposit
           select: { processExecutionId: true },
           orderBy: { processExecutionId: 'asc' },
         },
+        _count: {
+          select: { attendees: true },
+        },
       },
     });
 
@@ -111,6 +114,7 @@ export class PrismaSessionExecutionRepository implements SessionExecutionReposit
         meetingUrl: row.meetingUrl,
         recordingUrl: row.recordingUrl,
         executionIds: row.executions.map((link) => link.processExecutionId),
+        attendeeCount: row._count.attendees,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
       })),

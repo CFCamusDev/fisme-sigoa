@@ -6,6 +6,7 @@ import {
   processExecutionIdParamSchema,
   sessionDtoSchema,
   sessionIdParamSchema,
+  sessionListItemSchema,
   updateSessionRequestSchema,
 } from './sessions.js';
 
@@ -204,6 +205,40 @@ describe('sessions schemas', () => {
       updatedAt: '2026-11-17T15:00:00.000Z',
     });
     expect(parsed.success).toBe(true);
+
+    expect(
+      sessionListItemSchema.safeParse({
+        id: 'sess-1',
+        stakeholderType: 'EMPLOYER',
+        stakeholderListId: null,
+        sessionDate: '2026-11-20',
+        startTime: '10:00',
+        modality: 'IN_PERSON',
+        meetingUrl: null,
+        recordingUrl: null,
+        executionIds: ['exec-1'],
+        attendeeCount: 0,
+        createdAt: '2026-11-17T15:00:00.000Z',
+        updatedAt: '2026-11-17T15:00:00.000Z',
+      }).success,
+    ).toBe(true);
+
+    expect(
+      sessionListItemSchema.safeParse({
+        id: 'sess-1',
+        stakeholderType: 'EMPLOYER',
+        stakeholderListId: null,
+        sessionDate: '2026-11-20',
+        startTime: '10:00',
+        modality: 'IN_PERSON',
+        meetingUrl: null,
+        recordingUrl: null,
+        executionIds: ['exec-1'],
+        attendeeCount: -1,
+        createdAt: '2026-11-17T15:00:00.000Z',
+        updatedAt: '2026-11-17T15:00:00.000Z',
+      }).success,
+    ).toBe(false);
   });
 
   it('requires at least one field to update', () => {
