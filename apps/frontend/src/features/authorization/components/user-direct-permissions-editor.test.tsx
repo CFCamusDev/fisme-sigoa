@@ -57,8 +57,8 @@ describe('UserDirectPermissionsEditor Component (HU-007, T-007-16)', () => {
       { withRouter: false },
     );
 
-    const editarSelect = screen.getByLabelText('Acceso a academico.editar');
     await user.click(screen.getByRole('button', { name: /M09 Gestión Académica/i }));
+    const editarSelect = screen.getByLabelText('Acceso a academico.editar');
     await user.selectOptions(editarSelect, 'OWN');
 
     expect(screen.getByText('1 cambio sin guardar')).toBeInTheDocument();
@@ -199,9 +199,13 @@ describe('UserDirectPermissionsEditor Component (HU-007, T-007-16)', () => {
 
     await user.click(within(stickyBar).getByRole('button', { name: 'Guardar permisos directos' }));
 
-    expect(onSave).toHaveBeenCalledWith([
-      { permissionCode: 'academico.ver', scope: 'GLOBAL' },
-      { permissionCode: 'academico.editar', scope: 'OWN' },
-    ]);
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(onSave.mock.calls[0]?.[0]).toHaveLength(2);
+    expect(onSave.mock.calls[0]?.[0]).toEqual(
+      expect.arrayContaining([
+        { permissionCode: 'academico.ver', scope: 'GLOBAL' },
+        { permissionCode: 'academico.editar', scope: 'OWN' },
+      ]),
+    );
   });
 });

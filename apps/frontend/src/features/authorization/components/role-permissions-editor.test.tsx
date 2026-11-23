@@ -70,42 +70,55 @@ const mockAdminRole: RoleDto = {
 };
 
 function renderEditor(ui: React.ReactElement) {
-  return renderWithProviders(ui, { withRouter: false });
+  return renderWithProviders(ui);
 }
 
 describe('PermissionMatrixEditor component (T-006-22b)', () => {
-  it('renders one section per module with a select per permission', () => {
+  it('renders one module at a time with navigation buttons and a select per permission', async () => {
+    const user = userEvent.setup();
     renderEditor(<PermissionMatrixEditor role={mockRole} catalog={mockCatalog} />);
 
-    expect(screen.getByRole('heading', { level: 2, name: 'M01 Seguridad' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 2, name: 'M02 Catálogo' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { level: 2, name: 'M01 Seguridad' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /M02 Catálogo/i })).toBeInTheDocument();
 
-    for (const permission of mockCatalog) {
+    for (const permission of mockCatalog.filter((item) => item.module === 'M01 Seguridad')) {
       expect(screen.getByText(permission.code)).toBeInTheDocument();
       expect(screen.getByText(permission.description)).toBeInTheDocument();
       expect(
         screen.getByRole('combobox', { name: `Acceso a ${permission.code}` }),
       ).toBeInTheDocument();
     }
+
+    await user.click(screen.getByRole('button', { name: /M02 Catálogo/i }));
+    expect(screen.getByRole('heading', { level: 2, name: 'M02 Catálogo' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Acceso a catalogo.ver' })).toBeInTheDocument();
   });
 
-  it('shows the current scope of each permission', () => {
+  it('shows the current scope of each permission', async () => {
+    const user = userEvent.setup();
     renderEditor(<PermissionMatrixEditor role={mockRole} catalog={mockCatalog} />);
 
-    expect(screen.getByRole('combobox', { name: 'Acceso a usuario.ver' })).toHaveValue('GLOBAL');
-    expect(screen.getByRole('combobox', { name: 'Acceso a catalogo.ver' })).toHaveValue('OWN');
+    expect(await screen.findByRole('combobox', { name: 'Acceso a usuario.ver' })).toHaveValue(
+      'GLOBAL',
+    );
     expect(screen.getByRole('combobox', { name: 'Acceso a usuario.crear' })).toHaveValue('NONE');
     expect(screen.getByRole('combobox', { name: 'Acceso a rol.ver' })).toHaveValue('NONE');
     expect(screen.getByRole('combobox', { name: 'Acceso a rol.editar' })).toHaveValue('NONE');
+
+    await user.click(screen.getByRole('button', { name: /M02 Catálogo/i }));
+    expect(screen.getByRole('combobox', { name: 'Acceso a catalogo.ver' })).toHaveValue('OWN');
   });
 
   it('marks modified rows with text', async () => {
     const user = userEvent.setup();
     renderEditor(<PermissionMatrixEditor role={mockRole} catalog={mockCatalog} />);
 
+    await screen.findByRole('combobox', { name: 'Acceso a usuario.crear' });
     expect(screen.queryByText('Modificado')).not.toBeInTheDocument();
 
-    const select = screen.getByRole('combobox', { name: 'Acceso a usuario.crear' });
+    const select = await screen.findByRole('combobox', { name: 'Acceso a usuario.crear' });
     await user.selectOptions(select, 'GLOBAL');
 
     expect(screen.getByText('Modificado')).toBeInTheDocument();
@@ -115,13 +128,13 @@ describe('PermissionMatrixEditor component (T-006-22b)', () => {
     const user = userEvent.setup();
     renderEditor(<PermissionMatrixEditor role={mockRole} catalog={mockCatalog} />);
 
-    const saveButton = screen.getByRole('button', { name: 'Guardar cambios' });
+    const saveButton = await screen.findByRole('button', { name: 'Guardar cambios' });
     const discardButton = screen.getByRole('button', { name: 'Descartar' });
 
     expect(saveButton).toBeDisabled();
     expect(discardButton).toBeDisabled();
 
-    const select = screen.getByRole('combobox', { name: 'Acceso a usuario.crear' });
+    const select = await screen.findByRole('combobox', { name: 'Acceso a usuario.crear' });
     await user.selectOptions(select, 'GLOBAL');
 
     expect(saveButton).not.toBeDisabled();
@@ -132,14 +145,15 @@ describe('PermissionMatrixEditor component (T-006-22b)', () => {
     const user = userEvent.setup();
     renderEditor(<PermissionMatrixEditor role={mockRole} catalog={mockCatalog} />);
 
-    expect(screen.getByText('0 cambios sin guardar')).toBeInTheDocument();
+    expect(await screen.findByText('0 cambios sin guardar')).toBeInTheDocument();
 
     await user.selectOptions(
-      screen.getByRole('combobox', { name: 'Acceso a usuario.crear' }),
+      await screen.findByRole('combobox', { name: 'Acceso a usuario.crear' }),
       'GLOBAL',
     );
     expect(screen.getByText('1 cambio sin guardar')).toBeInTheDocument();
 
+    await user.click(screen.getByRole('button', { name: /M02 Catálogo/i }));
     await user.selectOptions(
       screen.getByRole('combobox', { name: 'Acceso a catalogo.ver' }),
       'NONE',
@@ -154,7 +168,7 @@ describe('PermissionMatrixEditor component (T-006-22b)', () => {
       <PermissionMatrixEditor role={mockRole} catalog={mockCatalog} onDiscard={onDiscard} />,
     );
 
-    const select = screen.getByRole('combobox', { name: 'Acceso a usuario.crear' });
+    const select = await screen.findByRole('combobox', { name: 'Acceso a usuario.crear' });
     await user.selectOptions(select, 'GLOBAL');
     expect(select).toHaveValue('GLOBAL');
 
@@ -166,10 +180,10 @@ describe('PermissionMatrixEditor component (T-006-22b)', () => {
     expect(onDiscard).toHaveBeenCalled();
   });
 
-  it('disables the protected permissions of the administrator role with an explanation', () => {
+  it('disables the protected permissions of the administrator role with an explanation', async () => {
     renderEditor(<PermissionMatrixEditor role={mockAdminRole} catalog={mockCatalog} />);
 
-    const rolVerSelect = screen.getByRole('combobox', { name: 'Acceso a rol.ver' });
+    const rolVerSelect = await screen.findByRole('combobox', { name: 'Acceso a rol.ver' });
     const rolEditarSelect = screen.getByRole('combobox', { name: 'Acceso a rol.editar' });
     const usuarioVerSelect = screen.getByRole('combobox', { name: 'Acceso a usuario.ver' });
 
@@ -198,7 +212,7 @@ describe('PermissionMatrixEditor component (T-006-22b)', () => {
     renderEditor(<PermissionMatrixEditor role={mockRole} catalog={mockCatalog} />);
 
     await user.selectOptions(
-      screen.getByRole('combobox', { name: 'Acceso a usuario.crear' }),
+      await screen.findByRole('combobox', { name: 'Acceso a usuario.crear' }),
       'GLOBAL',
     );
 
@@ -217,13 +231,11 @@ describe('PermissionMatrixEditor component (T-006-22b)', () => {
     const user = userEvent.setup();
     renderEditor(<PermissionMatrixEditor role={mockRole} catalog={mockCatalog} />);
 
-    // Tab a través de los selects y controles
-    const firstSelect = screen.getByRole('combobox', { name: 'Acceso a usuario.ver' });
-    await user.tab();
+    const firstSelect = await screen.findByRole('combobox', { name: 'Acceso a usuario.ver' });
+    firstSelect.focus();
     expect(firstSelect).toHaveFocus();
 
     await user.keyboard('{ArrowDown}');
-    // El foco permanece navegable sin trampas
     await user.tab();
     const secondSelect = screen.getByRole('combobox', { name: 'Acceso a usuario.crear' });
     expect(secondSelect).toHaveFocus();

@@ -593,6 +593,7 @@ describe('UserAccessPanel component (T-007-16)', () => {
       expect(await screen.findByText('Roles actualizados correctamente.')).toBeInTheDocument();
 
       // Asignar permiso directo: usuario.crear -> GLOBAL
+      await user.click(screen.getByRole('button', { name: /M01 Seguridad/i }));
       const select = screen.getByLabelText('Acceso a usuario.crear');
       await user.selectOptions(select, 'GLOBAL');
 
@@ -659,6 +660,7 @@ describe('UserAccessPanel component (T-007-16)', () => {
       renderWithProviders(<UserAccessPanel userId="usr-123" />);
 
       await screen.findByRole('heading', { name: 'Permisos directos' });
+      await user.click(screen.getByRole('button', { name: /M01 Seguridad/i }));
 
       const select = screen.getByLabelText('Acceso a usuario.ver');
       await user.selectOptions(select, 'OWN');

@@ -255,6 +255,7 @@ describe('EditUserPage component (T-003-27)', () => {
     renderWithProviders(<EditUserPage userId="usr-123" />);
 
     await user.click(await screen.findByRole('tab', { name: 'Permisos directos' }));
+    await user.click(await screen.findByRole('button', { name: /M01 Seguridad/i }));
     const select = await screen.findByLabelText(/Acceso a usuario\.ver/i);
     await user.selectOptions(select, 'GLOBAL');
     expect(screen.getByText(/1 cambio sin guardar/i)).toBeInTheDocument();

@@ -351,9 +351,7 @@ describe('UserForm component (T-003-27)', () => {
       <UserForm mode="edit" initialUser={mockInitialUser} onSuccess={onSuccess} />,
     );
 
-    await screen.findByText('Docente');
-
-    const namesInput = screen.getByLabelText(/nombres/i);
+    const namesInput = await screen.findByLabelText(/nombres/i);
     expect(namesInput).toHaveValue('Ana');
 
     // Cambiamos solo el nombre
@@ -388,9 +386,7 @@ describe('UserForm component (T-003-27)', () => {
     const user = userEvent.setup();
     renderWithProviders(<UserForm mode="edit" initialUser={mockInitialUserWithoutDni} />);
 
-    await screen.findByText('Administrador');
-
-    const dniInput = screen.getByLabelText(/dni/i);
+    const dniInput = await screen.findByLabelText(/dni/i);
     expect(dniInput).toHaveValue('');
     expect(dniInput).toHaveAttribute('placeholder', 'Sin DNI registrado');
 
@@ -411,7 +407,7 @@ describe('UserForm component (T-003-27)', () => {
   it('does not show read-only roles block in edit mode', async () => {
     renderWithProviders(<UserForm mode="edit" initialUser={mockInitialUser} />);
 
-    expect(await screen.findByLabelText(/nombres/i)).toHaveValue('Luis');
+    expect(await screen.findByLabelText(/nombres/i)).toHaveValue('Ana');
     expect(screen.queryByText('Roles asignados (solo lectura)')).not.toBeInTheDocument();
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
   });
@@ -456,8 +452,7 @@ describe('UserForm component (T-003-27)', () => {
     const user = userEvent.setup();
     renderWithProviders(<UserForm mode="edit" initialUser={mockInitialUser} />);
 
-    await screen.findByText('Docente');
-    const dniInput = screen.getByLabelText(/dni/i);
+    const dniInput = await screen.findByLabelText(/dni/i);
     await user.clear(dniInput);
     await user.type(dniInput, '123');
     await user.tab();
@@ -489,8 +484,7 @@ describe('UserForm component (T-003-27)', () => {
     const user = userEvent.setup();
     renderWithProviders(<UserForm mode="edit" initialUser={mockInitialUser} />);
 
-    await screen.findByText('Docente');
-    const namesInput = screen.getByLabelText(/nombres/i);
+    const namesInput = await screen.findByLabelText(/nombres/i);
     await user.clear(namesInput);
     await user.type(namesInput, 'Ana Sofía');
     await user.click(screen.getByRole('button', { name: /guardar cambios/i }));
