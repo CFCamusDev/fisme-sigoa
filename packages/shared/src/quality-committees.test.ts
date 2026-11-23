@@ -98,6 +98,34 @@ describe('quality-committees schemas', () => {
     expect(result.success).toBe(false);
   });
 
+  it('reports empty start date, end date and non-calendar days with clear messages', () => {
+    const emptyDates = registerQualityCommitteeRequestSchema.safeParse({
+      periodStart: '',
+      periodEnd: '',
+      members: [{ fullName: 'Ana Torres', degree: 'Dr.', position: 'PRESIDENT' }],
+    });
+    expect(emptyDates.success).toBe(false);
+    if (!emptyDates.success) {
+      expect(emptyDates.error.issues.map((i) => i.message)).toEqual([
+        'Indica la fecha de inicio',
+        'Indica la fecha de fin',
+      ]);
+    }
+
+    const brokenFormat = registerQualityCommitteeRequestSchema.safeParse({
+      periodStart: '01/01/2027',
+      periodEnd: '2027-02-30',
+      members: [{ fullName: 'Ana Torres', degree: 'Dr.', position: 'PRESIDENT' }],
+    });
+    expect(brokenFormat.success).toBe(false);
+    if (!brokenFormat.success) {
+      expect(brokenFormat.error.issues[0]?.message).toBe(
+        'La fecha de inicio no es válida. Elígela en el calendario',
+      );
+      expect(brokenFormat.error.issues[1]?.message).toContain('día válido');
+    }
+  });
+
   it('rejects more than 30 members', () => {
     const members = [
       { fullName: 'Presidente', degree: 'Dr.', position: 'PRESIDENT' as const },

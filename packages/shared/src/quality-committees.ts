@@ -35,14 +35,20 @@ function isValidCalendarDate(raw: string): boolean {
   );
 }
 
-const isoDateSchema = z
-  .string()
-  .trim()
-  .refine((value) => ISO_DATE_PATTERN.test(value), 'La fecha debe tener el formato AAAA-MM-DD')
-  .refine(
-    isValidCalendarDate,
-    `La fecha debe corresponder a un día válido entre ${COMMITTEE_PERIOD_YEAR_MIN} y ${COMMITTEE_PERIOD_YEAR_MAX}`,
-  );
+function calendarDateSchema(label: string) {
+  return z
+    .string({ message: `Indica la ${label}` })
+    .trim()
+    .min(1, `Indica la ${label}`)
+    .refine(
+      (value) => ISO_DATE_PATTERN.test(value),
+      `La ${label} no es válida. Elígela en el calendario`,
+    )
+    .refine(
+      isValidCalendarDate,
+      `La fecha debe corresponder a un día válido entre ${COMMITTEE_PERIOD_YEAR_MIN} y ${COMMITTEE_PERIOD_YEAR_MAX}`,
+    );
+}
 
 export const committeeMemberPositionSchema = z.enum(['PRESIDENT', 'MEMBER']);
 
@@ -133,15 +139,21 @@ const committeeMembersArraySchema = z
 
 export const registerQualityCommitteeRequestSchema = z
   .object({
-    periodStart: isoDateSchema,
-    periodEnd: isoDateSchema,
+    periodStart: calendarDateSchema('fecha de inicio'),
+    periodEnd: calendarDateSchema('fecha de fin'),
     members: committeeMembersArraySchema,
   })
   .strict()
-  .refine((data) => data.periodStart <= data.periodEnd, {
-    message: 'La fecha de inicio del periodo no puede ser posterior a la fecha de fin',
-    path: ['periodEnd'],
-  });
+  .refine(
+    (data) =>
+      !ISO_DATE_PATTERN.test(data.periodStart) ||
+      !ISO_DATE_PATTERN.test(data.periodEnd) ||
+      data.periodStart <= data.periodEnd,
+    {
+      message: 'La fecha de inicio del periodo no puede ser posterior a la fecha de fin',
+      path: ['periodEnd'],
+    },
+  );
 
 export type RegisterQualityCommitteeRequest = z.infer<typeof registerQualityCommitteeRequestSchema>;
 
@@ -184,8 +196,8 @@ export type CommitteeMemberDto = z.infer<typeof committeeMemberSchema>;
 export const qualityCommitteeSchema = z
   .object({
     id: z.string().min(1),
-    periodStart: isoDateSchema,
-    periodEnd: isoDateSchema,
+    periodStart: calendarDateSchema('fecha de inicio'),
+    periodEnd: calendarDateSchema('fecha de fin'),
     isCurrent: z.boolean(),
     members: z.array(committeeMemberSchema),
   })

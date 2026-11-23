@@ -39,9 +39,17 @@ export const resolutionStatusSchema = z.enum(RESOLUTION_STATUSES, {
 });
 export type ResolutionStatusValue = z.infer<typeof resolutionStatusSchema>;
 
-const calendarDateSchema = z
-  .string()
-  .refine(isCalendarDate, 'La fecha debe ser una fecha válida con formato AAAA-MM-DD');
+function calendarDateSchema(label: string) {
+  return z
+    .string({ message: `Indica la ${label}` })
+    .trim()
+    .min(1, `Indica la ${label}`)
+    .refine(
+      (value) => CALENDAR_DATE_PATTERN.test(value),
+      `La ${label} no es válida. Elígela en el calendario`,
+    )
+    .refine(isCalendarDate, `La ${label} no corresponde a un día válido en el calendario`);
+}
 
 const resolutionIdSchema = z
   .string()
@@ -68,7 +76,7 @@ export const registerResolutionRequestSchema = z
         RESOLUTION_NUMBER_PATTERN,
         'El número solo admite letras, dígitos, guion, barra, punto y espacio',
       ),
-    issuedOn: calendarDateSchema,
+    issuedOn: calendarDateSchema('fecha de la resolución'),
     catalogVersionId: resolutionIdSchema,
   })
   .strict();
@@ -108,7 +116,7 @@ export const resolutionDtoSchema = z
     id: z.string().min(1),
     type: resolutionTypeSchema,
     number: z.string().min(1),
-    issuedOn: calendarDateSchema,
+    issuedOn: calendarDateSchema('fecha de la resolución'),
     status: resolutionStatusSchema,
     catalogVersionId: z.string().min(1).nullable(),
     pdfFileId: z.string().min(1).nullable(),

@@ -99,6 +99,34 @@ describe('resolution schemas (T-048-08, RF-048)', () => {
         expect(registerResolutionRequestSchema.safeParse(incomplete).success).toBe(false);
       },
     );
+
+    it('reports empty resolution date and non-calendar day with clear messages', () => {
+      const empty = registerResolutionRequestSchema.safeParse({ ...request, issuedOn: '' });
+      expect(empty.success).toBe(false);
+      if (!empty.success) {
+        expect(empty.error.issues[0]?.message).toBe('Indica la fecha de la resolución');
+      }
+
+      const invalidFormat = registerResolutionRequestSchema.safeParse({
+        ...request,
+        issuedOn: '15/03/2027',
+      });
+      expect(invalidFormat.success).toBe(false);
+      if (!invalidFormat.success) {
+        expect(invalidFormat.error.issues[0]?.message).toBe(
+          'La fecha de la resolución no es válida. Elígela en el calendario',
+        );
+      }
+
+      const nonCalendar = registerResolutionRequestSchema.safeParse({
+        ...request,
+        issuedOn: '2027-02-29',
+      });
+      expect(nonCalendar.success).toBe(false);
+      if (!nonCalendar.success) {
+        expect(nonCalendar.error.issues[0]?.message).toContain('día válido');
+      }
+    });
   });
 
   describe('id params', () => {

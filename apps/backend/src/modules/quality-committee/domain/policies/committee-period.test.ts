@@ -32,8 +32,9 @@ describe('committee-period', () => {
       InvalidQualityCommitteeDataError,
     );
     expect(() => assertValidPeriod('01/01/2027', '2027-12-31')).toThrow(
-      InvalidQualityCommitteeDataError,
+      'no es válida. Elígela en el calendario',
     );
+    expect(() => assertValidPeriod('', '2027-12-31')).toThrow('Indica la');
   });
 
   it('detects overlapping periods inclusively', () => {

@@ -20,9 +20,14 @@ const limaDateFormatter = new Intl.DateTimeFormat('en-US', {
 
 function assertValidIsoDate(raw: string, label: string): string {
   const normalized = raw.trim();
+  if (normalized.length === 0) {
+    throw new InvalidQualityCommitteeDataError(`Indica la ${label}.`);
+  }
   const match = ISO_DATE_PATTERN.exec(normalized);
   if (!match?.[1] || !match[2] || !match[3]) {
-    throw new InvalidQualityCommitteeDataError(`La ${label} debe tener formato AAAA-MM-DD.`);
+    throw new InvalidQualityCommitteeDataError(
+      `La ${label} no es válida. Elígela en el calendario.`,
+    );
   }
 
   const year = Number.parseInt(match[1], 10);
