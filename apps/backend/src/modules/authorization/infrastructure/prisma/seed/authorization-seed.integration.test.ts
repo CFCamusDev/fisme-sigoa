@@ -208,4 +208,95 @@ describe('Authorization Seed Integration (PostgreSQL real, CA1, RS-010, LS 3.2, 
       expect(g.createdBy).toBe('SEED');
     }
   });
+
+  it('restores the predefined matrix and removes manual roles while keeping direct permissions', async () => {
+    await seedAuthorization(prisma);
+
+    const user = await prisma.user.create({
+      data: {
+        email: 'restore-test@example.test',
+        names: 'Ana',
+        firstSurname: 'Torres',
+        status: 'ACTIVE',
+        createdBy: 'SEED',
+      },
+    });
+    const manualRole = await prisma.role.create({
+      data: {
+        code: 'CUSTOM_TESTER',
+        name: 'Tester Manual',
+        description: 'Rol temporal',
+        isPredefined: false,
+        status: 'ACTIVE',
+        createdBy: user.id,
+      },
+    });
+    const adminRole = await prisma.role.findUniqueOrThrow({ where: { code: 'ADMINISTRATOR' } });
+    const rolVerPerm = await prisma.permission.findUniqueOrThrow({ where: { code: 'rol.ver' } });
+    const docPerm = await prisma.permission.findUniqueOrThrow({
+      where: { code: 'documento.descargar' },
+    });
+
+    await prisma.userRole.createMany({
+      data: [
+        { userId: user.id, roleId: manualRole.id, assignedBy: 'SEED' },
+        { userId: user.id, roleId: adminRole.id, assignedBy: 'SEED' },
+      ],
+    });
+    await prisma.userPermission.create({
+      data: { userId: user.id, permissionId: docPerm.id, scope: 'GLOBAL', assignedBy: 'SEED' },
+    });
+    await prisma.rolePermission.create({
+      data: {
+        roleId: manualRole.id,
+        permissionId: rolVerPerm.id,
+        scope: 'GLOBAL',
+        createdBy: user.id,
+      },
+    });
+    await prisma.rolePermission.delete({
+      where: { roleId_permissionId: { roleId: adminRole.id, permissionId: rolVerPerm.id } },
+    });
+    await prisma.role.update({
+      where: { id: adminRole.id },
+      data: { name: 'Nombre Alterado', status: 'INACTIVE' },
+    });
+
+    await seedAuthorization(prisma, { restorePredefined: true });
+    // Idempotente en segunda ejecución
+    await seedAuthorization(prisma, { restorePredefined: true });
+
+    const rolesAfter = await prisma.role.findMany();
+    expect(rolesAfter).toHaveLength(5);
+    expect(rolesAfter.some((r) => r.code === 'CUSTOM_TESTER')).toBe(false);
+
+    const restoredAdmin = await prisma.role.findUniqueOrThrow({ where: { code: 'ADMINISTRATOR' } });
+    expect(restoredAdmin.name).toBe('Administrador');
+    expect(restoredAdmin.status).toBe('ACTIVE');
+
+    const restoredGrant = await prisma.rolePermission.findUnique({
+      where: { roleId_permissionId: { roleId: adminRole.id, permissionId: rolVerPerm.id } },
+    });
+    expect(restoredGrant).not.toBeNull();
+
+    expect(await prisma.userRole.findMany({ where: { userId: user.id } })).toHaveLength(1);
+    expect(await prisma.userPermission.findMany({ where: { userId: user.id } })).toHaveLength(1);
+  });
+
+  it('keeps the default behavior without the option', async () => {
+    await seedAuthorization(prisma);
+    await prisma.role.create({
+      data: {
+        code: 'CUSTOM_KEEP',
+        name: 'Rol Conservado',
+        description: 'Manual',
+        isPredefined: false,
+        status: 'ACTIVE',
+        createdBy: 'SEED',
+      },
+    });
+
+    await seedAuthorization(prisma);
+    expect(await prisma.role.findUnique({ where: { code: 'CUSTOM_KEEP' } })).not.toBeNull();
+  });
 });
