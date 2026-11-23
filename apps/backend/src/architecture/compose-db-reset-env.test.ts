@@ -2,10 +2,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 // @ts-expect-error script sin archivo de declaraciones .d.ts
-import {
-  extractBackendVariableNames,
-  extractComposeEnvironmentKeys,
-} from '../../../../scripts/ci/check-env-parity.mjs';
+import * as envParity from '../../../../scripts/ci/check-env-parity.mjs';
+
+const { extractBackendVariableNames, extractComposeEnvironmentKeys } = envParity;
 
 const ROOT_DIR = path.resolve(__dirname, '../../../../');
 

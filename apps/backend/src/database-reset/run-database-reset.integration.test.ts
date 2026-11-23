@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from 'vitest';
-import { InMemoryPasswordHasher } from '../modules/users/infrastructure/security/in-memory-password-hasher.js';
 import { runDatabaseSeed } from '../seed-database.js';
 import { useTestDatabase } from '../test/db/use-test-database.js';
 import { seedAuthorizationFast } from '../test/factories/authorization.js';
@@ -95,12 +94,12 @@ describe('runDatabaseReset Integration (PostgreSQL real, HU-081, T-081-37)', () 
     });
     await prisma.userRole.createMany({
       data: [
-        { userId: user.id, roleId: adminRole.id, assignedBy: 'SEED' },
-        { userId: user.id, roleId: manualRole.id, assignedBy: 'SEED' },
+        { userId: user.id, roleId: adminRole.id, createdBy: 'SEED' },
+        { userId: user.id, roleId: manualRole.id, createdBy: 'SEED' },
       ],
     });
     await prisma.userPermission.create({
-      data: { userId: user.id, permissionId: docPerm.id, scope: 'GLOBAL', assignedBy: 'SEED' },
+      data: { userId: user.id, permissionId: docPerm.id, scope: 'GLOBAL', createdBy: 'SEED' },
     });
     await prisma.activationToken.create({
       data: {
@@ -125,13 +124,14 @@ describe('runDatabaseReset Integration (PostgreSQL real, HU-081, T-081-37)', () 
         entity: 'Program',
         entityId: 'prog-wipe',
         actor: user.id,
+        occurredAt: new Date('2026-01-01T00:00:00.000Z'),
         sequence: 1,
-        prevHash: 'GENESIS',
+        previousHash: 'GENESIS',
         hash: 'hash-1',
       },
     });
     await prisma.auditChainHead.create({
-      data: { id: 1, lastSequence: 1, lastHash: 'hash-1' },
+      data: { id: 'MAIN', sequence: 1, hash: 'hash-1' },
     });
 
     const infoSpy = vi.fn();
@@ -185,7 +185,7 @@ describe('runDatabaseReset Integration (PostgreSQL real, HU-081, T-081-37)', () 
       ADMIN_FIRST_SURNAME: 'Admin',
       ADMIN_DNI: '12345678',
     };
-    const hasher = new InMemoryPasswordHasher();
+    const hasher = { hash: async (plain: string) => `hash:${plain}` };
     await runDatabaseSeed({ prisma, rawEnv: seedEnv, hasher });
     await runDatabaseSeed({ prisma, rawEnv: seedEnv, hasher });
     expect(await prisma.program.count()).toBe(1);
