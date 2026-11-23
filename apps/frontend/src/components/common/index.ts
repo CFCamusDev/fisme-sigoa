@@ -1,4 +1,5 @@
 export * from './page-header';
+export * from './sticky-action-bar';
 export * from './empty-state';
 export * from './loading-state';
 export * from './error-state';

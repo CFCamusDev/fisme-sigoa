@@ -9,6 +9,7 @@ import {
 import { Calendar, Plus, Save, Sparkles } from 'lucide-react';
 import { Can } from '@/components/common/can';
 import { EmptyState } from '@/components/common/empty-state';
+import { StickyActionBar } from '@/components/common/sticky-action-bar';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -157,7 +158,11 @@ export function ScheduleEditor({
   }
 
   return (
-    <form onSubmit={submitForm} className="space-y-4" noValidate>
+    <form
+      onSubmit={submitForm}
+      className={canEdit && !readOnly ? 'space-y-4 pb-24' : 'space-y-4'}
+      noValidate
+    >
       {errorMessage ? (
         <Alert variant="danger" role="alert">
           <AlertDescription>{errorMessage}</AlertDescription>
@@ -174,12 +179,6 @@ export function ScheduleEditor({
               ))}
             </ul>
           </AlertDescription>
-        </Alert>
-      ) : null}
-
-      {showSavedNotice && !errorMessage && !isDirty ? (
-        <Alert variant="success" role="status">
-          <AlertDescription>Cronograma guardado</AlertDescription>
         </Alert>
       ) : null}
 
@@ -260,23 +259,37 @@ export function ScheduleEditor({
         </Table>
       </div>
 
-      {canEdit ? (
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={isBusy || readOnly || fields.length >= SCHEDULE_MAX_ITEMS}
-            onClick={() => append(createEmptyFormItem())}
-          >
-            <Plus className="size-4" aria-hidden="true" />
-            Agregar actividad
-          </Button>
+      {canEdit && !readOnly ? (
+        <>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isBusy || fields.length >= SCHEDULE_MAX_ITEMS}
+              onClick={() => append(createEmptyFormItem())}
+            >
+              <Plus className="size-4" aria-hidden="true" />
+              Agregar actividad
+            </Button>
+          </div>
 
-          <Button type="submit" disabled={isBusy || readOnly}>
-            <Save className="size-4" aria-hidden="true" />
-            {isSaving ? 'Guardando…' : 'Guardar cronograma'}
-          </Button>
-        </div>
+          <StickyActionBar
+            status={
+              showSavedNotice && !errorMessage && !isDirty ? (
+                <span role="status" className="font-medium text-success">
+                  Cronograma guardado
+                </span>
+              ) : isDirty ? (
+                'Cambios sin guardar'
+              ) : null
+            }
+          >
+            <Button type="submit" disabled={isBusy}>
+              <Save className="size-4" aria-hidden="true" />
+              {isSaving ? 'Guardando…' : 'Guardar cronograma'}
+            </Button>
+          </StickyActionBar>
+        </>
       ) : null}
     </form>
   );

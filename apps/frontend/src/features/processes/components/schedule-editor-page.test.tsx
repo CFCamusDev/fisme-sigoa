@@ -471,8 +471,9 @@ describe('ScheduleEditorPage (HU-028, T-028-24)', () => {
     expect(screen.getByRole('button', { name: 'Bajar actividad 1' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Quitar actividad 1' })).toBeDisabled();
     expect(screen.getAllByRole('button', { name: /Iniciar/i })[0]).toBeDisabled();
-    expect(screen.getByRole('button', { name: /Agregar actividad/i })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /Guardar cronograma/i })).toBeDisabled();
+    expect(screen.queryByTestId('sticky-action-bar')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Agregar actividad/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Guardar cronograma/i })).not.toBeInTheDocument();
   });
 
   it('locks every control when the execution is closed', async () => {
@@ -497,5 +498,22 @@ describe('ScheduleEditorPage (HU-028, T-028-24)', () => {
 
     expect(screen.getByRole('button', { name: /Proponer actividades/i })).toBeDisabled();
     expect(screen.getByRole('button', { name: /Agregar actividad/i })).toBeDisabled();
+  });
+
+  it('keeps Guardar cronograma in the sticky bar and hides it when read only', async () => {
+    server.use(
+      http.get('*/process-executions/exec-1/schedule', () =>
+        HttpResponse.json({ items: [SAMPLE_PENDING] }),
+      ),
+    );
+
+    renderWithProviders(<ScheduleEditorPage executionId="exec-1" />, { permissions: ALL_PERMS });
+
+    await screen.findByLabelText('Actividad 1');
+    const stickyBar = screen.getByTestId('sticky-action-bar');
+    expect(stickyBar).toContainElement(screen.getByRole('button', { name: /Guardar cronograma/i }));
+    expect(stickyBar).not.toContainElement(
+      screen.getByRole('button', { name: /Agregar actividad/i }),
+    );
   });
 });
