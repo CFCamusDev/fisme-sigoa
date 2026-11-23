@@ -86,11 +86,10 @@ export function CatalogSendToValidation({
               <CircleAlert className="size-4 shrink-0 text-danger" aria-hidden="true" />
             )}
             <span>
-              {precondition.label}
-              <span className="sr-only">{precondition.met ? ': cumplida' : ': pendiente'}</span>
-            </span>
-            <span className="text-muted-foreground" aria-hidden="true">
-              {precondition.met ? '(cumplida)' : '(pendiente)'}
+              {precondition.label}{' '}
+              <span className="text-muted-foreground">
+                {precondition.met ? '(cumplida)' : '(pendiente)'}
+              </span>
             </span>
           </li>
         ))}

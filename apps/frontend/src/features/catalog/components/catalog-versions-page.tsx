@@ -95,8 +95,8 @@ export function CatalogVersionsPage() {
         {openVersion && (
           <p id={HELP_ID} className="text-sm text-muted-foreground">
             Ya existe la versión {openVersion.number} en{' '}
-            {openVersion.status === 'DRAFT' ? 'Borrador' : 'En validación'}; ciérrala o apruébala
-            antes de crear otra.
+            {openVersion.status === 'DRAFT' ? 'Borrador' : 'validación'}; ciérrala o apruébala antes
+            de crear otra.
           </p>
         )}
       </Can>
