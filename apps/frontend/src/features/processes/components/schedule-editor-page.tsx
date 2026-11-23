@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { ArrowLeft } from 'lucide-react';
 import { ErrorState } from '@/components/common/error-state';
@@ -17,6 +18,7 @@ export interface ScheduleEditorPageProps {
 }
 
 export function ScheduleEditorPage({ executionId }: ScheduleEditorPageProps) {
+  const [showSavedNotice, setShowSavedNotice] = useState(false);
   const query = useSchedule(executionId);
   const proposeMutation = useProposeSchedule(executionId);
   const saveMutation = useSaveSchedule(executionId);
@@ -57,8 +59,17 @@ export function ScheduleEditorPage({ executionId }: ScheduleEditorPageProps) {
           isSaving={saveMutation.isPending}
           isChangingStatus={statusMutation.isPending}
           errorMessage={errorMessage}
-          onPropose={() => proposeMutation.mutate()}
-          onSave={(payload) => saveMutation.mutate(payload)}
+          showSavedNotice={showSavedNotice && !errorMessage}
+          onPropose={() => {
+            setShowSavedNotice(false);
+            proposeMutation.mutate();
+          }}
+          onSave={(payload) => {
+            setShowSavedNotice(false);
+            saveMutation.mutate(payload, {
+              onSuccess: () => setShowSavedNotice(true),
+            });
+          }}
           onStartActivity={(activityId) =>
             statusMutation.mutate({ activityId, body: { status: 'IN_PROGRESS' } })
           }

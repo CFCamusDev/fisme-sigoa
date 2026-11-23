@@ -84,9 +84,42 @@ export const scheduleEditorFormSchema = z
     activities: z.array(formItemSchema),
   })
   .superRefine((values, ctx) => {
+    const missingFieldPaths = new Set<string>();
+
+    values.activities.forEach((item, index) => {
+      const rowNumber = index + 1;
+      if (item.indicator.trim().length === 0) {
+        missingFieldPaths.add(`activities.${index}.indicator`);
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['activities', index, 'indicator'],
+          message: `Indica el indicador de la actividad ${rowNumber}`,
+        });
+      }
+      if (item.startDate.trim().length === 0) {
+        missingFieldPaths.add(`activities.${index}.startDate`);
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['activities', index, 'startDate'],
+          message: `Indica la fecha de inicio de la actividad ${rowNumber}`,
+        });
+      }
+      if (item.endDate.trim().length === 0) {
+        missingFieldPaths.add(`activities.${index}.endDate`);
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['activities', index, 'endDate'],
+          message: `Indica la fecha de fin de la actividad ${rowNumber}`,
+        });
+      }
+    });
+
     const parsed = saveScheduleRequestSchema.safeParse(toSaveScheduleRequest(values));
     if (!parsed.success) {
       for (const issue of parsed.error.issues) {
+        if (missingFieldPaths.has(issue.path.join('.'))) {
+          continue;
+        }
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: issue.path,

@@ -3,6 +3,7 @@ import type { SaveScheduleRequest, ScheduleResponse } from '@sigoa/shared';
 import type { ApiError } from '@/lib/api-error';
 import { shareInFlight } from '@/lib/shared-in-flight';
 import { saveSchedule } from '../api/save-schedule';
+import { processExecutionKeys } from './process-execution-keys';
 import { scheduleKeys } from './schedule-keys';
 
 export function useSaveSchedule(
@@ -18,6 +19,12 @@ export function useSaveSchedule(
     retry: false,
     onSuccess: (data) => {
       queryClient.setQueryData(scheduleKeys.detail(executionId), data);
+      void queryClient.invalidateQueries({
+        queryKey: processExecutionKeys.nextTransition(executionId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: processExecutionKeys.board(executionId),
+      });
     },
     onError: (error) => {
       if (error.status === 404 || error.status === 409) {

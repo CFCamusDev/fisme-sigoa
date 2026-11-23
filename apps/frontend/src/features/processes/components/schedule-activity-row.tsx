@@ -71,6 +71,7 @@ export function ScheduleActivityRow({
           <div className="space-y-1">
             <Input
               aria-label={`Actividad ${rowNumber}`}
+              aria-invalid={Boolean(errors?.activity)}
               {...register(`activities.${index}.activity`)}
               disabled={isSaving}
             />
@@ -90,6 +91,7 @@ export function ScheduleActivityRow({
           <div className="space-y-1">
             <Input
               aria-label={`Responsable ${rowNumber}`}
+              aria-invalid={Boolean(errors?.responsible)}
               {...register(`activities.${index}.responsible`)}
               disabled={isSaving}
             />
@@ -106,11 +108,19 @@ export function ScheduleActivityRow({
 
       <TableCell className="min-w-40">
         {canEdit ? (
-          <Input
-            aria-label={`Meta ${rowNumber}`}
-            {...register(`activities.${index}.goal`)}
-            disabled={isSaving}
-          />
+          <div className="space-y-1">
+            <Input
+              aria-label={`Meta ${rowNumber}`}
+              aria-invalid={Boolean(errors?.goal)}
+              {...register(`activities.${index}.goal`)}
+              disabled={isSaving}
+            />
+            {errors?.goal?.message ? (
+              <p className="text-xs text-destructive" role="alert">
+                {errors.goal.message}
+              </p>
+            ) : null}
+          </div>
         ) : (
           <span className="text-muted-foreground">{item.goal || '—'}</span>
         )}
@@ -118,11 +128,19 @@ export function ScheduleActivityRow({
 
       <TableCell className="min-w-40">
         {canEdit ? (
-          <Input
-            aria-label={`Indicador ${rowNumber}`}
-            {...register(`activities.${index}.indicator`)}
-            disabled={isSaving}
-          />
+          <div className="space-y-1">
+            <Input
+              aria-label={`Indicador ${rowNumber}`}
+              aria-invalid={Boolean(errors?.indicator)}
+              {...register(`activities.${index}.indicator`)}
+              disabled={isSaving}
+            />
+            {errors?.indicator?.message ? (
+              <p className="text-xs text-destructive" role="alert">
+                {errors.indicator.message}
+              </p>
+            ) : null}
+          </div>
         ) : (
           <span className="text-muted-foreground">{item.indicator || '—'}</span>
         )}
@@ -130,12 +148,20 @@ export function ScheduleActivityRow({
 
       <TableCell className="min-w-36">
         {canEdit ? (
-          <Input
-            type="date"
-            aria-label={`Fecha de inicio ${rowNumber}`}
-            {...register(`activities.${index}.startDate`)}
-            disabled={isSaving}
-          />
+          <div className="space-y-1">
+            <Input
+              type="date"
+              aria-label={`Fecha de inicio ${rowNumber}`}
+              aria-invalid={Boolean(errors?.startDate)}
+              {...register(`activities.${index}.startDate`)}
+              disabled={isSaving}
+            />
+            {errors?.startDate?.message ? (
+              <p className="text-xs text-destructive" role="alert">
+                {errors.startDate.message}
+              </p>
+            ) : null}
+          </div>
         ) : (
           <span className="text-foreground">{formatDate(item.startDate || null)}</span>
         )}
@@ -147,6 +173,7 @@ export function ScheduleActivityRow({
             <Input
               type="date"
               aria-label={`Fecha de fin ${rowNumber}`}
+              aria-invalid={Boolean(errors?.endDate)}
               {...register(`activities.${index}.endDate`)}
               disabled={isSaving}
             />
