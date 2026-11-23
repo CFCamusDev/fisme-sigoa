@@ -392,7 +392,8 @@ describe('ScheduleEditorPage (HU-028, T-028-24)', () => {
     await screen.findByLabelText('Actividad 1');
     await user.click(screen.getByRole('button', { name: /Guardar cronograma/i }));
 
-    const alertSummary = await screen.findByRole('alert');
+    const alerts = await screen.findAllByRole('alert');
+    const alertSummary = alerts[0]!;
     expect(alertSummary).toHaveTextContent('Indica el indicador de la actividad 1');
     expect(alertSummary).toHaveTextContent('Indica la fecha de inicio de la actividad 1');
     expect(alertSummary).toHaveTextContent('Indica la fecha de fin de la actividad 1');
