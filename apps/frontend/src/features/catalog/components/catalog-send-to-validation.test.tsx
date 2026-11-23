@@ -7,6 +7,7 @@ describe('CatalogSendToValidation (HU-081, T-081-10)', () => {
   it('shows each precondition state once', () => {
     renderWithProviders(
       <CatalogSendToValidation versionId="v-2" objectiveCount={4} attributeCount={0} />,
+      { withRouter: false },
     );
 
     const items = screen.getAllByRole('listitem');
