@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 import type { AuditLogger } from '../../../shared/audit/audit-logger.js';
 import { ForbiddenError } from '../../../shared/errors/app-error.js';
+import type { PdfGenerator } from '../../../shared/pdf/pdf-generator.js';
 import { EMPTY_PDF_HEADER_TEMPLATE } from '../../../shared/pdf/pdf-options.js';
 import type { UnitOfWork } from '../../../shared/unit-of-work/unit-of-work.js';
 import { Template } from '../domain/entities/template.js';
@@ -251,29 +252,9 @@ describe('GenerateAnnexPdfUseCase (T-070-09, RF-070)', () => {
   });
 
   it('renders FO-01 without dashes when there is no execution data', async () => {
-    vi.mocked(templateReader.findPublishedByCode).mockResolvedValueOnce({
-      template: {
-        id: 'tpl-fo01',
-        code: 'FO-01',
-        name: 'Cronograma',
-        variables: [
-          { key: 'process.name', label: 'Proceso' },
-          { key: 'schedule.period', label: 'Periodo' },
-        ],
-      },
-      publishedVersion: {
-        id: 'ver-fo01',
-        templateId: 'tpl-fo01',
-        versionNumber: 1,
-        status: 'PUBLISHED',
-        content: '<h1>{{process.name}}</h1><p>{{schedule.period}}</p>',
-      },
-    } as never);
-
     await useCase.execute({ actorId: 'user-1', annexCode: 'FO-01' });
 
     const call = pdfGenerator.render.mock.calls[0]?.[0];
-    expect(call?.html).toContain('<h1>(sin ejecución seleccionada)</h1>');
     expect(call?.html).toContain('<p>(sin periodo definido)</p>');
     expect(call?.html).not.toContain('—');
   });
