@@ -19,4 +19,7 @@ export const handlers = [
   http.get('http://localhost:3000/me/permissions', () => {
     return HttpResponse.json({ permissions: DEFAULT_TEST_PERMISSIONS });
   }),
+  http.get('http://localhost:3000/process-executions', () => {
+    return HttpResponse.json({ items: [], total: 0, page: 1, pageSize: 5 });
+  }),
 ];
