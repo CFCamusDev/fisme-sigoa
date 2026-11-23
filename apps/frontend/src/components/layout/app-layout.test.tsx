@@ -36,6 +36,44 @@ describe('AppLayout Component', () => {
     expect(screen.getByText('Título principal')).toBeInTheDocument();
   });
 
+  it('keeps the header above the fixed sidebar', async () => {
+    renderWithProviders(
+      <AppLayout>
+        <p>Contenido</p>
+      </AppLayout>,
+    );
+
+    const header = await screen.findByRole('banner');
+    const aside = screen.getByLabelText('Barra lateral de navegación');
+    const skipLink = screen.getByRole('link', { name: /Saltar al contenido principal/i });
+
+    expect(header).toHaveClass('sticky', 'top-0', 'z-50');
+    expect(aside).toHaveClass(
+      'z-[45]',
+      'lg:sticky',
+      'lg:top-16',
+      'lg:z-30',
+      'lg:h-[calc(100dvh-4rem)]',
+      'lg:self-start',
+    );
+    expect(skipLink).toHaveClass('focus:z-[60]');
+  });
+
+  it('keeps the version footer outside the scrolling nav', async () => {
+    renderWithProviders(
+      <AppLayout>
+        <p>Contenido</p>
+      </AppLayout>,
+    );
+
+    const nav = await screen.findByRole('navigation', { name: /Navegación principal/i });
+    const aside = screen.getByLabelText('Barra lateral de navegación');
+
+    expect(nav).toHaveClass('overflow-y-auto');
+    expect(nav).not.toHaveTextContent(/Versión/i);
+    expect(aside).toHaveTextContent(/Versión/i);
+  });
+
   it('renders navigation item "Panel" linking to root', async () => {
     renderWithProviders(
       <AppLayout>

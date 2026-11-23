@@ -10,7 +10,7 @@ export interface HeaderProps {
 
 export function Header({ isMobileMenuOpen, onToggleMobileMenu, userMenu }: HeaderProps) {
   return (
-    <header className="sticky top-0 z-40 flex h-16 w-full items-center justify-between bg-topbar text-topbar-foreground shadow-sm px-4 lg:px-8">
+    <header className="sticky top-0 z-50 flex h-16 w-full items-center justify-between bg-topbar text-topbar-foreground shadow-sm px-4 lg:px-8">
       <div className="flex items-center gap-3 sm:gap-4">
         <button
           type="button"

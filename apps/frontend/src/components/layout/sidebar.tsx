@@ -92,7 +92,7 @@ export function Sidebar({ isOpen, onClose, items = MAIN_NAV_ITEMS }: SidebarProp
       {/* Barra lateral */}
       <aside
         id="app-sidebar"
-        className={`fixed top-16 bottom-0 left-0 z-50 flex w-64 flex-col border-r border-border bg-sidebar transition-transform duration-200 ease-standard lg:static lg:translate-x-0 ${
+        className={`fixed top-16 bottom-0 left-0 z-[45] flex w-64 flex-col border-r border-border bg-sidebar transition-transform duration-200 ease-standard lg:sticky lg:top-16 lg:z-30 lg:h-[calc(100dvh-4rem)] lg:self-start lg:translate-x-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
         aria-label="Barra lateral de navegación"
