@@ -6,6 +6,7 @@ import { ErrorState } from '@/components/common/error-state';
 import { Can } from '@/components/common/can';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { readableApiMessage } from '@/lib/validation-errors';
 import { UserAccessPanel } from '@/features/authorization';
 import { useUser, usersKeys } from '../hooks';
 import { UserForm } from './user-form';
@@ -61,7 +62,10 @@ export function EditUserPage({ userId }: EditUserPageProps) {
       <div className="surface rounded-lg p-6">
         <ErrorState
           title="Error al cargar el usuario"
-          message={userQuery.error.message || 'No se pudo cargar la información del usuario.'}
+          message={readableApiMessage(
+            userQuery.error,
+            'No se pudo cargar la información del usuario.',
+          )}
           onRetry={() => userQuery.refetch()}
         />
       </div>

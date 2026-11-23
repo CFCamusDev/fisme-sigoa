@@ -4,6 +4,7 @@ import { LoadingState } from '@/components/common/loading-state.js';
 import { ErrorState } from '@/components/common/error-state.js';
 import { buttonVariants } from '@/components/ui/button.js';
 import { cn } from '@/lib/utils.js';
+import { readableApiMessage } from '@/lib/validation-errors.js';
 import { useRoles } from '../hooks/index.js';
 import { RoleForm } from './role-form.js';
 
@@ -36,7 +37,10 @@ export function EditRolePage({ roleId }: EditRolePageProps) {
       <div className="surface rounded-lg p-6">
         <ErrorState
           title="Error al cargar el rol"
-          message={rolesQuery.error.message || 'No se pudo cargar la información de los roles.'}
+          message={readableApiMessage(
+            rolesQuery.error,
+            'No se pudo cargar la información de los roles.',
+          )}
           onRetry={() => rolesQuery.refetch()}
         />
       </div>

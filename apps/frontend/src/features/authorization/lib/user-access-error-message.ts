@@ -1,7 +1,8 @@
+import { readableApiMessage } from '@/lib/validation-errors';
+
 export function getUserAccessErrorMessage(error: unknown): string {
   if (typeof error === 'object' && error !== null && 'status' in error) {
     const status = (error as { status?: number }).status;
-    const message = (error as { message?: string }).message;
 
     if (status === 403) {
       return 'No tienes permiso para modificar los accesos de este usuario.';
@@ -12,11 +13,14 @@ export function getUserAccessErrorMessage(error: unknown): string {
     }
 
     if (status === 409) {
-      return message || 'Debe existir al menos un usuario activo con el rol Administrador.';
+      return readableApiMessage(
+        error,
+        'Debe existir al menos un usuario activo con el rol Administrador.',
+      );
     }
 
     if (status === 400) {
-      return message || 'Los datos enviados no son válidos.';
+      return readableApiMessage(error, 'Los datos enviados no son válidos.');
     }
   }
 
