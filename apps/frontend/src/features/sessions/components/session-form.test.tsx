@@ -139,8 +139,8 @@ describe('SessionForm (HU-032, T-032-25)', () => {
     await user.click(await screen.findByLabelText('Revisión OE 2026'));
     await user.selectOptions(screen.getByLabelText('Modalidad'), 'VIRTUAL');
 
-    const meetingInput = screen.getByLabelText('Enlace de la reunión (obligatorio)');
-    const recordingInput = screen.getByLabelText('Enlace de la grabación (obligatorio)');
+    const meetingInput = screen.getByLabelText(/Enlace de la reunión.*\(obligatorio\)/i);
+    const recordingInput = screen.getByLabelText(/Enlace de la grabación.*\(obligatorio\)/i);
     expect(meetingInput).toHaveAttribute('aria-required', 'true');
     expect(recordingInput).toHaveAttribute('aria-required', 'true');
 
@@ -336,17 +336,17 @@ describe('SessionForm (HU-032, T-032-25)', () => {
     expect(screen.queryByLabelText(/Enlace de la grabación/i)).not.toBeInTheDocument();
 
     await user.selectOptions(screen.getByLabelText('Modalidad'), 'HYBRID');
-    const hybridMeeting = screen.getByLabelText('Enlace de la reunión (obligatorio)');
+    const hybridMeeting = screen.getByLabelText(/Enlace de la reunión.*\(obligatorio\)/i);
     const hybridRecording = screen.getByLabelText('Enlace de la grabación (opcional)');
     expect(hybridMeeting).toHaveAttribute('aria-required', 'true');
     expect(hybridRecording).toHaveAttribute('aria-required', 'false');
 
     await user.selectOptions(screen.getByLabelText('Modalidad'), 'VIRTUAL');
-    expect(screen.getByLabelText('Enlace de la reunión (obligatorio)')).toHaveAttribute(
+    expect(screen.getByLabelText(/Enlace de la reunión.*\(obligatorio\)/i)).toHaveAttribute(
       'aria-required',
       'true',
     );
-    expect(screen.getByLabelText('Enlace de la grabación (obligatorio)')).toHaveAttribute(
+    expect(screen.getByLabelText(/Enlace de la grabación.*\(obligatorio\)/i)).toHaveAttribute(
       'aria-required',
       'true',
     );

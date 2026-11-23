@@ -8,6 +8,7 @@ import { registerSessionAttendees } from './register-session-attendees';
 import { updateSession } from './update-session';
 import {
   SAMPLE_SESSION_DTO,
+  SAMPLE_SESSION_LIST_ITEM,
   makeSessionAttendeesResponse,
   makeSessionsResponse,
 } from '../test/sessions-fixtures';
@@ -49,7 +50,7 @@ describe('sessions API client (HU-032, T-032-15)', () => {
 
     const response = await getExecutionSessions('exec-1', { page: 1, pageSize: 20 });
     expect(response.total).toBe(1);
-    expect(response.items).toEqual([SAMPLE_SESSION_DTO]);
+    expect(response.items).toEqual([SAMPLE_SESSION_LIST_ITEM]);
   });
 
   it('rejects a response that does not match the contract', async () => {

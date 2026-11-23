@@ -19,6 +19,7 @@ describe('CommitteeForm (HU-081, T-081-19)', () => {
         onSubmitCreate={vi.fn()}
         onSubmitEdit={vi.fn()}
       />,
+      { withRouter: false },
     );
 
     await user.type(screen.getByLabelText('Fecha de inicio'), '2026-01-01');

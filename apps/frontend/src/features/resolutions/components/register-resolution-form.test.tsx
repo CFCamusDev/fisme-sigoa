@@ -71,6 +71,7 @@ describe('RegisterResolutionForm (HU-081, T-081-21)', () => {
         onCancel={vi.fn()}
         onRegistered={vi.fn()}
       />,
+      { withRouter: false },
     );
 
     await user.type(screen.getByLabelText('Número de resolución'), 'RD-012/2027');
@@ -106,6 +107,7 @@ describe('RegisterResolutionForm (HU-081, T-081-21)', () => {
         onCancel={vi.fn()}
         onRegistered={vi.fn()}
       />,
+      { withRouter: false },
     );
 
     await user.type(screen.getByLabelText('Número de resolución'), 'RD-012/2027');
@@ -143,6 +145,7 @@ describe('RegisterResolutionForm (HU-081, T-081-21)', () => {
         onCancel={vi.fn()}
         onRegistered={onRegistered}
       />,
+      { withRouter: false },
     );
 
     await user.type(screen.getByLabelText('Número de resolución'), 'RD-012/2027');
