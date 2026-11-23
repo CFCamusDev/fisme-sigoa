@@ -48,6 +48,33 @@ describe('process-executions schemas', () => {
     expect(p612WithSemester.success).toBe(false);
   });
 
+  it('reports the three select messages when process, semester or catalog version are missing', () => {
+    const emptyResult = createProcessExecutionRequestSchema.safeParse({
+      type: '',
+      year: 2027,
+      catalogVersionId: '',
+    });
+    expect(emptyResult.success).toBe(false);
+    if (!emptyResult.success) {
+      const messages = emptyResult.error.issues.map((issue) => issue.message);
+      expect(messages).toContain('Selecciona un proceso');
+      expect(messages).toContain('Selecciona una versión de catálogo');
+    }
+
+    const missingSemester = createProcessExecutionRequestSchema.safeParse({
+      type: 'P622',
+      year: 2027,
+      semesterId: '',
+      catalogVersionId: 'cv-1',
+    });
+    expect(missingSemester.success).toBe(false);
+    if (!missingSemester.success) {
+      expect(missingSemester.error.issues.map((i) => i.message)).toContain(
+        'Selecciona un semestre',
+      );
+    }
+  });
+
   it('rejects a year out of range', () => {
     expect(
       createProcessExecutionRequestSchema.safeParse({
@@ -89,7 +116,7 @@ describe('process-executions schemas', () => {
     expect(listProcessExecutionsQuerySchema.safeParse({ pageSize: 101 }).success).toBe(false);
   });
 
-  it('accepts nullable semester fields in the DTO', () => {
+  it('accepts nullable semester and voidReason fields in the DTO', () => {
     const dto = processExecutionDtoSchema.parse({
       id: 'exec-1',
       type: 'P612',
@@ -100,12 +127,14 @@ describe('process-executions schemas', () => {
       catalogVersionId: 'cv-1',
       catalogVersionNumber: 1,
       status: 'PLANNED',
+      voidReason: null,
       createdAt: '2027-01-15T10:00:00.000Z',
       updatedAt: '2027-01-15T10:00:00.000Z',
     });
 
     expect(dto.semesterId).toBeNull();
     expect(dto.semesterCode).toBeNull();
+    expect(dto.voidReason).toBeNull();
 
     const list = listProcessExecutionsResponseSchema.parse({
       items: [dto],

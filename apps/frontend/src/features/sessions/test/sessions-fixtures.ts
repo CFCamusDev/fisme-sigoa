@@ -4,6 +4,7 @@ import type {
   SessionAttendeeRosterItem,
   SessionAttendeesResponse,
   SessionDto,
+  SessionListItemDto,
 } from '@sigoa/shared';
 
 export const SAMPLE_SESSION_DTO: SessionDto = {
@@ -20,12 +21,17 @@ export const SAMPLE_SESSION_DTO: SessionDto = {
   updatedAt: '2026-11-17T15:00:00.000Z',
 };
 
+export const SAMPLE_SESSION_LIST_ITEM: SessionListItemDto = {
+  ...SAMPLE_SESSION_DTO,
+  attendeeCount: 3,
+};
+
 export function makeSessionsResponse(
-  items: readonly SessionDto[] = [SAMPLE_SESSION_DTO],
+  items: readonly (SessionListItemDto | SessionDto)[] = [SAMPLE_SESSION_LIST_ITEM],
   overrides?: Partial<ListSessionsResponse>,
 ): ListSessionsResponse {
   return {
-    items: [...items],
+    items: items.map((item) => ('attendeeCount' in item ? item : { ...item, attendeeCount: 0 })),
     total: overrides?.total ?? items.length,
     page: overrides?.page ?? 1,
     pageSize: overrides?.pageSize ?? 20,
@@ -43,6 +49,7 @@ export const SAMPLE_OPEN_EXECUTIONS: readonly ProcessExecutionDto[] = [
     catalogVersionId: 'cv-1',
     catalogVersionNumber: 1,
     status: 'PLANNED',
+    voidReason: null,
     createdAt: '2026-11-10T10:00:00.000Z',
     updatedAt: '2026-11-10T10:00:00.000Z',
   },
@@ -56,6 +63,7 @@ export const SAMPLE_OPEN_EXECUTIONS: readonly ProcessExecutionDto[] = [
     catalogVersionId: 'cv-1',
     catalogVersionNumber: 1,
     status: 'IN_PROGRESS',
+    voidReason: null,
     createdAt: '2026-11-10T10:00:00.000Z',
     updatedAt: '2026-11-10T10:00:00.000Z',
   },
@@ -69,6 +77,7 @@ export const SAMPLE_OPEN_EXECUTIONS: readonly ProcessExecutionDto[] = [
     catalogVersionId: 'cv-1',
     catalogVersionNumber: 1,
     status: 'PLANNED',
+    voidReason: null,
     createdAt: '2026-11-10T10:00:00.000Z',
     updatedAt: '2026-11-10T10:00:00.000Z',
   },
@@ -79,6 +88,8 @@ export const SAMPLE_ATTENDEE_ROSTER: readonly SessionAttendeeRosterItem[] = [
     listMemberId: 'mem-1',
     fullName: 'Ana Pérez',
     institution: 'Empresa A',
+    ruc: null,
+    representative: null,
     memberPosition: 'Analista',
     attended: true,
     position: 'Gerente de TI',
@@ -87,6 +98,8 @@ export const SAMPLE_ATTENDEE_ROSTER: readonly SessionAttendeeRosterItem[] = [
     listMemberId: 'mem-2',
     fullName: 'Luis Torres',
     institution: 'Empresa B',
+    ruc: null,
+    representative: null,
     memberPosition: 'Jefe de Área',
     attended: false,
     position: null,

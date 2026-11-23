@@ -1,13 +1,13 @@
 import type { ApiError } from '@/lib/api-error';
+import { readableApiMessage } from '@/lib/validation-errors';
 
 const GENERIC = 'No se pudo completar la operación sobre el Comité de Calidad. Intenta nuevamente.';
 const SERVER_DOWN =
   'No se pudo completar la operación por un problema del servidor. Intenta de nuevo en unos minutos.';
 
 function serverMessage(error: Partial<ApiError>): string | null {
-  return typeof error.message === 'string' && error.message.trim().length > 0
-    ? error.message
-    : null;
+  const candidate = readableApiMessage(error, '');
+  return candidate.length > 0 ? candidate : null;
 }
 
 export function getCommitteeErrorMessage(error: unknown): string {

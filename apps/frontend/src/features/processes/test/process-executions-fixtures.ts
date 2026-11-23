@@ -15,6 +15,7 @@ export const SAMPLE_PROCESS_EXECUTION_DTO: ProcessExecutionDto = {
   catalogVersionId: 'cv-approved-1',
   catalogVersionNumber: 1,
   status: 'PLANNED',
+  voidReason: null,
   createdAt: '2027-01-15T10:00:00.000Z',
   updatedAt: '2027-01-15T10:00:00.000Z',
 };
@@ -29,6 +30,7 @@ export const SAMPLE_SEMESTER_EXECUTION_DTO: ProcessExecutionDto = {
   catalogVersionId: 'cv-approved-1',
   catalogVersionNumber: 1,
   status: 'PLANNED',
+  voidReason: null,
   createdAt: '2027-02-01T10:00:00.000Z',
   updatedAt: '2027-02-01T10:00:00.000Z',
 };

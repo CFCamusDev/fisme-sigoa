@@ -231,7 +231,14 @@ describe('PrismaAttendeeRepository Integration (PostgreSQL real, T-033-12)', () 
     const roster = await memberReader.listByList('list-1');
     expect(roster).toHaveLength(3);
     for (const item of roster) {
-      expect(Object.keys(item).sort()).toEqual(['fullName', 'id', 'institution', 'position']);
+      expect(Object.keys(item).sort()).toEqual([
+        'fullName',
+        'id',
+        'institution',
+        'position',
+        'representative',
+        'ruc',
+      ]);
     }
 
     const refs = await memberReader.findByIds(['mem-1', 'mem-2']);

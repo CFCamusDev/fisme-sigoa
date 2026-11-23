@@ -3,6 +3,7 @@ import { apiErrorResponseSchema } from '@sigoa/shared';
 import { ApiError } from './api-error';
 import { env } from './env';
 import { tryRefreshAndRetry } from './session-refresh';
+import { readableApiMessage } from './validation-errors';
 
 type AuthTokenProvider = () => string | null | undefined;
 
@@ -80,10 +81,11 @@ apiClient.interceptors.response.use(
       if (parsedBackendError.success) {
         const { code, message, details, requestId, retryAfterSeconds } =
           parsedBackendError.data.error;
+        const safeMessage = readableApiMessage({ message, details }, getHttpStatusMessage(status));
         return Promise.reject(
           new ApiError({
             code,
-            message,
+            message: safeMessage,
             status,
             details,
             requestId,

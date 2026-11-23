@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
+import { ApiError } from '@/lib/api-error';
 import { cn } from '@/lib/utils';
 import { useRegisterResolution } from '../hooks/use-register-resolution';
 import { getResolutionErrorMessage } from '../lib/resolution-error-message';
@@ -48,6 +49,7 @@ export function RegisterResolutionForm({
     handleSubmit,
     setFocus,
     setValue,
+    setError,
     getValues,
     formState: { errors },
   } = useForm<RegisterResolutionRequest>({
@@ -83,6 +85,30 @@ export function RegisterResolutionForm({
       const resolution = await mutation.mutateAsync(values);
       onRegistered(resolution);
     } catch (error) {
+      if (error instanceof ApiError && Array.isArray(error.details)) {
+        for (const detail of error.details) {
+          if (
+            typeof detail === 'object' &&
+            detail !== null &&
+            'path' in detail &&
+            'message' in detail &&
+            typeof detail.path === 'string' &&
+            typeof detail.message === 'string'
+          ) {
+            const path = detail.path.startsWith('body.')
+              ? detail.path.slice('body.'.length)
+              : detail.path;
+            if (
+              path === 'number' ||
+              path === 'catalogVersionId' ||
+              path === 'issuedOn' ||
+              path === 'type'
+            ) {
+              setError(path, { type: 'server', message: detail.message });
+            }
+          }
+        }
+      }
       setFormError(getResolutionErrorMessage(error));
     }
   }
@@ -177,12 +203,16 @@ export function RegisterResolutionForm({
             disabled={blocked}
             aria-invalid={!!errors.catalogVersionId}
             aria-describedby={
-              versionHelp
-                ? versionHelpId
-                : errors.catalogVersionId
-                  ? `${versionId}-error`
-                  : undefined
+              [
+                versionHelp ? versionHelpId : null,
+                errors.catalogVersionId ? `${versionId}-error` : null,
+              ]
+                .filter(Boolean)
+                .join(' ') || undefined
             }
+            className={cn(
+              errors.catalogVersionId && 'border-destructive focus-visible:ring-destructive',
+            )}
             {...register('catalogVersionId')}
           >
             <option value="">
@@ -201,7 +231,8 @@ export function RegisterResolutionForm({
           )}
           {errors.catalogVersionId && (
             <p id={`${versionId}-error`} role="alert" className="text-xs text-destructive">
-              Selecciona la versión del catálogo que aprueba la resolución.
+              {errors.catalogVersionId.message ||
+                'Selecciona la versión del catálogo que aprueba la resolución.'}
             </p>
           )}
         </div>

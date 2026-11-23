@@ -1,6 +1,6 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { HttpResponse, delay, http } from 'msw';
+import { HttpResponse, http } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
 import { server } from '@/test/msw/server';
 import { renderWithProviders } from '@/test/render';
@@ -82,13 +82,15 @@ describe('SessionForm (HU-032, T-032-25)', () => {
     );
 
     const onSaved = vi.fn();
-    renderWithProviders(
-      <SessionForm defaultExecutionId="exec-1" onSaved={onSaved} onCancel={vi.fn()} />,
-      { withRouter: false, permissions: FULL_PERMISSIONS },
-    );
+    renderWithProviders(<SessionForm onSaved={onSaved} onCancel={vi.fn()} />, {
+      withRouter: false,
+      permissions: FULL_PERMISSIONS,
+    });
 
+    const exec1 = await screen.findByLabelText('Revisión OE 2026');
     const exec2 = await screen.findByLabelText('Medición OE 2026');
     const exec3 = await screen.findByLabelText('Medición indirecta AG 2026');
+    await user.click(exec1);
     await user.click(exec2);
     await user.click(exec3);
 
@@ -98,7 +100,7 @@ describe('SessionForm (HU-032, T-032-25)', () => {
     expect(capturedBody?.['executionIds']).toEqual(['exec-1', 'exec-2', 'exec-3']);
   });
 
-  it('requires at least one execution', async () => {
+  it('starts without linked executions and still requires one', async () => {
     const user = userEvent.setup();
     setupBaseHandlers();
     let postCalls = 0;
@@ -114,7 +116,11 @@ describe('SessionForm (HU-032, T-032-25)', () => {
       permissions: FULL_PERMISSIONS,
     });
 
-    await screen.findByLabelText('Revisión OE 2026');
+    const exec1 = await screen.findByLabelText('Revisión OE 2026');
+    const exec2 = screen.getByLabelText('Medición OE 2026');
+    expect(exec1).not.toBeChecked();
+    expect(exec2).not.toBeChecked();
+
     await user.click(screen.getByRole('button', { name: 'Registrar sesión' }));
 
     expect(await screen.findByText('Selecciona al menos una ejecución')).toBeInTheDocument();
@@ -125,16 +131,16 @@ describe('SessionForm (HU-032, T-032-25)', () => {
     const user = userEvent.setup();
     setupBaseHandlers();
 
-    renderWithProviders(
-      <SessionForm defaultExecutionId="exec-1" onSaved={vi.fn()} onCancel={vi.fn()} />,
-      { withRouter: false, permissions: FULL_PERMISSIONS },
-    );
+    renderWithProviders(<SessionForm onSaved={vi.fn()} onCancel={vi.fn()} />, {
+      withRouter: false,
+      permissions: FULL_PERMISSIONS,
+    });
 
-    await screen.findByLabelText('Revisión OE 2026');
+    await user.click(await screen.findByLabelText('Revisión OE 2026'));
     await user.selectOptions(screen.getByLabelText('Modalidad'), 'VIRTUAL');
 
-    const meetingInput = screen.getByLabelText('Enlace de la reunión (obligatorio)');
-    const recordingInput = screen.getByLabelText('Enlace de la grabación (obligatorio)');
+    const meetingInput = screen.getByLabelText(/Enlace de la reunión.*\(obligatorio\)/i);
+    const recordingInput = screen.getByLabelText(/Enlace de la grabación.*\(obligatorio\)/i);
     expect(meetingInput).toHaveAttribute('aria-required', 'true');
     expect(recordingInput).toHaveAttribute('aria-required', 'true');
 
@@ -162,12 +168,12 @@ describe('SessionForm (HU-032, T-032-25)', () => {
     );
 
     const onSaved = vi.fn();
-    renderWithProviders(
-      <SessionForm defaultExecutionId="exec-1" onSaved={onSaved} onCancel={vi.fn()} />,
-      { withRouter: false, permissions: FULL_PERMISSIONS },
-    );
+    renderWithProviders(<SessionForm onSaved={onSaved} onCancel={vi.fn()} />, {
+      withRouter: false,
+      permissions: FULL_PERMISSIONS,
+    });
 
-    await screen.findByLabelText('Revisión OE 2026');
+    await user.click(await screen.findByLabelText('Revisión OE 2026'));
     await user.click(screen.getByRole('button', { name: 'Registrar sesión' }));
 
     await waitFor(() => expect(onSaved).toHaveBeenCalled());
@@ -263,12 +269,12 @@ describe('SessionForm (HU-032, T-032-25)', () => {
       ),
     );
 
-    renderWithProviders(
-      <SessionForm defaultExecutionId="exec-1" onSaved={vi.fn()} onCancel={vi.fn()} />,
-      { withRouter: false, permissions: FULL_PERMISSIONS },
-    );
+    renderWithProviders(<SessionForm onSaved={vi.fn()} onCancel={vi.fn()} />, {
+      withRouter: false,
+      permissions: FULL_PERMISSIONS,
+    });
 
-    await screen.findByLabelText('Revisión OE 2026');
+    await user.click(await screen.findByLabelText('Revisión OE 2026'));
     await user.click(screen.getByRole('button', { name: 'Registrar sesión' }));
 
     expect(
@@ -276,30 +282,106 @@ describe('SessionForm (HU-032, T-032-25)', () => {
     ).toBeInTheDocument();
   });
 
-  it('sends one request when the form is submitted twice', async () => {
+  it('sends a single request on double submit', async () => {
     const user = userEvent.setup();
     setupBaseHandlers();
     let postCalls = 0;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
     server.use(
       http.post('*/sessions', async () => {
         postCalls += 1;
-        await delay(40);
+        await gate;
         return HttpResponse.json(SAMPLE_SESSION_DTO, { status: 201 });
       }),
     );
 
     const onSaved = vi.fn();
+    renderWithProviders(<SessionForm onSaved={onSaved} onCancel={vi.fn()} />, {
+      withRouter: false,
+      permissions: FULL_PERMISSIONS,
+    });
+
+    await user.click(await screen.findByLabelText('Revisión OE 2026'));
+    const submitButton = screen.getByRole('button', { name: 'Registrar sesión' });
+    await user.dblClick(submitButton);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Guardando…' })).toBeDisabled();
+    });
+    expect(postCalls).toBe(1);
+
+    release();
+
+    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Registrar sesión' })).toBeEnabled();
+    });
+  });
+
+  it('shows only the links that apply for each modality and marks required fields', async () => {
+    const user = userEvent.setup();
+    setupBaseHandlers();
+
+    renderWithProviders(<SessionForm onSaved={vi.fn()} onCancel={vi.fn()} />, {
+      withRouter: false,
+      permissions: FULL_PERMISSIONS,
+    });
+
+    await user.click(await screen.findByLabelText('Revisión OE 2026'));
+
+    expect(screen.queryByLabelText(/Enlace de la reunión/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Enlace de la grabación/i)).not.toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText('Modalidad'), 'HYBRID');
+    const hybridMeeting = screen.getByLabelText(/Enlace de la reunión.*\(obligatorio\)/i);
+    const hybridRecording = screen.getByLabelText('Enlace de la grabación (opcional)');
+    expect(hybridMeeting).toHaveAttribute('aria-required', 'true');
+    expect(hybridRecording).toHaveAttribute('aria-required', 'false');
+
+    await user.selectOptions(screen.getByLabelText('Modalidad'), 'VIRTUAL');
+    expect(screen.getByLabelText(/Enlace de la reunión.*\(obligatorio\)/i)).toHaveAttribute(
+      'aria-required',
+      'true',
+    );
+    expect(screen.getByLabelText(/Enlace de la grabación.*\(obligatorio\)/i)).toHaveAttribute(
+      'aria-required',
+      'true',
+    );
+  });
+
+  it('sends nulls for in person when switching from virtual', async () => {
+    const user = userEvent.setup();
+    setupBaseHandlers();
+    let patchBody: Record<string, unknown> | null = null;
+
+    server.use(
+      http.patch('*/sessions/sess-1', async ({ request }) => {
+        patchBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(
+          { ...SAMPLE_SESSION_DTO, modality: 'IN_PERSON', meetingUrl: null, recordingUrl: null },
+          { status: 200 },
+        );
+      }),
+    );
+
+    const onSaved = vi.fn();
     renderWithProviders(
-      <SessionForm defaultExecutionId="exec-1" onSaved={onSaved} onCancel={vi.fn()} />,
+      <SessionForm session={SAMPLE_SESSION_DTO} onSaved={onSaved} onCancel={vi.fn()} />,
       { withRouter: false, permissions: FULL_PERMISSIONS },
     );
 
-    await screen.findByLabelText('Revisión OE 2026');
-    const submitButton = screen.getByRole('button', { name: 'Registrar sesión' });
-    await Promise.all([user.click(submitButton), user.click(submitButton)]);
+    await user.selectOptions(screen.getByLabelText('Modalidad'), 'IN_PERSON');
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }));
 
-    await waitFor(() => expect(onSaved).toHaveBeenCalled());
-    expect(postCalls).toBe(1);
+    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
+    expect(patchBody).toMatchObject({
+      modality: 'IN_PERSON',
+      meetingUrl: null,
+      recordingUrl: null,
+    });
   });
 
   it('labels every field, groups the executions in a fieldset and is operable by keyboard', async () => {

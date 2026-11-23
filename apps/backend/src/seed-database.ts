@@ -16,7 +16,7 @@ export const SEED_TRANSACTION_TIMEOUT_MS = 120_000;
 export const SEED_TRANSACTION_MAX_WAIT_MS = 10_000;
 
 /** Clave del bloqueo consultivo que serializa los seeds simultáneos (dos redeploys a la vez). */
-const SEED_ADVISORY_LOCK_KEY = 'sigoa:database-seed';
+export const SEED_ADVISORY_LOCK_KEY = 'sigoa:database-seed';
 
 export interface RunDatabaseSeedOptions {
   readonly prisma: PrismaClient;

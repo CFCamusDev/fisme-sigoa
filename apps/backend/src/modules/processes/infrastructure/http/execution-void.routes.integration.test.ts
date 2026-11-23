@@ -147,7 +147,7 @@ describe('POST /process-executions/:id/void (PostgreSQL real, HU-030, T-030-15)'
     expect(response.status).toBe(400);
   }, 5_000);
 
-  it('returns 400 for a reason of 501 characters or only spaces', async () => {
+  it('returns 400 for a reason shorter than 10 characters, over 500 or only spaces', async () => {
     const president = await createActor(['COMMITTEE_PRESIDENT']);
     const executionId = await seedExecution();
 
@@ -156,6 +156,12 @@ describe('POST /process-executions/:id/void (PostgreSQL real, HU-030, T-030-15)'
       .set('Authorization', `Bearer ${president.token}`)
       .send({ reason: '   ' });
     expect(spacesRes.status).toBe(400);
+
+    const shortRes = await request(app)
+      .post(`/process-executions/${executionId}/void`)
+      .set('Authorization', `Bearer ${president.token}`)
+      .send({ reason: 'A'.repeat(9) });
+    expect(shortRes.status).toBe(400);
 
     const longRes = await request(app)
       .post(`/process-executions/${executionId}/void`)
@@ -171,7 +177,7 @@ describe('POST /process-executions/:id/void (PostgreSQL real, HU-030, T-030-15)'
     const response = await request(app)
       .post(`/process-executions/${executionId}/void`)
       .set('Authorization', `Bearer ${president.token}`)
-      .send({ reason: 'Motivo', extra: true });
+      .send({ reason: 'Motivo válido de anulación', extra: true });
 
     expect(response.status).toBe(400);
   }, 5_000);
@@ -179,7 +185,7 @@ describe('POST /process-executions/:id/void (PostgreSQL real, HU-030, T-030-15)'
   it('returns 401 without a token', async () => {
     const response = await request(app)
       .post('/process-executions/exec-1/void')
-      .send({ reason: 'Motivo' });
+      .send({ reason: 'Motivo válido de anulación' });
 
     expect(response.status).toBe(401);
   }, 5_000);
@@ -191,7 +197,7 @@ describe('POST /process-executions/:id/void (PostgreSQL real, HU-030, T-030-15)'
     const response = await request(app)
       .post(`/process-executions/${executionId}/void`)
       .set('Authorization', `Bearer ${member.token}`)
-      .send({ reason: 'Motivo' });
+      .send({ reason: 'Motivo válido de anulación' });
 
     expect(response.status).toBe(403);
   }, 5_000);
@@ -202,7 +208,7 @@ describe('POST /process-executions/:id/void (PostgreSQL real, HU-030, T-030-15)'
     const response = await request(app)
       .post('/process-executions/missing-exec/void')
       .set('Authorization', `Bearer ${president.token}`)
-      .send({ reason: 'Motivo' });
+      .send({ reason: 'Motivo válido de anulación' });
 
     expect(response.status).toBe(404);
   }, 5_000);
@@ -232,7 +238,7 @@ describe('POST /process-executions/:id/void (PostgreSQL real, HU-030, T-030-15)'
     const response = await request(app)
       .post(`/process-executions/${executionId}/void`)
       .set('Authorization', `Bearer ${president.token}`)
-      .send({ reason: 'Motivo' });
+      .send({ reason: 'Motivo válido de anulación' });
 
     expect(response.status).toBe(409);
   }, 5_000);

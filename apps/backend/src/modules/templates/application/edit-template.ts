@@ -3,7 +3,10 @@ import type { AuditLogger } from '../../../shared/audit/audit-logger.js';
 import type { UnitOfWork } from '../../../shared/unit-of-work/unit-of-work.js';
 import { TemplateVersion } from '../domain/entities/template-version.js';
 import { TemplateNotFoundError, TemplateVersionNotEditableError } from '../domain/errors/index.js';
-import { validateTemplateContent } from '../domain/policies/template-content-policy.js';
+import {
+  sanitizeTemplateContent,
+  validateTemplateContent,
+} from '../domain/policies/template-content-policy.js';
 import type { TemplatePermissionChecker } from '../domain/ports/template-permission-checker.js';
 import type { TemplateRepository } from '../domain/ports/template-repository.js';
 import type { TemplateVersionReader } from '../domain/ports/template-version-reader.js';
@@ -49,8 +52,9 @@ export class EditTemplateUseCase {
       if (!template) {
         throw new TemplateNotFoundError();
       }
+      const sanitizedContent = sanitizeTemplateContent(command.content);
       validateTemplateContent(
-        command.content,
+        sanitizedContent,
         template.variables.map((variable) => variable.key),
       );
 
@@ -58,13 +62,13 @@ export class EditTemplateUseCase {
       const draft = await this.deps.versionReader.findDraft(template.id);
 
       if (draft) {
-        if (draft.content === command.content) {
+        if (draft.content === sanitizedContent) {
           return { created: false, version: toTemplateVersionDto(draft) };
         }
-        const updated = draft.withContent(command.content, command.actorId, now);
+        const updated = draft.withContent(sanitizedContent, command.actorId, now);
         const changed = await this.deps.versionRepository.updateDraftContent(
           draft.id,
-          command.content,
+          sanitizedContent,
           command.actorId,
           now,
         );
@@ -88,7 +92,7 @@ export class EditTemplateUseCase {
         id: this.idGenerator(),
         templateId: template.id,
         number,
-        content: command.content,
+        content: sanitizedContent,
         actorId: command.actorId,
         now,
       });

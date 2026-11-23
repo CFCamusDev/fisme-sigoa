@@ -51,6 +51,7 @@ export function StakeholderListMemberPicker({
   const [extraValue, setExtraValue] = useState('');
   const [extraError, setExtraError] = useState<string | null>(null);
   const [pendingStakeholderId, setPendingStakeholderId] = useState<string | null>(null);
+  const [incompleteStakeholderId, setIncompleteStakeholderId] = useState<string | null>(null);
   const [missingFields, setMissingFields] = useState<string[]>([]);
   const [actionError, setActionError] = useState<string | null>(null);
   const alertRef = useRef<HTMLDivElement>(null);
@@ -86,6 +87,7 @@ export function StakeholderListMemberPicker({
   }
 
   async function submitMember(stakeholder: StakeholderDto, extra?: string) {
+    setIncompleteStakeholderId(null);
     setMissingFields([]);
     setActionError(null);
     setPendingStakeholderId(stakeholder.id);
@@ -104,6 +106,7 @@ export function StakeholderListMemberPicker({
     } catch (error) {
       const missing = getMissingListMemberFields(error);
       if (missing.length > 0) {
+        setIncompleteStakeholderId(stakeholder.id);
         setMissingFields(missing);
       } else {
         setActionError(getStakeholderListErrorMessage(error));
@@ -114,6 +117,7 @@ export function StakeholderListMemberPicker({
   }
 
   function handleAddClick(stakeholder: StakeholderDto) {
+    setIncompleteStakeholderId(null);
     setMissingFields([]);
     setActionError(null);
 
@@ -144,8 +148,10 @@ export function StakeholderListMemberPicker({
         <div className="space-y-1">
           <h3 className="text-lg font-semibold">Agregar constituyentes del registro maestro</h3>
           <p className="text-sm text-muted-foreground">
-            Lista de {STAKEHOLDER_LIST_TYPE_LABELS[list.type]} {list.year}. Solo se muestran
-            constituyentes activos.
+            Lista de {STAKEHOLDER_LIST_TYPE_LABELS[list.type]} {list.year}.{' '}
+            {list.type === 'EMPLOYER'
+              ? 'Solo se muestran instituciones activas del registro maestro.'
+              : 'Solo se muestran constituyentes activos.'}
           </p>
         </div>
         {onClose ? (
@@ -171,6 +177,7 @@ export function StakeholderListMemberPicker({
               <p>Falta en el registro del constituyente: {missingFields.join(', ')}.</p>
               <Link
                 to="/constituyentes"
+                search={incompleteStakeholderId ? { editar: incompleteStakeholderId } : undefined}
                 className="inline-block font-medium text-foreground underline underline-offset-4"
               >
                 Completar el registro
@@ -213,10 +220,22 @@ export function StakeholderListMemberPicker({
         ) : null}
 
         {!query.isLoading && !query.isError && items.length === 0 ? (
-          <EmptyState
-            title="No se encontraron constituyentes activos"
-            description="Prueba con otro término de búsqueda o registra el constituyente en el maestro."
-          />
+          list.type === 'EMPLOYER' ? (
+            <EmptyState
+              title="No se encontraron instituciones activas"
+              description="Registra la institución en Constituyentes o prueba con otro término de búsqueda."
+              action={
+                <Button type="button" variant="outline" asChild>
+                  <Link to="/constituyentes">Ir a Constituyentes</Link>
+                </Button>
+              }
+            />
+          ) : (
+            <EmptyState
+              title="No se encontraron constituyentes activos"
+              description="Prueba con otro término de búsqueda o registra el constituyente en el maestro."
+            />
+          )
         ) : null}
 
         {!query.isLoading && !query.isError && items.length > 0 ? (

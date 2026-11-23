@@ -1,4 +1,5 @@
 import type { ApiError } from '@/lib/api-error';
+import { readableApiMessage } from '@/lib/validation-errors';
 
 const GENERIC = 'Ha ocurrido un error inesperado. Por favor, intenta de nuevo.';
 
@@ -18,9 +19,10 @@ export function getResponseScaleErrorMessage(error: unknown): string {
       return 'La escala ya no existe. Actualiza la página para ver las escalas vigentes.';
     case 409:
       // El servidor distingue «código repetido» de «escala en uso»; su mensaje ya dice qué hacer.
-      return typeof apiErr.message === 'string' && apiErr.message.trim().length > 0
-        ? apiErr.message
-        : 'La escala no se pudo guardar porque entró en conflicto con otro cambio. Actualiza la página.';
+      return readableApiMessage(
+        apiErr,
+        'La escala no se pudo guardar porque entró en conflicto con otro cambio. Actualiza la página.',
+      );
     default:
       break;
   }

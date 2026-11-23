@@ -137,6 +137,14 @@ function validateModalitiesAndLinks(
       'Una sesión virtual requiere el enlace de la reunión y el enlace de la grabación',
     );
   }
+  if (modality === 'HYBRID' && !meetingUrl) {
+    throw new InvalidSessionDataError('Una sesión híbrida requiere el enlace de la reunión');
+  }
+  if (modality === 'IN_PERSON' && (meetingUrl !== null || recordingUrl !== null)) {
+    throw new InvalidSessionDataError(
+      'Una sesión presencial no lleva enlaces de reunión ni grabación',
+    );
+  }
 }
 
 function validateExecutions(executions: readonly SessionProcessExecutionRef[]): readonly string[] {
@@ -208,14 +216,19 @@ export class Session {
     const nextStartTime =
       input.startTime !== undefined ? normalizeStartTime(input.startTime) : this.props.startTime;
     const nextModality = input.modality ?? this.props.modality;
+    const switchedToInPerson = nextModality === 'IN_PERSON' && this.props.modality !== 'IN_PERSON';
     const nextMeetingUrl =
       input.meetingUrl !== undefined
         ? normalizeUrl(input.meetingUrl, 'enlace de reunión')
-        : this.props.meetingUrl;
+        : switchedToInPerson
+          ? null
+          : this.props.meetingUrl;
     const nextRecordingUrl =
       input.recordingUrl !== undefined
         ? normalizeUrl(input.recordingUrl, 'enlace de grabación')
-        : this.props.recordingUrl;
+        : switchedToInPerson
+          ? null
+          : this.props.recordingUrl;
 
     validateModalitiesAndLinks(nextModality, nextMeetingUrl, nextRecordingUrl);
 

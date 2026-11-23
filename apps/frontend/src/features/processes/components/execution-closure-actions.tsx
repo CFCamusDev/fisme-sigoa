@@ -1,8 +1,10 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Ban, Lock } from 'lucide-react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import {
+  VOID_REASON_MAX_LENGTH,
+  VOID_REASON_MIN_LENGTH,
   voidProcessExecutionRequestSchema,
   type ProcessExecutionStatusValue,
   type VoidProcessExecutionRequest,
@@ -46,6 +48,7 @@ export function ExecutionClosureActions({ executionId, status }: ExecutionClosur
   const isBusy = closeMutation.isPending || voidMutation.isPending;
 
   const {
+    control,
     register,
     handleSubmit,
     reset,
@@ -55,6 +58,8 @@ export function ExecutionClosureActions({ executionId, status }: ExecutionClosur
     resolver: zodResolver(voidProcessExecutionRequestSchema),
     defaultValues: { reason: '' },
   });
+
+  const reasonValue = useWatch({ control, name: 'reason', defaultValue: '' });
 
   useEffect(() => {
     if (activePanel === 'close') {
@@ -259,6 +264,10 @@ export function ExecutionClosureActions({ executionId, status }: ExecutionClosur
                 placeholder="Describe por qué se anula esta ejecución…"
                 {...register('reason')}
               />
+              <p className="text-xs text-muted-foreground">
+                {reasonValue.trim().length} / {VOID_REASON_MAX_LENGTH} (mínimo{' '}
+                {VOID_REASON_MIN_LENGTH} caracteres)
+              </p>
               {errors.reason ? (
                 <p id={voidErrorId} role="alert" className="text-sm text-danger">
                   {errors.reason.message}

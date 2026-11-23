@@ -6,6 +6,7 @@ import { LoadingState } from '@/components/common/loading-state.js';
 import { ErrorState } from '@/components/common/error-state.js';
 import { useAuth } from '@/hooks/use-auth.js';
 import { cn } from '@/lib/utils.js';
+import { readableApiMessage } from '@/lib/validation-errors.js';
 import { useUserAccess } from '../hooks/use-user-access.js';
 import { useRoles } from '../hooks/use-roles.js';
 import { usePermissions } from '../hooks/use-permissions.js';
@@ -178,7 +179,7 @@ export function UserAccessPanel({ userId, onUserAccessChanged, className }: User
             message={
               rolesQuery.error.status === 403
                 ? 'No tienes permiso para ver los roles disponibles.'
-                : rolesQuery.error.message || 'No se pudieron cargar los roles.'
+                : readableApiMessage(rolesQuery.error, 'No se pudieron cargar los roles.')
             }
             onRetry={() => rolesQuery.refetch()}
           />
@@ -229,7 +230,10 @@ export function UserAccessPanel({ userId, onUserAccessChanged, className }: User
             message={
               permissionsQuery.error.status === 403
                 ? 'No tienes permiso para ver los permisos disponibles.'
-                : permissionsQuery.error.message || 'No se pudo cargar el catálogo de permisos.'
+                : readableApiMessage(
+                    permissionsQuery.error,
+                    'No se pudo cargar el catálogo de permisos.',
+                  )
             }
             onRetry={() => permissionsQuery.refetch()}
           />

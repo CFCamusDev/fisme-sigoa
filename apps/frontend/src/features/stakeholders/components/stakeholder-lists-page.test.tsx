@@ -436,4 +436,30 @@ describe('StakeholderListsPage (HU-022, T-022-28)', () => {
     await screen.findByText('Tech Amazonas SAC');
     expect(screen.queryByRole('button', { name: /Descargar PDF/i })).not.toBeInTheDocument();
   });
+
+  it('disables pdf download with zero members and explains why', async () => {
+    const pdfPermissions = [
+      ...VIEW_ONLY_PERMISSIONS,
+      { code: 'documento.descargar', scope: 'GLOBAL' as const },
+    ];
+
+    server.use(
+      http.get('*/me/permissions', () => HttpResponse.json({ permissions: pdfPermissions })),
+      http.get('*/stakeholder-lists', () =>
+        HttpResponse.json(
+          makeStakeholderListsResponse([{ ...EMPLOYER_LIST_DTO, memberCount: 0, members: [] }]),
+        ),
+      ),
+    );
+
+    renderWithProviders(<StakeholderListsPage />, {
+      withRouter: false,
+      permissions: pdfPermissions,
+    });
+
+    const downloadButton = await screen.findByRole('button', { name: /Descargar PDF/i });
+    const reason = screen.getByText(/Agrega al menos un miembro para descargar el PDF/i);
+    expect(downloadButton).toBeDisabled();
+    expect(downloadButton).toHaveAttribute('aria-describedby', reason.id);
+  });
 });

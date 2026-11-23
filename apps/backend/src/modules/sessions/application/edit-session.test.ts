@@ -170,6 +170,27 @@ describe('EditSessionUseCase', () => {
     expect(sessionRepository.update).not.toHaveBeenCalled();
   });
 
+  it('clears previous links when switching from virtual to in person', async () => {
+    const { useCase, sessionRepository } = createHarness(
+      makeExistingSession({
+        modality: 'VIRTUAL',
+        meetingUrl: 'https://meet.example.com/room',
+        recordingUrl: 'https://drive.example.com/video',
+      }),
+    );
+
+    const dto = await useCase.execute({
+      actorId: 'user-2',
+      sessionId: 'sess-1',
+      modality: 'IN_PERSON',
+    });
+
+    expect(dto.modality).toBe('IN_PERSON');
+    expect(dto.meetingUrl).toBeNull();
+    expect(dto.recordingUrl).toBeNull();
+    expect(sessionRepository.update).toHaveBeenCalledTimes(1);
+  });
+
   it('requires the links when switching to virtual', async () => {
     const { useCase, sessionRepository } = createHarness();
 
@@ -182,6 +203,27 @@ describe('EditSessionUseCase', () => {
     ).rejects.toBeInstanceOf(InvalidSessionDataError);
 
     expect(sessionRepository.update).not.toHaveBeenCalled();
+  });
+
+  it('clears previous links when switching from virtual to in person', async () => {
+    const { useCase, sessionRepository } = createHarness(
+      makeExistingSession({
+        modality: 'VIRTUAL',
+        meetingUrl: 'https://meet.example.com/room',
+        recordingUrl: 'https://drive.example.com/video',
+      }),
+    );
+
+    const dto = await useCase.execute({
+      actorId: 'user-2',
+      sessionId: 'sess-1',
+      modality: 'IN_PERSON',
+    });
+
+    expect(dto.modality).toBe('IN_PERSON');
+    expect(dto.meetingUrl).toBeNull();
+    expect(dto.recordingUrl).toBeNull();
+    expect(sessionRepository.update).toHaveBeenCalledTimes(1);
   });
 
   it('denies a user without sesion.editar', async () => {
@@ -364,4 +406,47 @@ describe('EditSessionUseCase', () => {
     expect(updated.startTime).toBe('11:30');
     expect(sessionRepository.update).toHaveBeenCalledTimes(1);
   });
+
+  it.each([
+    {
+      name: 'closed',
+      executions: [
+        { id: 'exec-1', name: 'Ejecución 1', status: 'CLOSED' as const },
+        { id: 'exec-2', name: 'Ejecución 2', status: 'CLOSED' as const },
+      ],
+    },
+    {
+      name: 'voided',
+      executions: [
+        { id: 'exec-1', name: 'Ejecución 1', status: 'VOIDED' as const },
+        { id: 'exec-2', name: 'Ejecución 2', status: 'VOIDED' as const },
+      ],
+    },
+    {
+      name: 'mixed closed and voided',
+      executions: [
+        { id: 'exec-1', name: 'Ejecución 1', status: 'CLOSED' as const },
+        { id: 'exec-2', name: 'Ejecución 2', status: 'VOIDED' as const },
+      ],
+    },
+  ])(
+    'rejects with SessionExecutionNotOpenError when every linked execution is $name',
+    async ({ executions }) => {
+      const existing = makeExistingSession({ executionIds: ['exec-1', 'exec-2'] });
+      const { useCase, processExecutionReader, sessionRepository, auditLogger } =
+        createHarness(existing);
+      vi.mocked(processExecutionReader.findByIds).mockResolvedValueOnce(executions);
+
+      await expect(
+        useCase.execute({
+          actorId: 'user-2',
+          sessionId: 'sess-1',
+          startTime: '12:00',
+        }),
+      ).rejects.toBeInstanceOf(SessionExecutionNotOpenError);
+
+      expect(sessionRepository.update).not.toHaveBeenCalled();
+      expect(auditLogger.log).not.toHaveBeenCalled();
+    },
+  );
 });

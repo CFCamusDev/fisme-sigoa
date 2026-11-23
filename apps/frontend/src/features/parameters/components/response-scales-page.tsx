@@ -68,6 +68,11 @@ export function ResponseScalesPage() {
         actions={newScaleButton}
       />
 
+      <p className="text-sm text-muted-foreground">
+        Solo Evidencia 4 cuenta como logro por defecto; en una copia de la escala se pueden marcar
+        otros niveles.
+      </p>
+
       {!permissionLoading && !canEdit && (
         <div className="rounded-lg border border-border bg-card p-4 text-card-foreground">
           <p className="text-sm text-muted-foreground">

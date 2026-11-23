@@ -36,6 +36,12 @@ describe('parameter schemas (T-011-08, RF-011)', () => {
     expect(result.success).toBe(true);
   });
 
+  it('labels the token parameter as the survey invitation validity', () => {
+    expect(PARAMETER_DEFINITIONS.TOKEN_DIAS.label).toBe(
+      'Vigencia de la invitación a encuestas (días)',
+    );
+  });
+
   it('rejects weights that do not add up to 100', () => {
     const result = defineParametersRequestSchema.safeParse({
       semesterCode: '2027-I',

@@ -202,6 +202,117 @@ function validateNormalizedFields(fields: {
   }
 }
 
+export interface StakeholderDataValidationInput {
+  readonly kind: StakeholderKind;
+  readonly fullName: string;
+  readonly dni?: string | null;
+  readonly ruc?: string | null;
+  readonly email?: string | null;
+  readonly mobile?: string | null;
+  readonly position?: string | null;
+  readonly institution?: string | null;
+  readonly sector?: string | null;
+  readonly graduationYear?: number | null;
+  readonly cycle?: string | null;
+}
+
+/**
+ * Evalúa todas las reglas de datos de un constituyente y devuelve la lista completa de errores
+ * en el orden canónico de dominio. Compartida por el alta manual (`register`) y la importación Excel.
+ */
+export function collectStakeholderDataErrors(input: StakeholderDataValidationInput): string[] {
+  const errors: string[] = [];
+
+  if (!STAKEHOLDER_KINDS.includes(input.kind)) {
+    errors.push('El tipo de constituyente no es válido.');
+    return errors;
+  }
+
+  const normalizedEmail = normalizeOptionalString(input.email);
+  if (normalizedEmail !== null) {
+    const lowerEmail = normalizedEmail.toLowerCase();
+    if (
+      lowerEmail.length > STAKEHOLDER_EMAIL_MAX_LENGTH ||
+      !STAKEHOLDER_EMAIL_PATTERN.test(lowerEmail)
+    ) {
+      errors.push('El correo electrónico no tiene un formato válido.');
+    }
+  }
+
+  const normalizedMobile = normalizeOptionalString(input.mobile);
+  if (normalizedMobile !== null && !STAKEHOLDER_MOBILE_PATTERN.test(normalizedMobile)) {
+    errors.push('El celular debe tener 9 dígitos e iniciar con 9.');
+  }
+
+  const fullName = input.fullName.trim();
+  const dni = normalizeOptionalString(input.dni);
+  const ruc = normalizeOptionalString(input.ruc);
+  const position = normalizeOptionalString(input.position);
+  const institution = normalizeOptionalString(input.institution);
+  const sector = normalizeOptionalString(input.sector);
+  const graduationYear = input.graduationYear ?? null;
+  const cycle = normalizeOptionalString(input.cycle);
+
+  if (fullName.length < 1 || fullName.length > STAKEHOLDER_FULL_NAME_MAX_LENGTH) {
+    errors.push(
+      `El nombre completo o razón social debe tener entre 1 y ${STAKEHOLDER_FULL_NAME_MAX_LENGTH} caracteres.`,
+    );
+  }
+  if (position !== null && position.length > STAKEHOLDER_POSITION_MAX_LENGTH) {
+    errors.push(`El cargo no puede exceder los ${STAKEHOLDER_POSITION_MAX_LENGTH} caracteres.`);
+  }
+  if (sector !== null && sector.length > STAKEHOLDER_SECTOR_MAX_LENGTH) {
+    errors.push(`El sector no puede exceder los ${STAKEHOLDER_SECTOR_MAX_LENGTH} caracteres.`);
+  }
+
+  if (input.kind === 'PERSON') {
+    if (dni === null || !STAKEHOLDER_DNI_PATTERN.test(dni)) {
+      errors.push('Una persona requiere un DNI válido de 8 dígitos.');
+    }
+    if (ruc !== null) {
+      errors.push('Una persona no puede registrar RUC.');
+    }
+    if (institution !== null && institution.length > STAKEHOLDER_INSTITUTION_MAX_LENGTH) {
+      errors.push(
+        `La institución no puede exceder los ${STAKEHOLDER_INSTITUTION_MAX_LENGTH} caracteres.`,
+      );
+    }
+    if (cycle !== null && cycle.length > STAKEHOLDER_CYCLE_MAX_LENGTH) {
+      errors.push(`El ciclo no puede exceder los ${STAKEHOLDER_CYCLE_MAX_LENGTH} caracteres.`);
+    }
+    if (graduationYear !== null) {
+      if (
+        !Number.isInteger(graduationYear) ||
+        graduationYear < STAKEHOLDER_GRADUATION_YEAR_MIN ||
+        graduationYear > STAKEHOLDER_GRADUATION_YEAR_MAX
+      ) {
+        errors.push(
+          `El año de egreso debe ser un entero entre ${STAKEHOLDER_GRADUATION_YEAR_MIN} y ${STAKEHOLDER_GRADUATION_YEAR_MAX}.`,
+        );
+      }
+    }
+    return errors;
+  }
+
+  if (ruc === null || !STAKEHOLDER_RUC_PATTERN.test(ruc)) {
+    errors.push('Una institución requiere un RUC válido de 11 dígitos.');
+  }
+  if (dni !== null) {
+    errors.push('Una institución no puede registrar DNI.');
+  }
+  if (institution !== null) {
+    errors.push('Una institución no admite el campo institución adicional.');
+  }
+  if (graduationYear !== null) {
+    errors.push('Una institución no admite año de egreso.');
+  }
+  if (cycle !== null) {
+    errors.push('Una institución no admite ciclo.');
+  }
+
+  return errors;
+}
+
 export class Stakeholder {
   private constructor(private readonly props: StakeholderProperties) {}
 
@@ -217,8 +328,9 @@ export class Stakeholder {
   }
 
   public static register(input: RegisterStakeholderInput): Stakeholder {
-    if (!STAKEHOLDER_KINDS.includes(input.kind)) {
-      throw new InvalidStakeholderDataError('El tipo de constituyente no es válido.');
+    const errors = collectStakeholderDataErrors(input);
+    if (errors.length > 0) {
+      throw new InvalidStakeholderDataError(errors[0]!);
     }
 
     const fullName = input.fullName.trim();
@@ -231,20 +343,6 @@ export class Stakeholder {
     const sector = normalizeOptionalString(input.sector);
     const graduationYear = input.graduationYear ?? null;
     const cycle = normalizeOptionalString(input.cycle);
-
-    validateNormalizedFields({
-      kind: input.kind,
-      fullName,
-      dni,
-      ruc,
-      email,
-      mobile,
-      position,
-      institution,
-      sector,
-      graduationYear,
-      cycle,
-    });
 
     const now = input.now ?? new Date();
     return Stakeholder.create({

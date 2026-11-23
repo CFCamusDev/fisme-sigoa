@@ -174,6 +174,9 @@ describe('ProcessExecutionsPage (HU-027, T-027-21)', () => {
 
     await screen.findByText(/Aún no hay ejecuciones/i);
     await user.click(screen.getByRole('button', { name: /Nueva ejecución/i }));
+    const formHeading = await screen.findByRole('heading', { name: /Nueva ejecución de proceso/i });
+    const formSection = formHeading.closest('section') as HTMLElement;
+    await user.selectOptions(within(formSection).getByLabelText(/^Proceso$/i), 'P612');
 
     const versionSelect = await screen.findByLabelText(/Versión de catálogo/i);
     await waitFor(() => expect((versionSelect as HTMLSelectElement).value).toBe('cv-approved-1'));

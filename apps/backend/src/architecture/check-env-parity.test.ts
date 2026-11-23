@@ -12,6 +12,8 @@ PORT=3000
 NODE_ENV=development
 DATABASE_URL="postgresql://user:pass@localhost:5432/db"
 # AUTH_JWT_SECRET=optional_in_dev
+DB_RESET_ON_DEPLOY=false
+DB_RESET_CONFIRM=
 `,
     composeDevContent: `
 services:
@@ -28,6 +30,10 @@ services:
 `,
     composeProdContent: `
 services:
+  migrate:
+    environment:
+      DB_RESET_ON_DEPLOY: \${DB_RESET_ON_DEPLOY:-false}
+      DB_RESET_CONFIRM: \${DB_RESET_CONFIRM:-}
   backend:
     environment:
       PORT: 3000
@@ -43,6 +49,8 @@ services:
 PORT=3000
 DATABASE_URL="postgresql://localhost:5432/db"
 VITE_API_URL="http://localhost:3000"
+DB_RESET_ON_DEPLOY=false
+DB_RESET_CONFIRM=
 `,
     stackExampleContent: `
 APP_DB_USER=sigoa
@@ -50,6 +58,8 @@ APP_DB_PASSWORD=secret
 DB_NAME=sigoa
 AUTH_JWT_SECRET=supersecretlongsecret32charactersminimum!
 VITE_API_URL=https://api.untrm.edu.pe
+DB_RESET_ON_DEPLOY=false
+DB_RESET_CONFIRM=
 `,
     prChecksContent: `
 jobs:
@@ -250,7 +260,7 @@ jobs:
     const errors: string[] = checkEnvParity(inputs);
     expect(errors.length).toBeGreaterThan(0);
     for (const error of errors) {
-      expect(error).toMatch(/C[1-5]/);
+      expect(error).toMatch(/C[1-6]/);
       expect(error).toMatch(/\.env|\.yml|\.yaml|Dockerfile/);
     }
   });
@@ -280,6 +290,25 @@ jobs:
     expect(
       errors.some((e: string) => e.includes('No se pudieron leer') || e.includes('vacío')),
     ).toBe(true);
+  });
+
+  it('fails when reset variables leak into backend or envSchema or miss migrate (C6)', () => {
+    const errors = checkEnvParity({
+      ...validInputs,
+      backendVariables: [...validInputs.backendVariables, 'DB_RESET_ON_DEPLOY'],
+      composeProdContent: validInputs.composeProdContent.replace(
+        'DB_RESET_CONFIRM: ${DB_RESET_CONFIRM:-}',
+        '',
+      ),
+      composeDevContent: validInputs.composeDevContent.replace(
+        'AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-secret}',
+        'AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-secret}\n      DB_RESET_ON_DEPLOY: "false"',
+      ),
+    });
+
+    expect(errors.some((e: string) => e.includes('C6') && e.includes('migrate'))).toBe(true);
+    expect(errors.some((e: string) => e.includes('C6') && e.includes('backend'))).toBe(true);
+    expect(errors.some((e: string) => e.includes('C6') && e.includes('env.ts'))).toBe(true);
   });
 });
 

@@ -279,6 +279,7 @@ export function checkEnvParity(inputs) {
   const composeProdFrontendArgs = extractComposeBuildArgs(inputs.composeProdContent, 'frontend');
   const composeDevFrontendEnv = extractComposeEnvironmentKeys(inputs.composeDevContent, 'frontend');
   const composeProdFrontendEnv = extractComposeEnvironmentKeys(inputs.composeProdContent, 'frontend');
+  const composeProdMigrateVars = extractComposeEnvironmentKeys(inputs.composeProdContent, 'migrate');
 
   // Regla C1: Toda variable de env.ts debe estar declarada en apps/backend/.env.example
   for (const variable of inputs.backendVariables) {
@@ -379,6 +380,41 @@ export function checkEnvParity(inputs) {
     if (!arrivesInProd) {
       errors.push(
         `[C5] ${variable}: no llega como argumento o environment en docker-compose.prod.yml. Acción: agrégala en build.args del servicio frontend.`,
+      );
+    }
+  }
+
+  // Regla C6: Variables de reinicio controlado en staging (solo migrator, nunca backend/envSchema)
+  const resetMigratorVars = ['DB_RESET_ON_DEPLOY', 'DB_RESET_CONFIRM'];
+  for (const variable of resetMigratorVars) {
+    if (!rootExampleVars.has(variable)) {
+      errors.push(
+        `[C6] ${variable}: falta declarar apagada en .env.example (raíz). Acción: agrégala con su valor desactivado por defecto.`,
+      );
+    }
+    if (!backendExampleVars.has(variable)) {
+      errors.push(
+        `[C6] ${variable}: falta declarar apagada en apps/backend/.env.example. Acción: agrégala con su valor desactivado por defecto.`,
+      );
+    }
+    if (!stackExampleVars.has(variable)) {
+      errors.push(
+        `[C6] ${variable}: falta declarar apagada en deploy/stack.env.example. Acción: agrégala con su valor desactivado por defecto.`,
+      );
+    }
+    if (!composeProdMigrateVars.has(variable)) {
+      errors.push(
+        `[C6] ${variable}: no llega al servicio migrate en docker-compose.prod.yml. Acción: agrégala en environment de migrate.`,
+      );
+    }
+    if (composeDevBackendVars.has(variable) || composeProdBackendVars.has(variable)) {
+      errors.push(
+        `[C6] ${variable}: no debe llegar al servicio backend en docker-compose.yml ni docker-compose.prod.yml. Acción: pásala solo a migrate.`,
+      );
+    }
+    if (inputs.backendVariables.includes(variable)) {
+      errors.push(
+        `[C6] ${variable}: no debe declararse en env.ts del backend. Acción: léela solo desde el script de migrate.`,
       );
     }
   }

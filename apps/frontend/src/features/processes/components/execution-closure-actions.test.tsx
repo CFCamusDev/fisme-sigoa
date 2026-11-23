@@ -118,9 +118,12 @@ describe('ExecutionClosureActions (HU-030, T-030-16)', () => {
     });
 
     await user.click(await screen.findByRole('button', { name: /Anular ejecución/i }));
+    expect(screen.getByText(/0 \/ 500 \(mínimo 10 caracteres\)/i)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Confirmar anulación/i }));
 
-    expect(await screen.findByText(/Ingresa el motivo de anulación/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/El motivo debe tener al menos 10 caracteres/i),
+    ).toBeInTheDocument();
     expect(postCalls).toBe(0);
   });
 

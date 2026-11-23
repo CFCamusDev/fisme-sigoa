@@ -6,6 +6,7 @@ import {
   processExecutionIdParamSchema,
   sessionDtoSchema,
   sessionIdParamSchema,
+  sessionListItemSchema,
   updateSessionRequestSchema,
 } from './sessions.js';
 
@@ -43,6 +44,67 @@ describe('sessions schemas', () => {
       executionIds: ['exec-1'],
     });
     expect(valid.success).toBe(true);
+  });
+
+  it('rejects links for in person', () => {
+    const withMeeting = createSessionRequestSchema.safeParse({
+      stakeholderType: 'EMPLOYER',
+      sessionDate: '2026-11-20',
+      startTime: '10:00',
+      modality: 'IN_PERSON',
+      meetingUrl: 'https://meet.example.com/room',
+      executionIds: ['exec-1'],
+    });
+    expect(withMeeting.success).toBe(false);
+
+    const withRecording = createSessionRequestSchema.safeParse({
+      stakeholderType: 'EMPLOYER',
+      sessionDate: '2026-11-20',
+      startTime: '10:00',
+      modality: 'IN_PERSON',
+      recordingUrl: 'https://drive.example.com/rec',
+      executionIds: ['exec-1'],
+    });
+    expect(withRecording.success).toBe(false);
+
+    const updateWithLinks = updateSessionRequestSchema.safeParse({
+      modality: 'IN_PERSON',
+      meetingUrl: 'https://meet.example.com/room',
+    });
+    expect(updateWithLinks.success).toBe(false);
+  });
+
+  it('requires meeting link for hybrid and keeps recording optional', () => {
+    const withoutMeeting = createSessionRequestSchema.safeParse({
+      stakeholderType: 'EMPLOYER',
+      sessionDate: '2026-11-20',
+      startTime: '10:00',
+      modality: 'HYBRID',
+      executionIds: ['exec-1'],
+    });
+    expect(withoutMeeting.success).toBe(false);
+
+    const withMeetingOnly = createSessionRequestSchema.safeParse({
+      stakeholderType: 'EMPLOYER',
+      sessionDate: '2026-11-20',
+      startTime: '10:00',
+      modality: 'HYBRID',
+      meetingUrl: 'https://meet.example.com/room',
+      executionIds: ['exec-1'],
+    });
+    expect(withMeetingOnly.success).toBe(true);
+  });
+
+  it('requires both for virtual', () => {
+    const missingMeeting = createSessionRequestSchema.safeParse({
+      stakeholderType: 'EMPLOYER',
+      sessionDate: '2026-11-20',
+      startTime: '10:00',
+      modality: 'VIRTUAL',
+      recordingUrl: 'https://drive.example.com/rec',
+      executionIds: ['exec-1'],
+    });
+    expect(missingMeeting.success).toBe(false);
   });
 
   it('rejects unknown fields', () => {
@@ -94,6 +156,7 @@ describe('sessions schemas', () => {
       sessionDate: '2026-11-20',
       startTime: '10:00',
       modality: 'HYBRID',
+      meetingUrl: 'https://meet.example.com/room',
       recordingUrl: `https://example.com/${'a'.repeat(SESSION_URL_MAX_LENGTH)}`,
       executionIds: ['exec-1'],
     });
@@ -142,6 +205,40 @@ describe('sessions schemas', () => {
       updatedAt: '2026-11-17T15:00:00.000Z',
     });
     expect(parsed.success).toBe(true);
+
+    expect(
+      sessionListItemSchema.safeParse({
+        id: 'sess-1',
+        stakeholderType: 'EMPLOYER',
+        stakeholderListId: null,
+        sessionDate: '2026-11-20',
+        startTime: '10:00',
+        modality: 'IN_PERSON',
+        meetingUrl: null,
+        recordingUrl: null,
+        executionIds: ['exec-1'],
+        attendeeCount: 0,
+        createdAt: '2026-11-17T15:00:00.000Z',
+        updatedAt: '2026-11-17T15:00:00.000Z',
+      }).success,
+    ).toBe(true);
+
+    expect(
+      sessionListItemSchema.safeParse({
+        id: 'sess-1',
+        stakeholderType: 'EMPLOYER',
+        stakeholderListId: null,
+        sessionDate: '2026-11-20',
+        startTime: '10:00',
+        modality: 'IN_PERSON',
+        meetingUrl: null,
+        recordingUrl: null,
+        executionIds: ['exec-1'],
+        attendeeCount: -1,
+        createdAt: '2026-11-17T15:00:00.000Z',
+        updatedAt: '2026-11-17T15:00:00.000Z',
+      }).success,
+    ).toBe(false);
   });
 
   it('requires at least one field to update', () => {

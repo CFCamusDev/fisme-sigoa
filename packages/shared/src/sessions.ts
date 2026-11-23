@@ -109,6 +109,29 @@ export const createSessionRequestSchema = z
           message: 'El enlace de la grabación es obligatorio para sesiones virtuales',
         });
       }
+    } else if (data.modality === 'HYBRID') {
+      if (!data.meetingUrl) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['meetingUrl'],
+          message: 'El enlace de la reunión es obligatorio para sesiones híbridas',
+        });
+      }
+    } else if (data.modality === 'IN_PERSON') {
+      if (data.meetingUrl) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['meetingUrl'],
+          message: 'Una sesión presencial no lleva enlace de reunión',
+        });
+      }
+      if (data.recordingUrl) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['recordingUrl'],
+          message: 'Una sesión presencial no lleva enlace de grabación',
+        });
+      }
     }
   });
 
@@ -148,6 +171,29 @@ export const updateSessionRequestSchema = z
           code: z.ZodIssueCode.custom,
           path: ['recordingUrl'],
           message: 'El enlace de la grabación es obligatorio para sesiones virtuales',
+        });
+      }
+    } else if (data.modality === 'HYBRID') {
+      if (data.meetingUrl === null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['meetingUrl'],
+          message: 'El enlace de la reunión es obligatorio para sesiones híbridas',
+        });
+      }
+    } else if (data.modality === 'IN_PERSON') {
+      if (data.meetingUrl !== undefined && data.meetingUrl !== null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['meetingUrl'],
+          message: 'Una sesión presencial no lleva enlace de reunión',
+        });
+      }
+      if (data.recordingUrl !== undefined && data.recordingUrl !== null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['recordingUrl'],
+          message: 'Una sesión presencial no lleva enlace de grabación',
         });
       }
     }
@@ -192,9 +238,17 @@ export const sessionDtoSchema = z
 
 export type SessionDto = z.infer<typeof sessionDtoSchema>;
 
+export const sessionListItemSchema = sessionDtoSchema
+  .extend({
+    attendeeCount: z.number().int().nonnegative(),
+  })
+  .strict();
+
+export type SessionListItemDto = z.infer<typeof sessionListItemSchema>;
+
 export const listSessionsResponseSchema = z
   .object({
-    items: z.array(sessionDtoSchema),
+    items: z.array(sessionListItemSchema),
     total: z.number().int().nonnegative(),
     page: z.number().int().min(1),
     pageSize: z.number().int().min(1),

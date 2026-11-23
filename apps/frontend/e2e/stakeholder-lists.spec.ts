@@ -89,7 +89,7 @@ test.describe('Stakeholder Lists Flow (HU-022, T-022-29, CA1, CA2, CA3)', () => 
     await expect(page.getByRole('alert')).toContainText('Sector');
     await expect(page.getByRole('link', { name: 'Completar el registro' })).toHaveAttribute(
       'href',
-      '/constituyentes',
+      /^\/constituyentes\?editar=[^&]+$/,
     );
     await page.getByRole('button', { name: 'Cancelar' }).click();
 

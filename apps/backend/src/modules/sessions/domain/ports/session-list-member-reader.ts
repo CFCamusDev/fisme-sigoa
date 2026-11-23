@@ -4,6 +4,8 @@ export interface SessionListMemberRosterItem {
   readonly id: string;
   readonly fullName: string;
   readonly institution: string | null;
+  readonly ruc: string | null;
+  readonly representative: string | null;
   readonly position: string | null;
 }
 

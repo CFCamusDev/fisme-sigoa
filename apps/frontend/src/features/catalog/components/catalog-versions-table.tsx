@@ -74,7 +74,7 @@ export function CatalogVersionsTable({ versions }: CatalogVersionsTableProps) {
                   <TableCell className="text-foreground">{formatDate(version.createdAt)}</TableCell>
                   <TableCell>
                     <Link
-                      to="/catalog/versions/$versionId"
+                      to="/catalogo/versiones/$versionId"
                       params={{ versionId: version.id }}
                       aria-label={`${canEdit && version.status === 'DRAFT' ? 'Editar' : 'Ver'} ${formatVersionLabel(version.number)}`}
                       className="font-semibold text-primary underline-offset-4 hover:underline"

@@ -371,4 +371,36 @@ describe('analyzeStakeholderImport', () => {
     expect(result.rows[1]?.stakeholderToCreate?.kind).toBe('INSTITUTION');
     expect(result.rows[1]?.stakeholderToCreate?.ruc).toBe('20987654321');
   });
+
+  it('collects every error of a row instead of stopping at the first one', () => {
+    const result = analyzeStakeholderImport({
+      listType: 'EMPLOYER',
+      rows: [
+        {
+          rowNumber: 2,
+          values: {
+            document: '123',
+            fullName: 'Empresa con errores',
+            sector: 'Tecnologia',
+            position: 'Gerente',
+            representative: null,
+            email: 'correo-invalido',
+            mobile: '12345',
+          },
+        },
+      ],
+      existingByDocument: new Map(),
+      memberStakeholderIds: new Set(),
+      idGenerator: createSequentialIds(),
+      actorId: 'actor-1',
+      now: NOW,
+    });
+
+    expect(result.totals.invalid).toBe(1);
+    const errors = result.rows[0]?.errors ?? [];
+    expect(errors).toContain('El RUC debe tener exactamente 11 dígitos numéricos.');
+    expect(errors).toContain('El correo electrónico no tiene un formato válido.');
+    expect(errors).toContain('El celular debe tener 9 dígitos e iniciar con 9.');
+    expect(errors.some((e) => e.includes('representante'))).toBe(true);
+  });
 });

@@ -25,6 +25,7 @@ function createHarness() {
           meetingUrl: null,
           recordingUrl: null,
           executionIds: ['exec-1', 'exec-2'],
+          attendeeCount: 4,
           createdAt: NOW,
           updatedAt: NOW,
         },
@@ -68,6 +69,7 @@ describe('ListSessionsByExecutionUseCase', () => {
     expect(response.pageSize).toBe(20);
     expect(response.items).toHaveLength(1);
     expect(response.items[0]?.executionIds).toEqual(['exec-1', 'exec-2']);
+    expect(response.items[0]?.attendeeCount).toBe(4);
     expect(sessionReader.listByExecution).toHaveBeenCalledWith('exec-1', {
       page: 1,
       pageSize: 20,

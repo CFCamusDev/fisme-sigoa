@@ -85,6 +85,7 @@ describe('ListProcessExecutionsUseCase (HU-027, T-027-07, T-027-17)', () => {
           catalogVersionId: 'cv-1',
           catalogVersionNumber: 3,
           status: 'PLANNED',
+          voidReason: null,
           createdAt: NOW.toISOString(),
           updatedAt: NOW.toISOString(),
         },

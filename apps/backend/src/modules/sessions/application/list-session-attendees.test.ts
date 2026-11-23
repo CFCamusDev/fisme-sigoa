@@ -33,8 +33,22 @@ function createHarness() {
 
   const sessionListMemberReader = mock<SessionListMemberReader>();
   sessionListMemberReader.listByList.mockResolvedValue([
-    { id: 'mem-1', fullName: 'Ana Pérez', institution: 'Empresa A', position: 'Analista' },
-    { id: 'mem-2', fullName: 'Luis Torres', institution: null, position: null },
+    {
+      id: 'mem-1',
+      fullName: 'Ana Pérez',
+      institution: 'Empresa A',
+      ruc: '20123456789',
+      representative: 'Carlos Mendoza',
+      position: 'Analista',
+    },
+    {
+      id: 'mem-2',
+      fullName: 'Luis Torres',
+      institution: null,
+      ruc: null,
+      representative: null,
+      position: null,
+    },
   ]);
 
   const permissionChecker = mock<SessionPermissionChecker>();
@@ -73,6 +87,8 @@ describe('ListSessionAttendeesUseCase', () => {
           listMemberId: 'mem-1',
           fullName: 'Ana Pérez',
           institution: 'Empresa A',
+          ruc: '20123456789',
+          representative: 'Carlos Mendoza',
           memberPosition: 'Analista',
           attended: true,
           position: 'Gerente de TI',
@@ -81,6 +97,8 @@ describe('ListSessionAttendeesUseCase', () => {
           listMemberId: 'mem-2',
           fullName: 'Luis Torres',
           institution: null,
+          ruc: null,
+          representative: null,
           memberPosition: null,
           attended: false,
           position: null,

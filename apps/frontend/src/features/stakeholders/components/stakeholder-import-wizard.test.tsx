@@ -328,4 +328,47 @@ describe('StakeholderImportWizard (HU-023, T-023-18)', () => {
     );
     expect(status).toHaveTextContent(/Fila 5: El RUC debe tener exactamente 11 dígitos numéricos/i);
   });
+
+  it('lists every error per row in the preview table while keeping the error filter', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.post('*/stakeholder-lists/:id/import/preview', () =>
+        HttpResponse.json({
+          ...MIXED_PREVIEW,
+          rows: [
+            ...MIXED_PREVIEW.rows.slice(0, 2),
+            {
+              rowNumber: 4,
+              status: 'INVALID',
+              document: '123',
+              fullName: 'Fila Con Varios Errores',
+              errors: [
+                'El RUC debe tener exactamente 11 dígitos numéricos.',
+                'El correo electrónico no tiene un formato válido.',
+              ],
+            },
+          ],
+        }),
+      ),
+    );
+
+    renderWithProviders(
+      <StakeholderImportWizard list={EMPLOYER_LIST_DTO} onImported={vi.fn()} onCancel={vi.fn()} />,
+      { withRouter: false },
+    );
+
+    await user.upload(screen.getByLabelText(/Archivo Excel \(\.xlsx\)/i), makeXlsxFile());
+    await user.click(screen.getByRole('button', { name: /Ver vista previa/i }));
+
+    expect(
+      await screen.findByText('El RUC debe tener exactamente 11 dígitos numéricos.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('El correo electrónico no tiene un formato válido.'),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByLabelText(/Mostrar solo filas con errores/i));
+    expect(screen.queryByText('Nueva Empresa SAC')).not.toBeInTheDocument();
+    expect(screen.getByText('Fila Con Varios Errores')).toBeInTheDocument();
+  });
 });

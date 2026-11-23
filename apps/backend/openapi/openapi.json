@@ -3487,7 +3487,7 @@
                     },
                     {
                       "key": "TOKEN_DIAS",
-                      "label": "Días de vigencia del token",
+                      "label": "Vigencia de la invitación a encuestas (días)",
                       "unit": "DAYS",
                       "value": 7,
                       "effectiveFromSemesterCode": null,
@@ -3720,7 +3720,7 @@
                     },
                     {
                       "key": "TOKEN_DIAS",
-                      "label": "Días de vigencia del token",
+                      "label": "Vigencia de la invitación a encuestas (días)",
                       "unit": "DAYS",
                       "value": 7,
                       "effectiveFromSemesterCode": null,
@@ -8982,6 +8982,7 @@
                       "catalogVersionId": "cv_cuid_1",
                       "catalogVersionNumber": 1,
                       "status": "PLANNED",
+                      "voidReason": null,
                       "createdAt": "2027-01-15T10:00:00.000Z",
                       "updatedAt": "2027-01-15T10:00:00.000Z"
                     }
@@ -9077,6 +9078,7 @@
                   "catalogVersionId": "cv_cuid_1",
                   "catalogVersionNumber": 1,
                   "status": "PLANNED",
+                  "voidReason": null,
                   "createdAt": "2027-01-15T10:00:00.000Z",
                   "updatedAt": "2027-01-15T10:00:00.000Z"
                 }
@@ -9437,6 +9439,8 @@
                       "listMemberId": "mem_cuid_1",
                       "fullName": "Ana Pérez",
                       "institution": "Empresa A",
+                      "ruc": null,
+                      "representative": null,
                       "memberPosition": "Analista",
                       "attended": true,
                       "position": "Gerente de TI"
@@ -9544,6 +9548,8 @@
                       "listMemberId": "mem_cuid_1",
                       "fullName": "Ana Pérez",
                       "institution": "Empresa A",
+                      "ruc": null,
+                      "representative": null,
                       "memberPosition": "Analista",
                       "attended": true,
                       "position": "Gerente de TI"
@@ -9660,6 +9666,7 @@
                       "meetingUrl": null,
                       "recordingUrl": null,
                       "executionIds": ["exec_cuid_1"],
+                      "attendeeCount": 0,
                       "createdAt": "2026-11-17T15:00:00.000Z",
                       "updatedAt": "2026-11-17T15:00:00.000Z"
                     }
@@ -10196,6 +10203,7 @@
                     "catalogVersionId": "cat_cuid_1",
                     "catalogVersionNumber": 1,
                     "status": "IN_PROGRESS",
+                    "voidReason": null,
                     "createdAt": "2027-01-10T10:00:00.000Z",
                     "updatedAt": "2027-01-15T12:00:00.000Z"
                   },
@@ -14378,6 +14386,7 @@
           "catalogVersionId",
           "catalogVersionNumber",
           "status",
+          "voidReason",
           "createdAt",
           "updatedAt"
         ],
@@ -14408,6 +14417,9 @@
           },
           "status": {
             "$ref": "#/components/schemas/ProcessExecutionStatus"
+          },
+          "voidReason": {
+            "type": ["string", "null"]
           },
           "createdAt": {
             "type": "string",
@@ -14661,6 +14673,8 @@
           "listMemberId",
           "fullName",
           "institution",
+          "ruc",
+          "representative",
           "memberPosition",
           "attended",
           "position"
@@ -14673,6 +14687,12 @@
             "type": "string"
           },
           "institution": {
+            "type": ["string", "null"]
+          },
+          "ruc": {
+            "type": ["string", "null"]
+          },
+          "representative": {
             "type": ["string", "null"]
           },
           "memberPosition": {

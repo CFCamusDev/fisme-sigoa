@@ -191,17 +191,17 @@ describe('PATCH /sessions/:id (PostgreSQL real, HU-032, T-032-23, RF-032, RNF-00
     await seedDomainData();
     const member = await createActor(['COMMITTEE_MEMBER']);
     const initial = await createInitialSession(member.token, {
-      modality: 'IN_PERSON',
-      meetingUrl: 'https://meet.example.com/opt',
+      modality: 'HYBRID',
+      recordingUrl: 'https://drive.example.com/opt',
     });
 
     const response = await patchSession(member.token, initial.id).send({
-      meetingUrl: null,
+      recordingUrl: null,
     });
 
     expect(response.status).toBe(200);
     const dto = sessionDtoSchema.parse(response.body);
-    expect(dto.meetingUrl).toBeNull();
+    expect(dto.recordingUrl).toBeNull();
   }, 5_000);
 
   it('serializes two concurrent edits with different execution sets', async () => {
@@ -288,6 +288,29 @@ describe('PATCH /sessions/:id (PostgreSQL real, HU-032, T-032-23, RF-032, RNF-00
       startTime: '12:00',
     });
     expect(response.status).toBe(409);
+  }, 5_000);
+
+  it('returns 409 and leaves session and audit untouched when linked execution is voided', async () => {
+    await seedDomainData();
+    const member = await createActor(['COMMITTEE_MEMBER']);
+    const initial = await createInitialSession(member.token);
+
+    await prisma.processExecution.update({
+      where: { id: 'exec-1' },
+      data: { status: 'VOIDED' },
+    });
+
+    const response = await patchSession(member.token, initial.id).send({
+      startTime: '12:00',
+    });
+    expect(response.status).toBe(409);
+
+    const saved = await prisma.session.findUniqueOrThrow({ where: { id: initial.id } });
+    expect(saved.startTime).toBe('10:00');
+    const audits = await prisma.auditLog.findMany({
+      where: { entity: 'Session', entityId: initial.id, action: 'UPDATE' },
+    });
+    expect(audits).toHaveLength(0);
   }, 5_000);
 
   it('returns 409 for a duplicate type, date and time', async () => {

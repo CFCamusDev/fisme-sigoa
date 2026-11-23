@@ -211,7 +211,7 @@ describe('CatalogVersionsPage Component (HU-013, T-013-23, CA1, CA2)', () => {
     renderWithProviders(<CatalogVersionsPage />, { permissions: editor });
 
     expect(
-      await screen.findByText(/Ya existe la versión 2 en En validación; ciérrala o apruébala/),
+      await screen.findByText(/Ya existe la versión 2 en validación; ciérrala o apruébala/),
     ).toBeInTheDocument();
   });
 

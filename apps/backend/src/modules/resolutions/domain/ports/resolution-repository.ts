@@ -2,8 +2,9 @@ import type { Resolution, ResolutionPdf } from '../entities/resolution.js';
 
 export interface ResolutionRepository {
   /**
-   * Inserta la resolución Registrada. Lanza `DuplicateResolutionError` si el número ya existe para
-   * ese tipo o si la versión del catálogo ya tiene una resolución de ese tipo.
+   * Inserta la resolución Registrada. Lanza `DuplicateResolutionNumberError` si el número ya existe
+   * para ese tipo o `CatalogVersionResolutionExistsError` si la versión del catálogo ya tiene una
+   * resolución de ese tipo.
    */
   save(resolution: Resolution): Promise<void>;
   /**

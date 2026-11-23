@@ -7,7 +7,10 @@ import {
   TemplateNotFoundError,
   TemplateVersionNotFoundError,
 } from '../domain/errors/index.js';
-import { validateTemplateContent } from '../domain/policies/template-content-policy.js';
+import {
+  sanitizeTemplateContent,
+  validateTemplateContent,
+} from '../domain/policies/template-content-policy.js';
 import type { TemplatePermissionChecker } from '../domain/ports/template-permission-checker.js';
 import type { TemplateRepository } from '../domain/ports/template-repository.js';
 import type { TemplateVersionReader } from '../domain/ports/template-version-reader.js';
@@ -62,8 +65,9 @@ export class PublishTemplateUseCase {
       if (draft.updatedAt.toISOString() !== new Date(command.expectedUpdatedAt).toISOString()) {
         throw new TemplateDraftChangedError();
       }
+      const sanitizedContent = sanitizeTemplateContent(draft.content);
       validateTemplateContent(
-        draft.content,
+        sanitizedContent,
         template.variables.map((variable) => variable.key),
       );
 

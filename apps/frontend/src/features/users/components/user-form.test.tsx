@@ -443,4 +443,62 @@ describe('UserForm component (T-003-27)', () => {
     // El rol inactivo no debe estar disponible para selección en modo creación
     expect(screen.queryByText('Auditor Antiguo Inactivo')).not.toBeInTheDocument();
   });
+
+  it('validates dni inline on edit and does not call the api', async () => {
+    let patchCalls = 0;
+    server.use(
+      http.patch('http://localhost:3000/users/usr-1', () => {
+        patchCalls += 1;
+        return HttpResponse.json(mockInitialUser, { status: 200 });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<UserForm mode="edit" initialUser={mockInitialUser} />);
+
+    await screen.findByText('Docente');
+    const dniInput = screen.getByLabelText(/dni/i);
+    await user.clear(dniInput);
+    await user.type(dniInput, '123');
+    await user.tab();
+
+    expect(
+      await screen.findByText('El DNI debe contener exactamente 8 dígitos numéricos'),
+    ).toBeInTheDocument();
+    expect(dniInput).toHaveAttribute('aria-invalid', 'true');
+
+    await user.click(screen.getByRole('button', { name: /guardar cambios/i }));
+    expect(patchCalls).toBe(0);
+  });
+
+  it('does not show raw JSON when server returns a serialized validator error', async () => {
+    server.use(
+      http.patch('http://localhost:3000/users/usr-1', () =>
+        HttpResponse.json(
+          {
+            error: {
+              code: 'VALIDATION_ERROR',
+              message: '[{"code":"invalid_string","path":["dni"],"message":"DNI inválido"}]',
+            },
+          },
+          { status: 400 },
+        ),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<UserForm mode="edit" initialUser={mockInitialUser} />);
+
+    await screen.findByText('Docente');
+    const namesInput = screen.getByLabelText(/nombres/i);
+    await user.clear(namesInput);
+    await user.type(namesInput, 'Ana Sofía');
+    await user.click(screen.getByRole('button', { name: /guardar cambios/i }));
+
+    await waitFor(() => {
+      const alerts = screen.getAllByRole('alert');
+      expect(alerts.length).toBeGreaterThan(0);
+    });
+    expect(screen.queryByText(/invalid_string/)).not.toBeInTheDocument();
+  });
 });

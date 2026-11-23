@@ -148,6 +148,62 @@ function assertSafeCss(css: string, where: string): void {
   }
 }
 
+const COMMENT_FRAGMENT_LIMIT = 40;
+
+function formatFragment(content: string, start: number): string {
+  return content
+    .slice(start, start + COMMENT_FRAGMENT_LIMIT)
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Elimina comentarios HTML bien formados (`<!-- ... -->`) y rechaza comentarios sin cerrar o con
+ * cierres ambiguos (`<!-->`, `<!--->`, `--!>`) antes de validar, guardar o renderizar (HU-081, T-081-31).
+ */
+export function sanitizeTemplateContent(content: string): string {
+  let result = '';
+  let cursor = 0;
+
+  while (cursor < content.length) {
+    const start = content.indexOf('<!--', cursor);
+    if (start === -1) {
+      result += content.slice(cursor);
+      break;
+    }
+
+    result += content.slice(cursor, start);
+
+    const afterOpener = content.slice(start + 4);
+    if (afterOpener.startsWith('>') || afterOpener.startsWith('->')) {
+      const fragment = formatFragment(content, start);
+      fail(
+        `Hay un comentario HTML mal formado cerca de "${fragment}". Usa <!-- comentario --> con contenido válido.`,
+      );
+    }
+
+    const end = content.indexOf('-->', start + 4);
+    if (end === -1) {
+      const fragment = formatFragment(content, start);
+      fail(
+        `Hay un comentario HTML sin cerrar o mal formado cerca de "${fragment}". Ciérralo con -->`,
+      );
+    }
+
+    const body = content.slice(start + 4, end);
+    if (body.includes('--!>')) {
+      const fragment = formatFragment(content, start);
+      fail(
+        `Hay un comentario HTML mal formado cerca de "${fragment}". Ciérralo únicamente con -->`,
+      );
+    }
+
+    cursor = end + 3;
+  }
+
+  return result;
+}
+
 function assertSafeStructure(content: string): void {
   if (FORBIDDEN_TAG_PATTERN.test(content)) {
     fail(
@@ -187,8 +243,12 @@ function assertSafeStructure(content: string): void {
     .replace(/<!doctype html>/i, '')
     .replace(OPEN_TAG_PATTERN, '')
     .replace(CLOSE_TAG_PATTERN, '');
-  if (/<\s*[a-zA-Z/!?]/.test(remainder)) {
-    fail('El contenido tiene una etiqueta HTML mal formada. Revisa los < y > del texto.');
+  const malformedMatch = /<\s*[a-zA-Z/!?][^<>\n]{0,39}/.exec(remainder);
+  if (malformedMatch) {
+    const fragment = malformedMatch[0].replace(/\s+/g, ' ').trim();
+    fail(
+      `El contenido tiene una etiqueta HTML mal formada cerca de "${fragment}". Revisa los < y > del texto.`,
+    );
   }
 }
 
@@ -208,7 +268,8 @@ function assertAllowedVariables(content: string, allowedKeys: readonly string[])
  * Útil en vista previa, donde las variables desconocidas se avisan pero no bloquean.
  */
 export function validateTemplateStructure(content: string): void {
-  assertSafeStructure(content);
+  const sanitized = sanitizeTemplateContent(content);
+  assertSafeStructure(sanitized);
 }
 
 /**
@@ -216,6 +277,7 @@ export function validateTemplateStructure(content: string): void {
  * en español ante etiquetas, atributos, enlaces o variables no permitidos.
  */
 export function validateTemplateContent(content: string, allowedKeys: readonly string[]): void {
-  validateTemplateStructure(content);
-  assertAllowedVariables(content, allowedKeys);
+  const sanitized = sanitizeTemplateContent(content);
+  assertSafeStructure(sanitized);
+  assertAllowedVariables(sanitized, allowedKeys);
 }

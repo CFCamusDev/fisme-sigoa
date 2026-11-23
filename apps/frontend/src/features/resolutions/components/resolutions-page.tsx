@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/common/page-header';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useCatalogVersions } from '@/features/catalog';
+import { usePermission } from '@/hooks/use-permission';
 import { useResolutions } from '../hooks/use-resolutions';
 import { getResolutionErrorMessage } from '../lib/resolution-error-message';
 import { formatResolutionType } from '../lib/resolution-labels';
@@ -20,6 +21,7 @@ const LIST_PARAMS = { pageSize: 100 } as const;
 export function ResolutionsPage() {
   const { data, isLoading, isError, error, refetch } = useResolutions(LIST_PARAMS);
   const versionsQuery = useCatalogVersions();
+  const { allowed: canRegister } = usePermission('resolucion.registrar', 'GLOBAL');
   const [showForm, setShowForm] = useState(false);
   const [registered, setRegistered] = useState<ResolutionDto | null>(null);
   const [approved, setApproved] = useState<ResolutionDto | null>(null);
@@ -115,7 +117,11 @@ export function ResolutionsPage() {
       {!isLoading && !isError && resolutions.length === 0 && (
         <EmptyState
           title="Aún no hay resoluciones registradas"
-          description="Usa «Registrar resolución» para vincular la resolución del Decano a una versión del catálogo en validación y aprobarla después con su PDF firmado."
+          description={
+            canRegister
+              ? 'Usa «Registrar resolución» para vincular la resolución del Decano a una versión del catálogo en validación y aprobarla después con su PDF firmado.'
+              : 'Cuando se registren resoluciones del Decano aparecerán aquí.'
+          }
           illustration="empty"
         />
       )}

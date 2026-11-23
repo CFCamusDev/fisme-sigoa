@@ -47,6 +47,7 @@ export class ListSessionsByExecutionUseCase {
         meetingUrl: item.meetingUrl,
         recordingUrl: item.recordingUrl,
         executionIds: [...item.executionIds],
+        attendeeCount: item.attendeeCount,
         createdAt: item.createdAt.toISOString(),
         updatedAt: item.updatedAt.toISOString(),
       })),

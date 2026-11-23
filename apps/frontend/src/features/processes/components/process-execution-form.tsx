@@ -1,5 +1,6 @@
 import { useEffect, useId, useMemo, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Link } from '@tanstack/react-router';
 import {
   PROCESS_EXECUTION_NAME_MAX_LENGTH,
   PROCESS_EXECUTION_YEAR_MAX,
@@ -8,6 +9,7 @@ import {
   createProcessExecutionRequestSchema,
   type CreateProcessExecutionRequest,
   type ProcessExecutionDto,
+  type ProcessTypeValue,
 } from '@sigoa/shared';
 import { AlertTriangle } from 'lucide-react';
 import { useForm, useWatch } from 'react-hook-form';
@@ -23,6 +25,7 @@ import {
   filterEligibleCatalogVersions,
   formatCatalogVersionOptionLabel,
   getRequiredVersionLabel,
+  requiresValidationVersion,
 } from '../lib/process-catalog-version-filter';
 import { getProcessExecutionErrorMessage } from '../lib/process-execution-error-message';
 import { PROCESS_TYPE_LABELS, getSuggestedExecutionName } from '../lib/process-type-labels';
@@ -38,6 +41,14 @@ function parseSemesterYear(code?: string | null): number | null {
   }
   const match = /^(\d{4})-/.exec(code.trim());
   return match?.[1] ? Number.parseInt(match[1], 10) : null;
+}
+
+interface ProcessExecutionFormValues {
+  type: ProcessTypeValue | '';
+  year: number;
+  semesterId?: string | null;
+  catalogVersionId: string;
+  name?: string | null;
 }
 
 export function ProcessExecutionForm({ onCreated, onCancel }: ProcessExecutionFormProps) {
@@ -59,12 +70,12 @@ export function ProcessExecutionForm({ onCreated, onCancel }: ProcessExecutionFo
     setValue,
     control,
     formState: { errors },
-  } = useForm<CreateProcessExecutionRequest>({
-    resolver: zodResolver(createProcessExecutionRequestSchema),
+  } = useForm<ProcessExecutionFormValues>({
+    resolver: zodResolver(createProcessExecutionRequestSchema) as never,
     defaultValues: {
-      type: 'P612',
+      type: '',
       year: defaultYear,
-      semesterId: undefined,
+      semesterId: '',
       catalogVersionId: '',
       name: '',
     },
@@ -129,7 +140,10 @@ export function ProcessExecutionForm({ onCreated, onCancel }: ProcessExecutionFo
   const semestersForbidden =
     isP622 && semestersQuery.isError && semestersQuery.error.status === 403;
   const noEligibleVersion =
-    !catalogQuery.isLoading && !catalogForbidden && eligibleVersions.length === 0;
+    selectedType !== '' &&
+    !catalogQuery.isLoading &&
+    !catalogForbidden &&
+    eligibleVersions.length === 0;
   const noSemestersAvailable =
     isP622 && !semestersQuery.isLoading && !semestersForbidden && semesters.length === 0;
 
@@ -139,13 +153,18 @@ export function ProcessExecutionForm({ onCreated, onCancel }: ProcessExecutionFo
       ? 'No tienes el permiso necesario (parametro.ver) para consultar los semestres.'
       : null;
 
-  const suggestedName = getSuggestedExecutionName(
-    selectedType,
-    Number.isFinite(selectedYear) ? selectedYear : defaultYear,
-    selectedSemester?.code ?? null,
-  );
+  const suggestedName = selectedType
+    ? getSuggestedExecutionName(
+        selectedType,
+        Number.isFinite(selectedYear) ? selectedYear : defaultYear,
+        selectedSemester?.code ?? null,
+      )
+    : `Ejecución ${Number.isFinite(selectedYear) ? selectedYear : defaultYear}`;
 
   const onSubmit = handleSubmit(async (data) => {
+    if (!data.type) {
+      return;
+    }
     setServerError(null);
     const trimmedName = data.name?.trim() ?? '';
     const payload: CreateProcessExecutionRequest = {
@@ -197,6 +216,7 @@ export function ProcessExecutionForm({ onCreated, onCancel }: ProcessExecutionFo
           <div className="space-y-1.5">
             <Label htmlFor={`${uid}-type`}>Proceso</Label>
             <Select id={`${uid}-type`} aria-invalid={Boolean(errors.type)} {...register('type')}>
+              <option value="">Selecciona un proceso</option>
               {PROCESS_TYPES.map((type) => (
                 <option key={type} value={type}>
                   {PROCESS_TYPE_LABELS[type]}
@@ -273,10 +293,23 @@ export function ProcessExecutionForm({ onCreated, onCancel }: ProcessExecutionFo
               ))}
             </Select>
             {noEligibleVersion ? (
-              <p className="text-xs text-muted-foreground">
-                No existe una versión de catálogo en estado «{getRequiredVersionLabel(selectedType)}
-                » para este proceso.
-              </p>
+              requiresValidationVersion(selectedType) ? (
+                <p className="text-xs text-muted-foreground">
+                  Envía una versión a validación para crear este proceso en el{' '}
+                  <Link
+                    to="/catalogo/versiones"
+                    className="text-primary underline underline-offset-2"
+                  >
+                    Catálogo de versiones
+                  </Link>
+                  .
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  No existe una versión de catálogo en estado «
+                  {getRequiredVersionLabel(selectedType)}» para este proceso.
+                </p>
+              )
             ) : null}
             {errors.catalogVersionId ? (
               <p className="text-xs text-destructive" role="alert">

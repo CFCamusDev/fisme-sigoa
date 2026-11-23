@@ -68,7 +68,7 @@ export const PARAMETER_DEFINITIONS: Readonly<Record<ParameterKey, ParameterDefin
   },
   TOKEN_DIAS: {
     key: 'TOKEN_DIAS',
-    label: 'Días de vigencia del token',
+    label: 'Vigencia de la invitación a encuestas (días)',
     unit: 'DAYS',
     min: 1,
     max: 365,

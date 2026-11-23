@@ -4,6 +4,7 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 import type { AuditLogger } from '../../../shared/audit/audit-logger.js';
 import { ForbiddenError } from '../../../shared/errors/app-error.js';
 import type { PdfGenerator } from '../../../shared/pdf/pdf-generator.js';
+import { EMPTY_PDF_HEADER_TEMPLATE } from '../../../shared/pdf/pdf-options.js';
 import type { UnitOfWork } from '../../../shared/unit-of-work/unit-of-work.js';
 import { Template } from '../domain/entities/template.js';
 import { TemplateVersion } from '../domain/entities/template-version.js';
@@ -129,7 +130,7 @@ describe('GenerateAnnexPdfUseCase (T-070-09, RF-070)', () => {
 
     const renderedHtml = pdfGenerator.render.mock.calls[0]?.[0].html ?? '';
     expect(renderedHtml).toContain('data:image/png;base64,AAAA');
-    expect(renderedHtml).toContain('<p>—</p>');
+    expect(renderedHtml).toContain('<p>(sin periodo definido)</p>');
     expect(renderedHtml).not.toContain('{{');
   });
 
@@ -241,12 +242,21 @@ describe('GenerateAnnexPdfUseCase (T-070-09, RF-070)', () => {
       preferCSSPageSize: true,
       printBackground: true,
       displayHeaderFooter: true,
+      headerTemplate: EMPTY_PDF_HEADER_TEMPLATE,
     });
     expect(call?.options?.footerTemplate).toContain(
       'FO-01 · Versión 2 · Generado el 20/11/2026 10:30',
     );
     expect(call?.options?.footerTemplate).toContain('pageNumber');
     expect(call?.options?.footerTemplate).toContain('totalPages');
+  });
+
+  it('renders FO-01 without dashes when there is no execution data', async () => {
+    await useCase.execute({ actorId: 'user-1', annexCode: 'FO-01' });
+
+    const call = pdfGenerator.render.mock.calls[0]?.[0];
+    expect(call?.html).toContain('<p>(sin periodo definido)</p>');
+    expect(call?.html).not.toContain('—');
   });
 
   it('rejects a second download from the same actor while one is in flight', async () => {

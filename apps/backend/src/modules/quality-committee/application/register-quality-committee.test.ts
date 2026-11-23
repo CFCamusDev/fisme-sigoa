@@ -4,7 +4,6 @@ import type { AuditLogger } from '../../../shared/audit/audit-logger.js';
 import { ForbiddenError } from '../../../shared/errors/app-error.js';
 import type { UnitOfWork } from '../../../shared/unit-of-work/unit-of-work.js';
 import {
-  COMMITTEE_MEMBER_USER_NOT_FOUND_MESSAGE,
   CommitteeMemberUserNotFoundError,
   CommitteeProgramNotFoundError,
   InvalidQualityCommitteeDataError,
@@ -320,8 +319,12 @@ describe('RegisterQualityCommitteeUseCase (T-025-20)', () => {
       inactiveMessage = error instanceof Error ? error.message : '';
     }
 
-    expect(unknownMessage).toBe(COMMITTEE_MEMBER_USER_NOT_FOUND_MESSAGE);
-    expect(inactiveMessage).toBe(COMMITTEE_MEMBER_USER_NOT_FOUND_MESSAGE);
+    expect(unknownMessage).toBe(
+      'No existe un usuario activo con el correo nadie@example.test. Revisa el correo o deja el vínculo vacío.',
+    );
+    expect(inactiveMessage).toBe(
+      'No existe un usuario activo con el correo inactivo@example.test. Revisa el correo o deja el vínculo vacío.',
+    );
   });
 
   it('rejects duplicate resolved user across userId and userEmail or both on the same member', async () => {

@@ -46,6 +46,11 @@ export function SessionsPage() {
     [executions],
   );
 
+  const executionStatusesById = useMemo(
+    () => new Map(executions.map((item) => [item.id, item.status])),
+    [executions],
+  );
+
   const sessionsQuery = useExecutionSessions(activeExecutionId || undefined, {
     page,
     pageSize: PAGE_SIZE,
@@ -163,11 +168,7 @@ export function SessionsPage() {
           </div>
 
           {panelState.mode === 'create' && (
-            <SessionForm
-              defaultExecutionId={activeExecutionId}
-              onSaved={handleSaved}
-              onCancel={() => setPanelState({ mode: 'closed' })}
-            />
+            <SessionForm onSaved={handleSaved} onCancel={() => setPanelState({ mode: 'closed' })} />
           )}
 
           {panelState.mode === 'edit' && (
@@ -204,6 +205,7 @@ export function SessionsPage() {
               <SessionsTable
                 items={sessionsQuery.data?.items ?? []}
                 executionNamesById={executionNamesById}
+                executionStatusesById={executionStatusesById}
                 onEdit={(session) => {
                   setStatusMessage(null);
                   setPanelState({ mode: 'edit', session });

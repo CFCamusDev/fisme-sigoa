@@ -1,8 +1,10 @@
 import fs from 'node:fs';
 import { performance } from 'node:perf_hooks';
+import { inflateSync } from 'node:zlib';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { PuppeteerPdfGenerator } from './puppeteer-pdf-generator.js';
 import { extractPdfFontNames } from './pdf-fonts.js';
+import { withEmptyPdfHeader } from './pdf-options.js';
 
 const COLD_START_LIMIT_MS = 45_000;
 const COLD_START_TEST_TIMEOUT_MS = 60_000;
@@ -155,4 +157,53 @@ describe('PuppeteerPdfGenerator Integration (RNF-021, RS-063)', () => {
     },
     INTEGRATION_TEST_TIMEOUT_MS,
   );
+
+  it('does not print the browser header when withEmptyPdfHeader is applied', async () => {
+    const html = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8" />
+            <title>TITULO-SOLO-NAVEGADOR</title>
+          </head>
+          <body>
+            <p>Contenido oficial del anexo.</p>
+          </body>
+        </html>
+      `;
+
+    const pdfBuffer = await generator.render({
+      html,
+      options: withEmptyPdfHeader({
+        format: 'A4',
+        preferCSSPageSize: true,
+        printBackground: true,
+        displayHeaderFooter: true,
+        footerTemplate:
+          '<div style="width:100%;font-size:8px;text-align:center;">Pie oficial</div>',
+      }),
+    });
+
+    const latin1 = pdfBuffer.toString('latin1');
+    const chunks: string[] = [];
+    let cursor = 0;
+    while (true) {
+      const streamIdx = latin1.indexOf('stream', cursor);
+      if (streamIdx === -1) break;
+      const startOffset = latin1[streamIdx + 6] === '\r' ? streamIdx + 8 : streamIdx + 7;
+      const endIdx = latin1.indexOf('endstream', startOffset);
+      if (endIdx === -1) break;
+      try {
+        const inflated = inflateSync(pdfBuffer.subarray(startOffset, endIdx));
+        chunks.push(inflated.toString('latin1'));
+      } catch {
+        // Streams no comprimidos o con otro filtro se ignoran.
+      }
+      cursor = endIdx + 9;
+    }
+
+    const extracted = chunks.join('\n');
+    expect(extracted).not.toContain('TITULO-SOLO-NAVEGADOR');
+    expect(extracted).not.toContain('about:blank');
+  }, 20_000);
 });

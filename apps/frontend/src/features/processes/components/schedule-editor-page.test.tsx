@@ -321,4 +321,181 @@ describe('ScheduleEditorPage (HU-028, T-028-24)', () => {
     expect(await screen.findByLabelText('Actividad 1')).toBeInTheDocument();
     expect(getCalls).toBe(1);
   });
+
+  it('shows saved confirmation and refreshes preconditions', async () => {
+    const user = userEvent.setup();
+    let nextTransitionCalls = 0;
+
+    server.use(
+      http.get('*/process-executions/exec-1/next-transition', () => {
+        nextTransitionCalls += 1;
+        return HttpResponse.json({
+          executionId: 'exec-1',
+          status: 'PLANNED',
+          nextStatus: 'IN_PROGRESS',
+          preconditions: [
+            {
+              code: 'SCHEDULE_DEFINED',
+              label: 'Cronograma definido',
+              met: nextTransitionCalls > 1,
+            },
+          ],
+          canAdvance: nextTransitionCalls > 1,
+        });
+      }),
+      http.get('*/process-executions/exec-1/schedule', () =>
+        HttpResponse.json({ items: [SAMPLE_PENDING] }),
+      ),
+      http.put('*/process-executions/exec-1/schedule', () =>
+        HttpResponse.json({ items: [SAMPLE_PENDING] }),
+      ),
+    );
+
+    renderWithProviders(<ScheduleEditorPage executionId="exec-1" />, { permissions: ALL_PERMS });
+
+    const input = await screen.findByLabelText('Actividad 1');
+    const callsBeforeSave = nextTransitionCalls;
+    await user.click(screen.getByRole('button', { name: /Guardar cronograma/i }));
+
+    expect(await screen.findByText('Cronograma guardado')).toBeInTheDocument();
+    await waitFor(() => expect(nextTransitionCalls).toBeGreaterThan(callsBeforeSave));
+
+    await user.type(input, ' editada');
+    expect(screen.queryByText('Cronograma guardado')).not.toBeInTheDocument();
+  });
+
+  it('marks missing start date and indicator with field errors and focuses alert summary', async () => {
+    const user = userEvent.setup();
+    let putCalls = 0;
+
+    server.use(
+      http.get('*/process-executions/exec-1/schedule', () =>
+        HttpResponse.json({
+          items: [
+            {
+              ...SAMPLE_PENDING,
+              indicator: null,
+              startDate: null,
+              endDate: null,
+            },
+          ],
+        }),
+      ),
+      http.put('*/process-executions/exec-1/schedule', () => {
+        putCalls += 1;
+        return HttpResponse.json({ items: [] });
+      }),
+    );
+
+    renderWithProviders(<ScheduleEditorPage executionId="exec-1" />, { permissions: ALL_PERMS });
+
+    await screen.findByLabelText('Actividad 1');
+    await user.click(screen.getByRole('button', { name: /Guardar cronograma/i }));
+
+    const alerts = await screen.findAllByRole('alert');
+    const alertSummary = alerts[0]!;
+    expect(alertSummary).toHaveTextContent('Indica el indicador de la actividad 1');
+    expect(alertSummary).toHaveTextContent('Indica la fecha de inicio de la actividad 1');
+    expect(alertSummary).toHaveTextContent('Indica la fecha de fin de la actividad 1');
+    expect(alertSummary).toHaveFocus();
+    expect(screen.getByLabelText('Indicador 1')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText('Fecha de inicio 1')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText('Fecha de fin 1')).toHaveAttribute('aria-invalid', 'true');
+    expect(putCalls).toBe(0);
+  });
+
+  it('sends a single save request on double submit', async () => {
+    const user = userEvent.setup();
+    let putCalls = 0;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    server.use(
+      http.get('*/process-executions/exec-1/schedule', () =>
+        HttpResponse.json({ items: [SAMPLE_PENDING] }),
+      ),
+      http.put('*/process-executions/exec-1/schedule', async () => {
+        putCalls += 1;
+        await gate;
+        return HttpResponse.json({ items: [SAMPLE_PENDING] });
+      }),
+    );
+
+    renderWithProviders(<ScheduleEditorPage executionId="exec-1" />, { permissions: ALL_PERMS });
+
+    await screen.findByLabelText('Actividad 1');
+    const saveButton = screen.getByRole('button', { name: /Guardar cronograma/i });
+    await user.dblClick(saveButton);
+
+    expect(await screen.findByRole('button', { name: /Guardando/i })).toBeDisabled();
+    expect(putCalls).toBe(1);
+
+    release();
+    expect(await screen.findByText('Cronograma guardado')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /Guardar cronograma/i })).toBeEnabled(),
+    );
+  });
+
+  it('locks every control when the execution is voided', async () => {
+    server.use(
+      http.get('*/process-executions/exec-1/next-transition', () =>
+        HttpResponse.json({
+          executionId: 'exec-1',
+          status: 'VOIDED',
+          nextStatus: null,
+          preconditions: [],
+          canAdvance: false,
+        }),
+      ),
+      http.get('*/process-executions/exec-1/schedule', () =>
+        HttpResponse.json({ items: [SAMPLE_PENDING, SAMPLE_OVERDUE] }),
+      ),
+    );
+
+    renderWithProviders(<ScheduleEditorPage executionId="exec-1" />, { permissions: ALL_PERMS });
+
+    expect(
+      await screen.findByText(/La ejecución está Anulada; el cronograma es de solo lectura/i),
+    ).toBeInTheDocument();
+
+    expect(screen.getByLabelText('Actividad 1')).toBeDisabled();
+    expect(screen.getByLabelText('Responsable 1')).toBeDisabled();
+    expect(screen.getByLabelText('Meta 1')).toBeDisabled();
+    expect(screen.getByLabelText('Indicador 1')).toBeDisabled();
+    expect(screen.getByLabelText('Fecha de inicio 1')).toBeDisabled();
+    expect(screen.getByLabelText('Fecha de fin 1')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Subir actividad 2' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Bajar actividad 1' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Quitar actividad 1' })).toBeDisabled();
+    expect(screen.getAllByRole('button', { name: /Iniciar/i })[0]).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Agregar actividad/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Guardar cronograma/i })).toBeDisabled();
+  });
+
+  it('locks every control when the execution is closed', async () => {
+    server.use(
+      http.get('*/process-executions/exec-1/next-transition', () =>
+        HttpResponse.json({
+          executionId: 'exec-1',
+          status: 'CLOSED',
+          nextStatus: null,
+          preconditions: [],
+          canAdvance: false,
+        }),
+      ),
+      http.get('*/process-executions/exec-1/schedule', () => HttpResponse.json({ items: [] })),
+    );
+
+    renderWithProviders(<ScheduleEditorPage executionId="exec-1" />, { permissions: ALL_PERMS });
+
+    expect(
+      await screen.findByText(/La ejecución está Cerrada; el cronograma es de solo lectura/i),
+    ).toBeInTheDocument();
+
+    expect(screen.getByRole('button', { name: /Proponer actividades/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Agregar actividad/i })).toBeDisabled();
+  });
 });

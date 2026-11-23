@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useFieldArray, useForm } from 'react-hook-form';
+import { useFieldArray, useForm, type FieldErrors } from 'react-hook-form';
 import {
   SCHEDULE_MAX_ITEMS,
   type SaveScheduleRequest,
@@ -24,28 +24,60 @@ import { ScheduleActivityRow } from './schedule-activity-row';
 
 export interface ScheduleEditorProps {
   readonly items: readonly ScheduleActivityDto[];
+  readonly readOnly?: boolean;
   readonly isProposing: boolean;
   readonly isSaving: boolean;
   readonly isChangingStatus: boolean;
   readonly errorMessage: string | null;
+  readonly showSavedNotice?: boolean;
   readonly onPropose: () => void;
   readonly onSave: (payload: SaveScheduleRequest) => void;
   readonly onStartActivity: (activityId: string) => void;
   readonly onCompleteActivity: (activityId: string, actualEndDate?: string) => void;
 }
 
+function collectValidationMessages(errors: FieldErrors<ScheduleEditorFormValues>): string[] {
+  const messages: string[] = [];
+  const activityErrors = errors.activities;
+  if (!Array.isArray(activityErrors)) {
+    return messages;
+  }
+  const fields: (keyof ScheduleEditorFormValues['activities'][number])[] = [
+    'activity',
+    'responsible',
+    'goal',
+    'indicator',
+    'startDate',
+    'endDate',
+  ];
+  for (const rowError of activityErrors) {
+    if (!rowError) continue;
+    for (const field of fields) {
+      const message = rowError[field]?.message;
+      if (typeof message === 'string' && message.length > 0) {
+        messages.push(message);
+      }
+    }
+  }
+  return messages;
+}
+
 export function ScheduleEditor({
   items,
+  readOnly = false,
   isProposing,
   isSaving,
   isChangingStatus,
   errorMessage,
+  showSavedNotice = false,
   onPropose,
   onSave,
   onStartActivity,
   onCompleteActivity,
 }: ScheduleEditorProps) {
   const { allowed: canEdit } = usePermission('cronograma.editar');
+  const [focusAlertCount, setFocusAlertCount] = useState(0);
+  const validationSummaryRef = useRef<HTMLDivElement>(null);
 
   const {
     control,
@@ -69,11 +101,23 @@ export function ScheduleEditor({
     reset({ activities: items.map(mapDtoToFormItem) });
   }, [items, reset]);
 
-  const isBusy = isProposing || isSaving || isChangingStatus;
+  useEffect(() => {
+    if (focusAlertCount > 0) {
+      validationSummaryRef.current?.focus();
+    }
+  }, [focusAlertCount]);
 
-  const submitForm = handleSubmit((values) => {
-    onSave(toSaveScheduleRequest(values));
-  });
+  const isBusy = isProposing || isSaving || isChangingStatus;
+  const validationMessages = collectValidationMessages(errors);
+
+  const submitForm = handleSubmit(
+    (values) => {
+      onSave(toSaveScheduleRequest(values));
+    },
+    () => {
+      setFocusAlertCount((count) => count + 1);
+    },
+  );
 
   if (fields.length === 0) {
     return (
@@ -91,14 +135,14 @@ export function ScheduleEditor({
           action={
             <Can permission="cronograma.editar">
               <div className="flex flex-wrap justify-center gap-2">
-                <Button type="button" disabled={isBusy} onClick={onPropose}>
+                <Button type="button" disabled={isBusy || readOnly} onClick={onPropose}>
                   <Sparkles className="size-4" aria-hidden="true" />
                   {isProposing ? 'Proponiendo…' : 'Proponer actividades'}
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
-                  disabled={isBusy}
+                  disabled={isBusy || readOnly}
                   onClick={() => append(createEmptyFormItem())}
                 >
                   <Plus className="size-4" aria-hidden="true" />
@@ -120,7 +164,26 @@ export function ScheduleEditor({
         </Alert>
       ) : null}
 
-      {canEdit && isDirty ? (
+      {validationMessages.length > 0 ? (
+        <Alert variant="danger" role="alert" ref={validationSummaryRef} tabIndex={-1}>
+          <AlertDescription>
+            <p className="font-medium">Revisa los campos marcados antes de guardar:</p>
+            <ul className="mt-1 list-disc pl-5 text-sm">
+              {validationMessages.map((msg) => (
+                <li key={msg}>{msg}</li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {showSavedNotice && !errorMessage && !isDirty ? (
+        <Alert variant="success" role="status">
+          <AlertDescription>Cronograma guardado</AlertDescription>
+        </Alert>
+      ) : null}
+
+      {canEdit && isDirty && !readOnly ? (
         <Alert role="status">
           <AlertDescription>Guarda los cambios antes de cambiar el estado.</AlertDescription>
         </Alert>
@@ -170,6 +233,7 @@ export function ScheduleEditor({
                 total={fields.length}
                 item={field}
                 canEdit={canEdit}
+                readOnly={readOnly}
                 isDirty={isDirty}
                 isSaving={isSaving}
                 isChangingStatus={isChangingStatus}
@@ -201,14 +265,14 @@ export function ScheduleEditor({
           <Button
             type="button"
             variant="outline"
-            disabled={isBusy || fields.length >= SCHEDULE_MAX_ITEMS}
+            disabled={isBusy || readOnly || fields.length >= SCHEDULE_MAX_ITEMS}
             onClick={() => append(createEmptyFormItem())}
           >
             <Plus className="size-4" aria-hidden="true" />
             Agregar actividad
           </Button>
 
-          <Button type="submit" disabled={isBusy}>
+          <Button type="submit" disabled={isBusy || readOnly}>
             <Save className="size-4" aria-hidden="true" />
             {isSaving ? 'Guardando…' : 'Guardar cronograma'}
           </Button>

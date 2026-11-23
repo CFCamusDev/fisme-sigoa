@@ -1,4 +1,5 @@
 import type { ApiError } from '@/lib/api-error';
+import { readableApiMessage } from '@/lib/validation-errors';
 
 const GENERIC = 'Ha ocurrido un error inesperado. Por favor, intenta de nuevo.';
 const SERVER_DOWN =
@@ -20,9 +21,10 @@ export function getCatalogErrorMessage(error: unknown): string {
       return 'No hay un programa de estudios configurado. Pide al Administrador que lo registre.';
     case 409:
       // El servidor ya explica qué hacer (cerrar o aprobar la versión abierta).
-      return typeof apiErr.message === 'string' && apiErr.message.trim().length > 0
-        ? apiErr.message
-        : 'Ya existe una versión en Borrador o En validación. Ciérrala o apruébala antes de crear otra.';
+      return readableApiMessage(
+        apiErr,
+        'Ya existe una versión en Borrador o En validación. Ciérrala o apruébala antes de crear otra.',
+      );
     default:
       break;
   }
@@ -50,9 +52,10 @@ export function getCatalogEditErrorMessage(error: unknown): string {
       return 'La versión o el elemento ya no existe. Recarga la página para ver el estado actual.';
     case 409:
       // El servidor explica el motivo: versión bloqueada, código repetido, orden desfasado o tope.
-      return typeof apiErr.message === 'string' && apiErr.message.trim().length > 0
-        ? apiErr.message
-        : 'No se pudo guardar porque la versión cambió. Recarga la página e inténtalo de nuevo.';
+      return readableApiMessage(
+        apiErr,
+        'No se pudo guardar porque la versión cambió. Recarga la página e inténtalo de nuevo.',
+      );
     default:
       break;
   }

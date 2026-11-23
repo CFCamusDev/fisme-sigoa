@@ -1,6 +1,7 @@
 import type { AuditLogger } from '../../../shared/audit/audit-logger.js';
 import { AppError } from '../../../shared/errors/app-error.js';
 import type { PdfGenerator } from '../../../shared/pdf/pdf-generator.js';
+import { withEmptyPdfHeader } from '../../../shared/pdf/pdf-options.js';
 import { computeSha256 } from '../../../shared/storage/file-hash.js';
 import type { UnitOfWork } from '../../../shared/unit-of-work/unit-of-work.js';
 import { OfficialDownloadRecord } from '../domain/entities/official-download-record.js';
@@ -129,13 +130,13 @@ export class GenerateAnnexPdfUseCase {
 
       const pdf = await this.deps.pdfGenerator.render({
         html,
-        options: {
+        options: withEmptyPdfHeader({
           format: 'A4',
           preferCSSPageSize: true,
           printBackground: true,
           displayHeaderFooter: true,
           footerTemplate,
-        },
+        }),
       });
 
       if (pdf.byteLength > MAX_ANNEX_PDF_BYTES) {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { InvalidStakeholderDataError } from '../errors/invalid-stakeholder-data-error.js';
 import { InvalidStakeholderTransitionError } from '../errors/invalid-stakeholder-transition-error.js';
-import { Stakeholder } from './stakeholder.js';
+import { Stakeholder, collectStakeholderDataErrors } from './stakeholder.js';
 
 const NOW = new Date('2026-11-16T10:00:00.000Z');
 const LATER = new Date('2026-11-16T12:00:00.000Z');
@@ -291,5 +291,31 @@ describe('Stakeholder', () => {
         now: LATER,
       }),
     ).toThrow(InvalidStakeholderTransitionError);
+  });
+
+  it('collects data errors and register throws the first one', () => {
+    const input = {
+      kind: 'INSTITUTION' as const,
+      fullName: 'Empresa Sin RUC',
+      ruc: '123',
+      email: 'correo-malo',
+      mobile: '12345',
+    };
+
+    const errors = collectStakeholderDataErrors(input);
+    expect(errors).toEqual([
+      'El correo electrónico no tiene un formato válido.',
+      'El celular debe tener 9 dígitos e iniciar con 9.',
+      'Una institución requiere un RUC válido de 11 dígitos.',
+    ]);
+
+    expect(() =>
+      Stakeholder.register({
+        id: 'stk-collect-1',
+        ...input,
+        actorId: 'user-1',
+        now: NOW,
+      }),
+    ).toThrow(errors[0]);
   });
 });

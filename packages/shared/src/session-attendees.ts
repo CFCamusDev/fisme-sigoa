@@ -57,6 +57,8 @@ export const sessionAttendeeRosterItemSchema = z
     listMemberId: z.string(),
     fullName: z.string(),
     institution: z.string().nullable(),
+    ruc: z.string().nullable(),
+    representative: z.string().nullable(),
     memberPosition: z.string().nullable(),
     attended: z.boolean(),
     position: z.string().nullable(),

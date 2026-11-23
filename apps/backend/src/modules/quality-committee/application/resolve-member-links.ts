@@ -2,6 +2,7 @@ import type { CommitteeMemberInput } from '@sigoa/shared';
 import {
   CommitteeMemberUserNotFoundError,
   InvalidQualityCommitteeDataError,
+  type CommitteeMemberUserNotFoundIssue,
 } from '../domain/errors/index.js';
 import {
   assertCommitteeComposition,
@@ -72,11 +73,14 @@ export async function resolveCommitteeMembers({
     usersById.set(user.id, user);
   }
 
-  const resolvedInputs = prepared.map((item) => {
+  const notFoundIssues: CommitteeMemberUserNotFoundIssue[] = [];
+
+  const resolvedInputs = prepared.map((item, index) => {
     if (item.userId !== null) {
       const user = usersById.get(item.userId);
       if (!user || user.status === 'INACTIVE') {
-        throw new CommitteeMemberUserNotFoundError();
+        notFoundIssues.push({ index });
+        return null;
       }
       return {
         fullName: item.fullName,
@@ -89,7 +93,8 @@ export async function resolveCommitteeMembers({
     if (item.userEmail !== null) {
       const user = usersFoundByEmail.get(item.userEmail);
       if (!user || user.status === 'INACTIVE') {
-        throw new CommitteeMemberUserNotFoundError();
+        notFoundIssues.push({ index, email: item.userEmail });
+        return null;
       }
       return {
         fullName: item.fullName,
@@ -107,7 +112,13 @@ export async function resolveCommitteeMembers({
     };
   });
 
-  const entries = assertCommitteeComposition({ members: resolvedInputs });
+  if (notFoundIssues.length > 0) {
+    throw new CommitteeMemberUserNotFoundError(notFoundIssues);
+  }
+
+  const entries = assertCommitteeComposition({
+    members: resolvedInputs.filter((entry): entry is NonNullable<typeof entry> => entry !== null),
+  });
 
   return {
     entries,

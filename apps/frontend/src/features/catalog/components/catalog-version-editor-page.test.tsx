@@ -498,8 +498,8 @@ describe('CatalogVersionEditorPage send to validation (HU-015, T-015-09, CA1, CA
     const list = await screen.findByRole('list', { name: 'Precondiciones para el envío' });
     const items = within(list).getAllByRole('listitem');
     expect(items).toHaveLength(2);
-    expect(items[0]).toHaveTextContent('Al menos un objetivo educacional: cumplida');
-    expect(items[1]).toHaveTextContent('Al menos un atributo del graduado: pendiente');
+    expect(items[0]).toHaveTextContent('Al menos un objetivo educacional (cumplida)');
+    expect(items[1]).toHaveTextContent('Al menos un atributo del graduado (pendiente)');
     expect(sendButton()).toBeDisabled();
   });
 
@@ -510,7 +510,7 @@ describe('CatalogVersionEditorPage send to validation (HU-015, T-015-09, CA1, CA
 
     const list = await screen.findByRole('list', { name: 'Precondiciones para el envío' });
     expect(within(list).getAllByRole('listitem')[0]).toHaveTextContent(
-      'Al menos un objetivo educacional: pendiente',
+      'Al menos un objetivo educacional (pendiente)',
     );
     expect(sendButton()).toBeDisabled();
   });

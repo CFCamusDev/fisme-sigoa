@@ -148,6 +148,7 @@ export function SessionAttendeesPanel({ session, onSaved, onCancel }: SessionAtt
           <SessionAttendeesField
             items={rosterItems}
             selected={selected}
+            stakeholderType={session.stakeholderType}
             disabled={registerMutation.isPending}
             onToggle={handleToggle}
             onPositionChange={handlePositionChange}

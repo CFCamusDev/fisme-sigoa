@@ -24,14 +24,19 @@ type ActivePanel =
   | { readonly type: 'edit'; readonly stakeholder: StakeholderDto }
   | { readonly type: 'void'; readonly stakeholder: StakeholderDto };
 
-export function StakeholdersPage() {
+export interface StakeholdersPageProps {
+  readonly initialEditId?: string;
+}
+
+export function StakeholdersPage({ initialEditId }: StakeholdersPageProps = {}) {
   const [filters, setFilters] = useState<StakeholdersFiltersState>({
     search: '',
     kind: '',
     status: '',
   });
   const [page, setPage] = useState(1);
-  const [panel, setPanel] = useState<ActivePanel>({ type: 'none' });
+  const [manualPanel, setManualPanel] = useState<ActivePanel | null>(null);
+  const [dismissedEditId, setDismissedEditId] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const successAlertRef = useRef<HTMLDivElement>(null);
 
@@ -48,6 +53,13 @@ export function StakeholdersPage() {
       successAlertRef.current?.focus();
     }
   }, [successMessage]);
+
+  function setPanel(next: ActivePanel) {
+    setManualPanel(next);
+    if (initialEditId) {
+      setDismissedEditId(initialEditId);
+    }
+  }
 
   function handleApplyFilters(next: StakeholdersFiltersState) {
     setFilters(next);
@@ -73,6 +85,25 @@ export function StakeholdersPage() {
   const total = query.data?.total ?? 0;
   const totalPages = query.data?.totalPages ?? 0;
 
+  const initialEditTarget =
+    initialEditId &&
+    dismissedEditId !== initialEditId &&
+    manualPanel === null &&
+    !query.isLoading &&
+    !query.isError
+      ? (items.find((item) => item.id === initialEditId) ?? null)
+      : undefined;
+
+  const initialEditMissing =
+    initialEditTarget === null ||
+    (initialEditTarget !== undefined && initialEditTarget.status === 'VOIDED');
+
+  const panel: ActivePanel =
+    manualPanel ??
+    (initialEditTarget && initialEditTarget.status !== 'VOIDED'
+      ? { type: 'edit', stakeholder: initialEditTarget }
+      : { type: 'none' });
+
   return (
     <section className="space-y-6 bg-background text-foreground">
       <PageHeader
@@ -93,6 +124,12 @@ export function StakeholdersPage() {
           </Can>
         }
       />
+
+      {initialEditMissing ? (
+        <Alert variant="warning">
+          <AlertDescription>No se encontró el constituyente solicitado.</AlertDescription>
+        </Alert>
+      ) : null}
 
       {successMessage ? (
         <Alert ref={successAlertRef} variant="success" tabIndex={-1}>

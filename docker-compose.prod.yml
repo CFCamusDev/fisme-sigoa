@@ -36,6 +36,10 @@ services:
       ADMIN_FULL_NAME: ${ADMIN_FULL_NAME:-}
       ADMIN_DNI: ${ADMIN_DNI:-}
       ADMIN_INITIAL_PASSWORD: ${ADMIN_INITIAL_PASSWORD:-}
+      # Reinicio controlado de datos en staging (solo `migrate`, apagado por defecto; aborta en producción).
+      DB_RESET_ON_DEPLOY: ${DB_RESET_ON_DEPLOY:-false}
+      DB_RESET_CONFIRM: ${DB_RESET_CONFIRM:-}
+      APP_PUBLIC_URL: ${APP_PUBLIC_URL:-}
 
   backend:
     build:

@@ -38,6 +38,8 @@ export class PrismaSessionListMemberReader implements SessionListMemberReader {
         id: true,
         fullName: true,
         institution: true,
+        ruc: true,
+        representative: true,
         position: true,
       },
     });

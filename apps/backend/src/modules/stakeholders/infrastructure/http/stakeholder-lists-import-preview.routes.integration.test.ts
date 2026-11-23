@@ -238,4 +238,26 @@ describe('POST /stakeholder-lists/:id/import/preview (PostgreSQL real, HU-023, T
     expect(response.body.rows[0]?.email).toBeUndefined();
     expect(response.body.rows[0]?.mobile).toBeUndefined();
   }, 5_000);
+
+  it('returns every error of a row with multiple invalid fields and accepts a valid row', async () => {
+    const listId = await createStakeholderListRow(prisma, { type: 'EMPLOYER', year: 2027 });
+    const member = await createActor(['COMMITTEE_MEMBER']);
+    const headers = getStakeholderImportColumns('EMPLOYER').map((col) => col.header);
+    const buffer = await buildWorkbookBuffer(headers, [
+      ['123', 'Empresa Mal', 'Tecnologia', 'Carlos', 'correo-malo', '12345', 'Gerente'],
+      ['20123456789', 'Empresa Ok', 'Tecnologia', 'Ana', 'ana@ok.test', '987654321', 'Gerente'],
+    ]);
+
+    const response = await postPreview(listId, member.token).send(buffer);
+    expect(response.status).toBe(200);
+    expect(response.body.rows[0]?.status).toBe('INVALID');
+    expect(response.body.rows[0]?.errors).toEqual(
+      expect.arrayContaining([
+        'El RUC debe tener exactamente 11 dígitos numéricos.',
+        'El correo electrónico no tiene un formato válido.',
+        'El celular debe tener 9 dígitos e iniciar con 9.',
+      ]),
+    );
+    expect(response.body.rows[1]?.status).toBe('NEW');
+  }, 5_000);
 });

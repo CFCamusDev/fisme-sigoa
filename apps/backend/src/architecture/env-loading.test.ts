@@ -39,6 +39,7 @@ describe('Environment loading architecture rules (T-004-18, AGENTS §9)', () => 
       path.normalize(path.join(backendSrcDir, 'config', 'load-env-file.ts')),
       path.normalize(path.join(backendSrcDir, 'server.ts')),
       path.normalize(path.join(backendSrcDir, 'seed.ts')),
+      path.normalize(path.join(backendSrcDir, 'reset-database.ts')),
       path.normalize(path.join(backendSrcDir, 'provision-app-role.ts')),
       path.normalize(path.join(backendSrcDir, 'smoke-adapters.ts')),
     ]);

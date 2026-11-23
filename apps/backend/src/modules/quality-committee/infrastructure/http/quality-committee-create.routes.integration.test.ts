@@ -284,6 +284,14 @@ describe('POST /quality-committees (PostgreSQL real, HU-025, T-025-25, RF-025, R
       ],
     });
     expect(unknown.status).toBe(409);
+    expect(unknown.body.error.message).toContain('desconocido@example.test');
+    expect(unknown.body.error.details).toEqual([
+      {
+        path: 'members.0.userEmail',
+        message:
+          'No existe un usuario activo con el correo desconocido@example.test. Revisa el correo o deja el vínculo vacío.',
+      },
+    ]);
 
     const inactive = await postCommittee(president.token).send({
       periodStart: '2027-01-01',
@@ -298,7 +306,14 @@ describe('POST /quality-committees (PostgreSQL real, HU-025, T-025-25, RF-025, R
       ],
     });
     expect(inactive.status).toBe(409);
-    expect(unknown.body.message).toBe(inactive.body.message);
+    expect(inactive.body.error.message).toContain('rosa.vega@example.test');
+    expect(inactive.body.error.details).toEqual([
+      {
+        path: 'members.0.userEmail',
+        message:
+          'No existe un usuario activo con el correo rosa.vega@example.test. Revisa el correo o deja el vínculo vacío.',
+      },
+    ]);
   }, 5_000);
 
   it('registers exactly one committee under concurrent overlapping POST requests', async () => {

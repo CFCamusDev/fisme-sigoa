@@ -233,8 +233,9 @@ export function StakeholderListsPage() {
                   <Button
                     type="button"
                     variant="outline"
-                    disabled={downloadPdfMutation.isPending}
+                    disabled={downloadPdfMutation.isPending || members.length === 0}
                     aria-busy={downloadPdfMutation.isPending}
+                    aria-describedby={members.length === 0 ? 'pdf-empty-list-reason' : undefined}
                     onClick={() => void handleDownloadPdf(list)}
                   >
                     <FileDown className="mr-2 size-4" aria-hidden="true" />
@@ -243,6 +244,12 @@ export function StakeholderListsPage() {
                 </Can>
               </div>
             </div>
+
+            {members.length === 0 ? (
+              <p id="pdf-empty-list-reason" className="text-xs text-muted-foreground">
+                Agrega al menos un miembro para descargar el PDF.
+              </p>
+            ) : null}
 
             {pdfError ? (
               <Alert variant="danger" role="alert">

@@ -312,7 +312,7 @@ describe('ProcessExecution', () => {
     }
   });
 
-  it('requires a non empty reason of at most 500 characters to void', () => {
+  it('requires a reason between 10 and 500 characters to void', () => {
     const execution = ProcessExecution.create({
       id: 'exec-void-val',
       programId: PROGRAM_ID,
@@ -325,6 +325,10 @@ describe('ProcessExecution', () => {
     const voidNow = new Date('2027-02-01T10:00:00.000Z');
 
     expect(() => execution.void({ actorId: 'user-2', now: voidNow, reason: '   ' })).toThrow(
+      InvalidProcessExecutionDataError,
+    );
+
+    expect(() => execution.void({ actorId: 'user-2', now: voidNow, reason: 'Corto' })).toThrow(
       InvalidProcessExecutionDataError,
     );
 
