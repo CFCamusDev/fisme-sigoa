@@ -54,9 +54,9 @@ describe('ParametersPage Component (HU-011, T-011-21)', () => {
       }),
     );
 
-    renderWithProviders(<ParametersPage />, { withRouter: false });
+    renderWithProviders(<ParametersPage />);
 
-    expect(screen.getAllByText(/cargando parámetros/i).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(/cargando parámetros/i)).length).toBeGreaterThan(0);
     release();
     expect(await screen.findByRole('table', { name: 'Parámetros vigentes' })).toBeInTheDocument();
   });
@@ -66,7 +66,7 @@ describe('ParametersPage Component (HU-011, T-011-21)', () => {
       HttpResponse.json({ error: { code: 'FORBIDDEN', message: 'Sin permiso' } }, { status: 403 }),
     );
 
-    renderWithProviders(<ParametersPage />, { withRouter: false });
+    renderWithProviders(<ParametersPage />);
 
     expect(
       await screen.findByText(/no tienes permiso para consultar los parámetros/i),
@@ -88,7 +88,7 @@ describe('ParametersPage Component (HU-011, T-011-21)', () => {
     });
     const user = userEvent.setup();
 
-    renderWithProviders(<ParametersPage />, { withRouter: false });
+    renderWithProviders(<ParametersPage />);
 
     expect(await screen.findByText(/error al cargar los parámetros/i)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /reintentar/i }));
@@ -99,7 +99,7 @@ describe('ParametersPage Component (HU-011, T-011-21)', () => {
   it('shows the seven defaults (CA1)', async () => {
     useHandlers(() => buildParametersResponse('2027-I'));
 
-    renderWithProviders(<ParametersPage />, { withRouter: false });
+    renderWithProviders(<ParametersPage />);
 
     const table = await screen.findByRole('table', { name: 'Parámetros vigentes' });
     const rows = within(table).getAllByRole('row').slice(1);
@@ -120,7 +120,7 @@ describe('ParametersPage Component (HU-011, T-011-21)', () => {
   it('states that defaults apply when there are no started semesters', async () => {
     useHandlers(() => buildParametersResponse(null));
 
-    renderWithProviders(<ParametersPage />, { withRouter: false });
+    renderWithProviders(<ParametersPage />);
 
     expect(await screen.findByText(/aún no hay semestres iniciados/i)).toBeInTheDocument();
   });
@@ -129,11 +129,12 @@ describe('ParametersPage Component (HU-011, T-011-21)', () => {
     useHandlers(() => buildParametersResponseWithNewVersion());
     const user = userEvent.setup();
 
-    renderWithProviders(<ParametersPage />, { withRouter: false });
+    renderWithProviders(<ParametersPage />);
 
     const table = await screen.findByRole('table', { name: 'Parámetros vigentes' });
     expect(within(table).getByText('15 / 20')).toBeInTheDocument();
 
+    await user.click(screen.getByRole('tab', { name: 'Historial de vigencias' }));
     const history = screen.getByRole('region', { name: 'Historial de vigencias' });
     await user.click(within(history).getByText(/Umbral de logrado/));
     const versions = within(history).getByRole('table', { name: 'Historial de Umbral de logrado' });
@@ -147,11 +148,13 @@ describe('ParametersPage Component (HU-011, T-011-21)', () => {
   });
 
   it('says that a parameter without changes has a single version', async () => {
+    const user = userEvent.setup();
     useHandlers(() => buildParametersResponse());
 
-    renderWithProviders(<ParametersPage />, { withRouter: false });
+    renderWithProviders(<ParametersPage />);
 
     await screen.findByRole('table', { name: 'Parámetros vigentes' });
+    await user.click(screen.getByRole('tab', { name: 'Historial de vigencias' }));
     expect(screen.getAllByText('Sin cambios')).toHaveLength(7);
   });
 
@@ -165,7 +168,7 @@ describe('ParametersPage Component (HU-011, T-011-21)', () => {
     });
     const user = userEvent.setup();
 
-    renderWithProviders(<ParametersPage />, { withRouter: false });
+    renderWithProviders(<ParametersPage />);
     await screen.findByText(/rigen en el semestre 2027-I/i);
 
     await user.selectOptions(screen.getByLabelText('Ver valores vigentes en'), '2026-II');
@@ -177,11 +180,72 @@ describe('ParametersPage Component (HU-011, T-011-21)', () => {
   it('offers "Hoy" plus the existing semesters in the selector', async () => {
     useHandlers(() => buildParametersResponse());
 
-    renderWithProviders(<ParametersPage />, { withRouter: false });
+    renderWithProviders(<ParametersPage />);
     await screen.findByRole('table', { name: 'Parámetros vigentes' });
 
     const select = screen.getByLabelText('Ver valores vigentes en');
     const options = await within(select).findAllByRole('option');
     expect(options.map((option) => option.textContent)).toEqual(['Hoy', '2027-I', '2026-II']);
+  });
+
+  it('shows the three tabs and defaults to current values', async () => {
+    useHandlers(() => buildParametersResponse('2027-I'));
+
+    renderWithProviders(<ParametersPage />, {
+      permissions: [
+        { code: 'parametro.ver', scope: 'GLOBAL' },
+        { code: 'parametro.editar', scope: 'GLOBAL' },
+      ],
+    });
+
+    const vigentesTab = await screen.findByRole('tab', { name: 'Valores vigentes' });
+    expect(vigentesTab).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Historial de vigencias' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Definir parámetros' })).toBeInTheDocument();
+  });
+
+  it('hides Definir parámetros without parametro.editar and falls back', async () => {
+    useHandlers(() => buildParametersResponse('2027-I'));
+
+    renderWithProviders(<ParametersPage />, {
+      initialEntries: ['/configuracion/parametros?tab=definir'],
+      permissions: [{ code: 'parametro.ver', scope: 'GLOBAL' }],
+    });
+
+    const vigentesTab = await screen.findByRole('tab', { name: 'Valores vigentes' });
+    expect(vigentesTab).toHaveAttribute('aria-selected', 'true');
+    expect(screen.queryByRole('tab', { name: 'Definir parámetros' })).not.toBeInTheDocument();
+  });
+
+  it('moves to current values after saving', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get('http://localhost:3000/semesters', () => HttpResponse.json(semesters)),
+      http.get('http://localhost:3000/parameters', ({ request }) => {
+        const code = new URL(request.url).searchParams.get('semesterCode');
+        return HttpResponse.json(buildParametersResponse(code ?? '2027-I'));
+      }),
+      http.post('http://localhost:3000/parameters', () =>
+        HttpResponse.json({ effectiveFromSemester: '2027-I' }, { status: 201 }),
+      ),
+    );
+
+    renderWithProviders(<ParametersPage />, {
+      initialEntries: ['/configuracion/parametros?tab=definir'],
+      permissions: [
+        { code: 'parametro.ver', scope: 'GLOBAL' },
+        { code: 'parametro.editar', scope: 'GLOBAL' },
+      ],
+    });
+
+    const input = await screen.findByRole('spinbutton', { name: 'Umbral de logrado' });
+    await user.clear(input);
+    await user.type(input, '15');
+    await user.click(screen.getByRole('button', { name: 'Guardar parámetros' }));
+
+    expect(await screen.findByRole('tab', { name: 'Valores vigentes' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
   });
 });

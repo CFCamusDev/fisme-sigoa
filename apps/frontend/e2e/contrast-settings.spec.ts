@@ -56,6 +56,7 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Settings', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Parámetros' })).toBeVisible();
     await expect(page.getByRole('heading', { level: 2, name: 'Valores vigentes' })).toBeVisible();
 
+    await page.getByRole('tab', { name: 'Historial de vigencias' }).click();
     await page.getByText('Umbral de logrado', { exact: false }).last().click();
     await expectNoContrastViolations(page, { context: 'parameters-page-history-desktop' });
     await page.setViewportSize(MOBILE);
@@ -63,6 +64,7 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Settings', () => {
     await page.setViewportSize(DESKTOP);
 
     // Error de pesos visible (el esquema compartido lo rechaza antes de llamar a la API)
+    await page.getByRole('tab', { name: 'Definir parámetros' }).click();
     const [formRes] = await Promise.all([
       page.waitForResponse(
         (res) =>
