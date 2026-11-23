@@ -168,11 +168,7 @@ export function SessionsPage() {
           </div>
 
           {panelState.mode === 'create' && (
-            <SessionForm
-              defaultExecutionId={activeExecutionId}
-              onSaved={handleSaved}
-              onCancel={() => setPanelState({ mode: 'closed' })}
-            />
+            <SessionForm onSaved={handleSaved} onCancel={() => setPanelState({ mode: 'closed' })} />
           )}
 
           {panelState.mode === 'edit' && (

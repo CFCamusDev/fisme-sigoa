@@ -24,7 +24,6 @@ import { SESSION_MODALITY_LABELS } from '../lib/session-labels';
 import { SessionExecutionsField } from './session-executions-field';
 
 export interface SessionFormProps {
-  readonly defaultExecutionId?: string;
   readonly session?: SessionDto;
   readonly onSaved: (session: SessionDto) => void;
   readonly onCancel: () => void;
@@ -43,7 +42,7 @@ function parseDateYear(isoDate: string): number {
   return Number.isInteger(year) ? year : new Date().getFullYear();
 }
 
-export function SessionForm({ defaultExecutionId, session, onSaved, onCancel }: SessionFormProps) {
+export function SessionForm({ session, onSaved, onCancel }: SessionFormProps) {
   const uid = useId();
   const [serverError, setServerError] = useState<string | null>(null);
   const canReadStakeholderLists = usePermission('constituyente.ver');
@@ -72,11 +71,7 @@ export function SessionForm({ defaultExecutionId, session, onSaved, onCancel }: 
       modality: session?.modality ?? 'IN_PERSON',
       meetingUrl: session?.meetingUrl ?? '',
       recordingUrl: session?.recordingUrl ?? '',
-      executionIds: session
-        ? [...session.executionIds]
-        : defaultExecutionId
-          ? [defaultExecutionId]
-          : [],
+      executionIds: session ? [...session.executionIds] : [],
     },
   });
 
