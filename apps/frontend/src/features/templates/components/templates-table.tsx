@@ -61,7 +61,8 @@ export function TemplatesTable({ templates }: TemplatesTableProps) {
             </TableCell>
             <TableCell>
               <Link
-                to={`/plantillas/${template.id}` as '/plantillas'}
+                to="/plantillas/$templateId"
+                params={{ templateId: template.id }}
                 aria-label={`Abrir ${template.code}`}
                 className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}
               >
