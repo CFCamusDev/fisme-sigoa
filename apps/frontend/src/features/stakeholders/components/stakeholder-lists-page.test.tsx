@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, delay, http } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
@@ -83,9 +83,11 @@ describe('StakeholderListsPage (HU-022, T-022-28)', () => {
     await user.type(yearInput, '2027');
     await user.click(screen.getByRole('button', { name: /Ver lista/i }));
 
-    await screen.findByRole('button', { name: /Crear lista/i });
-    await user.type(screen.getByLabelText(/N\.° de plan de estudios/i), '2024-II');
-    await user.click(screen.getByRole('button', { name: /Crear lista/i }));
+    await user.click(await screen.findByRole('button', { name: /Crear lista/i }));
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toHaveClass('w-[640px]');
+    await user.type(within(dialog).getByLabelText(/N\.° de plan de estudios/i), '2024-II');
+    await user.click(within(dialog).getByRole('button', { name: /Crear lista/i }));
 
     expect(await screen.findByRole('status')).toHaveTextContent(/creada correctamente/i);
   });
@@ -229,10 +231,13 @@ describe('StakeholderListsPage (HU-022, T-022-28)', () => {
       permissions: EDIT_PERMISSIONS,
     });
 
-    const submitButton = await screen.findByRole('button', { name: /Crear lista/i });
-    await user.click(submitButton);
+    await user.click(await screen.findByRole('button', { name: /Crear lista/i }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: /Crear lista/i }));
 
-    await waitFor(() => expect(screen.getByRole('button', { name: /Guardando…/i })).toBeDisabled());
+    await waitFor(() =>
+      expect(within(dialog).getByRole('button', { name: /Guardando…/i })).toBeDisabled(),
+    );
 
     resolvePost();
     await waitFor(() => expect(screen.getByRole('status')).toBeInTheDocument());

@@ -10,6 +10,7 @@ import type {
 import { Can } from '@/components/common/can';
 import { EmptyState } from '@/components/common/empty-state';
 import { ErrorState } from '@/components/common/error-state';
+import { FormDialog } from '@/components/common/form-dialog';
 import { FormSheet } from '@/components/common/form-sheet';
 import { LoadingState } from '@/components/common/loading-state';
 import { PageHeader } from '@/components/common/page-header';
@@ -32,7 +33,7 @@ import {
 import { StakeholderListMemberPicker } from './stakeholder-list-member-picker';
 import { StakeholderListMembersTable } from './stakeholder-list-members-table';
 
-type ActivePanel = 'none' | 'picker' | 'copy' | 'import';
+type ActivePanel = 'none' | 'create' | 'picker' | 'copy' | 'import';
 
 const numberFormatter = new Intl.NumberFormat('es-PE');
 
@@ -171,14 +172,42 @@ export function StakeholderListsPage() {
           <EmptyState
             title={`No existe lista de ${STAKEHOLDER_LIST_TYPE_LABELS[filters.type]} para ${filters.year}`}
             description="Crea la lista para empezar a incorporar constituyentes del registro maestro."
+            action={
+              <Can permission="constituyente.editar">
+                <Button
+                  type="button"
+                  onClick={() => {
+                    captureFocus();
+                    setActivePanel('create');
+                  }}
+                >
+                  Crear lista
+                </Button>
+              </Can>
+            }
           />
-          <Can permission="constituyente.editar">
-            <CreateStakeholderListForm
-              type={filters.type}
-              year={filters.year}
-              onCreated={handleCreated}
-            />
-          </Can>
+          <FormDialog
+            open={activePanel === 'create'}
+            onOpenChange={(open) => {
+              if (!open) {
+                setActivePanel('none');
+              }
+            }}
+            title={`Crear lista de ${STAKEHOLDER_LIST_TYPE_LABELS[filters.type]} ${filters.year}`}
+            description="Completa los datos opcionales de cabecera del Anexo 3 para habilitar la lista."
+            size="md"
+            onRestoreFocus={restoreFocus}
+          >
+            {activePanel === 'create' ? (
+              <CreateStakeholderListForm
+                type={filters.type}
+                year={filters.year}
+                inDialog
+                onCancel={() => setActivePanel('none')}
+                onCreated={handleCreated}
+              />
+            ) : null}
+          </FormDialog>
         </div>
       ) : null}
 
