@@ -5,7 +5,7 @@ import { NAV_GROUPS } from '@/components/layout/nav-items';
 import { useNavGroups } from '@/components/layout/use-nav-groups';
 import { Button } from '@/components/ui/button';
 import { HealthStatus, useHealth } from '@/features/health';
-import { getProcessTypeLabel, useProcessExecutions } from '@/features/processes';
+import { PROCESS_TYPE_LABELS, useProcessExecutions } from '@/features/processes';
 import { usePermission } from '@/hooks/use-permission';
 import { formatDateTime } from '@/lib/date';
 import { getHomeQuickLinkGroups } from '@/lib/home-links';
@@ -127,7 +127,8 @@ export function DashboardPage() {
                       <StatusBadge status={execution.status} />
                     </div>
                     <p className="text-meta text-muted-foreground">
-                      {getProcessTypeLabel(execution.processType)} · Periodo {execution.period}
+                      {PROCESS_TYPE_LABELS[execution.type]} · Periodo{' '}
+                      {execution.semesterCode ?? execution.year}
                     </p>
                   </div>
                   <Link
