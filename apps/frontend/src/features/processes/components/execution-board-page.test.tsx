@@ -221,4 +221,88 @@ describe('ExecutionBoardPage (HU-031, T-031-09)', () => {
 
     expect(await screen.findByText('No se encontró la ejecución solicitada.')).toBeInTheDocument();
   });
+
+  it('offers void from the board and shows the reason when voided', async () => {
+    const user = userEvent.setup();
+    let voided = false;
+    const voidReason = 'Ejecución duplicada por error de registro';
+
+    server.use(
+      http.get('*/process-executions/exec-1/board', () => {
+        const base = buildBoardResponse();
+        return HttpResponse.json({
+          ...base,
+          execution: {
+            ...base.execution,
+            status: voided ? 'VOIDED' : 'IN_PROGRESS',
+            voidReason: voided ? voidReason : null,
+          },
+        });
+      }),
+      http.post('*/process-executions/exec-1/void', () => {
+        voided = true;
+        return HttpResponse.json({
+          executionId: 'exec-1',
+          previousStatus: 'IN_PROGRESS',
+          status: 'VOIDED',
+          voidReason,
+          updatedAt: '2027-01-16T10:00:00.000Z',
+        });
+      }),
+    );
+
+    renderWithProviders(<ExecutionBoardPage executionId="exec-1" />, {
+      permissions: [...BOARD_PERMS, { code: 'ejecucion.anular', scope: 'GLOBAL' as const }],
+    });
+
+    const voidButton = await screen.findByRole('button', { name: /Anular ejecución/i });
+    await user.click(voidButton);
+
+    await user.type(screen.getByLabelText(/Motivo de anulación/i), voidReason);
+    await user.click(screen.getByRole('button', { name: /Confirmar anulación/i }));
+
+    expect(await screen.findByText(`Motivo de anulación: ${voidReason}`)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Anular ejecución/i })).not.toBeInTheDocument();
+  });
+
+  it('sends a single void request on double click', async () => {
+    const user = userEvent.setup();
+    let postCalls = 0;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const voidReason = 'Ejecución duplicada por error de registro';
+
+    server.use(
+      http.get('*/process-executions/exec-1/board', () => HttpResponse.json(buildBoardResponse())),
+      http.post('*/process-executions/exec-1/void', async () => {
+        postCalls += 1;
+        await gate;
+        return HttpResponse.json({
+          executionId: 'exec-1',
+          previousStatus: 'IN_PROGRESS',
+          status: 'VOIDED',
+          voidReason,
+          updatedAt: '2027-01-16T10:00:00.000Z',
+        });
+      }),
+    );
+
+    renderWithProviders(<ExecutionBoardPage executionId="exec-1" />, {
+      permissions: [...BOARD_PERMS, { code: 'ejecucion.anular', scope: 'GLOBAL' as const }],
+    });
+
+    await user.click(await screen.findByRole('button', { name: /Anular ejecución/i }));
+    await user.type(screen.getByLabelText(/Motivo de anulación/i), voidReason);
+
+    const confirmBtn = screen.getByRole('button', { name: /Confirmar anulación/i });
+    await user.dblClick(confirmBtn);
+
+    expect(await screen.findByRole('button', { name: /Anulando/i })).toBeDisabled();
+    expect(postCalls).toBe(1);
+
+    release();
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+  });
 });

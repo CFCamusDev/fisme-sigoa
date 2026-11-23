@@ -4,6 +4,7 @@ import { ErrorState } from '@/components/common/error-state';
 import { LoadingState } from '@/components/common/loading-state';
 import { PageHeader } from '@/components/common/page-header';
 import { StatusBadge } from '@/components/common/status-badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useExecutionBoard } from '../hooks/use-execution-board';
 import { getExecutionBoardErrorMessage } from '../lib/execution-board-labels';
@@ -14,6 +15,7 @@ import {
   BoardSessionsSection,
   BoardUnavailableSectionCard,
 } from './execution-board-sections';
+import { ExecutionClosureActions } from './execution-closure-actions';
 
 export interface ExecutionBoardPageProps {
   readonly executionId: string;
@@ -32,8 +34,14 @@ export function ExecutionBoardPage({ executionId }: ExecutionBoardPageProps) {
             : 'Resumen de estado, cronograma, sesiones y pendientes de la ejecución.'
         }
         actions={
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             {query.data ? <StatusBadge status={query.data.execution.status} /> : null}
+            {query.data ? (
+              <ExecutionClosureActions
+                executionId={executionId}
+                status={query.data.execution.status}
+              />
+            ) : null}
             <Button variant="outline" asChild>
               <Link to="/ejecuciones">
                 <ArrowLeft className="size-4" aria-hidden="true" />
@@ -43,6 +51,19 @@ export function ExecutionBoardPage({ executionId }: ExecutionBoardPageProps) {
           </div>
         }
       />
+
+      {query.data?.execution.status === 'VOIDED' ? (
+        <Alert variant="danger">
+          <AlertDescription className="flex flex-wrap items-center gap-2">
+            <StatusBadge status="VOIDED" />
+            <span>
+              {query.data.execution.voidReason
+                ? `Motivo de anulación: ${query.data.execution.voidReason}`
+                : 'Esta ejecución ha sido anulada.'}
+            </span>
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       {query.isPending ? (
         <LoadingState message="Cargando tablero de la ejecución…" />
