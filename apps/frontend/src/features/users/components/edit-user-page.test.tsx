@@ -255,13 +255,13 @@ describe('EditUserPage component (T-003-27)', () => {
     renderWithProviders(<EditUserPage userId="usr-123" />);
 
     await user.click(await screen.findByRole('tab', { name: 'Permisos directos' }));
-    const select = await screen.findByLabelText(/Alcance para usuario\.ver/i);
+    const select = await screen.findByLabelText(/Acceso a usuario\.ver/i);
     await user.selectOptions(select, 'GLOBAL');
     expect(screen.getByText(/1 cambio sin guardar/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole('tab', { name: 'Datos' }));
     await user.click(screen.getByRole('tab', { name: 'Permisos directos' }));
-    expect(screen.getByLabelText(/Alcance para usuario\.ver/i)).toHaveValue('GLOBAL');
+    expect(screen.getByLabelText(/Acceso a usuario\.ver/i)).toHaveValue('GLOBAL');
     expect(screen.getByText(/1 cambio sin guardar/i)).toBeInTheDocument();
   });
 
