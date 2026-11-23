@@ -130,7 +130,7 @@ describe('GenerateAnnexPdfUseCase (T-070-09, RF-070)', () => {
 
     const renderedHtml = pdfGenerator.render.mock.calls[0]?.[0].html ?? '';
     expect(renderedHtml).toContain('data:image/png;base64,AAAA');
-    expect(renderedHtml).toContain('<p>—</p>');
+    expect(renderedHtml).toContain('<p>(sin periodo definido)</p>');
     expect(renderedHtml).not.toContain('{{');
   });
 
