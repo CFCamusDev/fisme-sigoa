@@ -6,7 +6,7 @@ export * from './edit-role-page.js';
 export * from './permission-matrix-editor.js';
 export * from './role-permissions-page.js';
 export * from './role-row-actions.js';
-export * from './permission-scope-table.js';
+export * from './permission-module-table.js';
 export * from './effective-permissions-view.js';
 export * from './user-roles-editor.js';
 export * from './user-direct-permissions-editor.js';
