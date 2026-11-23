@@ -26,7 +26,7 @@ describe('SessionsTable (HU-081, T-081-04)', () => {
         onEdit={vi.fn()}
         onManageAttendees={vi.fn()}
       />,
-      { permissions: PERMISSIONS },
+      { withRouter: false, permissions: PERMISSIONS },
     );
 
     const attendeesBtn = screen.getByRole('button', { name: 'Asistentes' });
@@ -57,7 +57,7 @@ describe('SessionsTable (HU-081, T-081-04)', () => {
         onEdit={vi.fn()}
         onManageAttendees={vi.fn()}
       />,
-      { permissions: PERMISSIONS },
+      { withRouter: false, permissions: PERMISSIONS },
     );
 
     expect(screen.getByRole('button', { name: 'Asistentes' })).toBeEnabled();
