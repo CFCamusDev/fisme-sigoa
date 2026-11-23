@@ -487,7 +487,7 @@ describe('StakeholderListsPage (HU-022, T-022-28)', () => {
       http.post('*/stakeholder-lists/:id/members', () =>
         HttpResponse.json(
           {
-            ...EMPLOYER_LIST_DTO.members[0],
+            ...EMPLOYER_LIST_DTO.members![0],
             id: 'mem-new',
             stakeholderId: 'sh-extra',
             fullName: 'Selva Soft SAC',
