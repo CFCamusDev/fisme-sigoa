@@ -1,7 +1,7 @@
 import * as React from 'react';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { http, HttpResponse, delay } from 'msw';
+import { http, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
 import { PROTECTED_ROLE_CODE, type RoleDto } from '@sigoa/shared';
 import { server } from '@/test/msw/server';
@@ -38,7 +38,7 @@ const mockInactiveRole: RoleDto = {
   id: 'role-inactive',
   code: 'INACTIVE_ROLE',
   name: 'Rol Inactivo',
-  description: 'Rol desactivado',
+  description: 'Rol inactivo',
   isPredefined: false,
   status: 'INACTIVE',
   deactivatedAt: '2026-11-06T12:00:00.000Z',
@@ -69,15 +69,15 @@ describe('RoleRowActions component (U1, CA3)', () => {
     const user = userEvent.setup();
     renderActions(<RoleRowActions role={mockActiveRoleWithUsers} />);
 
-    const deactivateBtn = await screen.findByRole('button', { name: 'Desactivar rol Docente' });
+    const deactivateBtn = await screen.findByRole('button', { name: 'Inactivar rol Docente' });
     await user.click(deactivateBtn);
 
-    expect(screen.getByRole('alertdialog')).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        '¿Desactivar el rol Docente? Está asignado a 8 usuario(s); perderán sus permisos en su siguiente petición, y podrás reactivarlo después.',
-      ),
-    ).toBeInTheDocument();
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toBeInTheDocument();
+    expect(dialog).toHaveTextContent('Inactivar rol');
+    expect(dialog).toHaveTextContent(
+      '¿Inactivar el rol Docente? Está asignado a 8 usuario(s); perderán sus permisos en su siguiente petición, y podrás reactivarlo después.',
+    );
   });
 
   it('says the role has no users when it has none', async () => {
@@ -85,12 +85,12 @@ describe('RoleRowActions component (U1, CA3)', () => {
     renderActions(<RoleRowActions role={mockActiveRoleWithoutUsers} />);
 
     const deactivateBtn = await screen.findByRole('button', {
-      name: 'Desactivar rol Rol Vacío',
+      name: 'Inactivar rol Rol Vacío',
     });
     await user.click(deactivateBtn);
 
     expect(
-      screen.getByText('¿Desactivar el rol Rol Vacío? No tiene usuarios asignados.'),
+      await screen.findByText('¿Inactivar el rol Rol Vacío? No tiene usuarios asignados.'),
     ).toBeInTheDocument();
   });
 
@@ -110,16 +110,13 @@ describe('RoleRowActions component (U1, CA3)', () => {
       <RoleRowActions role={mockActiveRoleWithUsers} onStatusChangeSuccess={onSuccess} />,
     );
 
-    const deactivateBtn = await screen.findByRole('button', { name: 'Desactivar rol Docente' });
-    await user.click(deactivateBtn);
+    await user.click(await screen.findByRole('button', { name: 'Inactivar rol Docente' }));
 
-    const confirmBtn = screen.getByRole('button', {
-      name: 'Confirmar desactivación del rol Docente',
-    });
-    await user.click(confirmBtn);
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'Inactivar' }));
 
     await waitFor(() => {
-      expect(onSuccess).toHaveBeenCalledWith("Se desactivó el rol 'Docente' correctamente.");
+      expect(onSuccess).toHaveBeenCalledWith("Se inactivó el rol 'Docente' correctamente.");
     });
 
     expect(capturedBody).toEqual({
@@ -132,18 +129,20 @@ describe('RoleRowActions component (U1, CA3)', () => {
     const user = userEvent.setup();
     renderActions(<RoleRowActions role={mockActiveRoleWithUsers} />);
 
-    const triggerBtn = await screen.findByRole('button', { name: 'Desactivar rol Docente' });
+    const triggerBtn = await screen.findByRole('button', { name: 'Inactivar rol Docente' });
     await user.click(triggerBtn);
 
-    expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
 
     await user.keyboard('{Escape}');
 
-    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Desactivar rol Docente' })).toHaveFocus();
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: 'Inactivar rol Docente' })).toHaveFocus();
   });
 
-  it('reactivates without confirmation', async () => {
+  it('asks for confirmation before Reactivar', async () => {
     const user = userEvent.setup();
     const onSuccess = vi.fn();
     let capturedBody: unknown = null;
@@ -162,104 +161,63 @@ describe('RoleRowActions component (U1, CA3)', () => {
     });
     await user.click(reactivateBtn);
 
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toHaveTextContent('Reactivar rol');
+    expect(dialog).toHaveTextContent('¿Reactivar el rol Rol Inactivo?');
+
+    await user.click(within(dialog).getByRole('button', { name: 'Reactivar' }));
+
     await waitFor(() => {
       expect(onSuccess).toHaveBeenCalledWith("Se reactivó el rol 'Rol Inactivo' correctamente.");
     });
 
     expect(capturedBody).toEqual({ status: 'ACTIVE' });
-    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
   });
 
-  it('does not offer deactivation for the administrator role', async () => {
+  it('does not offer inactivation for the administrator role', async () => {
     renderActions(<RoleRowActions role={mockAdminRole} />);
 
     await screen.findByRole('link', { name: 'Permisos del rol Administrador' });
-    expect(screen.queryByRole('button', { name: /Desactivar/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Inactivar/i })).not.toBeInTheDocument();
   });
 
-  it('disables the buttons while pending', async () => {
+  it('confirms the inactivation once when clicked twice while pending', async () => {
     const user = userEvent.setup();
-
-    server.use(
-      http.patch('http://localhost:3000/roles/role-inactive/status', async () => {
-        await delay(150);
-        return HttpResponse.json({ ...mockInactiveRole, status: 'ACTIVE' });
-      }),
-    );
-
-    renderActions(<RoleRowActions role={mockInactiveRole} />);
-
-    const reactivateBtn = await screen.findByRole('button', {
-      name: 'Reactivar rol Rol Inactivo',
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
     });
-    await user.click(reactivateBtn);
-
-    expect(reactivateBtn).toBeDisabled();
-
-    await waitFor(() => {
-      expect(reactivateBtn).not.toBeDisabled();
-    });
-  });
-
-  it('confirms the deactivation once when the confirm button is clicked twice', async () => {
-    const user = userEvent.setup();
     let callCount = 0;
 
     server.use(
       http.patch('http://localhost:3000/roles/role-teacher/status', async () => {
         callCount++;
-        await delay(100);
+        await gate;
         return HttpResponse.json({ ...mockActiveRoleWithUsers, status: 'INACTIVE' });
       }),
     );
 
     renderActions(<RoleRowActions role={mockActiveRoleWithUsers} />);
 
-    const deactivateBtn = await screen.findByRole('button', { name: 'Desactivar rol Docente' });
-    await user.click(deactivateBtn);
-
-    const confirmBtn = screen.getByRole('button', {
-      name: 'Confirmar desactivación del rol Docente',
-    });
+    await user.click(await screen.findByRole('button', { name: 'Inactivar rol Docente' }));
+    const dialog = await screen.findByRole('dialog');
+    const confirmBtn = within(dialog).getByRole('button', { name: 'Inactivar' });
 
     await user.click(confirmBtn);
-    await user.click(confirmBtn);
+    const pendingBtn = await within(dialog).findByRole('button', { name: 'Inactivando…' });
+    expect(pendingBtn).toBeDisabled();
+    await user.click(pendingBtn);
+
+    expect(callCount).toBe(1);
+    release();
 
     await waitFor(() => {
-      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
-
     expect(callCount).toBe(1);
   });
 
-  it('reactivates once when the button is clicked twice', async () => {
-    const user = userEvent.setup();
-    let callCount = 0;
-
-    server.use(
-      http.patch('http://localhost:3000/roles/role-inactive/status', async () => {
-        callCount++;
-        await delay(100);
-        return HttpResponse.json({ ...mockInactiveRole, status: 'ACTIVE' });
-      }),
-    );
-
-    renderActions(<RoleRowActions role={mockInactiveRole} />);
-
-    const reactivateBtn = await screen.findByRole('button', {
-      name: 'Reactivar rol Rol Inactivo',
-    });
-    await user.click(reactivateBtn);
-    await user.click(reactivateBtn);
-
-    await waitFor(() => {
-      expect(reactivateBtn).not.toBeDisabled();
-    });
-
-    expect(callCount).toBe(1);
-  });
-
-  it('shows the conflict message from the server', async () => {
+  it('shows the conflict message from the server inside the dialog', async () => {
     const user = userEvent.setup();
     const onError = vi.fn();
 
@@ -269,7 +227,7 @@ describe('RoleRowActions component (U1, CA3)', () => {
           {
             error: {
               code: 'CONFLICT',
-              message: 'No se puede desactivar este rol en su estado actual.',
+              message: 'No se puede inactivar este rol en su estado actual.',
             },
           },
           { status: 409 },
@@ -279,16 +237,15 @@ describe('RoleRowActions component (U1, CA3)', () => {
 
     renderActions(<RoleRowActions role={mockActiveRoleWithUsers} onStatusChangeError={onError} />);
 
-    const deactivateBtn = await screen.findByRole('button', { name: 'Desactivar rol Docente' });
-    await user.click(deactivateBtn);
-
-    const confirmBtn = screen.getByRole('button', {
-      name: 'Confirmar desactivación del rol Docente',
-    });
-    await user.click(confirmBtn);
+    await user.click(await screen.findByRole('button', { name: 'Inactivar rol Docente' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'Inactivar' }));
 
     await waitFor(() => {
-      expect(onError).toHaveBeenCalledWith('No se puede desactivar este rol en su estado actual.');
+      expect(onError).toHaveBeenCalledWith('No se puede inactivar este rol en su estado actual.');
     });
+    expect(screen.getByRole('dialog')).toHaveTextContent(
+      'No se puede inactivar este rol en su estado actual.',
+    );
   });
 });

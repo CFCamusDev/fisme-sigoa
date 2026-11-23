@@ -100,7 +100,7 @@ test.describe('HU-003 — Gestión de usuarios E2E', () => {
     });
     await deactivateBtn.click();
 
-    const dialog = page.getByRole('alertdialog');
+    const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
     await expect(
       dialog.getByText(
@@ -112,7 +112,7 @@ test.describe('HU-003 — Gestión de usuarios E2E', () => {
     ).toBeVisible();
 
     const confirmDeactivateBtn = dialog.getByRole('button', {
-      name: /confirmar inactivación/i,
+      name: /^inactivar$/i,
     });
     await confirmDeactivateBtn.click();
 
@@ -147,6 +147,10 @@ test.describe('HU-003 — Gestión de usuarios E2E', () => {
       name: new RegExp(`reactivar a docente ${uniqueDocenteSurname}`, 'i'),
     });
     await reactivateBtn.click();
+
+    const reactivateDialog = page.getByRole('dialog');
+    await expect(reactivateDialog).toBeVisible();
+    await reactivateDialog.getByRole('button', { name: /^reactivar$/i }).click();
 
     await expect(
       page.getByText(

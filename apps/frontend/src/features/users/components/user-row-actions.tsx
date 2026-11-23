@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
+import type { UserDto } from '@sigoa/shared';
+import { ConfirmDialog } from '@/components/common';
 import { Can } from '@/components/common/can';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { useAuthStore } from '@/stores/auth.store';
+import { useRestoreFocus } from '@/hooks/use-restore-focus';
 import { cn } from '@/lib/utils';
-import type { UserDto } from '@sigoa/shared';
+import { useAuthStore } from '@/stores/auth.store';
 import { useChangeUserStatus } from '../hooks/use-change-user-status';
 import { getUserErrorMessage } from '../lib/user-error-message';
 
@@ -19,9 +21,9 @@ export function UserRowActions({
   onStatusChangeError,
   onStatusChangeSuccess,
 }: UserRowActionsProps) {
-  const [isConfirmingDeactivation, setIsConfirmingDeactivation] = useState(false);
-  const cancelBtnRef = useRef<HTMLButtonElement | null>(null);
-  const triggerBtnRef = useRef<HTMLButtonElement | null>(null);
+  const [confirmAction, setConfirmAction] = useState<'inactivate' | 'reactivate' | null>(null);
+  const [dialogError, setDialogError] = useState<string | null>(null);
+  const { remember, restore } = useRestoreFocus();
 
   const currentUser = useAuthStore((state) => state.user);
   const isSelf = currentUser?.id === user.id;
@@ -31,100 +33,31 @@ export function UserRowActions({
 
   const fullName = [user.names, user.firstSurname].filter(Boolean).join(' ');
 
-  useEffect(() => {
-    if (isConfirmingDeactivation) {
-      cancelBtnRef.current?.focus();
+  const handleConfirm = () => {
+    if (isPending || !confirmAction) return;
+    const nextStatus = confirmAction === 'inactivate' ? 'INACTIVE' : 'ACTIVE';
 
-      const handleGlobalKeyDown = (e: KeyboardEvent) => {
-        if (e.key === 'Escape') {
-          setIsConfirmingDeactivation(false);
-          triggerBtnRef.current?.focus();
-        }
-      };
-
-      window.addEventListener('keydown', handleGlobalKeyDown);
-      return () => {
-        window.removeEventListener('keydown', handleGlobalKeyDown);
-      };
-    }
-  }, [isConfirmingDeactivation]);
-
-  const handleDeactivate = () => {
-    if (isPending) return;
     changeStatusMutation.mutate(
-      { id: user.id, body: { status: 'INACTIVE' } },
+      { id: user.id, body: { status: nextStatus } },
       {
         onSuccess: () => {
-          setIsConfirmingDeactivation(false);
-          onStatusChangeSuccess?.(`Se inactivó la cuenta de ${fullName} correctamente.`);
+          const action = confirmAction;
+          setConfirmAction(null);
+          setDialogError(null);
+          onStatusChangeSuccess?.(
+            action === 'inactivate'
+              ? `Se inactivó la cuenta de ${fullName} correctamente.`
+              : `Se reactivó la cuenta de ${fullName} correctamente.`,
+          );
         },
         onError: (err) => {
-          setIsConfirmingDeactivation(false);
           const msg = getUserErrorMessage(err);
+          setDialogError(msg);
           onStatusChangeError?.(msg);
         },
       },
     );
   };
-
-  const handleReactivate = () => {
-    if (isPending) return;
-    changeStatusMutation.mutate(
-      { id: user.id, body: { status: 'ACTIVE' } },
-      {
-        onSuccess: () => {
-          onStatusChangeSuccess?.(`Se reactivó la cuenta de ${fullName} correctamente.`);
-        },
-        onError: (err) => {
-          const msg = getUserErrorMessage(err);
-          onStatusChangeError?.(msg);
-        },
-      },
-    );
-  };
-
-  if (isConfirmingDeactivation) {
-    return (
-      <div
-        role="alertdialog"
-        aria-modal="false"
-        aria-labelledby={`deactivate-title-${user.id}`}
-        aria-describedby={`deactivate-desc-${user.id}`}
-        className="flex flex-col items-end gap-1.5"
-      >
-        <span id={`deactivate-title-${user.id}`} className="sr-only">
-          Confirmar inactivación de usuario
-        </span>
-        <span id={`deactivate-desc-${user.id}`} className="text-label font-medium text-destructive">
-          ¿Inactivar a {fullName}? Se cerrarán sus sesiones activas.
-        </span>
-        <div className="flex items-center gap-2">
-          <Button
-            ref={cancelBtnRef}
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setIsConfirmingDeactivation(false);
-              triggerBtnRef.current?.focus();
-            }}
-            disabled={isPending}
-            aria-label={`Cancelar inactivación de ${fullName}`}
-          >
-            Cancelar
-          </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={handleDeactivate}
-            disabled={isPending}
-            aria-label={`Confirmar inactivación de ${fullName}`}
-          >
-            Confirmar inactivación
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <Can permission="usuario.editar">
@@ -140,10 +73,14 @@ export function UserRowActions({
 
         {user.status === 'ACTIVE' && !isSelf && (
           <Button
-            ref={triggerBtnRef}
+            type="button"
             variant="outline"
             size="sm"
-            onClick={() => setIsConfirmingDeactivation(true)}
+            onClick={(event) => {
+              remember(event.currentTarget);
+              setDialogError(null);
+              setConfirmAction('inactivate');
+            }}
             disabled={isPending}
             aria-label={`Inactivar a ${fullName}`}
           >
@@ -153,9 +90,14 @@ export function UserRowActions({
 
         {user.status === 'INACTIVE' && (
           <Button
+            type="button"
             variant="outline"
             size="sm"
-            onClick={handleReactivate}
+            onClick={(event) => {
+              remember(event.currentTarget);
+              setDialogError(null);
+              setConfirmAction('reactivate');
+            }}
             disabled={isPending}
             aria-label={`Reactivar a ${fullName}`}
           >
@@ -163,6 +105,29 @@ export function UserRowActions({
           </Button>
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmAction !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setConfirmAction(null);
+            setDialogError(null);
+          }
+        }}
+        title={confirmAction === 'inactivate' ? 'Inactivar usuario' : 'Reactivar usuario'}
+        description={
+          confirmAction === 'inactivate'
+            ? `¿Inactivar a ${fullName}? Se cerrarán sus sesiones activas.`
+            : `¿Reactivar la cuenta de ${fullName}? Podrá volver a iniciar sesión.`
+        }
+        confirmLabel={confirmAction === 'inactivate' ? 'Inactivar' : 'Reactivar'}
+        pendingLabel={confirmAction === 'inactivate' ? 'Inactivando…' : 'Reactivando…'}
+        tone={confirmAction === 'inactivate' ? 'destructive' : 'default'}
+        isPending={isPending}
+        error={dialogError}
+        onConfirm={handleConfirm}
+        onCloseAutoFocus={restore}
+      />
     </Can>
   );
 }

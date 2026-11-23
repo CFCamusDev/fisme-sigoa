@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input.js';
 import { Textarea } from '@/components/ui/textarea.js';
 import { Label } from '@/components/ui/label.js';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.js';
+import { StickyActionBar } from '@/components/common';
 import { Can } from '@/components/common/can.js';
 import { useCreateRole, useUpdateRole } from '../hooks/index.js';
 import { getRoleErrorMessage, isRoleNameConflict } from '../lib/role-error-message.js';
@@ -144,7 +145,7 @@ export function RoleForm({ mode, initialRole, onSuccess, onCancel }: RoleFormPro
     <form
       aria-label={isCreate ? 'Formulario de creación de rol' : 'Formulario de edición de rol'}
       onSubmit={handleSubmit(onSubmit)}
-      className="space-y-6 max-w-xl"
+      className="max-w-xl space-y-6 pb-24"
       noValidate
     >
       {generalError && (
@@ -191,7 +192,12 @@ export function RoleForm({ mode, initialRole, onSuccess, onCancel }: RoleFormPro
         )}
       </div>
 
-      <div className="flex items-center gap-3 pt-2">
+      <StickyActionBar>
+        {onCancel && (
+          <Button type="button" variant="outline" onClick={onCancel} disabled={isPending}>
+            Cancelar
+          </Button>
+        )}
         <Can permission="rol.editar">
           <Button
             type="submit"
@@ -201,12 +207,7 @@ export function RoleForm({ mode, initialRole, onSuccess, onCancel }: RoleFormPro
             {isPending ? 'Guardando…' : 'Guardar'}
           </Button>
         </Can>
-        {onCancel && (
-          <Button type="button" variant="outline" onClick={onCancel} disabled={isPending}>
-            Cancelar
-          </Button>
-        )}
-      </div>
+      </StickyActionBar>
     </form>
   );
 }
