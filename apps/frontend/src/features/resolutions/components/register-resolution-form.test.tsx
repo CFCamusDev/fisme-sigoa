@@ -14,10 +14,10 @@ const VERSIONS: readonly CatalogVersionDto[] = [
     programId: 'prog-1',
     number: 2,
     status: 'IN_VALIDATION',
-    justification: null,
-    createdBy: 'u1',
+    basedOnVersionId: null,
+    objectiveCount: 4,
+    attributeCount: 12,
     createdAt: '2026-11-01T00:00:00.000Z',
-    updatedAt: '2026-11-01T00:00:00.000Z',
   },
 ];
 
