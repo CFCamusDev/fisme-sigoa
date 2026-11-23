@@ -10,8 +10,8 @@ const templatesSearchSchema = z.object({
 
 export const Route = createFileRoute('/_app/plantillas')({
   validateSearch: (search: Record<string, unknown>) => templatesSearchSchema.parse(search),
-  beforeLoad: ({ search }) => {
-    guardPermission('plantilla.ver');
+  beforeLoad: async ({ search }) => {
+    await guardPermission('plantilla.ver');
     if (search.id) {
       throw redirect({
         to: '/plantillas/$templateId',

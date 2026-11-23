@@ -28,7 +28,7 @@ describe('TemplateEditorPage (HU-082, T-082-24)', () => {
     });
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: /FO-01 · Acta de reunión/ }),
+      await screen.findByRole('heading', { level: 1, name: /FO-01 · Anexo 1\. Cronograma/ }),
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Volver a plantillas' })).toHaveAttribute(
       'href',
@@ -63,7 +63,7 @@ describe('TemplateEditorPage (HU-082, T-082-24)', () => {
       initialEntries: ['/plantillas/tpl-1'],
     });
 
-    await screen.findByRole('heading', { level: 1, name: /FO-01 · Acta de reunión/ });
+    await screen.findByRole('heading', { level: 1, name: /FO-01 · Anexo 1\. Cronograma/ });
     expect(screen.queryByRole('tab', { name: 'Vista previa' })).not.toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Contenido HTML' })).toHaveAttribute('readonly');
   });

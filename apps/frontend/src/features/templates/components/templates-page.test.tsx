@@ -115,7 +115,7 @@ describe('TemplatesPage (HU-082, T-082-23)', () => {
     expect(await screen.findByText('Error al cargar las plantillas')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Reintentar/i }));
 
-    expect(await screen.findByText('ANX-01')).toBeInTheDocument();
+    expect(await screen.findByText('FO-01')).toBeInTheDocument();
     await user.type(screen.getByLabelText('Buscar plantilla'), 'inexistente');
     expect(screen.getByText('Ninguna plantilla coincide con “inexistente”')).toBeInTheDocument();
   });

@@ -77,7 +77,8 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
   }, [dirty]);
 
   const blocker = useBlocker({
-    shouldBlockFn: () => dirty,
+    shouldBlockFn: ({ current, next, action }) =>
+      dirty && action !== 'REPLACE' && current.pathname !== next.pathname,
     withResolver: true,
   });
 
@@ -282,18 +283,17 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
 
       <ConfirmDialog
         open={publishConfirmOpen}
-        onOpenChange={(open) => {
-          setPublishConfirmOpen(open);
-          if (!open) {
-            restore();
-          }
-        }}
+        onOpenChange={setPublishConfirmOpen}
         title="Confirmar la publicación"
         description={publishConfirmText}
         confirmLabel="Confirmar"
         pendingLabel="Publicando…"
         isPending={publishMutation.isPending}
         onConfirm={confirmPublish}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          restore();
+        }}
       />
 
       <ConfirmDialog
