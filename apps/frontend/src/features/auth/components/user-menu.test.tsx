@@ -20,7 +20,7 @@ describe('UserMenu', () => {
 
     renderWithProviders(<UserMenu />);
 
-    const trigger = screen.getByRole('button', { name: /Menú de usuario de Admin Test/i });
+    const trigger = await screen.findByRole('button', { name: /Menú de usuario de Admin Test/i });
     expect(trigger).toHaveTextContent('Admin Test');
 
     await user.click(trigger);
@@ -55,7 +55,7 @@ describe('UserMenu', () => {
 
     renderWithProviders(<UserMenu />);
 
-    await user.click(screen.getByRole('button', { name: /Menú de usuario de Admin Test/i }));
+    await user.click(await screen.findByRole('button', { name: /Menú de usuario de Admin Test/i }));
 
     const logoutItem = await screen.findByRole('menuitem', { name: 'Cerrar sesión' });
     await user.click(logoutItem);

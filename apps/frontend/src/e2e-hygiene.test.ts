@@ -80,6 +80,7 @@ const EXPECTED_CONTRAST_CONTEXTS = [
   'catalog-editor-readonly-mobile',
   'authenticated-layout-desktop',
   'authenticated-layout-mobile-menu-open',
+  'sidebar-group-and-user-menu-open',
   'create-role-empty-desktop',
   'create-role-empty-mobile',
   'create-role-with-errors',
