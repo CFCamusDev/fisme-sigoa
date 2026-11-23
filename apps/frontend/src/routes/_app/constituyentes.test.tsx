@@ -16,10 +16,13 @@ const SAMPLE_PERSON_STAKEHOLDER = {
   mobile: '987654321',
   institution: 'Tech SAC',
   position: 'Egresada',
+  sector: null,
   graduationYear: 2021,
-  academicCycle: null,
+  cycle: null,
   status: 'ACTIVE' as const,
   voidReason: null,
+  voidedAt: null,
+  voidedBy: null,
   createdAt: '2026-01-10T00:00:00.000Z',
   updatedAt: '2026-01-10T00:00:00.000Z',
 };
@@ -58,7 +61,7 @@ describe('StakeholdersRoute (/constituyentes) (HU-021, HU-081, T-021-02, T-081-1
         permissions: [{ code: 'constituyente.ver', scope: 'GLOBAL' }],
       });
       expect(
-        screen.getByRole('heading', { level: 1, name: /constituyentes/i }),
+        await screen.findByRole('heading', { level: 1, name: /constituyentes/i }),
       ).toBeInTheDocument();
       expect(await screen.findByText(/no hay constituyentes registrados/i)).toBeInTheDocument();
     }
