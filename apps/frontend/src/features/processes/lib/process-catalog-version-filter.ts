@@ -42,3 +42,10 @@ export function getRequiredVersionLabel(type: ProcessTypeValue | ''): string {
     ? 'En validación'
     : 'Vigente';
 }
+
+export function requiresValidationVersion(type: ProcessTypeValue | ''): boolean {
+  return (
+    Boolean(type) &&
+    REQUIRED_CATALOG_VERSION_STATUS_BY_PROCESS[type as ProcessTypeValue] === 'IN_VALIDATION'
+  );
+}

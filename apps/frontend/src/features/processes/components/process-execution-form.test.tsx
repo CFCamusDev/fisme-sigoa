@@ -274,4 +274,27 @@ describe('ProcessExecutionForm (HU-027, T-027-21)', () => {
     expect(await screen.findByText('Selecciona un semestre')).toBeInTheDocument();
     expect(postCalls).toBe(0);
   });
+
+  it('links to the catalog when no version is in validation', async () => {
+    const user = userEvent.setup();
+    setupCatalogAndSemesters(
+      SAMPLE_CATALOG_VERSIONS.filter((v) => v.status !== 'IN_VALIDATION'),
+      SAMPLE_SEMESTERS,
+    );
+
+    renderWithProviders(<ProcessExecutionForm onCreated={vi.fn()} onCancel={vi.fn()} />, {
+      withRouter: true,
+    });
+
+    await user.selectOptions(screen.getByLabelText(/^Proceso$/i), 'P611');
+
+    expect(
+      await screen.findByText(/Envía una versión a validación para crear este proceso/i),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/Versión de catálogo/i)).toBeDisabled();
+    expect(screen.getByRole('link', { name: /Catálogo de versiones/i })).toHaveAttribute(
+      'href',
+      '/catalogo/versiones',
+    );
+  });
 });

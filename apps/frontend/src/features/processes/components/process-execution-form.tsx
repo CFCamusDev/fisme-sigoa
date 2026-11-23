@@ -1,5 +1,6 @@
 import { useEffect, useId, useMemo, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Link } from '@tanstack/react-router';
 import {
   PROCESS_EXECUTION_NAME_MAX_LENGTH,
   PROCESS_EXECUTION_YEAR_MAX,
@@ -24,6 +25,7 @@ import {
   filterEligibleCatalogVersions,
   formatCatalogVersionOptionLabel,
   getRequiredVersionLabel,
+  requiresValidationVersion,
 } from '../lib/process-catalog-version-filter';
 import { getProcessExecutionErrorMessage } from '../lib/process-execution-error-message';
 import { PROCESS_TYPE_LABELS, getSuggestedExecutionName } from '../lib/process-type-labels';
@@ -291,10 +293,23 @@ export function ProcessExecutionForm({ onCreated, onCancel }: ProcessExecutionFo
               ))}
             </Select>
             {noEligibleVersion ? (
-              <p className="text-xs text-muted-foreground">
-                No existe una versión de catálogo en estado «{getRequiredVersionLabel(selectedType)}
-                » para este proceso.
-              </p>
+              requiresValidationVersion(selectedType) ? (
+                <p className="text-xs text-muted-foreground">
+                  Envía una versión a validación para crear este proceso en el{' '}
+                  <Link
+                    to="/catalogo/versiones"
+                    className="text-primary underline underline-offset-2"
+                  >
+                    Catálogo de versiones
+                  </Link>
+                  .
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  No existe una versión de catálogo en estado «
+                  {getRequiredVersionLabel(selectedType)}» para este proceso.
+                </p>
+              )
             ) : null}
             {errors.catalogVersionId ? (
               <p className="text-xs text-destructive" role="alert">
