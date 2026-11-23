@@ -135,4 +135,38 @@ describe('EffectivePermissionsView Component (HU-007, T-007-17, CA1, CA2)', () =
       screen.getByRole('heading', { level: 4, name: 'M10 Medición Directa' }),
     ).toBeInTheDocument();
   });
+
+  it('groups effective permissions by module in read-only accordions with their origin', () => {
+    const entries: EffectiveAccessEntry[] = [
+      {
+        permissionCode: 'academico.ver',
+        scope: 'GLOBAL',
+        sources: [
+          {
+            kind: 'ROLE',
+            roleId: 'role-teacher',
+            roleCode: 'TEACHER',
+            roleName: 'Docente',
+            scope: 'GLOBAL',
+          },
+        ],
+      },
+      {
+        permissionCode: 'matriz.ver',
+        scope: 'OWN',
+        sources: [{ kind: 'DIRECT', scope: 'OWN' }],
+      },
+    ];
+
+    render(<EffectivePermissionsView entries={entries} catalog={mockCatalog} />);
+
+    const m09Trigger = screen.getByRole('button', { name: /M09 Gestión Académica/i });
+    const m10Trigger = screen.getByRole('button', { name: /M10 Medición Directa/i });
+
+    expect(m09Trigger).toHaveTextContent('1 permiso');
+    expect(m09Trigger).toHaveAttribute('aria-expanded', 'true');
+    expect(m10Trigger).toHaveTextContent('1 permiso');
+    expect(m10Trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByText('Rol Docente · Global')).toBeVisible();
+  });
 });
