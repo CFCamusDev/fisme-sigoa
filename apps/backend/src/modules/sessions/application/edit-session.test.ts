@@ -170,6 +170,27 @@ describe('EditSessionUseCase', () => {
     expect(sessionRepository.update).not.toHaveBeenCalled();
   });
 
+  it('clears previous links when switching from virtual to in person', async () => {
+    const { useCase, sessionRepository } = createHarness(
+      makeExistingSession({
+        modality: 'VIRTUAL',
+        meetingUrl: 'https://meet.example.com/room',
+        recordingUrl: 'https://drive.example.com/video',
+      }),
+    );
+
+    const dto = await useCase.execute({
+      actorId: 'user-2',
+      sessionId: 'sess-1',
+      modality: 'IN_PERSON',
+    });
+
+    expect(dto.modality).toBe('IN_PERSON');
+    expect(dto.meetingUrl).toBeNull();
+    expect(dto.recordingUrl).toBeNull();
+    expect(sessionRepository.update).toHaveBeenCalledTimes(1);
+  });
+
   it('requires the links when switching to virtual', async () => {
     const { useCase, sessionRepository } = createHarness();
 
@@ -182,6 +203,27 @@ describe('EditSessionUseCase', () => {
     ).rejects.toBeInstanceOf(InvalidSessionDataError);
 
     expect(sessionRepository.update).not.toHaveBeenCalled();
+  });
+
+  it('clears previous links when switching from virtual to in person', async () => {
+    const { useCase, sessionRepository } = createHarness(
+      makeExistingSession({
+        modality: 'VIRTUAL',
+        meetingUrl: 'https://meet.example.com/room',
+        recordingUrl: 'https://drive.example.com/video',
+      }),
+    );
+
+    const dto = await useCase.execute({
+      actorId: 'user-2',
+      sessionId: 'sess-1',
+      modality: 'IN_PERSON',
+    });
+
+    expect(dto.modality).toBe('IN_PERSON');
+    expect(dto.meetingUrl).toBeNull();
+    expect(dto.recordingUrl).toBeNull();
+    expect(sessionRepository.update).toHaveBeenCalledTimes(1);
   });
 
   it('denies a user without sesion.editar', async () => {

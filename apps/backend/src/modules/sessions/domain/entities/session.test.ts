@@ -274,6 +274,68 @@ describe('Session', () => {
     expect(updated.updatedBy).toBe('user-2');
   });
 
+  it('requires meeting link for hybrid and rejects explicit links in person', () => {
+    expect(() =>
+      Session.create({
+        id: 'sess-1',
+        stakeholderType: 'EMPLOYER',
+        sessionDate: '2026-11-20',
+        startTime: '10:00',
+        modality: 'HYBRID',
+        executions: OPEN_EXECUTIONS,
+        actorId: 'user-1',
+        now: NOW,
+      }),
+    ).toThrow(InvalidSessionDataError);
+
+    expect(() =>
+      Session.create({
+        id: 'sess-1',
+        stakeholderType: 'EMPLOYER',
+        sessionDate: '2026-11-20',
+        startTime: '10:00',
+        modality: 'IN_PERSON',
+        meetingUrl: 'https://meet.example.com/room',
+        executions: OPEN_EXECUTIONS,
+        actorId: 'user-1',
+        now: NOW,
+      }),
+    ).toThrow(InvalidSessionDataError);
+  });
+
+  it('clears stale links when switching to in person and rejects explicit links in person', () => {
+    const virtualSession = Session.create({
+      id: 'sess-1',
+      stakeholderType: 'EMPLOYER',
+      sessionDate: '2026-11-20',
+      startTime: '10:00',
+      modality: 'VIRTUAL',
+      meetingUrl: 'https://meet.example.com/room',
+      recordingUrl: 'https://drive.example.com/video',
+      executions: OPEN_EXECUTIONS,
+      actorId: 'user-1',
+      now: NOW,
+    });
+
+    const cleared = virtualSession.applyChanges({
+      modality: 'IN_PERSON',
+      actorId: 'user-2',
+      now: new Date('2026-11-18T10:00:00.000Z'),
+    });
+    expect(cleared.modality).toBe('IN_PERSON');
+    expect(cleared.meetingUrl).toBeNull();
+    expect(cleared.recordingUrl).toBeNull();
+
+    expect(() =>
+      virtualSession.applyChanges({
+        modality: 'IN_PERSON',
+        meetingUrl: 'https://meet.example.com/room',
+        actorId: 'user-2',
+        now: new Date('2026-11-18T10:00:00.000Z'),
+      }),
+    ).toThrow(InvalidSessionDataError);
+  });
+
   it('snapshot has sorted execution ids and no personal data', () => {
     const session = Session.create({
       id: 'sess-1',

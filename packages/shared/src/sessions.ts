@@ -109,6 +109,29 @@ export const createSessionRequestSchema = z
           message: 'El enlace de la grabación es obligatorio para sesiones virtuales',
         });
       }
+    } else if (data.modality === 'HYBRID') {
+      if (!data.meetingUrl) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['meetingUrl'],
+          message: 'El enlace de la reunión es obligatorio para sesiones híbridas',
+        });
+      }
+    } else if (data.modality === 'IN_PERSON') {
+      if (data.meetingUrl) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['meetingUrl'],
+          message: 'Una sesión presencial no lleva enlace de reunión',
+        });
+      }
+      if (data.recordingUrl) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['recordingUrl'],
+          message: 'Una sesión presencial no lleva enlace de grabación',
+        });
+      }
     }
   });
 
@@ -148,6 +171,29 @@ export const updateSessionRequestSchema = z
           code: z.ZodIssueCode.custom,
           path: ['recordingUrl'],
           message: 'El enlace de la grabación es obligatorio para sesiones virtuales',
+        });
+      }
+    } else if (data.modality === 'HYBRID') {
+      if (data.meetingUrl === null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['meetingUrl'],
+          message: 'El enlace de la reunión es obligatorio para sesiones híbridas',
+        });
+      }
+    } else if (data.modality === 'IN_PERSON') {
+      if (data.meetingUrl !== undefined && data.meetingUrl !== null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['meetingUrl'],
+          message: 'Una sesión presencial no lleva enlace de reunión',
+        });
+      }
+      if (data.recordingUrl !== undefined && data.recordingUrl !== null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['recordingUrl'],
+          message: 'Una sesión presencial no lleva enlace de grabación',
         });
       }
     }
