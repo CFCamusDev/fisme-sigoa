@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Plus } from 'lucide-react';
 import type {
   QualityCommitteeDto,
@@ -9,7 +9,15 @@ import { PageHeader } from '@/components/common';
 import { Can } from '@/components/common/can';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useRestoreFocus } from '@/hooks/use-restore-focus';
 import { useTabParam } from '@/hooks/use-tab-param';
 import {
   useCurrentQualityCommittee,
@@ -17,6 +25,7 @@ import {
   useRegisterQualityCommittee,
   useReplaceCommitteeMembers,
 } from '../hooks';
+import { formatCommitteePeriod } from '../lib/committee-dates';
 import { getCommitteeErrorMessage } from '../lib/committee-error-message';
 import { CommitteeForm } from './committee-form';
 import { CommitteeHistoryTable } from './committee-history-table';
@@ -37,6 +46,8 @@ export function QualityCommitteePage() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
   const [mutationErrorDetail, setMutationErrorDetail] = useState<unknown>(null);
+  const sheetTitleRef = useRef<HTMLHeadingElement>(null);
+  const { remember, restore } = useRestoreFocus();
 
   const currentQuery = useCurrentQualityCommittee();
   const historyQuery = useQualityCommittees({ page, pageSize: 10 });
@@ -71,7 +82,8 @@ export function QualityCommitteePage() {
     }
   }
 
-  function handleOpenCreate() {
+  function handleOpenCreate(opener?: HTMLElement | null) {
+    remember(opener ?? (document.activeElement as HTMLElement | null));
     setStatusMessage(null);
     setMutationError(null);
     setMutationErrorDetail(null);
@@ -79,6 +91,7 @@ export function QualityCommitteePage() {
   }
 
   function handleOpenEdit(committee: QualityCommitteeDto) {
+    remember(document.activeElement as HTMLElement | null);
     setStatusMessage(null);
     setMutationError(null);
     setMutationErrorDetail(null);
@@ -97,14 +110,12 @@ export function QualityCommitteePage() {
         title="Comité de Calidad"
         description="Gestiona la conformación vigente y el historial del Comité de Calidad por periodo."
         actions={
-          formState.kind === 'closed' ? (
-            <Can permission="comite.editar">
-              <Button type="button" onClick={handleOpenCreate}>
-                <Plus className="mr-2 size-4" aria-hidden="true" />
-                Registrar Comité
-              </Button>
-            </Can>
-          ) : undefined
+          <Can permission="comite.editar">
+            <Button type="button" onClick={(event) => handleOpenCreate(event.currentTarget)}>
+              <Plus className="mr-2 size-4" aria-hidden="true" />
+              Registrar Comité
+            </Button>
+          </Can>
         }
       />
 
@@ -112,20 +123,6 @@ export function QualityCommitteePage() {
         <Alert variant="success" role="status">
           <AlertDescription>{statusMessage}</AlertDescription>
         </Alert>
-      )}
-
-      {formState.kind !== 'closed' && (
-        <CommitteeForm
-          key={formState.kind === 'edit' ? formState.committee.id : 'create'}
-          mode={formState.kind}
-          initialCommittee={formState.kind === 'edit' ? formState.committee : null}
-          isSubmitting={isSubmitting}
-          serverError={mutationError}
-          serverErrorDetail={mutationErrorDetail}
-          onCancel={handleCloseForm}
-          onSubmitCreate={handleCreateSubmit}
-          onSubmitEdit={handleEditSubmit}
-        />
       )}
 
       <Tabs value={tab} onValueChange={setTab} className="space-y-4">
@@ -228,6 +225,71 @@ export function QualityCommitteePage() {
           )}
         </TabsContent>
       </Tabs>
+
+      <Sheet
+        open={formState.kind !== 'closed'}
+        onOpenChange={(isOpen) => {
+          if (!isOpen && !isSubmitting) {
+            handleCloseForm();
+          }
+        }}
+      >
+        <SheetContent
+          size="lg"
+          showCloseButton={!isSubmitting}
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            sheetTitleRef.current?.focus();
+          }}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            restore();
+          }}
+          onEscapeKeyDown={(event) => {
+            if (isSubmitting) {
+              event.preventDefault();
+            }
+          }}
+          onPointerDownOutside={(event) => event.preventDefault()}
+          onInteractOutside={(event) => event.preventDefault()}
+        >
+          {formState.kind !== 'closed' && (
+            <>
+              <SheetHeader>
+                <SheetTitle ref={sheetTitleRef} tabIndex={-1} className="focus:outline-none">
+                  {formState.kind === 'edit'
+                    ? formatCommitteePeriod(
+                        formState.committee.periodStart,
+                        formState.committee.periodEnd,
+                      )
+                    : 'Registrar Comité de Calidad'}
+                </SheetTitle>
+                <SheetDescription>
+                  {formState.kind === 'edit'
+                    ? `Periodo (solo lectura): ${formatCommitteePeriod(
+                        formState.committee.periodStart,
+                        formState.committee.periodEnd,
+                      )}`
+                    : 'Define las fechas del periodo y registra al menos un Presidente. Un periodo equivocado se corrige registrando un Comité nuevo.'}
+                </SheetDescription>
+              </SheetHeader>
+
+              <CommitteeForm
+                key={formState.kind === 'edit' ? formState.committee.id : 'create'}
+                mode={formState.kind}
+                initialCommittee={formState.kind === 'edit' ? formState.committee : null}
+                inPanel
+                isSubmitting={isSubmitting}
+                serverError={mutationError}
+                serverErrorDetail={mutationErrorDetail}
+                onCancel={handleCloseForm}
+                onSubmitCreate={handleCreateSubmit}
+                onSubmitEdit={handleEditSubmit}
+              />
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </section>
   );
 }
