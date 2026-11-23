@@ -15,15 +15,5 @@ export const Route = createFileRoute('/_app/plantillas')({
 });
 
 function TemplatesRouteComponent() {
-  const search = Route.useSearch();
-  const navigate = Route.useNavigate();
-
-  return (
-    <TemplatesPage
-      selectedId={search.id}
-      onSelectedChange={(id) => {
-        void navigate({ search: { id } });
-      }}
-    />
-  );
+  return <TemplatesPage />;
 }
