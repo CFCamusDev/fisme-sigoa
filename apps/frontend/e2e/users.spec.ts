@@ -7,8 +7,8 @@ test.describe('HU-003 — Gestión de usuarios E2E', () => {
   test('administrator creates a user and deactivates another (CA1, CA3, CA4)', async ({
     page,
     browser,
-  }) => {
-    const timestamp = Date.now();
+  }, testInfo) => {
+    const timestamp = Date.now() * 10 + testInfo.repeatEachIndex;
     const adminEmail = `admin-${timestamp}@example.test`;
     const adminPassword = 'Password123!';
     const adminDni = String(10000000 + (timestamp % 10000000));

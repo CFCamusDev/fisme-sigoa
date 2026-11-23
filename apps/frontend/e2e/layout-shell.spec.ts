@@ -89,7 +89,7 @@ test.describe('Layout Shell & Navigation (HU-082, T-082-41)', () => {
       .first()
       .click();
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Guardar permisos' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Guardar cambios' })).toBeVisible();
 
     const rolePermsHeight = await page.evaluate(() => document.documentElement.scrollHeight);
     expect(rolePermsHeight).toBeLessThanOrEqual(720 * 2);
