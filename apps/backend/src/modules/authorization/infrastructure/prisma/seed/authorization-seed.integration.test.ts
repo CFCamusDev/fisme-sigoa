@@ -239,12 +239,12 @@ describe('Authorization Seed Integration (PostgreSQL real, CA1, RS-010, LS 3.2, 
 
     await prisma.userRole.createMany({
       data: [
-        { userId: user.id, roleId: manualRole.id, assignedBy: 'SEED' },
-        { userId: user.id, roleId: adminRole.id, assignedBy: 'SEED' },
+        { userId: user.id, roleId: manualRole.id, createdBy: 'SEED' },
+        { userId: user.id, roleId: adminRole.id, createdBy: 'SEED' },
       ],
     });
     await prisma.userPermission.create({
-      data: { userId: user.id, permissionId: docPerm.id, scope: 'GLOBAL', assignedBy: 'SEED' },
+      data: { userId: user.id, permissionId: docPerm.id, scope: 'GLOBAL', createdBy: 'SEED' },
     });
     await prisma.rolePermission.create({
       data: {
