@@ -136,9 +136,9 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Settings', () => {
     await expectNoContrastViolations(page, { context: 'response-scales-page-mobile' });
     await page.setViewportSize(DESKTOP);
 
-    // Panel de duplicar abierto en la tarjeta de la escala propia
+    // Diálogo de duplicar abierto para la escala propia
     await page.getByRole('region', { name }).getByRole('button', { name: 'Duplicar' }).click();
-    await expect(page.getByRole('heading', { level: 3, name: 'Duplicar escala' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 2, name: 'Duplicar escala' })).toBeVisible();
     await expectNoContrastViolations(page, { context: 'response-scales-duplicate-panel-desktop' });
   });
 

@@ -37,11 +37,12 @@ describe('ResponseScalesPage Component (HU-012, T-012-17, CA1, CA2, CA3)', () =>
     expect(screen.getAllByText(/cargando escalas/i).length).toBeGreaterThan(0);
     release();
     expect(
-      await screen.findByRole('table', { name: 'Niveles de Evidencia en el desempeño (4)' }),
+      await screen.findByRole('heading', { level: 2, name: 'Evidencia en el desempeño (4)' }),
     ).toBeInTheDocument();
   });
 
-  it('shows the three scales with their levels', async () => {
+  it('shows the three scales with their levels when expanded', async () => {
+    const user = userEvent.setup();
     server.use(http.get(BASE, () => HttpResponse.json(buildResponseScalesResponse())));
 
     renderWithProviders(<ResponseScalesPage />, { withRouter: false });
@@ -55,10 +56,17 @@ describe('ResponseScalesPage Component (HU-012, T-012-17, CA1, CA2, CA3)', () =>
       'Numérica 1–5',
       'Evidencia en el desempeño (4)',
     ]);
-    const likert = screen.getByRole('table', { name: 'Niveles de Likert de acuerdo (5)' });
+    const likertRegion = screen.getByRole('region', { name: 'Likert de acuerdo (5)' });
+    await user.click(within(likertRegion).getByRole('button', { name: 'Ver niveles' }));
+    const likert = within(likertRegion).getByRole('table', {
+      name: 'Niveles de Likert de acuerdo (5)',
+    });
     expect(within(likert).getAllByRole('row')).toHaveLength(6);
     expect(within(likert).getByText('Completamente en desacuerdo')).toBeInTheDocument();
-    const evidence = screen.getByRole('table', {
+
+    const evidenceRegion = screen.getByRole('region', { name: 'Evidencia en el desempeño (4)' });
+    await user.click(within(evidenceRegion).getByRole('button', { name: 'Ver niveles' }));
+    const evidence = within(evidenceRegion).getByRole('table', {
       name: 'Niveles de Evidencia en el desempeño (4)',
     });
     expect(within(evidence).getAllByRole('row')).toHaveLength(5);
@@ -77,11 +85,16 @@ describe('ResponseScalesPage Component (HU-012, T-012-17, CA1, CA2, CA3)', () =>
   });
 
   it('shows which levels count as achievement', async () => {
+    const user = userEvent.setup();
     server.use(http.get(BASE, () => HttpResponse.json(buildResponseScalesResponse())));
 
     renderWithProviders(<ResponseScalesPage />, { withRouter: false });
 
-    const evidence = await screen.findByRole('table', {
+    const evidenceRegion = await screen.findByRole('region', {
+      name: 'Evidencia en el desempeño (4)',
+    });
+    await user.click(within(evidenceRegion).getByRole('button', { name: 'Ver niveles' }));
+    const evidence = within(evidenceRegion).getByRole('table', {
       name: 'Niveles de Evidencia en el desempeño (4)',
     });
     const rows = within(evidence).getAllByRole('row').slice(1);
@@ -155,7 +168,7 @@ describe('ResponseScalesPage Component (HU-012, T-012-17, CA1, CA2, CA3)', () =>
     await user.click(screen.getByRole('button', { name: /reintentar/i }));
 
     expect(
-      await screen.findByRole('table', { name: 'Niveles de Evidencia en el desempeño (4)' }),
+      await screen.findByRole('heading', { level: 2, name: 'Evidencia en el desempeño (4)' }),
     ).toBeInTheDocument();
   });
 
@@ -185,7 +198,7 @@ describe('ResponseScalesPage Component (HU-012, T-012-17, CA1, CA2, CA3)', () =>
     );
 
     expect(
-      await screen.findByRole('table', { name: 'Niveles de Evidencia en el desempeño (4)' }),
+      await screen.findByRole('heading', { level: 2, name: 'Evidencia en el desempeño (4)' }),
     ).toBeInTheDocument();
     expect(calls).toBe(1);
   });
@@ -308,7 +321,7 @@ describe('ResponseScalesPage Component (HU-012, T-012-17, CA1, CA2, CA3)', () =>
     renderWithProviders(<ResponseScalesPage />, { withRouter: false, permissions: editor });
 
     await user.click(await screen.findByRole('button', { name: 'Duplicar' }));
-    expect(screen.getByRole('heading', { level: 3, name: 'Duplicar escala' })).toHaveFocus();
+    expect(screen.getByRole('heading', { level: 2, name: 'Duplicar escala' })).toHaveFocus();
     await user.click(screen.getByRole('button', { name: 'Duplicar escala' }));
 
     expect(await screen.findByText('Escala duplicada como EVIDENCE_4_COPIA.')).toBeInTheDocument();

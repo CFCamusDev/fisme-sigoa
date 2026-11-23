@@ -16,8 +16,12 @@ describe('ResponseScaleCard Component (HU-012, T-012-28, CA1, CA2, CA3)', () => 
     expect(within(section).getByText(/EVIDENCE_4 · Evidencia · 4 niveles/)).toBeInTheDocument();
   });
 
-  it('lists the levels in order with label, value and the counts-as-achievement flag (CA2)', () => {
+  it('collapses levels by default and expands them when requested (CA2, T-082-26)', async () => {
+    const user = userEvent.setup();
     renderWithProviders(<ResponseScaleCard scale={buildEvidenceScale()} />, { withRouter: false });
+
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Ver niveles' }));
 
     const rows = within(screen.getByRole('table', { name: /Niveles de/ }))
       .getAllByRole('row')

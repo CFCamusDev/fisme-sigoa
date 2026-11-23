@@ -17,11 +17,17 @@ import { suggestDuplicate } from '../lib/response-scale-labels';
 
 export interface DuplicateScaleFormProps {
   scale: ResponseScaleDto;
+  inDialog?: boolean;
   onCancel: () => void;
   onDuplicated: (created: ResponseScaleDto) => void;
 }
 
-export function DuplicateScaleForm({ scale, onCancel, onDuplicated }: DuplicateScaleFormProps) {
+export function DuplicateScaleForm({
+  scale,
+  inDialog = false,
+  onCancel,
+  onDuplicated,
+}: DuplicateScaleFormProps) {
   const duplicateMutation = useDuplicateResponseScale();
   const [generalError, setGeneralError] = useState<string | null>(null);
   const submittingRef = useRef(false);
@@ -38,8 +44,10 @@ export function DuplicateScaleForm({ scale, onCancel, onDuplicated }: DuplicateS
   });
 
   useEffect(() => {
-    headingRef.current?.focus();
-  }, []);
+    if (!inDialog) {
+      headingRef.current?.focus();
+    }
+  }, [inDialog]);
 
   const onSubmit = async (values: DuplicateResponseScaleRequest) => {
     if (submittingRef.current || duplicateMutation.isPending) {
@@ -68,17 +76,26 @@ export function DuplicateScaleForm({ scale, onCancel, onDuplicated }: DuplicateS
   const idPrefix = `duplicate-${scale.id}`;
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4 text-card-foreground">
-      <h3
-        ref={headingRef}
-        tabIndex={-1}
-        className="text-base font-semibold text-foreground focus:outline-none"
-      >
-        Duplicar escala
-      </h3>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Se copian el tipo y los niveles de «{scale.name}» en una escala nueva que sí puedes editar.
-      </p>
+    <div
+      className={
+        inDialog ? undefined : 'rounded-lg border border-border bg-card p-4 text-card-foreground'
+      }
+    >
+      {!inDialog && (
+        <>
+          <h3
+            ref={headingRef}
+            tabIndex={-1}
+            className="text-base font-semibold text-foreground focus:outline-none"
+          >
+            Duplicar escala
+          </h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Se copian el tipo y los niveles de «{scale.name}» en una escala nueva que sí puedes
+            editar.
+          </p>
+        </>
+      )}
 
       {generalError && (
         <div className="mt-4">

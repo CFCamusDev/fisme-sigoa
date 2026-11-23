@@ -24,6 +24,7 @@ export type ResponseScaleFormMode =
 
 export interface ResponseScaleFormProps {
   mode: ResponseScaleFormMode;
+  inDialog?: boolean;
   onCancel: () => void;
   onSaved: (message: string) => void;
 }
@@ -67,7 +68,12 @@ function buildResolver(mode: ResponseScaleFormMode): Resolver<ScaleFormValues> {
     )) as unknown as ResolverResult<ScaleFormValues>;
 }
 
-export function ResponseScaleForm({ mode, onCancel, onSaved }: ResponseScaleFormProps) {
+export function ResponseScaleForm({
+  mode,
+  inDialog = false,
+  onCancel,
+  onSaved,
+}: ResponseScaleFormProps) {
   const createMutation = useCreateResponseScale();
   const updateMutation = useUpdateResponseScale();
   const isEdit = mode.kind === 'edit';
@@ -90,8 +96,10 @@ export function ResponseScaleForm({ mode, onCancel, onSaved }: ResponseScaleForm
   });
 
   useEffect(() => {
-    headingRef.current?.focus();
-  }, []);
+    if (!inDialog) {
+      headingRef.current?.focus();
+    }
+  }, [inDialog]);
 
   const onSubmit = async (values: ScaleFormValues) => {
     if (submittingRef.current || isPending) {
@@ -147,19 +155,29 @@ export function ResponseScaleForm({ mode, onCancel, onSaved }: ResponseScaleForm
   const typeError = errors.type?.message;
 
   return (
-    <div className="rounded-lg border border-border bg-card p-6 text-card-foreground shadow-sm">
-      <h2
-        ref={headingRef}
-        tabIndex={-1}
-        className="text-lg font-semibold tracking-tight text-foreground focus:outline-none"
-      >
-        {isEdit ? 'Editar escala' : 'Nueva escala'}
-      </h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        {isEdit
-          ? 'Cambia el nombre o los niveles. El código y el tipo no se pueden modificar.'
-          : 'Define el código, el nombre, el tipo y los niveles de la escala.'}
-      </p>
+    <div
+      className={
+        inDialog
+          ? undefined
+          : 'rounded-lg border border-border bg-card p-6 text-card-foreground shadow-sm'
+      }
+    >
+      {!inDialog && (
+        <>
+          <h2
+            ref={headingRef}
+            tabIndex={-1}
+            className="text-lg font-semibold tracking-tight text-foreground focus:outline-none"
+          >
+            {isEdit ? 'Editar escala' : 'Nueva escala'}
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {isEdit
+              ? 'Cambia el nombre o los niveles. El código y el tipo no se pueden modificar.'
+              : 'Define el código, el nombre, el tipo y los niveles de la escala.'}
+          </p>
+        </>
+      )}
 
       {notice && (
         <div className="mt-4">

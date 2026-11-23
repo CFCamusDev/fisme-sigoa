@@ -1,7 +1,9 @@
-import type { ReactNode } from 'react';
+import { useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import type { ResponseScaleDto } from '@sigoa/shared';
 import { StatusBadge } from '@/components/common/status-badge';
 import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Table,
   TableBody,
@@ -10,6 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { cn } from '@/lib/utils';
 import { getScaleTypeLabel } from '../lib/response-scale-labels';
 
 export interface ResponseScaleCardProps {
@@ -18,8 +21,6 @@ export interface ResponseScaleCardProps {
   canEdit?: boolean;
   onEdit?: (scale: ResponseScaleDto, opener: HTMLElement) => void;
   onDuplicate?: (scale: ResponseScaleDto, opener: HTMLElement) => void;
-  /** Panel en línea (por ejemplo, el formulario de duplicar). */
-  panel?: ReactNode;
 }
 
 export function ResponseScaleCard({
@@ -27,9 +28,9 @@ export function ResponseScaleCard({
   canEdit = false,
   onEdit,
   onDuplicate,
-  panel,
 }: ResponseScaleCardProps) {
   const titleId = `response-scale-${scale.id}-title`;
+  const [levelsOpen, setLevelsOpen] = useState(false);
 
   return (
     <section
@@ -48,38 +49,49 @@ export function ResponseScaleCard({
         {scale.inUse && <StatusBadge status="CLOSED" label="En uso" />}
       </div>
 
-      <div className="mt-4">
-        <Table aria-label={`Niveles de ${scale.name}`}>
-          <TableHeader>
-            <TableRow>
-              <TableHead scope="col">Orden</TableHead>
-              <TableHead scope="col">Etiqueta</TableHead>
-              <TableHead scope="col" className="text-right">
-                Valor
-              </TableHead>
-              <TableHead scope="col">Cuenta como logro</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {scale.levels.map((level) => (
-              <TableRow key={level.order}>
-                <TableCell className="tabular text-foreground">{level.order}</TableCell>
-                <TableCell className="text-foreground">{level.label}</TableCell>
-                <TableCell className="text-right tabular text-foreground">
-                  {new Intl.NumberFormat('es-PE').format(level.value)}
-                </TableCell>
-                <TableCell>
-                  {level.countsAsAchievement ? (
-                    <StatusBadge status="MET" label="Cuenta como logro" />
-                  ) : (
-                    <span className="text-muted-foreground">No cuenta</span>
-                  )}
-                </TableCell>
+      <Collapsible open={levelsOpen} onOpenChange={setLevelsOpen} className="mt-4">
+        <CollapsibleTrigger asChild>
+          <Button type="button" variant="ghost" size="sm" className="-ml-2">
+            <ChevronDown
+              className={cn('mr-1.5 size-4 transition-transform', levelsOpen && 'rotate-180')}
+              aria-hidden="true"
+            />
+            {levelsOpen ? 'Ocultar niveles' : 'Ver niveles'}
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-3">
+          <Table aria-label={`Niveles de ${scale.name}`}>
+            <TableHeader>
+              <TableRow>
+                <TableHead scope="col">Orden</TableHead>
+                <TableHead scope="col">Etiqueta</TableHead>
+                <TableHead scope="col" className="text-right">
+                  Valor
+                </TableHead>
+                <TableHead scope="col">Cuenta como logro</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+            </TableHeader>
+            <TableBody>
+              {scale.levels.map((level) => (
+                <TableRow key={level.order}>
+                  <TableCell className="tabular text-foreground">{level.order}</TableCell>
+                  <TableCell className="text-foreground">{level.label}</TableCell>
+                  <TableCell className="text-right tabular text-foreground">
+                    {new Intl.NumberFormat('es-PE').format(level.value)}
+                  </TableCell>
+                  <TableCell>
+                    {level.countsAsAchievement ? (
+                      <StatusBadge status="MET" label="Cuenta como logro" />
+                    ) : (
+                      <span className="text-muted-foreground">No cuenta</span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CollapsibleContent>
+      </Collapsible>
 
       {scale.inUse && (
         <p className="mt-4 text-sm text-muted-foreground">
@@ -112,8 +124,6 @@ export function ResponseScaleCard({
           )}
         </div>
       )}
-
-      {panel && <div className="mt-4">{panel}</div>}
     </section>
   );
 }
