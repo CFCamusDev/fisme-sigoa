@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useRouterState } from '@tanstack/react-router';
 import { ChevronDown, X } from 'lucide-react';
 import { z } from 'zod';
@@ -114,16 +114,22 @@ export function Sidebar({ isOpen, onClose, groups = NAV_GROUPS }: SidebarProps) 
     });
   }, []);
 
+  const prevPathRef = useRef(currentPath);
+  useEffect(() => {
+    if (prevPathRef.current !== currentPath) {
+      prevPathRef.current = currentPath;
+      if (isOpen) {
+        onClose();
+      }
+    }
+  }, [currentPath, isOpen, onClose]);
+
   useEffect(() => {
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClose();
-        const toggleButton = document.querySelector<HTMLButtonElement>(
-          'button[aria-controls="app-sidebar"]',
-        );
-        toggleButton?.focus();
       }
     };
 
@@ -134,14 +140,15 @@ export function Sidebar({ isOpen, onClose, groups = NAV_GROUPS }: SidebarProps) 
   return (
     <>
       {/* Backdrop para pantallas menores a 1024px */}
-      {isOpen && (
-        <div
-          role="presentation"
-          aria-hidden="true"
-          onClick={onClose}
-          className="fixed inset-0 top-16 z-40 bg-brand-950/60 transition-opacity lg:hidden"
-        />
-      )}
+      <div
+        role="presentation"
+        aria-hidden="true"
+        data-testid="sidebar-backdrop"
+        onClick={isOpen ? onClose : undefined}
+        className={`fixed inset-0 top-16 z-40 bg-brand-950/60 transition-opacity motion-panel lg:hidden ${
+          isOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
+        }`}
+      />
 
       {/* Barra lateral */}
       <aside

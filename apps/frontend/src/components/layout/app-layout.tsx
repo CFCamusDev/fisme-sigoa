@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from 'react';
+import { useCallback, useRef, useState, type ReactNode } from 'react';
+import { useRestoreFocus } from '@/hooks/use-restore-focus';
 import { Header } from './header';
 import { Sidebar } from './sidebar';
 
@@ -9,6 +10,31 @@ export interface AppLayoutProps {
 
 export function AppLayout({ children, userMenu }: AppLayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const isMobileMenuOpenRef = useRef(false);
+  const { remember, restore } = useRestoreFocus();
+
+  const handleToggleMobileMenu = useCallback(
+    (opener: HTMLElement) => {
+      if (!isMobileMenuOpenRef.current) {
+        remember(opener);
+        isMobileMenuOpenRef.current = true;
+        setIsMobileMenuOpen(true);
+      } else {
+        isMobileMenuOpenRef.current = false;
+        setIsMobileMenuOpen(false);
+      }
+    },
+    [remember],
+  );
+
+  const handleCloseMobileMenu = useCallback(() => {
+    if (!isMobileMenuOpenRef.current) {
+      return;
+    }
+    isMobileMenuOpenRef.current = false;
+    setIsMobileMenuOpen(false);
+    restore();
+  }, [restore]);
 
   return (
     <div className="min-h-dvh bg-background text-foreground flex flex-col">
@@ -25,12 +51,12 @@ export function AppLayout({ children, userMenu }: AppLayoutProps) {
 
       <Header
         isMobileMenuOpen={isMobileMenuOpen}
-        onToggleMobileMenu={() => setIsMobileMenuOpen((prev) => !prev)}
+        onToggleMobileMenu={handleToggleMobileMenu}
         userMenu={userMenu}
       />
 
       <div className="flex flex-1 items-start">
-        <Sidebar isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
+        <Sidebar isOpen={isMobileMenuOpen} onClose={handleCloseMobileMenu} />
 
         <main
           id="main-content"

@@ -348,6 +348,58 @@ describe('AppLayout Component', () => {
     expect(menuToggle).toHaveFocus();
   });
 
+  it('fades the backdrop instead of mounting it', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <AppLayout>
+        <p>Contenido</p>
+      </AppLayout>,
+    );
+
+    const backdrop = await screen.findByTestId('sidebar-backdrop');
+    expect(backdrop).toHaveClass('opacity-0', 'pointer-events-none', 'motion-panel');
+    expect(backdrop).toHaveAttribute('aria-hidden', 'true');
+
+    const menuToggle = screen.getByRole('button', { name: /Abrir menú de navegación/i });
+    await user.click(menuToggle);
+
+    expect(backdrop).toHaveClass('opacity-100');
+    expect(backdrop).not.toHaveClass('pointer-events-none');
+  });
+
+  it('closes with Escape, outside click and navigation returning focus to the toggle', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <AppLayout>
+        <p>Contenido</p>
+      </AppLayout>,
+    );
+
+    const menuToggle = await screen.findByRole('button', { name: /Abrir menú de navegación/i });
+    const backdrop = screen.getByTestId('sidebar-backdrop');
+
+    // 1. Escape
+    await user.click(menuToggle);
+    expect(menuToggle).toHaveAttribute('aria-expanded', 'true');
+    await user.keyboard('{Escape}');
+    expect(menuToggle).toHaveAttribute('aria-expanded', 'false');
+    expect(menuToggle).toHaveFocus();
+
+    // 2. Clic fuera (backdrop)
+    await user.click(menuToggle);
+    expect(menuToggle).toHaveAttribute('aria-expanded', 'true');
+    await user.click(backdrop);
+    expect(menuToggle).toHaveAttribute('aria-expanded', 'false');
+    expect(menuToggle).toHaveFocus();
+
+    // 3. Navegación (clic en enlace)
+    await user.click(menuToggle);
+    expect(menuToggle).toHaveAttribute('aria-expanded', 'true');
+    await user.click(screen.getByRole('link', { name: 'Panel' }));
+    expect(menuToggle).toHaveAttribute('aria-expanded', 'false');
+    expect(menuToggle).toHaveFocus();
+  });
+
   it('follows accessible tab order: skip link first, then menu toggle, then nav items', async () => {
     const user = userEvent.setup();
 

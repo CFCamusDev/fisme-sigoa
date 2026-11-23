@@ -4,7 +4,7 @@ import { Logo } from '@/components/common/logo';
 
 export interface HeaderProps {
   isMobileMenuOpen: boolean;
-  onToggleMobileMenu: () => void;
+  onToggleMobileMenu: (opener: HTMLElement) => void;
   userMenu?: ReactNode;
 }
 
@@ -14,7 +14,7 @@ export function Header({ isMobileMenuOpen, onToggleMobileMenu, userMenu }: Heade
       <div className="flex items-center gap-3 sm:gap-4">
         <button
           type="button"
-          onClick={onToggleMobileMenu}
+          onClick={(event) => onToggleMobileMenu(event.currentTarget)}
           aria-expanded={isMobileMenuOpen}
           aria-controls="app-sidebar"
           aria-label={isMobileMenuOpen ? 'Cerrar menú de navegación' : 'Abrir menú de navegación'}
