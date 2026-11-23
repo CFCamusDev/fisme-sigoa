@@ -85,8 +85,8 @@ describe('AppLayout Component', () => {
       </AppLayout>,
     );
 
-    const root = container.firstElementChild as HTMLElement;
     const main = await screen.findByRole('main');
+    const root = container.firstElementChild as HTMLElement;
     const inner = screen.getByTestId('empty-content').parentElement;
 
     expect(root).toHaveClass('min-h-dvh');
