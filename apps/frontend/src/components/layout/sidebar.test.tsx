@@ -84,12 +84,13 @@ describe('Sidebar grouped navigation (HU-082, T-082-12)', () => {
   it('ignores a corrupt or blocked stored value', async () => {
     window.localStorage.setItem(NAV_OPEN_GROUPS_STORAGE_KEY, '{not-valid-json');
 
-    renderWithProviders(<Sidebar isOpen={false} onClose={vi.fn()} />, {
+    const { unmount } = renderWithProviders(<Sidebar isOpen={false} onClose={vi.fn()} />, {
       permissions: ADMIN_PERMISSIONS,
     });
 
     const adminGroup = await screen.findByRole('button', { name: 'Administración' });
     expect(adminGroup).toHaveAttribute('aria-expanded', 'false');
+    unmount();
 
     const getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
       throw new Error('SecurityError');
@@ -98,7 +99,7 @@ describe('Sidebar grouped navigation (HU-082, T-082-12)', () => {
       renderWithProviders(<Sidebar isOpen={false} onClose={vi.fn()} />, {
         permissions: ADMIN_PERMISSIONS,
       });
-      expect(await screen.findAllByRole('link', { name: 'Panel' })).toHaveLength(2);
+      expect(await screen.findByRole('link', { name: 'Panel' })).toBeInTheDocument();
     } finally {
       getItemSpy.mockRestore();
     }
