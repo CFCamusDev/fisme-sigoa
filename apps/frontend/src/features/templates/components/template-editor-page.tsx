@@ -1,16 +1,21 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Link, useBlocker } from '@tanstack/react-router';
-import { ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, CircleAlert, Eye } from 'lucide-react';
+import { TEMPLATE_CONTENT_MAX_LENGTH } from '@sigoa/shared';
+import { Can } from '@/components/common/can';
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import { ErrorState } from '@/components/common/error-state';
 import { LoadingState } from '@/components/common/loading-state';
 import { PageHeader } from '@/components/common/page-header';
+import { StickyActionBar } from '@/components/common/sticky-action-bar';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { buttonVariants } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePermission } from '@/hooks/use-permission';
+import { useRestoreFocus } from '@/hooks/use-restore-focus';
 import { useTabParam } from '@/hooks/use-tab-param';
 import { cn } from '@/lib/utils';
+import { usePublishTemplate } from '../hooks/use-publish-template';
 import { useTemplateDetail } from '../hooks/use-template-detail';
 import { getTemplateErrorMessage } from '../lib/template-error-message';
 import { formatTemplateType, formatVersionLabel } from '../lib/template-labels';
@@ -26,15 +31,26 @@ export interface TemplateEditorPageProps {
 }
 
 export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
+  const editorFormId = useId();
   const { allowed: canEdit } = usePermission('plantilla.editar', 'GLOBAL');
+  const { allowed: canPublish } = usePermission('plantilla.publicar', 'GLOBAL');
   const [tab, setTab] = useTabParam(TEMPLATE_TABS, 'contenido');
   const detailQuery = useTemplateDetail(templateId);
+  const publishMutation = usePublishTemplate();
   const detail = detailQuery.data;
 
   const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [publishError, setPublishError] = useState<string | null>(null);
+  const [publishConfirmOpen, setPublishConfirmOpen] = useState(false);
+  const [previewRequestToken, setPreviewRequestToken] = useState(0);
   const [versionRevision, setVersionRevision] = useState(0);
+
   const insertRef = useRef<((key: string) => void) | null>(null);
+  const discardRef = useRef<(() => void) | null>(null);
+  const publishTriggerRef = useRef<HTMLElement | null>(null);
+  useRestoreFocus(publishConfirmOpen, publishTriggerRef);
 
   const serverBaseContent = detail?.draft?.content ?? detail?.published?.content ?? '';
   const editorKey = detail
@@ -66,6 +82,28 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
     withResolver: true,
   });
 
+  async function confirmPublish() {
+    if (publishMutation.isPending || !detail?.draft) {
+      return;
+    }
+    setPublishError(null);
+    setFeedback(null);
+    try {
+      const published = await publishMutation.mutateAsync({
+        templateId: detail.id,
+        versionId: detail.draft.id,
+        expectedUpdatedAt: detail.draft.updatedAt,
+      });
+      setPublishConfirmOpen(false);
+      setFeedback(`Versión ${formatVersionLabel(published.number)} publicada.`);
+      setVersionRevision((value) => value + 1);
+      void detailQuery.refetch();
+    } catch (error) {
+      setPublishConfirmOpen(false);
+      setPublishError(getTemplateErrorMessage(error));
+    }
+  }
+
   const description = detail
     ? [
         formatTemplateType(detail.type),
@@ -78,8 +116,19 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
         .join(' · ')
     : undefined;
 
+  const hasActions = Boolean(detail && (canEdit || (detail.draft && canPublish)));
+  const pending = saving || publishMutation.isPending;
+  const canGeneratePreview =
+    currentContent.trim().length > 0 && currentContent.length <= TEMPLATE_CONTENT_MAX_LENGTH;
+  const publishedNumber = detail?.published?.number;
+  const draftNumber = detail?.draft?.number;
+  const publishConfirmText =
+    publishedNumber !== undefined
+      ? `Publicar la versión ${draftNumber} dejará Obsoleta la versión ${publishedNumber}. Esta acción no se puede deshacer.`
+      : `Publicar la versión ${draftNumber} la dejará como la versión vigente. Esta acción no se puede deshacer.`;
+
   return (
-    <div className="space-y-6">
+    <div className={cn('space-y-6', hasActions && 'pb-24')}>
       <PageHeader
         title={detail ? `${detail.code} · ${detail.name}` : 'Editor de plantilla'}
         description={description}
@@ -95,6 +144,13 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
         <Alert variant="success" role="status">
           <CheckCircle2 aria-hidden="true" />
           <AlertDescription>{feedback}</AlertDescription>
+        </Alert>
+      )}
+
+      {publishError && (
+        <Alert variant="danger" role="alert">
+          <CircleAlert aria-hidden="true" />
+          <AlertDescription>{publishError}</AlertDescription>
         </Alert>
       )}
 
@@ -132,17 +188,16 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
           <TabsContent value="contenido" forceMount className="data-[state=inactive]:hidden">
             <TemplateEditor
               key={editorKey}
+              formId={editorFormId}
               detail={detail}
               insertRef={insertRef}
+              discardRef={discardRef}
               onContentChange={setCurrentContent}
               onDirtyChange={setDirty}
+              onSavingChange={setSaving}
               onSaved={(version) => {
+                setPublishError(null);
                 setFeedback(`Borrador ${formatVersionLabel(version.number)} guardado.`);
-                setVersionRevision((value) => value + 1);
-                void detailQuery.refetch();
-              }}
-              onPublished={(version) => {
-                setFeedback(`Versión ${formatVersionLabel(version.number)} publicada.`);
                 setVersionRevision((value) => value + 1);
                 void detailQuery.refetch();
               }}
@@ -165,7 +220,11 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
 
           {canEdit && (
             <TabsContent value="vista-previa" forceMount className="data-[state=inactive]:hidden">
-              <TemplatePreviewPanel templateId={detail.id} content={currentContent} />
+              <TemplatePreviewPanel
+                templateId={detail.id}
+                content={currentContent}
+                requestToken={previewRequestToken}
+              />
             </TabsContent>
           )}
 
@@ -174,6 +233,64 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
           </TabsContent>
         </Tabs>
       )}
+
+      {hasActions && detail && (
+        <StickyActionBar ariaLabel="Acciones de la plantilla">
+          <Can permission="plantilla.editar" scope="GLOBAL">
+            <Button type="submit" form={editorFormId} disabled={!dirty || pending}>
+              {saving ? 'Guardando…' : 'Guardar borrador'}
+            </Button>
+            {dirty && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={pending}
+                onClick={() => discardRef.current?.()}
+              >
+                Descartar cambios
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!canGeneratePreview || pending}
+              onClick={() => {
+                setTab('vista-previa');
+                setPreviewRequestToken((value) => value + 1);
+              }}
+            >
+              <Eye className="mr-2 size-4" aria-hidden="true" />
+              Vista previa
+            </Button>
+          </Can>
+          {detail.draft && (
+            <Can permission="plantilla.publicar" scope="GLOBAL">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={dirty || pending || detailQuery.isFetching}
+                onClick={(event) => {
+                  publishTriggerRef.current = event.currentTarget;
+                  setPublishConfirmOpen(true);
+                }}
+              >
+                {`Publicar versión ${detail.draft.number}`}
+              </Button>
+            </Can>
+          )}
+        </StickyActionBar>
+      )}
+
+      <ConfirmDialog
+        open={publishConfirmOpen}
+        onOpenChange={setPublishConfirmOpen}
+        title="Confirmar la publicación"
+        description={publishConfirmText}
+        confirmLabel="Confirmar"
+        pendingLabel="Publicando…"
+        isPending={publishMutation.isPending}
+        onConfirm={confirmPublish}
+      />
 
       <ConfirmDialog
         open={blocker.status === 'blocked'}

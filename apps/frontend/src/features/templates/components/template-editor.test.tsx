@@ -1,8 +1,8 @@
 import { StrictMode } from 'react';
-import { screen, waitFor, within } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { QueryClient } from '@tanstack/react-query';
 import userEvent from '@testing-library/user-event';
-import { delay, http, HttpResponse } from 'msw';
+import { http, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
 import { server } from '@/test/msw/server';
 import { renderWithProviders } from '@/test/render';
@@ -20,12 +20,18 @@ const administrator = [
 function renderEditor() {
   const handlers = {
     onSaved: vi.fn(),
-    onPublished: vi.fn(),
     onDirtyChange: vi.fn(),
   };
   renderWithProviders(
     <StrictMode>
-      <TemplateEditor detail={buildTemplateDetail({ withDraft: true })} {...handlers} />
+      <TemplateEditor
+        formId="tpl-editor-form"
+        detail={buildTemplateDetail({ withDraft: true })}
+        {...handlers}
+      />
+      <button type="submit" form="tpl-editor-form">
+        Guardar borrador
+      </button>
     </StrictMode>,
     {
       permissions: administrator,
@@ -38,36 +44,13 @@ function renderEditor() {
   return handlers;
 }
 
-describe('TemplateEditor (T-018-29, HU-018)', () => {
-  it('ignores a second click on publish while the request is in flight', async () => {
-    const user = userEvent.setup();
-    let posts = 0;
-    server.use(
-      http.post(`${BASE}/publish`, async () => {
-        posts += 1;
-        await delay(30);
-        return HttpResponse.json(
-          buildTemplateVersion({ status: 'PUBLISHED', publishedAt: '2026-11-14T09:00:00.000Z' }),
-        );
-      }),
-    );
-    const handlers = renderEditor();
-    await user.click(await screen.findByRole('button', { name: 'Publicar versión 2' }));
-    const dialog = await screen.findByRole('alertdialog');
-
-    await user.dblClick(within(dialog).getByRole('button', { name: 'Confirmar' }));
-
-    await waitFor(() => expect(handlers.onPublished).toHaveBeenCalledTimes(1));
-    expect(posts).toBe(1);
-  });
-
-  it('ignores a second click on save while the request is in flight', async () => {
+describe('TemplateEditor (T-018-29, HU-018, T-082-25)', () => {
+  it('saves the draft when the external form button is submitted', async () => {
     const user = userEvent.setup();
     let puts = 0;
     server.use(
-      http.put(`${BASE}/draft`, async () => {
+      http.put(`${BASE}/draft`, () => {
         puts += 1;
-        await delay(30);
         return HttpResponse.json(
           buildTemplateVersion({ content: '<p>{{program.name}} borrador x</p>' }),
         );
@@ -76,7 +59,7 @@ describe('TemplateEditor (T-018-29, HU-018)', () => {
     const handlers = renderEditor();
     await user.type(await screen.findByRole('textbox', { name: 'Contenido HTML' }), ' x');
 
-    await user.dblClick(screen.getByRole('button', { name: 'Guardar borrador' }));
+    await user.click(screen.getByRole('button', { name: 'Guardar borrador' }));
 
     await waitFor(() => expect(handlers.onSaved).toHaveBeenCalledTimes(1));
     expect(puts).toBe(1);
@@ -118,27 +101,5 @@ describe('TemplateEditor (T-018-29, HU-018)', () => {
     for (const id of describedBy.split(' ')) {
       expect(document.getElementById(id)).not.toBeNull();
     }
-  });
-
-  it('previews the current unsaved content from the editor', async () => {
-    const user = userEvent.setup();
-    let capturedBody: unknown;
-    server.use(
-      http.post(`${BASE}/preview`, async ({ request }) => {
-        capturedBody = await request.json();
-        return HttpResponse.json({ pdfBase64: btoa('%PDF-1.4\nDraft'), warnings: [] });
-      }),
-    );
-
-    renderEditor();
-    const textarea = await screen.findByRole('textbox', { name: 'Contenido HTML' });
-    await user.type(textarea, '<p>extra</p>');
-    await user.click(screen.getByRole('button', { name: 'Vista previa' }));
-
-    await waitFor(() => {
-      expect(capturedBody).toEqual({
-        content: `${buildTemplateDetail({ withDraft: true }).draft?.content}<p>extra</p>`,
-      });
-    });
   });
 });

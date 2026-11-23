@@ -52,15 +52,11 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Templates', () => 
       // Confirmación de publicar abierta
       await page.setViewportSize(DESKTOP);
       await page.getByRole('button', { name: 'Publicar versión 2' }).click();
-      await expect(
-        page.getByRole('alertdialog', { name: 'Confirmar la publicación' }),
-      ).toBeVisible();
+      await expect(page.getByRole('dialog', { name: 'Confirmar la publicación' })).toBeVisible();
       await expectNoContrastViolations(page, { context: 'templates-confirm-desktop' });
 
       await page.setViewportSize(MOBILE);
-      await expect(
-        page.getByRole('alertdialog', { name: 'Confirmar la publicación' }),
-      ).toBeVisible();
+      await expect(page.getByRole('dialog', { name: 'Confirmar la publicación' })).toBeVisible();
       await expectNoContrastViolations(page, { context: 'templates-confirm-mobile' });
     } finally {
       await resetTemplates();

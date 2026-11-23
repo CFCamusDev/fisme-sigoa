@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { CircleAlert, ExternalLink, Eye, TriangleAlert } from 'lucide-react';
 import { TEMPLATE_CONTENT_MAX_LENGTH, type TemplatePreviewWarning } from '@sigoa/shared';
 import { Can } from '@/components/common/can';
@@ -12,6 +12,7 @@ import { getTemplatePreviewErrorMessage } from '../lib/template-error-message';
 export interface TemplatePreviewPanelProps {
   readonly templateId: string;
   readonly content: string;
+  readonly requestToken?: number;
 }
 
 interface PreviewResultState {
@@ -24,12 +25,17 @@ interface PreviewResultState {
  * Panel de vista previa en PDF para el editor de plantillas (HU-019, RF-019).
  * Solo visible con permiso `plantilla.editar`. Revoca la URL `blob:` al regenerar o desmontar.
  */
-export function TemplatePreviewPanel({ templateId, content }: TemplatePreviewPanelProps) {
+export function TemplatePreviewPanel({
+  templateId,
+  content,
+  requestToken = 0,
+}: TemplatePreviewPanelProps) {
   const previewMutation = usePreviewTemplate();
   const [previewState, setPreviewState] = useState<PreviewResultState | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
   const warningRef = useRef<HTMLDivElement>(null);
   const errorRef = useRef<HTMLDivElement>(null);
+  const lastRequestTokenRef = useRef(0);
 
   const currentUrl = previewState?.pdfUrl ?? null;
   useEffect(() => {
@@ -59,14 +65,14 @@ export function TemplatePreviewPanel({ templateId, content }: TemplatePreviewPan
     content.trim().length > 0 &&
     content.length <= TEMPLATE_CONTENT_MAX_LENGTH;
 
-  async function handlePreview() {
+  const handlePreview = useCallback(async () => {
     if (!canGenerate) {
       return;
     }
-    setServerError(null);
     try {
       const result = await previewMutation.mutateAsync({ templateId, content });
       const pdfUrl = createPdfObjectUrl(result.pdfBase64);
+      setServerError(null);
       setPreviewState({
         pdfUrl,
         warnings: result.warnings,
@@ -75,7 +81,14 @@ export function TemplatePreviewPanel({ templateId, content }: TemplatePreviewPan
     } catch (error) {
       setServerError(getTemplatePreviewErrorMessage(error));
     }
-  }
+  }, [canGenerate, content, previewMutation, templateId]);
+
+  useEffect(() => {
+    if (requestToken > lastRequestTokenRef.current) {
+      lastRequestTokenRef.current = requestToken;
+      void handlePreview();
+    }
+  }, [handlePreview, requestToken]);
 
   return (
     <Can permission="plantilla.editar" scope="GLOBAL">

@@ -17,24 +17,23 @@ import {
   type TemplateDetailDto,
   type TemplateVersionDto,
 } from '@sigoa/shared';
-import { Can } from '@/components/common/can';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { usePermission } from '@/hooks/use-permission';
-import { usePublishTemplate } from '../hooks/use-publish-template';
 import { useSaveTemplateDraft } from '../hooks/use-save-template-draft';
 import { getTemplateErrorMessage } from '../lib/template-error-message';
 import { formatVersionLabel } from '../lib/template-labels';
 
 export interface TemplateEditorProps {
   readonly detail: TemplateDetailDto;
+  readonly formId?: string;
   readonly insertRef?: Ref<((key: string) => void) | null>;
+  readonly discardRef?: Ref<(() => void) | null>;
   readonly onContentChange?: (content: string) => void;
   readonly onSaved: (version: TemplateVersionDto) => void;
-  readonly onPublished: (version: TemplateVersionDto) => void;
   readonly onDirtyChange: (dirty: boolean) => void;
+  readonly onSavingChange?: (saving: boolean) => void;
 }
 
 const COUNT_FORMAT = new Intl.NumberFormat('es-PE');
@@ -47,24 +46,23 @@ const MAX_LABEL = COUNT_FORMAT.format(TEMPLATE_CONTENT_MAX_LENGTH);
  */
 export function TemplateEditor({
   detail,
+  formId,
   insertRef,
+  discardRef,
   onContentChange,
   onSaved,
-  onPublished,
   onDirtyChange,
+  onSavingChange,
 }: TemplateEditorProps) {
   const uid = useId();
   const { allowed: canEdit } = usePermission('plantilla.editar', 'GLOBAL');
   const saveMutation = useSaveTemplateDraft();
-  const publishMutation = usePublishTemplate();
 
   const baseContent = detail.draft?.content ?? detail.published?.content ?? '';
   const [savedContent, setSavedContent] = useState(baseContent);
-  const [confirming, setConfirming] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const errorRef = useRef<HTMLDivElement>(null);
-  const confirmRef = useRef<HTMLDivElement>(null);
 
   const {
     register,
@@ -83,18 +81,21 @@ export function TemplateEditor({
 
   const content = useWatch({ control, name: 'content' });
   const dirty = content !== savedContent;
-  // Tras guardar, el detalle aún trae el borrador anterior hasta que se recarga: no se publica ese.
-  const waitingForRefresh = savedContent !== baseContent;
   const draft = detail.draft;
   const nextNumber = Math.max(0, ...detail.versions.map((version) => version.number)) + 1;
   const editingNumber = draft ? draft.number : nextNumber;
-  const pending = saveMutation.isPending || publishMutation.isPending;
 
   useEffect(() => {
     onDirtyChange(dirty);
   }, [dirty, onDirtyChange]);
 
   useEffect(() => () => onDirtyChange(false), [onDirtyChange]);
+
+  useEffect(() => {
+    onSavingChange?.(saveMutation.isPending);
+  }, [saveMutation.isPending, onSavingChange]);
+
+  useEffect(() => () => onSavingChange?.(false), [onSavingChange]);
 
   useEffect(() => {
     onContentChange?.(content);
@@ -119,39 +120,24 @@ export function TemplateEditor({
 
   useImperativeHandle(insertRef, () => insertVariable, [insertVariable]);
 
+  const discardChanges = useCallback(() => {
+    reset({ content: savedContent });
+    setServerError(null);
+  }, [reset, savedContent]);
+
+  useImperativeHandle(discardRef, () => discardChanges, [discardChanges]);
+
   useEffect(() => {
     if (serverError) {
       errorRef.current?.focus();
     }
   }, [serverError]);
 
-  useEffect(() => {
-    if (confirming) {
-      confirmRef.current?.focus();
-    }
-  }, [confirming]);
-
-  // Escape cancela la confirmación mientras no haya una publicación en vuelo.
-  const publishing = publishMutation.isPending;
-  useEffect(() => {
-    if (!confirming || publishing) {
-      return undefined;
-    }
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        setConfirming(false);
-      }
-    }
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [confirming, publishing]);
-
   async function onSubmit(values: SaveTemplateDraftRequest) {
     if (saveMutation.isPending) {
       return;
     }
     setServerError(null);
-    setConfirming(false);
     try {
       const version = await saveMutation.mutateAsync({
         templateId: detail.id,
@@ -164,25 +150,6 @@ export function TemplateEditor({
     }
   }
 
-  async function confirmPublish() {
-    if (publishMutation.isPending || !draft) {
-      return;
-    }
-    setServerError(null);
-    try {
-      const published = await publishMutation.mutateAsync({
-        templateId: detail.id,
-        versionId: draft.id,
-        expectedUpdatedAt: draft.updatedAt,
-      });
-      setConfirming(false);
-      onPublished(published);
-    } catch (error) {
-      setConfirming(false);
-      setServerError(getTemplateErrorMessage(error));
-    }
-  }
-
   const textareaId = `${uid}-content`;
   const helpId = `${uid}-help`;
   const counterId = `${uid}-counter`;
@@ -190,14 +157,9 @@ export function TemplateEditor({
   const overLimit = content.length > TEMPLATE_CONTENT_MAX_LENGTH;
   const contentError = errors.content?.message;
 
-  const publishedNumber = detail.published?.number;
-  const confirmText =
-    publishedNumber !== undefined
-      ? `Publicar la versión ${draft?.number} dejará Obsoleta la versión ${publishedNumber}. Esta acción no se puede deshacer.`
-      : `Publicar la versión ${draft?.number} la dejará como la versión vigente. Esta acción no se puede deshacer.`;
-
   return (
     <form
+      id={formId}
       onSubmit={handleSubmit(onSubmit)}
       noValidate
       aria-label={`Editar la plantilla ${detail.code}`}
@@ -243,7 +205,6 @@ export function TemplateEditor({
             .join(' ')}
           aria-invalid={contentError ? true : undefined}
           onChange={(event) => {
-            setConfirming(false);
             void contentField.onChange(event);
           }}
         />
@@ -264,67 +225,6 @@ export function TemplateEditor({
           <p id={errorId} role="alert" className="text-sm text-destructive">
             {contentError}
           </p>
-        )}
-      </div>
-
-      {confirming && draft && (
-        <div ref={confirmRef} tabIndex={-1} className="outline-none focus-visible:outline-2">
-          <Alert variant="warning" role="alertdialog" aria-label="Confirmar la publicación">
-            <CircleAlert aria-hidden="true" />
-            <AlertDescription>
-              <p>{confirmText}</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  onClick={() => void confirmPublish()}
-                  disabled={publishMutation.isPending}
-                >
-                  {publishMutation.isPending ? 'Publicando…' : 'Confirmar'}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setConfirming(false)}
-                  disabled={publishMutation.isPending}
-                >
-                  Cancelar
-                </Button>
-              </div>
-            </AlertDescription>
-          </Alert>
-        </div>
-      )}
-
-      <div className="flex flex-wrap gap-2">
-        <Can permission="plantilla.editar" scope="GLOBAL">
-          <Button type="submit" disabled={!dirty || pending}>
-            {saveMutation.isPending ? 'Guardando…' : 'Guardar borrador'}
-          </Button>
-          {dirty && (
-            <Button
-              type="button"
-              variant="outline"
-              disabled={pending}
-              onClick={() => {
-                reset({ content: savedContent });
-                setServerError(null);
-              }}
-            >
-              Descartar cambios
-            </Button>
-          )}
-        </Can>
-        {draft && (
-          <Can permission="plantilla.publicar" scope="GLOBAL">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={dirty || waitingForRefresh || pending || confirming}
-              onClick={() => setConfirming(true)}
-            >
-              {`Publicar versión ${draft.number}`}
-            </Button>
-          </Can>
         )}
       </div>
     </form>
