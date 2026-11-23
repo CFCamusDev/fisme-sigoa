@@ -434,16 +434,6 @@ export function UserForm({ mode, initialUser, onSuccess }: UserFormProps) {
     formState: { errors },
   } = editForm;
 
-  const rolesMap = new Map<string, string>();
-  for (const role of roles) {
-    rolesMap.set(role.id, role.name);
-  }
-  const assignedRoleNames =
-    initialUser?.roleIds
-      ?.map((id) => rolesMap.get(id))
-      .filter(Boolean)
-      .join(', ') || '—';
-
   return (
     <form onSubmit={handleSubmit(handleEditSubmit)} className="space-y-6 pb-24" noValidate>
       {generalError && (
@@ -568,19 +558,6 @@ export function UserForm({ mode, initialUser, onSuccess }: UserFormProps) {
             </p>
           )}
         </div>
-      </div>
-
-      {/* Roles de solo lectura */}
-      <div className="space-y-1.5 pt-2">
-        <span className="text-label font-medium text-foreground block">
-          Roles asignados (solo lectura)
-        </span>
-        <p className="surface rounded-md border border-input p-3 text-body text-foreground">
-          {assignedRoleNames}
-        </p>
-        <p className="text-meta text-muted-foreground">
-          Los roles de usuario se asignan y gestionan en su módulo correspondiente.
-        </p>
       </div>
 
       {/* Botones de acción */}

@@ -206,6 +206,7 @@ test.describe('Keyboard Navigation and Focus Indicator (WCAG 2.1 AA)', () => {
     ]);
     expect(response.ok()).toBe(true);
 
+    await page.getByRole('tab', { name: 'Roles' }).click();
     await expect(page.getByRole('heading', { name: 'Roles asignados' })).toBeVisible();
 
     // 1. Foco en el primer checkbox de rol no asignado y activación con Space
@@ -225,6 +226,7 @@ test.describe('Keyboard Navigation and Focus Indicator (WCAG 2.1 AA)', () => {
     await expectVisibleFocusIndicator(saveRolesButton);
 
     // 3. Foco en el primer combobox de permisos directos y selección con teclado
+    await page.getByRole('tab', { name: 'Permisos directos' }).click();
     const firstSelect = page.getByRole('combobox').first();
     await firstSelect.focus();
     await expect(firstSelect).toBeFocused();

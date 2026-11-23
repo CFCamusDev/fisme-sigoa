@@ -408,11 +408,11 @@ describe('UserForm component (T-003-27)', () => {
     });
   });
 
-  it('shows roles as read only in edit mode', async () => {
+  it('does not show read-only roles block in edit mode', async () => {
     renderWithProviders(<UserForm mode="edit" initialUser={mockInitialUser} />);
 
-    expect(await screen.findByText('Roles asignados (solo lectura)')).toBeInTheDocument();
-    expect(await screen.findByText('Docente')).toBeInTheDocument();
+    expect(await screen.findByLabelText(/nombres/i)).toHaveValue('Luis');
+    expect(screen.queryByText('Roles asignados (solo lectura)')).not.toBeInTheDocument();
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
   });
 

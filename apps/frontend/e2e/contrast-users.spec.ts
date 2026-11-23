@@ -105,9 +105,8 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Users', () => {
         .getByRole('link', { name: new RegExp(`editar a usuario ${accessSurname}`, 'i') })
         .click(),
     );
+    await page.getByRole('tab', { name: 'Roles' }).click();
     await expect(page.getByRole('heading', { name: 'Roles asignados' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Permisos directos' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Permisos efectivos' })).toBeVisible();
     await expectNoContrastViolations(page, { context: 'user-access-panel-desktop' });
     await page.setViewportSize(MOBILE);
     await expectNoContrastViolations(page, { context: 'user-access-panel-mobile' });
@@ -119,6 +118,7 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Users', () => {
     await waitForApi(page, '/effective-permissions', () =>
       page.getByRole('link', { name: new RegExp(`editar a usuario ${draftSurname}`, 'i') }).click(),
     );
+    await page.getByRole('tab', { name: 'Roles' }).click();
     await expect(page.getByRole('heading', { name: 'Roles asignados' })).toBeVisible();
     await page.locator('input[type="checkbox"]:not(:checked)').first().click();
     await expect(page.getByText(/cambio sin guardar/i).first()).toBeVisible();
