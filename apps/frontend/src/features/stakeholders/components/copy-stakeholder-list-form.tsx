@@ -5,22 +5,26 @@ import {
   type StakeholderListDto,
 } from '@sigoa/shared';
 import { AlertTriangle } from 'lucide-react';
+import { useReportBusy } from '@/components/common/form-busy-context';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { SheetBody, SheetFooter } from '@/components/ui/sheet';
 import { useCopyStakeholderList } from '../hooks/use-copy-stakeholder-list';
 import { getStakeholderListErrorMessage } from '../lib/stakeholder-list-error-message';
 import { STAKEHOLDER_LIST_TYPE_LABELS } from '../lib/stakeholder-list-labels';
 
 export interface CopyStakeholderListFormProps {
   readonly sourceList: StakeholderListDto;
+  readonly inPanel?: boolean;
   readonly onCopied: (response: CopyStakeholderListResponse) => void;
   readonly onCancel: () => void;
 }
 
 export function CopyStakeholderListForm({
   sourceList,
+  inPanel = false,
   onCopied,
   onCancel,
 }: CopyStakeholderListFormProps) {
@@ -29,6 +33,7 @@ export function CopyStakeholderListForm({
   const [formError, setFormError] = useState<string | null>(null);
 
   const copyMutation = useCopyStakeholderList();
+  useReportBusy(copyMutation.isPending);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -56,6 +61,50 @@ export function CopyStakeholderListForm({
     }
   }
 
+  const fieldsContent = (
+    <>
+      {formError ? (
+        <Alert variant="danger" role="alert">
+          <AlertTriangle className="size-4" aria-hidden="true" />
+          <AlertDescription>{formError}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      <div className="max-w-xs space-y-1.5">
+        <Label htmlFor={`${uid}-target-year`}>Año destino</Label>
+        <Input
+          id={`${uid}-target-year`}
+          type="number"
+          min={sourceList.year + 1}
+          max={STAKEHOLDER_LIST_YEAR_MAX}
+          value={targetYear}
+          onChange={(event) => setTargetYear(event.target.value)}
+        />
+      </div>
+    </>
+  );
+
+  if (inPanel) {
+    return (
+      <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+        <SheetBody className="space-y-4">{fieldsContent}</SheetBody>
+        <SheetFooter>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={copyMutation.isPending}
+            onClick={onCancel}
+          >
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={copyMutation.isPending}>
+            {copyMutation.isPending ? 'Copiando…' : 'Copiar lista'}
+          </Button>
+        </SheetFooter>
+      </form>
+    );
+  }
+
   return (
     <div className="space-y-4 rounded-lg border border-border bg-card p-6 text-card-foreground">
       <div className="space-y-1">
@@ -69,24 +118,7 @@ export function CopyStakeholderListForm({
       </div>
       <div>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {formError ? (
-            <Alert variant="danger" role="alert">
-              <AlertTriangle className="size-4" aria-hidden="true" />
-              <AlertDescription>{formError}</AlertDescription>
-            </Alert>
-          ) : null}
-
-          <div className="max-w-xs space-y-1.5">
-            <Label htmlFor={`${uid}-target-year`}>Año destino</Label>
-            <Input
-              id={`${uid}-target-year`}
-              type="number"
-              min={sourceList.year + 1}
-              max={STAKEHOLDER_LIST_YEAR_MAX}
-              value={targetYear}
-              onChange={(event) => setTargetYear(event.target.value)}
-            />
-          </div>
+          {fieldsContent}
 
           <div className="flex flex-wrap gap-2">
             <Button type="submit" disabled={copyMutation.isPending}>

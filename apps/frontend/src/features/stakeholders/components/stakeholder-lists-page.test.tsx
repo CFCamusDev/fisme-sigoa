@@ -462,4 +462,94 @@ describe('StakeholderListsPage (HU-022, T-022-28)', () => {
     expect(downloadButton).toBeDisabled();
     expect(downloadButton).toHaveAttribute('aria-describedby', reason.id);
   });
+
+  it('adds members in a 640px side panel without closing it', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get('*/stakeholder-lists', () =>
+        HttpResponse.json(makeStakeholderListsResponse([EMPLOYER_LIST_DTO])),
+      ),
+      http.get('*/stakeholders', () =>
+        HttpResponse.json({
+          items: [
+            {
+              id: 'sh-extra',
+              kind: 'INSTITUTION',
+              fullName: 'Selva Soft SAC',
+              dni: null,
+              ruc: '20987654321',
+              email: 'contacto@selvasoft.example',
+              phone: '999888777',
+              address: 'Jr. Lima 100',
+              institution: null,
+              graduationYear: null,
+              cycle: null,
+              status: 'ACTIVE',
+              voidReason: null,
+              createdAt: '2026-11-01T00:00:00.000Z',
+              updatedAt: '2026-11-01T00:00:00.000Z',
+            },
+          ],
+          total: 1,
+          page: 1,
+          pageSize: 10,
+          totalPages: 1,
+        }),
+      ),
+      http.post('*/stakeholder-lists/:id/members', () =>
+        HttpResponse.json(
+          {
+            id: 'mem-new',
+            stakeholderId: 'sh-extra',
+            fullName: 'Selva Soft SAC',
+            kind: 'INSTITUTION',
+            dni: null,
+            ruc: '20987654321',
+            email: 'contacto@selvasoft.example',
+            phone: '999888777',
+            address: 'Jr. Lima 100',
+            activity: null,
+            representative: null,
+            position: null,
+            graduationYear: null,
+            cycle: null,
+            createdAt: '2026-11-10T00:00:00.000Z',
+          },
+          { status: 201 },
+        ),
+      ),
+    );
+
+    renderWithProviders(<StakeholderListsPage />, {
+      withRouter: false,
+      permissions: EDIT_PERMISSIONS,
+    });
+
+    await user.click(await screen.findByRole('button', { name: /Agregar constituyentes/i }));
+    const sheet = await screen.findByRole('dialog');
+    expect(sheet).toHaveClass('sm:w-[640px]');
+
+    await user.click(await screen.findByRole('button', { name: /Agregar a la lista/i }));
+    expect(await screen.findByRole('status')).toHaveTextContent(/Se agregó "Selva Soft SAC"/i);
+    expect(screen.getByRole('dialog')).toBe(sheet);
+  });
+
+  it('copies a list in a 480px side panel', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get('*/stakeholder-lists', () =>
+        HttpResponse.json(makeStakeholderListsResponse([EMPLOYER_LIST_DTO])),
+      ),
+    );
+
+    renderWithProviders(<StakeholderListsPage />, {
+      withRouter: false,
+      permissions: EDIT_PERMISSIONS,
+    });
+
+    await user.click(await screen.findByRole('button', { name: /Copiar para nuevo año/i }));
+    const sheet = await screen.findByRole('dialog');
+    expect(sheet).toHaveClass('sm:w-[480px]');
+    expect(sheet).toHaveTextContent(/Copiar lista de Empleadores/i);
+  });
 });
