@@ -236,6 +236,7 @@ describe('Roles Management Flows (HU-006, T-006-34)', () => {
     expect(userViewSelect).toHaveValue('GLOBAL');
 
     // Asignar permiso de Seguridad: "rol.ver" -> GLOBAL
+    await user.click(screen.getByRole('button', { name: /Seguridad/i }));
     const roleViewSelect = screen.getByLabelText('Acceso a rol.ver');
     expect(roleViewSelect).toHaveValue('NONE');
 
