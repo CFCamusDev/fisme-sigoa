@@ -49,8 +49,7 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
 
   const insertRef = useRef<((key: string) => void) | null>(null);
   const discardRef = useRef<(() => void) | null>(null);
-  const publishTriggerRef = useRef<HTMLElement | null>(null);
-  useRestoreFocus(publishConfirmOpen, publishTriggerRef);
+  const { remember, restore } = useRestoreFocus();
 
   const serverBaseContent = detail?.draft?.content ?? detail?.published?.content ?? '';
   const editorKey = detail
@@ -235,7 +234,7 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
       )}
 
       {hasActions && detail && (
-        <StickyActionBar ariaLabel="Acciones de la plantilla">
+        <StickyActionBar>
           <Can permission="plantilla.editar" scope="GLOBAL">
             <Button type="submit" form={editorFormId} disabled={!dirty || pending}>
               {saving ? 'Guardando…' : 'Guardar borrador'}
@@ -270,7 +269,7 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
                 variant="outline"
                 disabled={dirty || pending || detailQuery.isFetching}
                 onClick={(event) => {
-                  publishTriggerRef.current = event.currentTarget;
+                  remember(event.currentTarget);
                   setPublishConfirmOpen(true);
                 }}
               >
@@ -283,7 +282,12 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
 
       <ConfirmDialog
         open={publishConfirmOpen}
-        onOpenChange={setPublishConfirmOpen}
+        onOpenChange={(open) => {
+          setPublishConfirmOpen(open);
+          if (!open) {
+            restore();
+          }
+        }}
         title="Confirmar la publicación"
         description={publishConfirmText}
         confirmLabel="Confirmar"

@@ -24,7 +24,7 @@ describe('TemplateEditorPage (HU-082, T-082-24)', () => {
 
     renderWithProviders(<TemplateEditorPage templateId="tpl-1" />, {
       permissions: administrator,
-      initialPath: '/plantillas/tpl-1',
+      initialEntries: ['/plantillas/tpl-1'],
     });
 
     expect(
@@ -60,7 +60,7 @@ describe('TemplateEditorPage (HU-082, T-082-24)', () => {
 
     renderWithProviders(<TemplateEditorPage templateId="tpl-1" />, {
       permissions: readOnlyUser,
-      initialPath: '/plantillas/tpl-1',
+      initialEntries: ['/plantillas/tpl-1'],
     });
 
     await screen.findByRole('heading', { level: 1, name: /FO-01 · Acta de reunión/ });
@@ -80,7 +80,7 @@ describe('TemplateEditorPage (HU-082, T-082-24)', () => {
 
     renderWithProviders(<TemplateEditorPage templateId="tpl-1" />, {
       permissions: administrator,
-      initialPath: '/plantillas/tpl-1',
+      initialEntries: ['/plantillas/tpl-1'],
     });
 
     expect(await screen.findByText('Plantilla no encontrada')).toBeInTheDocument();
@@ -92,7 +92,7 @@ describe('TemplateEditorPage (HU-082, T-082-24)', () => {
 
     renderWithProviders(<TemplateEditorPage templateId="tpl-1" />, {
       permissions: administrator,
-      initialPath: '/plantillas/tpl-1',
+      initialEntries: ['/plantillas/tpl-1'],
     });
 
     const textarea = await screen.findByRole('textbox', { name: 'Contenido HTML' });
@@ -119,11 +119,11 @@ describe('TemplateEditorPage (HU-082, T-082-24)', () => {
 
     renderWithProviders(<TemplateEditorPage templateId="tpl-1" />, {
       permissions: administrator,
-      initialPath: '/plantillas/tpl-1',
+      initialEntries: ['/plantillas/tpl-1'],
     });
 
     await screen.findByRole('textbox', { name: 'Contenido HTML' });
-    const actionBar = screen.getByRole('region', { name: 'Acciones de la plantilla' });
+    const actionBar = screen.getByTestId('sticky-action-bar');
     await user.click(within(actionBar).getByRole('button', { name: 'Vista previa' }));
 
     expect(screen.getByRole('tab', { name: 'Vista previa' })).toHaveAttribute(
@@ -139,7 +139,7 @@ describe('TemplateEditorPage (HU-082, T-082-24)', () => {
 
     renderWithProviders(<TemplateEditorPage templateId="tpl-1" />, {
       permissions: administrator,
-      initialPath: '/plantillas/tpl-1',
+      initialEntries: ['/plantillas/tpl-1'],
     });
 
     const publishButton = await screen.findByRole('button', { name: 'Publicar versión 2' });
@@ -172,7 +172,7 @@ describe('TemplateEditorPage (HU-082, T-082-24)', () => {
 
     renderWithProviders(<TemplateEditorPage templateId="tpl-1" />, {
       permissions: administrator,
-      initialPath: '/plantillas/tpl-1',
+      initialEntries: ['/plantillas/tpl-1'],
     });
 
     await user.click(await screen.findByRole('button', { name: 'Publicar versión 2' }));
