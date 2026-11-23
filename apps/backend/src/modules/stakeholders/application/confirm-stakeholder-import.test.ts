@@ -338,4 +338,48 @@ describe('ConfirmStakeholderImportUseCase (HU-023, T-023-03, T-023-14)', () => {
 
     expect(callOrder).toEqual(['read', 'uow']);
   });
+
+  it('returns every error of a rejected row with invalid RUC, email and mobile', async () => {
+    const list = StakeholderList.create({
+      id: 'list-1',
+      programId: 'prog-1',
+      type: 'EMPLOYER',
+      year: 2027,
+      actorId: 'user-1',
+      now: NOW,
+    });
+
+    stakeholderListRepository.findById.mockResolvedValueOnce(list);
+    fileReader.read.mockResolvedValueOnce([
+      {
+        rowNumber: 2,
+        values: {
+          document: '123',
+          fullName: 'Empresa Mal',
+          sector: 'Tecnologia',
+          position: 'Gerente',
+          representative: 'Ana',
+          email: 'correo-malo',
+          mobile: '12345',
+        },
+      },
+    ]);
+    stakeholderDocumentLookup.findByDocuments.mockResolvedValueOnce([]);
+    stakeholderListMemberRepository.listByListId.mockResolvedValueOnce([]);
+
+    const result = await useCase.execute({
+      listId: 'list-1',
+      fileBuffer: Buffer.from('PK\x03\x04dummy'),
+      actorId: 'user-1',
+    });
+
+    expect(result.totals.rejected).toBe(1);
+    expect(result.rejectedRows[0]?.errors).toEqual(
+      expect.arrayContaining([
+        'El RUC debe tener exactamente 11 dígitos numéricos.',
+        'El correo electrónico no tiene un formato válido.',
+        'El celular debe tener 9 dígitos e iniciar con 9.',
+      ]),
+    );
+  });
 });
