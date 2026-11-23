@@ -29,10 +29,15 @@ export function StakeholderImportResult({ result, alertRef }: StakeholderImportR
             <p className="font-medium">
               Filas rechazadas ({numberFormatter.format(rejectedRows.length)}):
             </p>
-            <ul className="mt-1 list-disc space-y-0.5 pl-5 text-xs">
+            <ul className="mt-1 space-y-2 text-xs">
               {rejectedRows.map((row) => (
                 <li key={row.rowNumber}>
-                  Fila {row.rowNumber}: {row.errors.join(' · ')}
+                  <span className="font-medium">Fila {row.rowNumber}: </span>
+                  <ul className="mt-0.5 list-disc space-y-0.5 pl-5">
+                    {row.errors.map((error, index) => (
+                      <li key={`${row.rowNumber}-${index}`}>{error}</li>
+                    ))}
+                  </ul>
                 </li>
               ))}
             </ul>
