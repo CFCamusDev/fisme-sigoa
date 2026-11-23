@@ -5,8 +5,10 @@ import type {
   SessionDto,
 } from '@sigoa/shared';
 import { AlertTriangle } from 'lucide-react';
+import { useReportBusy } from '@/components/common/form-busy-context';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { SheetBody, SheetFooter } from '@/components/ui/sheet';
 import { useRegisterSessionAttendees } from '../hooks/use-register-session-attendees';
 import { useSessionAttendees } from '../hooks/use-session-attendees';
 import { getSessionErrorMessage } from '../lib/session-error-message';
@@ -15,6 +17,7 @@ import { SessionAttendeesField } from './session-attendees-field';
 
 export interface SessionAttendeesPanelProps {
   readonly session: SessionDto;
+  readonly inPanel?: boolean;
   readonly onSaved: (response: SessionAttendeesResponse) => void;
   readonly onCancel: () => void;
 }
@@ -29,10 +32,17 @@ function buildInitialSelectedMap(items: readonly SessionAttendeeRosterItem[]): M
   return map;
 }
 
-export function SessionAttendeesPanel({ session, onSaved, onCancel }: SessionAttendeesPanelProps) {
+export function SessionAttendeesPanel({
+  session,
+  inPanel = false,
+  onSaved,
+  onCancel,
+}: SessionAttendeesPanelProps) {
   const attendeesQuery = useSessionAttendees(session.id);
   const registerMutation = useRegisterSessionAttendees();
   const [draft, setDraft] = useState<Map<string, string> | null>(null);
+
+  useReportBusy(registerMutation.isPending);
 
   const selected = useMemo(() => {
     if (draft !== null) {
@@ -84,6 +94,97 @@ export function SessionAttendeesPanel({ session, onSaved, onCancel }: SessionAtt
   const hasNoList = !session.stakeholderListId || attendeesQuery.data?.stakeholderListId === null;
   const rosterItems = attendeesQuery.data?.items ?? [];
 
+  const bodyContent = attendeesQuery.isLoading ? (
+    <p className="text-sm text-muted-foreground">Cargando asistentes…</p>
+  ) : attendeesQuery.isError ? (
+    <Alert variant="danger">
+      <AlertTriangle className="size-4" />
+      <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
+        <span>{getSessionErrorMessage(attendeesQuery.error)}</span>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => void attendeesQuery.refetch()}
+        >
+          Reintentar
+        </Button>
+      </AlertDescription>
+    </Alert>
+  ) : hasNoList ? (
+    <p className="text-sm text-muted-foreground">
+      Esta sesión no tiene lista del Anexo 3. Asigna una lista a la sesión para registrar
+      asistentes.
+    </p>
+  ) : rosterItems.length === 0 ? (
+    <div className="space-y-2">
+      <p className="text-sm text-muted-foreground">La lista no tiene miembros.</p>
+      <p className="text-sm text-muted-foreground">
+        ¿La persona no aparece? Agrégala primero a la lista del Anexo 3 en{' '}
+        <a href="/listas-constituyentes" className="text-primary underline underline-offset-2">
+          Listas de constituyentes
+        </a>
+        .
+      </p>
+    </div>
+  ) : (
+    <div className="space-y-4">
+      {registerMutation.isError && (
+        <Alert variant="danger">
+          <AlertTriangle className="size-4" />
+          <AlertDescription>{getSessionErrorMessage(registerMutation.error)}</AlertDescription>
+        </Alert>
+      )}
+
+      <SessionAttendeesField
+        items={rosterItems}
+        selected={selected}
+        stakeholderType={session.stakeholderType}
+        disabled={registerMutation.isPending}
+        onToggle={handleToggle}
+        onPositionChange={handlePositionChange}
+      />
+
+      <p className="text-sm text-muted-foreground">
+        ¿La persona no aparece? Agrégala primero a la lista del Anexo 3 en{' '}
+        <a href="/listas-constituyentes" className="text-primary underline underline-offset-2">
+          Listas de constituyentes
+        </a>
+        .
+      </p>
+    </div>
+  );
+
+  const canSave =
+    !attendeesQuery.isLoading && !attendeesQuery.isError && !hasNoList && rosterItems.length > 0;
+
+  if (inPanel) {
+    return (
+      <form
+        onSubmit={(event) => void handleSubmit(event)}
+        aria-label="Asistentes de la sesión"
+        className="flex min-h-0 flex-1 flex-col"
+      >
+        <SheetBody>{bodyContent}</SheetBody>
+        <SheetFooter>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={registerMutation.isPending}
+            onClick={onCancel}
+          >
+            {canSave ? 'Cancelar' : 'Cerrar'}
+          </Button>
+          {canSave ? (
+            <Button type="submit" disabled={registerMutation.isPending}>
+              {registerMutation.isPending ? 'Guardando…' : 'Guardar asistentes'}
+            </Button>
+          ) : null}
+        </SheetFooter>
+      </form>
+    );
+  }
+
   return (
     <section
       aria-label="Asistentes de la sesión"
@@ -103,65 +204,9 @@ export function SessionAttendeesPanel({ session, onSaved, onCancel }: SessionAtt
         </Button>
       </div>
 
-      {attendeesQuery.isLoading ? (
-        <p className="text-sm text-muted-foreground">Cargando asistentes…</p>
-      ) : attendeesQuery.isError ? (
-        <Alert variant="danger">
-          <AlertTriangle className="size-4" />
-          <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
-            <span>{getSessionErrorMessage(attendeesQuery.error)}</span>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => void attendeesQuery.refetch()}
-            >
-              Reintentar
-            </Button>
-          </AlertDescription>
-        </Alert>
-      ) : hasNoList ? (
-        <p className="text-sm text-muted-foreground">
-          Esta sesión no tiene lista del Anexo 3. Asigna una lista a la sesión para registrar
-          asistentes.
-        </p>
-      ) : rosterItems.length === 0 ? (
-        <div className="space-y-2">
-          <p className="text-sm text-muted-foreground">La lista no tiene miembros.</p>
-          <p className="text-sm text-muted-foreground">
-            ¿La persona no aparece? Agrégala primero a la lista del Anexo 3 en{' '}
-            <a href="/listas-constituyentes" className="text-primary underline underline-offset-2">
-              Listas de constituyentes
-            </a>
-            .
-          </p>
-        </div>
-      ) : (
+      {canSave ? (
         <form onSubmit={(event) => void handleSubmit(event)} className="space-y-4">
-          {registerMutation.isError && (
-            <Alert variant="danger">
-              <AlertTriangle className="size-4" />
-              <AlertDescription>{getSessionErrorMessage(registerMutation.error)}</AlertDescription>
-            </Alert>
-          )}
-
-          <SessionAttendeesField
-            items={rosterItems}
-            selected={selected}
-            stakeholderType={session.stakeholderType}
-            disabled={registerMutation.isPending}
-            onToggle={handleToggle}
-            onPositionChange={handlePositionChange}
-          />
-
-          <p className="text-sm text-muted-foreground">
-            ¿La persona no aparece? Agrégala primero a la lista del Anexo 3 en{' '}
-            <a href="/listas-constituyentes" className="text-primary underline underline-offset-2">
-              Listas de constituyentes
-            </a>
-            .
-          </p>
-
+          {bodyContent}
           <div className="flex flex-wrap justify-end gap-2">
             <Button
               type="button"
@@ -176,6 +221,8 @@ export function SessionAttendeesPanel({ session, onSaved, onCancel }: SessionAtt
             </Button>
           </div>
         </form>
+      ) : (
+        bodyContent
       )}
     </section>
   );

@@ -1,7 +1,7 @@
 import { useId, useMemo, useState } from 'react';
 import type { SessionAttendeesResponse, SessionDto } from '@sigoa/shared';
 import { AlertTriangle, Plus } from 'lucide-react';
-import { PageHeader } from '@/components/common';
+import { FormDialog, FormSheet, PageHeader, useRestoreFocus } from '@/components/common';
 import { Can } from '@/components/common/can';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { Select } from '@/components/ui/select';
 import { useProcessExecutions } from '@/features/processes';
 import { useExecutionSessions } from '../hooks/use-execution-sessions';
 import { getSessionErrorMessage } from '../lib/session-error-message';
+import { formatSessionDate } from '../lib/session-labels';
 import { SessionAttendeesPanel } from './session-attendees-panel';
 import { SessionForm } from './session-form';
 import { SessionsTable } from './sessions-table';
@@ -28,6 +29,7 @@ export function SessionsPage() {
   const [page, setPage] = useState<number>(1);
   const [panelState, setPanelState] = useState<PanelState>({ mode: 'closed' });
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const { capture: captureFocus, restore: restoreFocus } = useRestoreFocus();
 
   const executionsQuery = useProcessExecutions({ page: 1, pageSize: 100 });
   const executions = useMemo(
@@ -100,6 +102,7 @@ export function SessionsPage() {
               type="button"
               disabled={!activeExecutionId}
               onClick={() => {
+                captureFocus();
                 setStatusMessage(null);
                 setPanelState({ mode: 'create' });
               }}
@@ -164,17 +167,39 @@ export function SessionsPage() {
             </Select>
           </div>
 
-          {panelState.mode === 'create' && (
-            <SessionForm onSaved={handleSaved} onCancel={() => setPanelState({ mode: 'closed' })} />
-          )}
-
-          {panelState.mode === 'edit' && (
-            <SessionForm
-              session={panelState.session}
-              onSaved={handleSaved}
-              onCancel={() => setPanelState({ mode: 'closed' })}
-            />
-          )}
+          <FormDialog
+            open={panelState.mode === 'create' || panelState.mode === 'edit'}
+            onOpenChange={(open) => {
+              if (!open) {
+                setPanelState({ mode: 'closed' });
+              }
+            }}
+            title={panelState.mode === 'edit' ? 'Editar sesión' : 'Registrar sesión'}
+            description={
+              panelState.mode === 'edit'
+                ? 'Actualiza la fecha, modalidad, enlaces y ejecuciones vinculadas.'
+                : 'Registra una nueva reunión con constituyentes vinculada a ejecuciones.'
+            }
+            size="md"
+            onRestoreFocus={restoreFocus}
+          >
+            {panelState.mode === 'create' ? (
+              <SessionForm
+                key="create-session"
+                inDialog
+                onSaved={handleSaved}
+                onCancel={() => setPanelState({ mode: 'closed' })}
+              />
+            ) : panelState.mode === 'edit' ? (
+              <SessionForm
+                key={`edit-${panelState.session.id}`}
+                session={panelState.session}
+                inDialog
+                onSaved={handleSaved}
+                onCancel={() => setPanelState({ mode: 'closed' })}
+              />
+            ) : null}
+          </FormDialog>
 
           {sessionsQuery.isLoading ? (
             <p className="text-sm text-muted-foreground">Cargando sesiones…</p>
@@ -204,23 +229,43 @@ export function SessionsPage() {
                 executionNamesById={executionNamesById}
                 executionStatusesById={executionStatusesById}
                 onEdit={(session) => {
+                  captureFocus();
                   setStatusMessage(null);
                   setPanelState({ mode: 'edit', session });
                 }}
                 onManageAttendees={(session) => {
+                  captureFocus();
                   setStatusMessage(null);
                   setPanelState({ mode: 'attendees', session });
                 }}
               />
 
-              {panelState.mode === 'attendees' && (
-                <SessionAttendeesPanel
-                  key={panelState.session.id}
-                  session={panelState.session}
-                  onSaved={handleAttendeesSaved}
-                  onCancel={() => setPanelState({ mode: 'closed' })}
-                />
-              )}
+              <FormSheet
+                open={panelState.mode === 'attendees'}
+                onOpenChange={(open) => {
+                  if (!open) {
+                    setPanelState({ mode: 'closed' });
+                  }
+                }}
+                title={
+                  panelState.mode === 'attendees'
+                    ? `Asistentes de la sesión · ${formatSessionDate(panelState.session.sessionDate)} (${panelState.session.startTime})`
+                    : 'Asistentes de la sesión'
+                }
+                description="Marca quiénes asistieron de la lista del Anexo 3 y registra su cargo en la sesión."
+                size="md"
+                onRestoreFocus={restoreFocus}
+              >
+                {panelState.mode === 'attendees' ? (
+                  <SessionAttendeesPanel
+                    key={panelState.session.id}
+                    session={panelState.session}
+                    inPanel
+                    onSaved={handleAttendeesSaved}
+                    onCancel={() => setPanelState({ mode: 'closed' })}
+                  />
+                ) : null}
+              </FormSheet>
 
               {total > PAGE_SIZE && (
                 <div className="flex items-center justify-between text-sm text-muted-foreground">

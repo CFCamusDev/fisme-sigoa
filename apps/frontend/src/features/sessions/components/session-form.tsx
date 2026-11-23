@@ -7,8 +7,9 @@ import {
   type CreateSessionRequest,
   type SessionDto,
 } from '@sigoa/shared';
-import { AlertTriangle } from 'lucide-react';
 import { useForm, useWatch, type Resolver } from 'react-hook-form';
+import { AlertTriangle } from 'lucide-react';
+import { useReportBusy } from '@/components/common/form-busy-context';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { STAKEHOLDER_LIST_TYPE_LABELS, useStakeholderLists } from '@/features/stakeholders';
 import { usePermission } from '@/hooks/use-permission';
+import { cn } from '@/lib/utils';
 import { useCreateSession } from '../hooks/use-create-session';
 import { useLinkableProcessExecutions } from '../hooks/use-linkable-process-executions';
 import { useUpdateSession } from '../hooks/use-update-session';
@@ -25,6 +27,7 @@ import { SessionExecutionsField } from './session-executions-field';
 
 export interface SessionFormProps {
   readonly session?: SessionDto;
+  readonly inDialog?: boolean;
   readonly onSaved: (session: SessionDto) => void;
   readonly onCancel: () => void;
 }
@@ -42,7 +45,7 @@ function parseDateYear(isoDate: string): number {
   return Number.isInteger(year) ? year : new Date().getFullYear();
 }
 
-export function SessionForm({ session, onSaved, onCancel }: SessionFormProps) {
+export function SessionForm({ session, inDialog = false, onSaved, onCancel }: SessionFormProps) {
   const uid = useId();
   const [serverError, setServerError] = useState<string | null>(null);
   const canReadStakeholderLists = usePermission('constituyente.ver');
@@ -51,6 +54,8 @@ export function SessionForm({ session, onSaved, onCancel }: SessionFormProps) {
   const createMutation = useCreateSession();
   const updateMutation = useUpdateSession();
   const isPending = createMutation.isPending || updateMutation.isPending;
+
+  useReportBusy(isPending);
 
   const linkableExecutionsQuery = useLinkableProcessExecutions();
 
@@ -162,13 +167,19 @@ export function SessionForm({ session, onSaved, onCancel }: SessionFormProps) {
     <form
       onSubmit={handleSubmit(onSubmit)}
       noValidate
-      className="space-y-4 rounded-lg border border-border bg-card p-4 text-card-foreground"
+      aria-label={isEditing ? 'Editar sesión' : 'Registrar sesión'}
+      className={cn(
+        'space-y-4',
+        !inDialog && 'rounded-lg border border-border bg-card p-4 text-card-foreground',
+      )}
     >
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-foreground">
-          {isEditing ? 'Editar sesión' : 'Registrar sesión'}
-        </h2>
-      </div>
+      {!inDialog ? (
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-foreground">
+            {isEditing ? 'Editar sesión' : 'Registrar sesión'}
+          </h2>
+        </div>
+      ) : null}
 
       {serverError && (
         <Alert variant="danger">
