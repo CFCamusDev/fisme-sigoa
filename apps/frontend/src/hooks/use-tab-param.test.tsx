@@ -80,6 +80,14 @@ describe('useTabParam', () => {
     await waitFor(() => {
       expect(screen.getByTestId('active-tab')).toHaveTextContent('definir');
     });
-    expect(router.state.matches.at(-1)?.search).toEqual({ tab: 'definir' });
+    expect(router.state.location.search).toMatchObject({ tab: 'definir' });
+    expect(
+      z
+        .object({ page: z.number().optional() })
+        .merge(tabSearchSchema)
+        .parse({ tab: 'definir', extra: 1 }),
+    ).toEqual({
+      tab: 'definir',
+    });
   });
 });
