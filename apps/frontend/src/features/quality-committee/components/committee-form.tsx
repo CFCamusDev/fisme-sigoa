@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { Plus, Trash2, Unlink, UserCheck } from 'lucide-react';
-import { ZodError } from 'zod';
 import {
   COMMITTEE_MEMBERS_MAX,
   registerQualityCommitteeRequestSchema,
@@ -15,7 +14,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ApiError } from '@/lib/api-error';
+import { getFieldErrors } from '@/lib/validation-errors';
 import { formatCommitteePeriod } from '../lib/committee-dates';
 
 interface MemberFormRow {
@@ -45,45 +44,6 @@ export interface CommitteeFormProps {
     committeeId: string,
     payload: ReplaceCommitteeMembersRequest,
   ) => Promise<void> | void;
-}
-
-function getCommitteeFieldErrors(error: unknown): Record<string, string> {
-  const result: Record<string, string> = {};
-  if (!error) {
-    return result;
-  }
-
-  if (error instanceof ZodError) {
-    for (const issue of error.issues) {
-      const key = issue.path.map(String).join('.');
-      if (key && !(key in result)) {
-        result[key] = issue.message;
-      }
-    }
-    return result;
-  }
-
-  if (error instanceof ApiError && Array.isArray(error.details)) {
-    for (const detail of error.details) {
-      if (
-        typeof detail === 'object' &&
-        detail !== null &&
-        'path' in detail &&
-        'message' in detail &&
-        typeof detail.path === 'string' &&
-        typeof detail.message === 'string'
-      ) {
-        const normalizedPath = detail.path.startsWith('body.')
-          ? detail.path.slice('body.'.length)
-          : detail.path;
-        if (normalizedPath && !(normalizedPath in result)) {
-          result[normalizedPath] = detail.message;
-        }
-      }
-    }
-  }
-
-  return result;
 }
 
 function buildDefaultValues(
@@ -168,7 +128,7 @@ export function CommitteeForm({
       });
 
       if (!parsed.success) {
-        const mapped = getCommitteeFieldErrors(parsed.error);
+        const mapped = getFieldErrors(parsed.error);
         setValidationFieldErrors(mapped);
         setValidationError(
           Object.keys(mapped).length > 0
@@ -192,7 +152,7 @@ export function CommitteeForm({
     });
 
     if (!parsed.success) {
-      const mapped = getCommitteeFieldErrors(parsed.error);
+      const mapped = getFieldErrors(parsed.error);
       setValidationFieldErrors(mapped);
       setValidationError(
         Object.keys(mapped).length > 0
@@ -210,7 +170,7 @@ export function CommitteeForm({
   const fieldErrors =
     Object.keys(validationFieldErrors).length > 0
       ? validationFieldErrors
-      : getCommitteeFieldErrors(serverErrorDetail);
+      : getFieldErrors(serverErrorDetail);
 
   return (
     <section
