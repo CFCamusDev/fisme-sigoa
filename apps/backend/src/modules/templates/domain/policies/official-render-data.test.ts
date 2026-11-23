@@ -1,20 +1,28 @@
 import { describe, expect, it } from 'vitest';
-import { buildOfficialRenderData, OFFICIAL_MISSING_SCALAR_VALUE } from './official-render-data.js';
+import {
+  ANNEX_MISSING_VALUE_TEXT,
+  buildOfficialRenderData,
+  OFFICIAL_MISSING_SCALAR_VALUE,
+} from './official-render-data.js';
 import { renderTemplateHtml } from './template-renderer.js';
 
 describe('buildOfficialRenderData (T-070-08)', () => {
-  it('fills every declared scalar with a dash when the providers give no data', () => {
+  it('uses the annex specific text for missing data and keeps the dash elsewhere', () => {
     const data = buildOfficialRenderData(
       [
+        { key: 'process.name', label: 'Proceso' },
         { key: 'schedule.period', label: 'Periodo' },
         { key: 'schedule.version', label: 'Versión' },
+        { key: 'results.indirect', label: 'Resultado indirecto' },
       ],
       {},
     );
 
     expect(data.scalars).toEqual({
-      'schedule.period': OFFICIAL_MISSING_SCALAR_VALUE,
-      'schedule.version': OFFICIAL_MISSING_SCALAR_VALUE,
+      'process.name': ANNEX_MISSING_VALUE_TEXT['process.name'],
+      'schedule.period': ANNEX_MISSING_VALUE_TEXT['schedule.period'],
+      'schedule.version': ANNEX_MISSING_VALUE_TEXT['schedule.version'],
+      'results.indirect': OFFICIAL_MISSING_SCALAR_VALUE,
     });
   });
 
@@ -51,7 +59,7 @@ describe('buildOfficialRenderData (T-070-08)', () => {
     );
 
     expect(data.scalars['logo.url']).toBe('data:image/png;base64,AAAA');
-    expect(data.scalars['schedule.period']).toBe(OFFICIAL_MISSING_SCALAR_VALUE);
+    expect(data.scalars['schedule.period']).toBe(ANNEX_MISSING_VALUE_TEXT['schedule.period']);
     expect(data.collections.activities).toEqual([{ name: 'Reunión inicial' }]);
   });
 
@@ -79,8 +87,8 @@ describe('buildOfficialRenderData (T-070-08)', () => {
     const rendered = renderTemplateHtml(html, data);
 
     expect(rendered).not.toMatch(/\{\{[^}]+\}\}/);
-    expect(rendered).toContain(`<span>${OFFICIAL_MISSING_SCALAR_VALUE}</span>`);
-    expect(rendered).toContain(`<p>Periodo: ${OFFICIAL_MISSING_SCALAR_VALUE}</p>`);
+    expect(rendered).toContain(`<span>${ANNEX_MISSING_VALUE_TEXT['process.name']}</span>`);
+    expect(rendered).toContain(`<p>Periodo: ${ANNEX_MISSING_VALUE_TEXT['schedule.period']}</p>`);
     expect(rendered).not.toContain('data-repeat');
   });
 });

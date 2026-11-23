@@ -250,6 +250,34 @@ describe('GenerateAnnexPdfUseCase (T-070-09, RF-070)', () => {
     expect(call?.options?.footerTemplate).toContain('totalPages');
   });
 
+  it('renders FO-01 without dashes when there is no execution data', async () => {
+    vi.mocked(templateReader.findPublishedByCode).mockResolvedValueOnce({
+      template: {
+        id: 'tpl-fo01',
+        code: 'FO-01',
+        name: 'Cronograma',
+        variables: [
+          { key: 'process.name', label: 'Proceso' },
+          { key: 'schedule.period', label: 'Periodo' },
+        ],
+      },
+      publishedVersion: {
+        id: 'ver-fo01',
+        templateId: 'tpl-fo01',
+        versionNumber: 1,
+        status: 'PUBLISHED',
+        content: '<h1>{{process.name}}</h1><p>{{schedule.period}}</p>',
+      },
+    } as never);
+
+    await useCase.execute({ actorId: 'user-1', annexCode: 'FO-01' });
+
+    const call = pdfGenerator.render.mock.calls[0]?.[0];
+    expect(call?.html).toContain('<h1>(sin ejecución seleccionada)</h1>');
+    expect(call?.html).toContain('<p>(sin periodo definido)</p>');
+    expect(call?.html).not.toContain('—');
+  });
+
   it('rejects a second download from the same actor while one is in flight', async () => {
     const deferred = createDeferred<Buffer>();
     pdfGenerator.render.mockReturnValueOnce(deferred.promise);
