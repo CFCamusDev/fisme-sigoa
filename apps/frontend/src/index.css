@@ -12,6 +12,7 @@
    ========================================================================== */
 
 @import "tailwindcss";
+@import "tw-animate-css";
 
 /* --------------------------------------------------------------------------
    1. Escalas y valores crudos (generan utilidades de Tailwind)
@@ -98,8 +99,12 @@
   --shadow-xl: 0 24px 48px -12px rgb(22 58 98 / 0.24);
 
   /* Movimiento */
+  --motion-color: 150ms;
+  --motion-panel: 200ms;
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --animate-fade-in: fade-in 150ms var(--ease-standard);
+  --animate-collapsible-down: collapsible-down var(--motion-panel) var(--ease-standard);
+  --animate-collapsible-up: collapsible-up var(--motion-panel) var(--ease-standard);
 
   @keyframes fade-in {
     from {
@@ -109,6 +114,28 @@
     to {
       opacity: 1;
       transform: none;
+    }
+  }
+
+  @keyframes collapsible-down {
+    from {
+      height: 0;
+      opacity: 0;
+    }
+    to {
+      height: var(--radix-collapsible-content-height);
+      opacity: 1;
+    }
+  }
+
+  @keyframes collapsible-up {
+    from {
+      height: var(--radix-collapsible-content-height);
+      opacity: 1;
+    }
+    to {
+      height: 0;
+      opacity: 0;
     }
   }
 }
@@ -235,6 +262,16 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-brand-500);
+}
+
+@utility motion-color {
+  transition-duration: var(--motion-color);
+  transition-timing-function: var(--ease-standard);
+}
+
+@utility motion-panel {
+  transition-duration: var(--motion-panel);
+  transition-timing-function: var(--ease-standard);
 }
 
 @utility focus-ring {
