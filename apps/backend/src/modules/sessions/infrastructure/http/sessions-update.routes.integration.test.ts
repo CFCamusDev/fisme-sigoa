@@ -290,6 +290,29 @@ describe('PATCH /sessions/:id (PostgreSQL real, HU-032, T-032-23, RF-032, RNF-00
     expect(response.status).toBe(409);
   }, 5_000);
 
+  it('returns 409 and leaves session and audit untouched when linked execution is voided', async () => {
+    await seedDomainData();
+    const member = await createActor(['COMMITTEE_MEMBER']);
+    const initial = await createInitialSession(member.token);
+
+    await prisma.processExecution.update({
+      where: { id: 'exec-1' },
+      data: { status: 'VOIDED' },
+    });
+
+    const response = await patchSession(member.token, initial.id).send({
+      startTime: '12:00',
+    });
+    expect(response.status).toBe(409);
+
+    const saved = await prisma.session.findUniqueOrThrow({ where: { id: initial.id } });
+    expect(saved.startTime).toBe('10:00');
+    const audits = await prisma.auditLog.findMany({
+      where: { entity: 'Session', entityId: initial.id, action: 'UPDATE' },
+    });
+    expect(audits).toHaveLength(0);
+  }, 5_000);
+
   it('returns 409 for a duplicate type, date and time', async () => {
     await seedDomainData();
     const member = await createActor(['COMMITTEE_MEMBER']);

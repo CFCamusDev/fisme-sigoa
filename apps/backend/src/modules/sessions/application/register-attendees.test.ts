@@ -249,4 +249,47 @@ describe('RegisterAttendeesUseCase', () => {
       after: { attendees: [{ listMemberId: 'mem-2', position: 'Director' }] },
     });
   });
+
+  it.each([
+    {
+      name: 'closed',
+      executions: [
+        { id: 'exec-1', name: 'Ejecución 1', status: 'CLOSED' as const },
+        { id: 'exec-2', name: 'Ejecución 2', status: 'CLOSED' as const },
+      ],
+    },
+    {
+      name: 'voided',
+      executions: [
+        { id: 'exec-1', name: 'Ejecución 1', status: 'VOIDED' as const },
+        { id: 'exec-2', name: 'Ejecución 2', status: 'VOIDED' as const },
+      ],
+    },
+    {
+      name: 'mixed closed and voided',
+      executions: [
+        { id: 'exec-1', name: 'Ejecución 1', status: 'CLOSED' as const },
+        { id: 'exec-2', name: 'Ejecución 2', status: 'VOIDED' as const },
+      ],
+    },
+  ])(
+    'rejects with SessionExecutionNotOpenError when every linked execution is $name',
+    async ({ executions }) => {
+      const session = makeSession({ executionIds: ['exec-1', 'exec-2'] });
+      const { useCase, processExecutionReader, attendeeRepository, auditLogger } =
+        createHarness(session);
+      processExecutionReader.findByIds.mockResolvedValueOnce(executions);
+
+      await expect(
+        useCase.execute({
+          actorId: 'user-2',
+          sessionId: 'sess-1',
+          attendees: [{ listMemberId: 'mem-1', position: 'Gerente' }],
+        }),
+      ).rejects.toBeInstanceOf(SessionExecutionNotOpenError);
+
+      expect(attendeeRepository.replaceForSession).not.toHaveBeenCalled();
+      expect(auditLogger.log).not.toHaveBeenCalled();
+    },
+  );
 });

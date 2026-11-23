@@ -495,4 +495,28 @@ describe('PUT & GET /sessions/:id/attendees (PostgreSQL real, HU-033, T-033-13, 
       items: [],
     });
   }, 5_000);
+
+  it('PUT returns 409 and leaves attendees and audit untouched when linked execution is voided', async () => {
+    await seedDomainData();
+    const member = await createActor(['COMMITTEE_MEMBER']);
+
+    await prisma.processExecution.update({
+      where: { id: 'exec-1' },
+      data: { status: 'VOIDED' },
+    });
+
+    const res = await request(app)
+      .put('/sessions/sess-1/attendees')
+      .set('Authorization', `Bearer ${member.token}`)
+      .send({ attendees: [{ listMemberId: 'mem-1', position: 'Gerente' }] });
+
+    expect(res.status).toBe(409);
+
+    const count = await prisma.sessionAttendee.count({ where: { sessionId: 'sess-1' } });
+    expect(count).toBe(0);
+    const audits = await prisma.auditLog.findMany({
+      where: { entity: 'SessionAttendees', entityId: 'sess-1' },
+    });
+    expect(audits).toHaveLength(0);
+  }, 5_000);
 });
