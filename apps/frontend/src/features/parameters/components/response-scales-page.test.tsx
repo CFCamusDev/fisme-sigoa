@@ -64,6 +64,18 @@ describe('ResponseScalesPage Component (HU-012, T-012-17, CA1, CA2, CA3)', () =>
     expect(within(evidence).getAllByRole('row')).toHaveLength(5);
   });
 
+  it('explains that only Evidencia 4 counts as achievement by default', async () => {
+    server.use(http.get(BASE, () => HttpResponse.json(buildResponseScalesResponse())));
+
+    renderWithProviders(<ResponseScalesPage />, { withRouter: false });
+
+    expect(
+      await screen.findByText(
+        /Solo Evidencia 4 cuenta como logro por defecto; en una copia de la escala se pueden marcar otros niveles/i,
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('shows which levels count as achievement', async () => {
     server.use(http.get(BASE, () => HttpResponse.json(buildResponseScalesResponse())));
 
