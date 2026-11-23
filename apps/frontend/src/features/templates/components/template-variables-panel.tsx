@@ -17,7 +17,7 @@ export function TemplateVariablesPanel({ variables, onInsert }: TemplateVariable
         <h3 id="template-variables-title" className="text-base font-semibold text-foreground">
           Variables disponibles
         </h3>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-foreground">
           {onInsert
             ? 'Inserta una variable en la posición del cursor. Solo se admiten estas.'
             : 'Variables que el contenido de esta plantilla puede usar.'}
@@ -25,7 +25,7 @@ export function TemplateVariablesPanel({ variables, onInsert }: TemplateVariable
       </div>
 
       {variables.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Esta plantilla no declara variables.</p>
+        <p className="text-sm text-foreground">Esta plantilla no declara variables.</p>
       ) : (
         <ul className="space-y-2">
           {variables.map((variable) => (
