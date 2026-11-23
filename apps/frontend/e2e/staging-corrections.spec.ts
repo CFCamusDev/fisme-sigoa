@@ -91,7 +91,7 @@ async function createExecutionViaApi(credentials: {
   return withAuthenticatedApi(credentials, async (api, apiUrl) => {
     const catalogVersionId = await ensureApprovedCatalogVersionId(api, apiUrl);
     const year = nextUniqueYear();
-    const name = `Medición P612 ${year} E2E`;
+    const name = `Medición P612 ${year} E2E ${Date.now() % 100_000}`;
 
     const response = await api.post(`${apiUrl}/process-executions`, {
       data: {

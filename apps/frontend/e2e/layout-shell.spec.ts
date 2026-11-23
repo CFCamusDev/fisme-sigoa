@@ -16,7 +16,7 @@ test.describe('Layout Shell & Navigation (HU-082, T-082-41)', () => {
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 720 });
-    await loginAsTestUser(page, { roles: ['ADMINISTRATOR'] });
+    await loginAsTestUser(page, { roles: ['TEACHER'] });
 
     await expect(page.getByRole('navigation', { name: 'Navegación principal' })).toBeVisible();
 
@@ -71,7 +71,7 @@ test.describe('Layout Shell & Navigation (HU-082, T-082-41)', () => {
     await expect(openButton).toBeVisible();
     await openButton.click();
 
-    const closeButton = page.getByRole('button', { name: 'Cerrar menú lateral' });
+    const closeButton = page.getByRole('button', { name: 'Cerrar barra lateral' });
     await expect(closeButton).toBeVisible();
 
     await page.keyboard.press('Escape');

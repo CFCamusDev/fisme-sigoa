@@ -53,7 +53,9 @@ test.describe('HU-003 — Gestión de usuarios E2E', () => {
 
     // 3. Navega al módulo de usuarios
     await page.getByRole('button', { name: 'Administración' }).click();
-    const usersNavItem = page.getByRole('link', { name: /^usuarios$/i });
+    const usersNavItem = page
+      .getByRole('navigation', { name: 'Navegación principal' })
+      .getByRole('link', { name: /^usuarios$/i });
     await usersNavItem.click();
 
     await expect(page).toHaveURL(/\/usuarios/);

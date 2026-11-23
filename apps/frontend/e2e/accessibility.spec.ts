@@ -227,6 +227,11 @@ test.describe('Keyboard Navigation and Focus Indicator (WCAG 2.1 AA)', () => {
 
     // 3. Foco en el primer combobox de permisos directos y selección con teclado
     await page.getByRole('tab', { name: 'Permisos directos' }).click();
+    await page
+      .getByRole('tabpanel', { name: 'Permisos directos' })
+      .getByRole('button')
+      .first()
+      .click();
     const firstSelect = page.getByRole('combobox').first();
     await firstSelect.focus();
     await expect(firstSelect).toBeFocused();

@@ -67,10 +67,10 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Users', () => {
     await page
       .getByRole('button', { name: new RegExp(`inactivar a usuario ${targetSurname}`, 'i') })
       .click();
-    await expect(page.getByRole('alertdialog')).toBeVisible();
+    await expect(page.getByRole('dialog')).toBeVisible();
     await expectNoContrastViolations(page, { context: 'users-deactivation-confirmation' });
     await page.keyboard.press('Escape');
-    await expect(page.getByRole('alertdialog')).toHaveCount(0);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
 
     // Lista vacía filtrada
     await page.goto('/usuarios?status=INACTIVE');
