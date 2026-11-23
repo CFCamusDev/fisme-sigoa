@@ -191,17 +191,17 @@ describe('PATCH /sessions/:id (PostgreSQL real, HU-032, T-032-23, RF-032, RNF-00
     await seedDomainData();
     const member = await createActor(['COMMITTEE_MEMBER']);
     const initial = await createInitialSession(member.token, {
-      modality: 'IN_PERSON',
-      meetingUrl: 'https://meet.example.com/opt',
+      modality: 'HYBRID',
+      recordingUrl: 'https://drive.example.com/opt',
     });
 
     const response = await patchSession(member.token, initial.id).send({
-      meetingUrl: null,
+      recordingUrl: null,
     });
 
     expect(response.status).toBe(200);
     const dto = sessionDtoSchema.parse(response.body);
-    expect(dto.meetingUrl).toBeNull();
+    expect(dto.recordingUrl).toBeNull();
   }, 5_000);
 
   it('serializes two concurrent edits with different execution sets', async () => {
