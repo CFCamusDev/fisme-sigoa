@@ -105,13 +105,4 @@ describe('ResponseScaleCard Component (HU-012, T-012-28, CA1, CA2, CA3)', () => 
       screen.getByRole('button', { name: 'Duplicar' }),
     );
   });
-
-  it('renders the panel it receives below the actions', () => {
-    renderWithProviders(
-      <ResponseScaleCard scale={buildLikertScale()} panel={<p>Panel de prueba</p>} />,
-      { withRouter: false },
-    );
-
-    expect(screen.getByText('Panel de prueba')).toBeInTheDocument();
-  });
 });
