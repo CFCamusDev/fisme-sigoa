@@ -328,6 +328,6 @@ describe('ExecutionBoardPage (HU-031, T-031-09)', () => {
     expect(postCalls).toBe(1);
 
     release();
-    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });
 });

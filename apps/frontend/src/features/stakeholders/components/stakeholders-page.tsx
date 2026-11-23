@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { CheckCircle2, Plus } from 'lucide-react';
-import type { StakeholderDto } from '@sigoa/shared';
+import {
+  STAKEHOLDER_VOID_REASON_MAX_LENGTH,
+  STAKEHOLDER_VOID_REASON_MIN_LENGTH,
+  type StakeholderDto,
+} from '@sigoa/shared';
 import { Can } from '@/components/common/can';
+import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import { EmptyState } from '@/components/common/empty-state';
 import { ErrorState } from '@/components/common/error-state';
 import { LoadingState } from '@/components/common/loading-state';
@@ -9,12 +14,13 @@ import { PageHeader } from '@/components/common/page-header';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useStakeholders } from '../hooks/use-stakeholders';
+import { useVoidStakeholder } from '../hooks/use-void-stakeholder';
 import { getStakeholderErrorMessage } from '../lib/stakeholder-error-message';
+import { getStakeholderDocumentLabel } from '../lib/stakeholder-labels';
 import { StakeholderForm } from './stakeholder-form';
 import { StakeholdersFilters, type StakeholdersFiltersState } from './stakeholders-filters';
 import { StakeholdersPagination } from './stakeholders-pagination';
 import { StakeholdersTable } from './stakeholders-table';
-import { VoidStakeholderForm } from './void-stakeholder-form';
 
 const PAGE_SIZE = 20;
 
@@ -39,6 +45,7 @@ export function StakeholdersPage({ initialEditId }: StakeholdersPageProps = {}) 
   const [dismissedEditId, setDismissedEditId] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const successAlertRef = useRef<HTMLDivElement>(null);
+  const voidMutation = useVoidStakeholder();
 
   const query = useStakeholders({
     search: filters.search || undefined,
@@ -159,14 +166,45 @@ export function StakeholdersPage({ initialEditId }: StakeholdersPageProps = {}) 
         />
       ) : null}
 
-      {panel.type === 'void' ? (
-        <VoidStakeholderForm
-          key={`void-${panel.stakeholder.id}`}
-          stakeholder={panel.stakeholder}
-          onCancel={() => setPanel({ type: 'none' })}
-          onVoided={handleVoided}
-        />
-      ) : null}
+      <ConfirmDialog
+        open={panel.type === 'void'}
+        onOpenChange={(open) => {
+          if (!open) {
+            voidMutation.reset();
+            setPanel({ type: 'none' });
+          }
+        }}
+        title="Anular constituyente"
+        description={
+          panel.type === 'void'
+            ? `${panel.stakeholder.fullName} · ${getStakeholderDocumentLabel(panel.stakeholder)}. El constituyente no se elimina: queda en el registro como anulado.`
+            : ''
+        }
+        confirmLabel="Confirmar anulación"
+        pendingLabel="Anulando…"
+        tone="destructive"
+        isPending={voidMutation.isPending}
+        error={voidMutation.error ? getStakeholderErrorMessage(voidMutation.error) : null}
+        reason={{
+          label: 'Motivo de la anulación',
+          minLength: STAKEHOLDER_VOID_REASON_MIN_LENGTH,
+          maxLength: STAKEHOLDER_VOID_REASON_MAX_LENGTH,
+        }}
+        onConfirm={async (reason) => {
+          if (voidMutation.isPending || !reason || panel.type !== 'void') {
+            return;
+          }
+          try {
+            const updated = await voidMutation.mutateAsync({
+              id: panel.stakeholder.id,
+              payload: { reason },
+            });
+            handleVoided(updated);
+          } catch {
+            // El error de servidor queda disponible en voidMutation.error.
+          }
+        }}
+      />
 
       <StakeholdersFilters value={filters} onApply={handleApplyFilters} />
 

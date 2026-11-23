@@ -1,16 +1,12 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { Ban, Lock } from 'lucide-react';
-import { useForm, useWatch } from 'react-hook-form';
 import {
   VOID_REASON_MAX_LENGTH,
   VOID_REASON_MIN_LENGTH,
-  voidProcessExecutionRequestSchema,
   type ProcessExecutionStatusValue,
-  type VoidProcessExecutionRequest,
 } from '@sigoa/shared';
+import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { usePermission } from '@/hooks/use-permission';
 import { useCloseProcessExecution } from '../hooks/use-close-process-execution';
 import { useVoidProcessExecution } from '../hooks/use-void-process-execution';
@@ -22,8 +18,6 @@ export interface ExecutionClosureActionsProps {
   readonly status: ProcessExecutionStatusValue;
 }
 
-type ActivePanel = 'close' | 'void' | null;
-
 export function ExecutionClosureActions({ executionId, status }: ExecutionClosureActionsProps) {
   const { allowed: canClosePermission } = usePermission('ejecucion.cerrar');
   const { allowed: canVoidPermission } = usePermission('ejecucion.anular');
@@ -31,7 +25,8 @@ export function ExecutionClosureActions({ executionId, status }: ExecutionClosur
   const closeMutation = useCloseProcessExecution(executionId);
   const voidMutation = useVoidProcessExecution(executionId);
 
-  const [activePanel, setActivePanel] = useState<ActivePanel>(null);
+  const [closePanelOpen, setClosePanelOpen] = useState(false);
+  const [voidDialogOpen, setVoidDialogOpen] = useState(false);
 
   const closeTriggerRef = useRef<HTMLButtonElement | null>(null);
   const voidTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -39,38 +34,19 @@ export function ExecutionClosureActions({ executionId, status }: ExecutionClosur
 
   const closeTitleId = useId();
   const closeDescId = useId();
-  const voidTitleId = useId();
-  const voidReasonId = useId();
-  const voidErrorId = useId();
 
   const canClose = canClosePermission && status === 'PENDING_APPROVAL';
   const canVoid = canVoidPermission && status !== 'CLOSED' && status !== 'VOIDED';
   const isBusy = closeMutation.isPending || voidMutation.isPending;
 
-  const {
-    control,
-    register,
-    handleSubmit,
-    reset,
-    setFocus,
-    formState: { errors },
-  } = useForm<VoidProcessExecutionRequest>({
-    resolver: zodResolver(voidProcessExecutionRequestSchema),
-    defaultValues: { reason: '' },
-  });
-
-  const reasonValue = useWatch({ control, name: 'reason', defaultValue: '' });
-
   useEffect(() => {
-    if (activePanel === 'close') {
+    if (closePanelOpen) {
       cancelCloseBtnRef.current?.focus();
-    } else if (activePanel === 'void') {
-      setFocus('reason');
     }
-  }, [activePanel, setFocus]);
+  }, [closePanelOpen]);
 
   useEffect(() => {
-    if (!activePanel) {
+    if (!closePanelOpen) {
       return;
     }
 
@@ -78,20 +54,15 @@ export function ExecutionClosureActions({ executionId, status }: ExecutionClosur
       if (event.key !== 'Escape' || isBusy) {
         return;
       }
-      const previousPanel = activePanel;
-      setActivePanel(null);
-      if (previousPanel === 'close') {
-        closeTriggerRef.current?.focus();
-      } else {
-        voidTriggerRef.current?.focus();
-      }
+      setClosePanelOpen(false);
+      closeTriggerRef.current?.focus();
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [activePanel, isBusy]);
+  }, [closePanelOpen, isBusy]);
 
   if (!canClose && !canVoid) {
     return null;
@@ -105,11 +76,11 @@ export function ExecutionClosureActions({ executionId, status }: ExecutionClosur
   const handleOpenClosePanel = () => {
     closeMutation.reset();
     voidMutation.reset();
-    setActivePanel('close');
+    setClosePanelOpen(true);
   };
 
   const handleCancelClose = () => {
-    setActivePanel(null);
+    setClosePanelOpen(false);
     closeMutation.reset();
     closeTriggerRef.current?.focus();
   };
@@ -118,34 +89,29 @@ export function ExecutionClosureActions({ executionId, status }: ExecutionClosur
     if (isBusy) return;
     closeMutation.mutate(undefined, {
       onSuccess: () => {
-        setActivePanel(null);
+        setClosePanelOpen(false);
       },
     });
   };
 
-  const handleOpenVoidPanel = () => {
+  const handleOpenVoidDialog = () => {
     closeMutation.reset();
     voidMutation.reset();
-    reset({ reason: '' });
-    setActivePanel('void');
+    setClosePanelOpen(false);
+    setVoidDialogOpen(true);
   };
 
-  const handleCancelVoid = () => {
-    setActivePanel(null);
-    voidMutation.reset();
-    reset({ reason: '' });
-    voidTriggerRef.current?.focus();
-  };
-
-  const onSubmitVoid = handleSubmit((data) => {
-    if (isBusy) return;
-    voidMutation.mutate(data, {
-      onSuccess: () => {
-        setActivePanel(null);
-        reset({ reason: '' });
+  const handleConfirmVoid = (reason?: string) => {
+    if (isBusy || !reason) return;
+    voidMutation.mutate(
+      { reason },
+      {
+        onSuccess: () => {
+          setVoidDialogOpen(false);
+        },
       },
-    });
-  });
+    );
+  };
 
   return (
     <div className="space-y-3">
@@ -169,7 +135,7 @@ export function ExecutionClosureActions({ executionId, status }: ExecutionClosur
             type="button"
             variant="destructive"
             disabled={isBusy}
-            onClick={handleOpenVoidPanel}
+            onClick={handleOpenVoidDialog}
           >
             <Ban className="size-4" aria-hidden="true" />
             Anular ejecución
@@ -177,7 +143,7 @@ export function ExecutionClosureActions({ executionId, status }: ExecutionClosur
         ) : null}
       </div>
 
-      {activePanel === 'close' ? (
+      {closePanelOpen ? (
         <div
           role="alertdialog"
           aria-modal="false"
@@ -239,65 +205,33 @@ export function ExecutionClosureActions({ executionId, status }: ExecutionClosur
         </div>
       ) : null}
 
-      {activePanel === 'void' ? (
-        <div
-          role="alertdialog"
-          aria-modal="false"
-          aria-labelledby={voidTitleId}
-          className="space-y-3 rounded-md border border-border bg-card p-3 text-card-foreground"
-        >
-          <h3 id={voidTitleId} className="text-sm font-semibold text-foreground">
-            Anular ejecución
-          </h3>
-
-          <form onSubmit={onSubmitVoid} className="space-y-3" noValidate>
-            <div className="space-y-1.5">
-              <label htmlFor={voidReasonId} className="block text-sm font-medium text-foreground">
-                Motivo de anulación
-              </label>
-              <Textarea
-                id={voidReasonId}
-                rows={3}
-                disabled={isBusy}
-                aria-invalid={errors.reason ? 'true' : undefined}
-                aria-describedby={errors.reason ? voidErrorId : undefined}
-                placeholder="Describe por qué se anula esta ejecución…"
-                {...register('reason')}
-              />
-              <p className="text-xs text-muted-foreground">
-                {reasonValue.trim().length} / {VOID_REASON_MAX_LENGTH} (mínimo{' '}
-                {VOID_REASON_MIN_LENGTH} caracteres)
-              </p>
-              {errors.reason ? (
-                <p id={voidErrorId} role="alert" className="text-sm text-danger">
-                  {errors.reason.message}
-                </p>
-              ) : null}
-            </div>
-
-            {voidMutation.error ? (
-              <p role="alert" className="text-sm text-danger">
-                {getTransitionErrorMessage(voidMutation.error)}
-              </p>
-            ) : null}
-
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={isBusy}
-                onClick={handleCancelVoid}
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" variant="destructive" size="sm" disabled={isBusy}>
-                {voidMutation.isPending ? 'Anulando…' : 'Confirmar anulación'}
-              </Button>
-            </div>
-          </form>
-        </div>
-      ) : null}
+      <ConfirmDialog
+        open={voidDialogOpen}
+        onOpenChange={(open) => {
+          setVoidDialogOpen(open);
+          if (!open) {
+            voidMutation.reset();
+          }
+        }}
+        title="Anular ejecución"
+        description="Al anular la ejecución, quedará inactiva de forma permanente y se registrará el motivo en la auditoría."
+        confirmLabel="Confirmar anulación"
+        pendingLabel="Anulando…"
+        tone="destructive"
+        isPending={voidMutation.isPending}
+        error={voidMutation.error ? getTransitionErrorMessage(voidMutation.error) : null}
+        reason={{
+          label: 'Motivo de anulación',
+          minLength: VOID_REASON_MIN_LENGTH,
+          maxLength: VOID_REASON_MAX_LENGTH,
+          placeholder: 'Describe por qué se anula esta ejecución…',
+        }}
+        onConfirm={handleConfirmVoid}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          voidTriggerRef.current?.focus();
+        }}
+      />
     </div>
   );
 }
