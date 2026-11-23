@@ -46,6 +46,11 @@ export function SessionsPage() {
     [executions],
   );
 
+  const executionStatusesById = useMemo(
+    () => new Map(executions.map((item) => [item.id, item.status])),
+    [executions],
+  );
+
   const sessionsQuery = useExecutionSessions(activeExecutionId || undefined, {
     page,
     pageSize: PAGE_SIZE,
@@ -204,6 +209,7 @@ export function SessionsPage() {
               <SessionsTable
                 items={sessionsQuery.data?.items ?? []}
                 executionNamesById={executionNamesById}
+                executionStatusesById={executionStatusesById}
                 onEdit={(session) => {
                   setStatusMessage(null);
                   setPanelState({ mode: 'edit', session });
