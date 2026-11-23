@@ -1,13 +1,14 @@
 import { useId, useMemo, useState } from 'react';
 import type { SessionAttendeesResponse, SessionDto } from '@sigoa/shared';
 import { AlertTriangle, Plus } from 'lucide-react';
-import { FormDialog, FormSheet, PageHeader, useRestoreFocus } from '@/components/common';
+import { FormDialog, FormSheet, PageHeader } from '@/components/common';
 import { Can } from '@/components/common/can';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { useProcessExecutions } from '@/features/processes';
+import { useRestoreFocus } from '@/hooks/use-restore-focus';
 import { useExecutionSessions } from '../hooks/use-execution-sessions';
 import { getSessionErrorMessage } from '../lib/session-error-message';
 import { formatSessionDate } from '../lib/session-labels';
@@ -29,7 +30,11 @@ export function SessionsPage() {
   const [page, setPage] = useState<number>(1);
   const [panelState, setPanelState] = useState<PanelState>({ mode: 'closed' });
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const { capture: captureFocus, restore: restoreFocus } = useRestoreFocus();
+  const { remember: rememberFocus, restore: restoreFocus } = useRestoreFocus();
+
+  function captureActiveElement() {
+    rememberFocus(document.activeElement instanceof HTMLElement ? document.activeElement : null);
+  }
 
   const executionsQuery = useProcessExecutions({ page: 1, pageSize: 100 });
   const executions = useMemo(
@@ -101,8 +106,8 @@ export function SessionsPage() {
             <Button
               type="button"
               disabled={!activeExecutionId}
-              onClick={() => {
-                captureFocus();
+              onClick={(event) => {
+                rememberFocus(event.currentTarget);
                 setStatusMessage(null);
                 setPanelState({ mode: 'create' });
               }}
@@ -229,12 +234,12 @@ export function SessionsPage() {
                 executionNamesById={executionNamesById}
                 executionStatusesById={executionStatusesById}
                 onEdit={(session) => {
-                  captureFocus();
+                  captureActiveElement();
                   setStatusMessage(null);
                   setPanelState({ mode: 'edit', session });
                 }}
                 onManageAttendees={(session) => {
-                  captureFocus();
+                  captureActiveElement();
                   setStatusMessage(null);
                   setPanelState({ mode: 'attendees', session });
                 }}

@@ -12,9 +12,9 @@ import { ErrorState } from '@/components/common/error-state';
 import { FormDialog } from '@/components/common/form-dialog';
 import { LoadingState } from '@/components/common/loading-state';
 import { PageHeader } from '@/components/common/page-header';
-import { useRestoreFocus } from '@/components/common/use-restore-focus';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { useRestoreFocus } from '@/hooks/use-restore-focus';
 import { useStakeholders } from '../hooks/use-stakeholders';
 import { useVoidStakeholder } from '../hooks/use-void-stakeholder';
 import { getStakeholderErrorMessage } from '../lib/stakeholder-error-message';
@@ -48,7 +48,11 @@ export function StakeholdersPage({ initialEditId }: StakeholdersPageProps = {}) 
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const successAlertRef = useRef<HTMLDivElement>(null);
   const submittedJustNowRef = useRef(false);
-  const { capture: captureFocus, restore: restoreFocus } = useRestoreFocus();
+  const { remember: rememberFocus, restore: restoreFocus } = useRestoreFocus();
+
+  function captureActiveElement() {
+    rememberFocus(document.activeElement instanceof HTMLElement ? document.activeElement : null);
+  }
   const voidMutation = useVoidStakeholder();
 
   const query = useStakeholders({
@@ -125,8 +129,8 @@ export function StakeholdersPage({ initialEditId }: StakeholdersPageProps = {}) 
           <Can permission="constituyente.editar">
             <Button
               type="button"
-              onClick={() => {
-                captureFocus();
+              onClick={(event) => {
+                rememberFocus(event.currentTarget);
                 setSuccessMessage(null);
                 setPanel({ type: 'register' });
               }}
@@ -272,7 +276,7 @@ export function StakeholdersPage({ initialEditId }: StakeholdersPageProps = {}) 
           <StakeholdersTable
             items={items}
             onEdit={(stakeholder) => {
-              captureFocus();
+              captureActiveElement();
               setSuccessMessage(null);
               setPanel({ type: 'edit', stakeholder });
             }}

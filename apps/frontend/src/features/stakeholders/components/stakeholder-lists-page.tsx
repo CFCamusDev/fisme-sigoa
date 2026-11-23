@@ -14,9 +14,9 @@ import { FormDialog } from '@/components/common/form-dialog';
 import { FormSheet } from '@/components/common/form-sheet';
 import { LoadingState } from '@/components/common/loading-state';
 import { PageHeader } from '@/components/common/page-header';
-import { useRestoreFocus } from '@/components/common/use-restore-focus';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { useRestoreFocus } from '@/hooks/use-restore-focus';
 import { saveBlobFile } from '@/lib/blob-download';
 import { useDownloadStakeholderListPdf } from '../hooks/use-download-stakeholder-list-pdf';
 import { useStakeholderLists } from '../hooks/use-stakeholder-lists';
@@ -49,7 +49,7 @@ export function StakeholderListsPage() {
   const [pdfError, setPdfError] = useState<string | null>(null);
   const successAlertRef = useRef<HTMLDivElement>(null);
   const importButtonRef = useRef<HTMLButtonElement>(null);
-  const { capture: captureFocus, restore: restoreFocus } = useRestoreFocus();
+  const { remember: rememberFocus, restore: restoreFocus } = useRestoreFocus();
 
   const query = useStakeholderLists({
     type: filters.type,
@@ -176,8 +176,8 @@ export function StakeholderListsPage() {
               <Can permission="constituyente.editar">
                 <Button
                   type="button"
-                  onClick={() => {
-                    captureFocus();
+                  onClick={(event) => {
+                    rememberFocus(event.currentTarget);
                     setActivePanel('create');
                   }}
                 >
@@ -230,8 +230,8 @@ export function StakeholderListsPage() {
                 <Can permission="constituyente.editar">
                   <Button
                     type="button"
-                    onClick={() => {
-                      captureFocus();
+                    onClick={(event) => {
+                      rememberFocus(event.currentTarget);
                       setActivePanel((current) => (current === 'picker' ? 'none' : 'picker'));
                     }}
                   >
@@ -241,8 +241,8 @@ export function StakeholderListsPage() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => {
-                      captureFocus();
+                    onClick={(event) => {
+                      rememberFocus(event.currentTarget);
                       setActivePanel((current) => (current === 'copy' ? 'none' : 'copy'));
                     }}
                   >
