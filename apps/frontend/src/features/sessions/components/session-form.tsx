@@ -116,17 +116,32 @@ export function SessionForm({ defaultExecutionId, session, onSaved, onCancel }: 
   }, [canReadStakeholderLists, listsQuery.isError, listsQuery.data]);
 
   const isVirtual = selectedModality === 'VIRTUAL';
+  const isHybrid = selectedModality === 'HYBRID';
+  const showMeetingUrl = isVirtual || isHybrid;
+  const showRecordingUrl = isVirtual || isHybrid;
+
+  useEffect(() => {
+    if (selectedModality === 'IN_PERSON') {
+      setValue('meetingUrl', '');
+      setValue('recordingUrl', '');
+    }
+  }, [selectedModality, setValue]);
 
   async function onSubmit(values: CreateSessionRequest) {
     setServerError(null);
+    const isInPerson = values.modality === 'IN_PERSON';
     const normalizedPayload: CreateSessionRequest = {
       stakeholderType: values.stakeholderType,
       stakeholderListId: values.stakeholderListId || null,
       sessionDate: values.sessionDate,
       startTime: values.startTime,
       modality: values.modality,
-      meetingUrl: values.meetingUrl?.trim() ? values.meetingUrl.trim() : null,
-      recordingUrl: values.recordingUrl?.trim() ? values.recordingUrl.trim() : null,
+      meetingUrl: isInPerson ? null : values.meetingUrl?.trim() ? values.meetingUrl.trim() : null,
+      recordingUrl: isInPerson
+        ? null
+        : values.recordingUrl?.trim()
+          ? values.recordingUrl.trim()
+          : null,
       executionIds: values.executionIds,
     };
 
@@ -238,39 +253,69 @@ export function SessionForm({ defaultExecutionId, session, onSaved, onCancel }: 
         </p>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label htmlFor={meetingUrlId}>
-            Enlace de la reunión{isVirtual ? ' (obligatorio)' : ''}
-          </Label>
-          <Input
-            id={meetingUrlId}
-            type="url"
-            placeholder="https://meet.ejemplo.edu.pe/..."
-            aria-required={isVirtual}
-            {...register('meetingUrl')}
-          />
-          {errors.meetingUrl && (
-            <p className="text-xs text-destructive">{errors.meetingUrl.message}</p>
+      {(showMeetingUrl || showRecordingUrl) && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {showMeetingUrl && (
+            <div className="space-y-1.5">
+              <Label htmlFor={meetingUrlId}>
+                Enlace de la reunión
+                <span className="text-destructive" aria-hidden="true">
+                  {' '}
+                  *
+                </span>
+                <span className="sr-only"> (obligatorio)</span>
+              </Label>
+              <Input
+                id={meetingUrlId}
+                type="url"
+                placeholder="https://meet.ejemplo.edu.pe/..."
+                aria-required="true"
+                aria-invalid={Boolean(errors.meetingUrl)}
+                aria-describedby={errors.meetingUrl ? `${meetingUrlId}-error` : undefined}
+                {...register('meetingUrl')}
+              />
+              {errors.meetingUrl && (
+                <p id={`${meetingUrlId}-error`} role="alert" className="text-xs text-destructive">
+                  {errors.meetingUrl.message}
+                </p>
+              )}
+            </div>
           )}
-        </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor={recordingUrlId}>
-            Enlace de la grabación{isVirtual ? ' (obligatorio)' : ''}
-          </Label>
-          <Input
-            id={recordingUrlId}
-            type="url"
-            placeholder="https://drive.ejemplo.edu.pe/..."
-            aria-required={isVirtual}
-            {...register('recordingUrl')}
-          />
-          {errors.recordingUrl && (
-            <p className="text-xs text-destructive">{errors.recordingUrl.message}</p>
+          {showRecordingUrl && (
+            <div className="space-y-1.5">
+              <Label htmlFor={recordingUrlId}>
+                Enlace de la grabación
+                {isVirtual ? (
+                  <>
+                    <span className="text-destructive" aria-hidden="true">
+                      {' '}
+                      *
+                    </span>
+                    <span className="sr-only"> (obligatorio)</span>
+                  </>
+                ) : (
+                  ' (opcional)'
+                )}
+              </Label>
+              <Input
+                id={recordingUrlId}
+                type="url"
+                placeholder="https://drive.ejemplo.edu.pe/..."
+                aria-required={isVirtual}
+                aria-invalid={Boolean(errors.recordingUrl)}
+                aria-describedby={errors.recordingUrl ? `${recordingUrlId}-error` : undefined}
+                {...register('recordingUrl')}
+              />
+              {errors.recordingUrl && (
+                <p id={`${recordingUrlId}-error`} role="alert" className="text-xs text-destructive">
+                  {errors.recordingUrl.message}
+                </p>
+              )}
+            </div>
           )}
         </div>
-      </div>
+      )}
 
       <SessionExecutionsField
         linkableExecutions={linkableExecutionsQuery.items}
