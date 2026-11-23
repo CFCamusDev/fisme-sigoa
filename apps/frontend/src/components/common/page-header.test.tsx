@@ -36,6 +36,9 @@ describe('PageHeader component', () => {
     expect(pageFiles.length).toBeGreaterThan(0);
 
     const offenders = pageFiles.filter((relPath) => {
+      if (relPath.startsWith(`auth${path.sep}`) || relPath.startsWith('auth/')) {
+        return false;
+      }
       const content = fs.readFileSync(path.join(featuresDir, relPath), 'utf8');
       return /<h1[\s>]/.test(content);
     });

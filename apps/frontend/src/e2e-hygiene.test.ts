@@ -130,6 +130,7 @@ const EXPECTED_CONTRAST_CONTEXTS = [
   'templates-list-mobile',
   'templates-readonly-desktop',
   'templates-readonly-mobile',
+  'templates-variables-desktop',
   'user-access-panel-desktop',
   'user-access-panel-mobile',
   'user-access-panel-unsaved-changes',
