@@ -11,6 +11,7 @@
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:provision-app-role": "tsx src/provision-app-role.ts",
+    "db:reset": "tsx src/reset-database.ts",
     "db:test:prepare": "tsx src/test/db/prepare-test-database.ts",
     "db:seed": "tsx src/seed.ts",
     "seed:e2e-user": "tsx src/test/e2e/seed-e2e-user.ts",
