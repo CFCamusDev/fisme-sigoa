@@ -112,7 +112,7 @@ describe('StakeholderListMemberPicker (HU-022, T-022-28)', () => {
     expect(alert).toHaveTextContent(/Año de egreso, Correo/i);
     expect(screen.getByRole('link', { name: /Completar el registro/i })).toHaveAttribute(
       'href',
-      '/constituyentes',
+      `/constituyentes?editar=${PERSON_STAKEHOLDER.id}`,
     );
   });
 

@@ -51,6 +51,7 @@ export function StakeholderListMemberPicker({
   const [extraValue, setExtraValue] = useState('');
   const [extraError, setExtraError] = useState<string | null>(null);
   const [pendingStakeholderId, setPendingStakeholderId] = useState<string | null>(null);
+  const [incompleteStakeholderId, setIncompleteStakeholderId] = useState<string | null>(null);
   const [missingFields, setMissingFields] = useState<string[]>([]);
   const [actionError, setActionError] = useState<string | null>(null);
   const alertRef = useRef<HTMLDivElement>(null);
@@ -86,6 +87,7 @@ export function StakeholderListMemberPicker({
   }
 
   async function submitMember(stakeholder: StakeholderDto, extra?: string) {
+    setIncompleteStakeholderId(null);
     setMissingFields([]);
     setActionError(null);
     setPendingStakeholderId(stakeholder.id);
@@ -104,6 +106,7 @@ export function StakeholderListMemberPicker({
     } catch (error) {
       const missing = getMissingListMemberFields(error);
       if (missing.length > 0) {
+        setIncompleteStakeholderId(stakeholder.id);
         setMissingFields(missing);
       } else {
         setActionError(getStakeholderListErrorMessage(error));
@@ -114,6 +117,7 @@ export function StakeholderListMemberPicker({
   }
 
   function handleAddClick(stakeholder: StakeholderDto) {
+    setIncompleteStakeholderId(null);
     setMissingFields([]);
     setActionError(null);
 
@@ -173,6 +177,7 @@ export function StakeholderListMemberPicker({
               <p>Falta en el registro del constituyente: {missingFields.join(', ')}.</p>
               <Link
                 to="/constituyentes"
+                search={incompleteStakeholderId ? { editar: incompleteStakeholderId } : undefined}
                 className="inline-block font-medium text-foreground underline underline-offset-4"
               >
                 Completar el registro
