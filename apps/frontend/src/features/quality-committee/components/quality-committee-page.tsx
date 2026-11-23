@@ -9,6 +9,8 @@ import { PageHeader } from '@/components/common';
 import { Can } from '@/components/common/can';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useTabParam } from '@/hooks/use-tab-param';
 import {
   useCurrentQualityCommittee,
   useQualityCommittees,
@@ -21,12 +23,15 @@ import { CommitteeHistoryTable } from './committee-history-table';
 import { CurrentCommitteeCard } from './current-committee-card';
 import { PresidentAlerts } from './president-alerts';
 
+const COMMITTEE_TABS = ['vigente', 'historial'] as const;
+
 type FormState =
   | { readonly kind: 'closed' }
   | { readonly kind: 'create' }
   | { readonly kind: 'edit'; readonly committee: QualityCommitteeDto };
 
 export function QualityCommitteePage() {
+  const [tab, setTab] = useTabParam(COMMITTEE_TABS, 'vigente');
   const [page, setPage] = useState(1);
   const [formState, setFormState] = useState<FormState>({ kind: 'closed' });
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -109,84 +114,120 @@ export function QualityCommitteePage() {
         </Alert>
       )}
 
-      {currentQuery.isPending && (
-        <div
-          role="status"
-          className="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground"
-        >
-          Cargando el Comité de Calidad…
-        </div>
-      )}
-
-      {currentQuery.isError && (
-        <Alert variant="danger">
-          <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
-            <span>{getCommitteeErrorMessage(currentQuery.error)}</span>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                void currentQuery.refetch();
-                void historyQuery.refetch();
-              }}
-            >
-              Reintentar
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {currentQuery.isSuccess && (
-        <>
-          <PresidentAlerts alerts={currentQuery.data.alerts} />
-
-          {formState.kind !== 'closed' && (
-            <CommitteeForm
-              key={formState.kind === 'edit' ? formState.committee.id : 'create'}
-              mode={formState.kind}
-              initialCommittee={formState.kind === 'edit' ? formState.committee : null}
-              isSubmitting={isSubmitting}
-              serverError={mutationError}
-              serverErrorDetail={mutationErrorDetail}
-              onCancel={handleCloseForm}
-              onSubmitCreate={handleCreateSubmit}
-              onSubmitEdit={handleEditSubmit}
-            />
-          )}
-
-          {currentQuery.data.committee ? (
-            <CurrentCommitteeCard
-              committee={currentQuery.data.committee}
-              actorMembership={currentQuery.data.actorMembership}
-              onEditMembers={handleOpenEdit}
-            />
-          ) : (
-            <section className="rounded-lg border border-border bg-card p-6 text-card-foreground">
-              <Can
-                permission="comite.editar"
-                fallback={
-                  <p className="text-sm text-muted-foreground">
-                    Aún no se registró el Comité del periodo actual.
-                  </p>
-                }
-              >
-                <p className="text-sm text-muted-foreground">
-                  No hay un Comité vigente. Registra el Comité del periodo actual.
-                </p>
-              </Can>
-            </section>
-          )}
-        </>
-      )}
-
-      {historyQuery.isSuccess && (
-        <CommitteeHistoryTable
-          data={historyQuery.data}
-          onPageChange={setPage}
-          onEditMembers={handleOpenEdit}
+      {formState.kind !== 'closed' && (
+        <CommitteeForm
+          key={formState.kind === 'edit' ? formState.committee.id : 'create'}
+          mode={formState.kind}
+          initialCommittee={formState.kind === 'edit' ? formState.committee : null}
+          isSubmitting={isSubmitting}
+          serverError={mutationError}
+          serverErrorDetail={mutationErrorDetail}
+          onCancel={handleCloseForm}
+          onSubmitCreate={handleCreateSubmit}
+          onSubmitEdit={handleEditSubmit}
         />
       )}
+
+      <Tabs value={tab} onValueChange={setTab} className="space-y-4">
+        <TabsList aria-label="Secciones del Comité de Calidad">
+          <TabsTrigger value="vigente">Vigente</TabsTrigger>
+          <TabsTrigger value="historial">Historial</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="vigente" className="space-y-6">
+          {currentQuery.isPending && (
+            <div
+              role="status"
+              className="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground"
+            >
+              Cargando el Comité de Calidad…
+            </div>
+          )}
+
+          {currentQuery.isError && (
+            <Alert variant="danger">
+              <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
+                <span>{getCommitteeErrorMessage(currentQuery.error)}</span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    void currentQuery.refetch();
+                    void historyQuery.refetch();
+                  }}
+                >
+                  Reintentar
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {currentQuery.isSuccess && (
+            <>
+              <PresidentAlerts alerts={currentQuery.data.alerts} />
+
+              {currentQuery.data.committee ? (
+                <CurrentCommitteeCard
+                  committee={currentQuery.data.committee}
+                  actorMembership={currentQuery.data.actorMembership}
+                  onEditMembers={handleOpenEdit}
+                />
+              ) : (
+                <section className="rounded-lg border border-border bg-card p-6 text-card-foreground">
+                  <Can
+                    permission="comite.editar"
+                    fallback={
+                      <p className="text-sm text-muted-foreground">
+                        Aún no se registró el Comité del periodo actual.
+                      </p>
+                    }
+                  >
+                    <p className="text-sm text-muted-foreground">
+                      No hay un Comité vigente. Registra el Comité del periodo actual.
+                    </p>
+                  </Can>
+                </section>
+              )}
+            </>
+          )}
+        </TabsContent>
+
+        <TabsContent value="historial" className="space-y-6">
+          {historyQuery.isPending && (
+            <div
+              role="status"
+              className="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground"
+            >
+              Cargando historial del Comité…
+            </div>
+          )}
+
+          {historyQuery.isError && (
+            <Alert variant="danger">
+              <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
+                <span>{getCommitteeErrorMessage(historyQuery.error)}</span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void historyQuery.refetch()}
+                >
+                  Reintentar
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {historyQuery.isSuccess && (
+            <CommitteeHistoryTable
+              data={historyQuery.data}
+              onPageChange={setPage}
+              onEditMembers={handleOpenEdit}
+            />
+          )}
+        </TabsContent>
+      </Tabs>
     </section>
   );
 }

@@ -289,9 +289,7 @@ describe('QualityCommitteePage (HU-025, T-025-28)', () => {
       ],
     });
 
-    expect(await screen.findByText('Solo lectura')).toBeInTheDocument();
-
-    const editButtons = screen.getAllByRole('button', { name: /Editar miembros/i });
+    const editButtons = await screen.findAllByRole('button', { name: /Editar miembros/i });
     expect(editButtons.length).toBeGreaterThanOrEqual(1);
     await user.click(editButtons[0]!);
 
@@ -443,5 +441,54 @@ describe('QualityCommitteePage (HU-025, T-025-28)', () => {
 
     const heading = await screen.findByRole('heading', { level: 1, name: 'Comité de Calidad' });
     expect(heading).toHaveClass('text-h2', 'sm:text-h1');
+  });
+
+  it('shows current and history tabs and defaults to current', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get('*/quality-committees/current', () =>
+        HttpResponse.json(makeCurrentCommitteeResponse()),
+      ),
+      http.get('*/quality-committees', () =>
+        HttpResponse.json(
+          makeCommitteeListResponse({
+            items: [SAMPLE_CURRENT_COMMITTEE, SAMPLE_FINISHED_COMMITTEE],
+            total: 2,
+          }),
+        ),
+      ),
+    );
+
+    renderWithProviders(<QualityCommitteePage />, {
+      withRouter: true,
+      permissions: [{ code: 'comite.ver', scope: 'GLOBAL' }],
+    });
+
+    const currentTab = await screen.findByRole('tab', { name: 'Vigente' });
+    const historyTab = screen.getByRole('tab', { name: 'Historial' });
+    expect(currentTab).toHaveAttribute('aria-selected', 'true');
+    expect(historyTab).toHaveAttribute('aria-selected', 'false');
+
+    await user.click(historyTab);
+    expect(historyTab).toHaveAttribute('aria-selected', 'true');
+    expect(await screen.findByText('Solo lectura')).toBeInTheDocument();
+  });
+
+  it('falls back to current for an unknown tab', async () => {
+    server.use(
+      http.get('*/quality-committees/current', () =>
+        HttpResponse.json(makeCurrentCommitteeResponse()),
+      ),
+      http.get('*/quality-committees', () => HttpResponse.json(makeCommitteeListResponse())),
+    );
+
+    renderWithProviders(<QualityCommitteePage />, {
+      withRouter: true,
+      initialEntries: ['/comite-calidad?tab=desconocida'],
+      permissions: [{ code: 'comite.ver', scope: 'GLOBAL' }],
+    });
+
+    const currentTab = await screen.findByRole('tab', { name: 'Vigente' });
+    expect(currentTab).toHaveAttribute('aria-selected', 'true');
   });
 });
