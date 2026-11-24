@@ -1,11 +1,21 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
-import { afterAll, afterEach, beforeAll, vi } from 'vitest';
+import { afterEach, beforeAll, vi } from 'vitest';
 import { drainInFlightForTests } from '@/lib/shared-in-flight';
+import { useAuthStore } from '@/stores/auth.store';
 import { server } from './msw/server';
 
+const globalForMsw = globalThis as typeof globalThis & {
+  __sigoaMswListening?: boolean;
+};
+
 beforeAll(() => {
-  server.listen({ onUnhandledFrame: 'error' });
+  // Con isolate: false en Vitest, varios archivos comparten el mismo worker y la instancia de MSW.
+  // Evitamos cerrar y reabrir server entre archivos para no desenganchar los interceptores en vuelo.
+  if (!globalForMsw.__sigoaMswListening) {
+    server.listen();
+    globalForMsw.__sigoaMswListening = true;
+  }
   if (typeof window !== 'undefined') {
     window.scrollTo = vi.fn();
   }
@@ -13,6 +23,8 @@ beforeAll(() => {
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
+  useAuthStore.getState().clearAuthSession();
   if (typeof window !== 'undefined' && typeof window.localStorage?.clear === 'function') {
     window.localStorage.clear();
   }
@@ -24,8 +36,4 @@ afterEach(() => {
         'Usa una promesa controlada (gate/release) y espera a que la mutación termine antes de salir del test.',
     );
   }
-});
-
-afterAll(() => {
-  server.close();
 });

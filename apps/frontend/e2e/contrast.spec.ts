@@ -58,11 +58,10 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Auth & Layout', ()
     await page.setViewportSize(DESKTOP);
     await loginAsTestUser(page, { roles: ['ADMINISTRATOR'] });
 
-    const adminGroup = page
-      .getByRole('navigation', { name: 'Navegación principal' })
-      .getByRole('button', { name: 'Administración' });
+    const nav = page.getByRole('navigation', { name: 'Navegación principal' });
+    const adminGroup = nav.getByRole('button', { name: 'Administración' });
     await adminGroup.click();
-    await expect(page.getByRole('link', { name: 'Usuarios' })).toBeVisible();
+    await expect(nav.getByRole('link', { name: 'Usuarios' })).toBeVisible();
 
     await page.getByRole('button', { name: /menú de usuario/i }).click();
     await expect(page.getByRole('menuitem', { name: /cerrar sesión/i })).toBeVisible();
