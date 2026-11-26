@@ -38,3 +38,20 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Secretos, volcados y datos
+*.pem
+*.key
+*.p12
+*.pfx
+*.dump
+*.bak
+*.sql
+!apps/backend/prisma/migrations/**/*.sql
+*.xlsx
+*.xls
+*.docx
+*.doc
+*.csv
+*.pdf
+!**/test-fixtures/**/*.pdf
