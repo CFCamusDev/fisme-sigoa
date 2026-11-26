@@ -4,7 +4,7 @@ import { runProvisioningAppRole } from './provision-app-role.js';
 describe('runProvisioningAppRole (Unit, RS-040, RNF-014, RNF-030)', () => {
   // URL inalcanzable: si intentara conectar a PostgreSQL fallaría con ECONNREFUSED
   const unreachableDatabaseUrl =
-    'postgresql://test_owner:secret_pass_123@127.0.0.1:1/sigoa_test?schema=public';
+    'postgresql://test_owner:secret@127.0.0.1:1/sigoa_test?schema=public';
 
   const validBaseEnv = {
     DATABASE_URL: unreachableDatabaseUrl,

@@ -36,6 +36,7 @@ echo "==> 2. Construyendo imagen del frontend (Nginx Alpine)..."
 docker build -f apps/frontend/Dockerfile --build-arg VITE_API_URL="http://localhost:3000" -t "$FRONTEND_IMG" .
 
 echo "==> 3. Ejecutando contenedor de prueba para backend con restricciones de producción..."
+SMOKE_RESEND_KEY="re_smoke_test_123456789" # public-safety:allow
 docker run -d --name "$BACKEND_CONTAINER" \
   --cap-drop ALL \
   --cap-add SYS_CHROOT \
@@ -50,7 +51,7 @@ docker run -d --name "$BACKEND_CONTAINER" \
   -e CORS_ORIGIN="http://localhost:8001" \
   -e APP_PUBLIC_URL="https://sigoa.untrm.edu.pe" \
   -e EMAIL_PROVIDER="resend" \
-  -e RESEND_API_KEY="re_smoke_test_123456789" \
+  -e RESEND_API_KEY="$SMOKE_RESEND_KEY" \
   -e EMAIL_FROM="notificaciones@sigoa.untrm.edu.pe" \
   -e FILE_STORAGE_PROVIDER="cloudinary" \
   -e CLOUDINARY_CLOUD_NAME="smoke-cloud" \

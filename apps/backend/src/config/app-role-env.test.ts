@@ -3,7 +3,7 @@ import { appRoleEnvSchema, loadAppRoleEnv } from './app-role-env.js';
 
 describe('AppRoleEnv Schema (Unit, RS-040, RNF-014, RNF-010)', () => {
   const validBase = {
-    DATABASE_URL: 'postgresql://postgres:secret_owner_pass@localhost:5432/sigoa_dev?schema=public',
+    DATABASE_URL: 'postgresql://postgres:secret@localhost:5432/sigoa_dev?schema=public',
     APP_DB_USER: 'sigoa_backend',
     APP_DB_PASSWORD: 'sigoa_backend_dev_pass_123',
   };

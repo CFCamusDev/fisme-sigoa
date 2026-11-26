@@ -183,6 +183,7 @@ describe('verify-pr-local pure logic (T-002-22 / G1)', () => {
     expect(quickIds).toContain('branch-name');
     expect(quickIds).toContain('commit-messages');
     expect(quickIds).toContain('forbidden-files');
+    expect(quickIds).toContain('public-safety');
     expect(quickIds).toContain('env-parity');
     expect(quickIds).toContain('windows-paths');
     expect(quickIds).toContain('test-patterns');
@@ -634,6 +635,20 @@ describe('verify-pr-local pure logic (T-002-22 / G1)', () => {
       expect(driftResult.unmappedCommands).toEqual([]);
     });
 
+    it('maps the public safety step in the workflow drift guard', () => {
+      const sampleYaml = [
+        'jobs:',
+        '  publicacion:',
+        '    steps:',
+        '      - run: node --test scripts/ci/check-public-safety.test.mjs',
+        '      - run: node scripts/ci/check-public-safety.mjs --range "$BASE_SHA"',
+      ].join('\n');
+
+      const drift = checkWorkflowDrift(sampleYaml);
+      expect(drift.inParity).toBe(true);
+      expect(drift.unmappedCommands).toEqual([]);
+    });
+
     it('package.json exposes the five verify scripts', () => {
       const packageJsonPath = path.join(repoRootDir, 'package.json');
       const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
@@ -902,7 +917,7 @@ describe('verify-pr-local parallel groups and scheduler (T-078-12)', () => {
 
   describe('group environment and disposable databases (D7)', () => {
     const baseEnv = {
-      TEST_DATABASE_URL: 'postgresql://user:pw@db.local:5433/sigoa_test?schema=public',
+      TEST_DATABASE_URL: 'postgresql://user:test@db.local:5433/sigoa_test?schema=public',
       OTHER: '1',
     };
 

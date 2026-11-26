@@ -43,6 +43,8 @@
     "check:windows-paths": "node scripts/ci/check-windows-paths.mjs",
     "check:test-patterns": "node scripts/ci/check-test-patterns.mjs",
     "check:perf-budget": "node scripts/ci/check-perf-budget.mjs",
+    "check:public-safety": "node scripts/ci/check-public-safety.mjs",
+    "test:public-safety": "node --test scripts/ci/check-public-safety.test.mjs",
     "verify:pr": "node scripts/ci/verify-pr-local.mjs --mode standard",
     "verify:pr:quick": "node scripts/ci/verify-pr-local.mjs --mode quick",
     "verify:pr:full": "node scripts/ci/verify-pr-local.mjs --mode full",
