@@ -62,7 +62,7 @@ set_var SERVER_PORT "$BACKEND_PORT"
 set_var FRONTEND_PORT "$FRONTEND_PORT"
 set_var HSTS_ENABLED "false"
 set_var TRUST_PROXY "0"
-set_var RESEND_API_KEY "re_smoke_test_123456789"
+set_var RESEND_API_KEY "re_smoke_test_123456789" # public-safety:allow
 set_var EMAIL_FROM "notificaciones@sigoa.untrm.edu.pe"
 set_var CLOUDINARY_CLOUD_NAME "smoke-cloud"
 set_var CLOUDINARY_API_KEY "123456789012345"

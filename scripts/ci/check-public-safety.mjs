@@ -93,7 +93,7 @@ const GITHUB_PAT_RE = /\bgithub_pat_[A-Za-z0-9_]{20,}/g;
 const RESEND_KEY_RE = /\bre_[A-Za-z0-9_]{20,}/g;
 const CLOUDINARY_URL_RE = /cloudinary:\/\/([^:\s'"]+):([^@\s'"]+)@([^\s'"]+)/g;
 const GENERIC_URL_CREDS_RE =
-  /\b[a-zA-Z][a-zA-Z0-9+.-]*:\/\/([^:\s/@'"]+):([^@\s/'"]+)@([^\s/'"]+)/g;
+  /\b[a-zA-Z][a-zA-Z0-9+.-]*:\/\/([^@\s/'"]+)@([^\s/'"]+)/g;
 const PRIVATE_KEY_RE = /-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----/;
 
 const PRISMA_MIGRATION_SQL_RE = /^apps\/backend\/prisma\/migrations\/.+\/migration\.sql$/;
@@ -261,8 +261,12 @@ export function scanLine(line, options = {}) {
   }
 
   for (const match of line.matchAll(GENERIC_URL_CREDS_RE)) {
-    const [fullMatch, , password] = match;
+    const [fullMatch, userInfo] = match;
     if (fullMatch.startsWith('cloudinary://')) continue;
+    const sanitizedUserInfo = userInfo.replace(/\\*\$\{[^}]+\}/g, '${VAR}');
+    const colonIdx = sanitizedUserInfo.indexOf(':');
+    if (colonIdx === -1) continue;
+    const password = sanitizedUserInfo.slice(colonIdx + 1);
     if (!isAllowedExamplePassword(password)) {
       findings.push({ type: 'url-credentials', preview: maskSecret(fullMatch) });
     }

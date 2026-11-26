@@ -902,7 +902,7 @@ describe('verify-pr-local parallel groups and scheduler (T-078-12)', () => {
 
   describe('group environment and disposable databases (D7)', () => {
     const baseEnv = {
-      TEST_DATABASE_URL: 'postgresql://user:pw@db.local:5433/sigoa_test?schema=public',
+      TEST_DATABASE_URL: 'postgresql://user:test@db.local:5433/sigoa_test?schema=public',
       OTHER: '1',
     };
 

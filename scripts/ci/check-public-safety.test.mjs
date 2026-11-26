@@ -176,6 +176,8 @@ describe('check-public-safety', () => {
       'DATABASE_URL=postgresql://user:example@localhost:5432/app',
       'DATABASE_URL=postgresql://user:pass@localhost:5432/app',
       'DATABASE_URL=postgresql://user:${DB_PASSWORD}@localhost:5432/app',
+      'DATABASE_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/app',
+      'DATABASE_URL=postgresql://\\${APP_DB_USER:?err}:\\${APP_DB_PASSWORD:?err}@db:5432/app',
       'DATABASE_URL=postgresql://user:<password>@localhost:5432/app',
       'DATABASE_URL=postgresql://user:...@localhost:5432/app',
     ];
