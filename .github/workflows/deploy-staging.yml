@@ -42,5 +42,5 @@ jobs:
       - name: Esperar a que el entorno de staging responda saludable
         run: bash scripts/ci/wait-for-health.sh
         env:
-          HEALTH_URL: ${{ vars.STAGING_HEALTH_URL }}
+          HEALTH_URL: ${{ secrets.STAGING_HEALTH_URL }}
           TIMEOUT_SECONDS: 900
