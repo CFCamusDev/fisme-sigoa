@@ -1,10 +1,14 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { openAllNavGroups } from '@/test/nav-helpers';
 import { renderWithProviders } from '@/test/render';
 import { AppLayout } from './app-layout';
 
 describe('AppLayout Component', () => {
+  beforeEach(() => {
+    openAllNavGroups();
+  });
   it('renders skip-to-content accessible link pointing to #main-content', async () => {
     renderWithProviders(
       <AppLayout>
@@ -34,6 +38,60 @@ describe('AppLayout Component', () => {
     expect(main).toBeInTheDocument();
     expect(main).toHaveAttribute('id', 'main-content');
     expect(screen.getByText('Título principal')).toBeInTheDocument();
+  });
+
+  it('keeps the header above the fixed sidebar', async () => {
+    renderWithProviders(
+      <AppLayout>
+        <p>Contenido</p>
+      </AppLayout>,
+    );
+
+    const header = await screen.findByRole('banner');
+    const aside = screen.getByLabelText('Barra lateral de navegación');
+    const skipLink = screen.getByRole('link', { name: /Saltar al contenido principal/i });
+
+    expect(header).toHaveClass('sticky', 'top-0', 'z-50');
+    expect(aside).toHaveClass(
+      'z-[45]',
+      'lg:sticky',
+      'lg:top-16',
+      'lg:z-30',
+      'lg:h-[calc(100dvh-4rem)]',
+      'lg:self-start',
+    );
+    expect(skipLink).toHaveClass('focus:z-[60]');
+  });
+
+  it('keeps the version footer outside the scrolling nav', async () => {
+    renderWithProviders(
+      <AppLayout>
+        <p>Contenido</p>
+      </AppLayout>,
+    );
+
+    const nav = await screen.findByRole('navigation', { name: /Navegación principal/i });
+    const aside = screen.getByLabelText('Barra lateral de navegación');
+
+    expect(nav).toHaveClass('overflow-y-auto');
+    expect(nav).not.toHaveTextContent(/Versión/i);
+    expect(aside).toHaveTextContent(/Versión/i);
+  });
+
+  it('fills the viewport so an empty page does not scroll', async () => {
+    const { container } = renderWithProviders(
+      <AppLayout>
+        <p data-testid="empty-content">Sin contenido</p>
+      </AppLayout>,
+    );
+
+    const main = await screen.findByRole('main');
+    const root = container.firstElementChild as HTMLElement;
+    const inner = screen.getByTestId('empty-content').parentElement;
+
+    expect(root).toHaveClass('min-h-dvh');
+    expect(main).toHaveClass('min-h-[calc(100dvh-4rem)]');
+    expect(inner).toHaveClass('mx-auto', 'w-full', 'max-w-[1280px]');
   });
 
   it('renders navigation item "Panel" linking to root', async () => {
@@ -286,6 +344,58 @@ describe('AppLayout Component', () => {
     expect(menuToggle).toHaveAttribute('aria-expanded', 'true');
 
     await user.keyboard('{Escape}');
+    expect(menuToggle).toHaveAttribute('aria-expanded', 'false');
+    expect(menuToggle).toHaveFocus();
+  });
+
+  it('fades the backdrop instead of mounting it', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <AppLayout>
+        <p>Contenido</p>
+      </AppLayout>,
+    );
+
+    const backdrop = await screen.findByTestId('sidebar-backdrop');
+    expect(backdrop).toHaveClass('opacity-0', 'pointer-events-none', 'motion-panel');
+    expect(backdrop).toHaveAttribute('aria-hidden', 'true');
+
+    const menuToggle = screen.getByRole('button', { name: /Abrir menú de navegación/i });
+    await user.click(menuToggle);
+
+    expect(backdrop).toHaveClass('opacity-100');
+    expect(backdrop).not.toHaveClass('pointer-events-none');
+  });
+
+  it('closes with Escape, outside click and navigation returning focus to the toggle', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <AppLayout>
+        <p>Contenido</p>
+      </AppLayout>,
+    );
+
+    const menuToggle = await screen.findByRole('button', { name: /Abrir menú de navegación/i });
+    const backdrop = screen.getByTestId('sidebar-backdrop');
+
+    // 1. Escape
+    await user.click(menuToggle);
+    expect(menuToggle).toHaveAttribute('aria-expanded', 'true');
+    await user.keyboard('{Escape}');
+    expect(menuToggle).toHaveAttribute('aria-expanded', 'false');
+    expect(menuToggle).toHaveFocus();
+
+    // 2. Clic fuera (backdrop)
+    await user.click(menuToggle);
+    expect(menuToggle).toHaveAttribute('aria-expanded', 'true');
+    await user.click(backdrop);
+    expect(menuToggle).toHaveAttribute('aria-expanded', 'false');
+    expect(menuToggle).toHaveFocus();
+
+    // 3. Navegación (clic en enlace)
+    await user.click(menuToggle);
+    expect(menuToggle).toHaveAttribute('aria-expanded', 'true');
+    await user.click(screen.getByRole('link', { name: 'Panel' }));
     expect(menuToggle).toHaveAttribute('aria-expanded', 'false');
     expect(menuToggle).toHaveFocus();
   });

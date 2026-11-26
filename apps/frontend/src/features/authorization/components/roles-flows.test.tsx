@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { http, HttpResponse } from 'msw';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { server } from '@/test/msw/server';
 import { renderWithProviders } from '@/test/render';
@@ -236,6 +236,7 @@ describe('Roles Management Flows (HU-006, T-006-34)', () => {
     expect(userViewSelect).toHaveValue('GLOBAL');
 
     // Asignar permiso de Seguridad: "rol.ver" -> GLOBAL
+    await user.click(screen.getByRole('button', { name: /Seguridad/i }));
     const roleViewSelect = screen.getByLabelText('Acceso a rol.ver');
     expect(roleViewSelect).toHaveValue('NONE');
 
@@ -266,39 +267,38 @@ describe('Roles Management Flows (HU-006, T-006-34)', () => {
     expect(await screen.findByText('Docente')).toBeInTheDocument();
 
     // 1. Abrir diálogo de confirmación para Docente (45 usuarios)
-    const deactivateBtn = screen.getByRole('button', { name: 'Desactivar rol Docente' });
+    const deactivateBtn = screen.getByRole('button', { name: 'Inactivar rol Docente' });
     await user.click(deactivateBtn);
 
-    const dialog = screen.getByRole('alertdialog');
+    const dialog = await screen.findByRole('dialog');
     expect(dialog).toBeInTheDocument();
     expect(dialog).toHaveTextContent(
-      '¿Desactivar el rol Docente? Está asignado a 45 usuario(s); perderán sus permisos en su siguiente petición, y podrás reactivarlo después.',
+      '¿Inactivar el rol Docente? Está asignado a 45 usuario(s); perderán sus permisos en su siguiente petición, y podrás reactivarlo después.',
     );
 
     // 2. Cancelar con el botón Cancelar
-    const cancelBtn = screen.getByRole('button', {
-      name: 'Cancelar desactivación del rol Docente',
-    });
+    const cancelBtn = within(dialog).getByRole('button', { name: 'Cancelar' });
     await user.click(cancelBtn);
-    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
 
     // 3. Volver a abrir y confirmar
-    await user.click(screen.getByRole('button', { name: 'Desactivar rol Docente' }));
-    const confirmBtn = screen.getByRole('button', {
-      name: 'Confirmar desactivación del rol Docente',
-    });
+    await user.click(screen.getByRole('button', { name: 'Inactivar rol Docente' }));
+    const confirmDialog = await screen.findByRole('dialog');
+    const confirmBtn = within(confirmDialog).getByRole('button', { name: 'Inactivar' });
     await user.click(confirmBtn);
 
     // 4. Confirmación visual y actualización de estado
     expect(
-      await screen.findByText("Se desactivó el rol 'Docente' correctamente."),
+      await screen.findByText("Se inactivó el rol 'Docente' correctamente."),
     ).toBeInTheDocument();
 
     const teacherRole = store.getRoles().find((r) => r.id === 'role-teacher');
     expect(teacherRole?.status).toBe('INACTIVE');
   });
 
-  it('Reactivation Flow: reactivates inactive role directly without confirmation modal', async () => {
+  it('Reactivation Flow: reactivates inactive role after confirmation dialog', async () => {
     const store = setupRolesFlowMsw();
     const user = userEvent.setup();
 
@@ -308,6 +308,9 @@ describe('Roles Management Flows (HU-006, T-006-34)', () => {
 
     const reactivateBtn = screen.getByRole('button', { name: 'Reactivar rol Asistente Antiguo' });
     await user.click(reactivateBtn);
+
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'Reactivar' }));
 
     expect(
       await screen.findByText("Se reactivó el rol 'Asistente Antiguo' correctamente."),

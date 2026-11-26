@@ -19,11 +19,17 @@ import { EffectivePermissionsView } from './effective-permissions-view.js';
 
 export interface UserAccessPanelProps {
   readonly userId: string;
+  readonly section?: 'all' | 'roles' | 'direct' | 'effective';
   readonly onUserAccessChanged?: () => void;
   readonly className?: string;
 }
 
-export function UserAccessPanel({ userId, onUserAccessChanged, className }: UserAccessPanelProps) {
+export function UserAccessPanel({
+  userId,
+  section = 'all',
+  onUserAccessChanged,
+  className,
+}: UserAccessPanelProps) {
   const { user: currentUser } = useAuth();
   const isSelfEdit = currentUser?.id === userId;
 
@@ -149,127 +155,135 @@ export function UserAccessPanel({ userId, onUserAccessChanged, className }: User
       )}
 
       {/* Sección 1: Roles asignados */}
-      <section aria-labelledby="user-roles-heading" className="space-y-4">
-        <div>
-          <h3 id="user-roles-heading" className="text-lg font-semibold text-foreground">
-            Roles asignados
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            Selecciona los roles que corresponden a este usuario en el sistema.
-          </p>
-        </div>
+      {(section === 'all' || section === 'roles') && (
+        <section aria-labelledby="user-roles-heading" className="space-y-4">
+          <div>
+            <h3 id="user-roles-heading" className="text-lg font-semibold text-foreground">
+              Roles asignados
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Selecciona los roles que corresponden a este usuario en el sistema.
+            </p>
+          </div>
 
-        {rolesSuccessMessage && (
-          <Alert variant="success">
-            <AlertDescription className="text-xs">{rolesSuccessMessage}</AlertDescription>
-          </Alert>
-        )}
+          {rolesSuccessMessage && (
+            <Alert variant="success">
+              <AlertDescription className="text-xs">{rolesSuccessMessage}</AlertDescription>
+            </Alert>
+          )}
 
-        {rolesErrorMessage && (
-          <Alert variant="danger">
-            <AlertDescription className="text-xs">{rolesErrorMessage}</AlertDescription>
-          </Alert>
-        )}
+          {rolesErrorMessage && (
+            <Alert variant="danger">
+              <AlertDescription className="text-xs">{rolesErrorMessage}</AlertDescription>
+            </Alert>
+          )}
 
-        {rolesQuery.isLoading && <LoadingState message="Cargando roles..." />}
+          {rolesQuery.isLoading && <LoadingState message="Cargando roles..." />}
 
-        {rolesQuery.error && (
-          <ErrorState
-            title="Error al cargar roles"
-            message={
-              rolesQuery.error.status === 403
-                ? 'No tienes permiso para ver los roles disponibles.'
-                : readableApiMessage(rolesQuery.error, 'No se pudieron cargar los roles.')
-            }
-            onRetry={() => rolesQuery.refetch()}
-          />
-        )}
+          {rolesQuery.error && (
+            <ErrorState
+              title="Error al cargar roles"
+              message={
+                rolesQuery.error.status === 403
+                  ? 'No tienes permiso para ver los roles disponibles.'
+                  : readableApiMessage(rolesQuery.error, 'No se pudieron cargar los roles.')
+              }
+              onRetry={() => rolesQuery.refetch()}
+            />
+          )}
 
-        {rolesQuery.data && (
-          <UserRolesEditor
-            assignedRoles={userAccess.roles}
-            catalogRoles={rolesQuery.data.items}
-            isSaving={isBusy}
-            onSave={handleSaveRoles}
-            onDiscard={handleDiscardRoles}
-          />
-        )}
-      </section>
+          {rolesQuery.data && (
+            <UserRolesEditor
+              assignedRoles={userAccess.roles}
+              catalogRoles={rolesQuery.data.items}
+              isSaving={isBusy}
+              onSave={handleSaveRoles}
+              onDiscard={handleDiscardRoles}
+            />
+          )}
+        </section>
+      )}
 
       {/* Sección 2: Permisos directos */}
-      <section aria-labelledby="user-direct-permissions-heading" className="space-y-4">
-        <div>
-          <h3
-            id="user-direct-permissions-heading"
-            className="text-lg font-semibold text-foreground"
-          >
-            Permisos directos
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            Asigna permisos individuales adicionales que complementen los roles asignados.
-          </p>
-        </div>
+      {(section === 'all' || section === 'direct') && (
+        <section aria-labelledby="user-direct-permissions-heading" className="space-y-4">
+          <div>
+            <h3
+              id="user-direct-permissions-heading"
+              className="text-lg font-semibold text-foreground"
+            >
+              Permisos directos
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Asigna permisos individuales adicionales que complementen los roles asignados.
+            </p>
+          </div>
 
-        {permissionsSuccessMessage && (
-          <Alert variant="success">
-            <AlertDescription className="text-xs">{permissionsSuccessMessage}</AlertDescription>
-          </Alert>
-        )}
+          {permissionsSuccessMessage && (
+            <Alert variant="success">
+              <AlertDescription className="text-xs">{permissionsSuccessMessage}</AlertDescription>
+            </Alert>
+          )}
 
-        {permissionsErrorMessage && (
-          <Alert variant="danger">
-            <AlertDescription className="text-xs">{permissionsErrorMessage}</AlertDescription>
-          </Alert>
-        )}
+          {permissionsErrorMessage && (
+            <Alert variant="danger">
+              <AlertDescription className="text-xs">{permissionsErrorMessage}</AlertDescription>
+            </Alert>
+          )}
 
-        {permissionsQuery.isLoading && <LoadingState message="Cargando catálogo de permisos..." />}
+          {permissionsQuery.isLoading && (
+            <LoadingState message="Cargando catálogo de permisos..." />
+          )}
 
-        {permissionsQuery.error && (
-          <ErrorState
-            title="Error al cargar catálogo de permisos"
-            message={
-              permissionsQuery.error.status === 403
-                ? 'No tienes permiso para ver los permisos disponibles.'
-                : readableApiMessage(
-                    permissionsQuery.error,
-                    'No se pudo cargar el catálogo de permisos.',
-                  )
-            }
-            onRetry={() => permissionsQuery.refetch()}
-          />
-        )}
+          {permissionsQuery.error && (
+            <ErrorState
+              title="Error al cargar catálogo de permisos"
+              message={
+                permissionsQuery.error.status === 403
+                  ? 'No tienes permiso para ver los permisos disponibles.'
+                  : readableApiMessage(
+                      permissionsQuery.error,
+                      'No se pudo cargar el catálogo de permisos.',
+                    )
+              }
+              onRetry={() => permissionsQuery.refetch()}
+            />
+          )}
 
-        {permissionsQuery.data && (
-          <UserDirectPermissionsEditor
-            directPermissions={userAccess.directPermissions}
-            catalog={permissionsQuery.data.items}
-            isSaving={isBusy}
-            onSave={handleSavePermissions}
-            onDiscard={handleDiscardPermissions}
-          />
-        )}
-      </section>
+          {permissionsQuery.data && (
+            <UserDirectPermissionsEditor
+              directPermissions={userAccess.directPermissions}
+              catalog={permissionsQuery.data.items}
+              isSaving={isBusy}
+              onSave={handleSavePermissions}
+              onDiscard={handleDiscardPermissions}
+            />
+          )}
+        </section>
+      )}
 
       {/* Sección 3: Permisos efectivos */}
-      <section aria-labelledby="user-effective-permissions-heading" className="space-y-4">
-        <div>
-          <h3
-            id="user-effective-permissions-heading"
-            className="text-lg font-semibold text-foreground"
-          >
-            Permisos efectivos
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            Vista consolidada de todos los permisos que posee el usuario y su origen.
-          </p>
-        </div>
+      {(section === 'all' || section === 'effective') && (
+        <section aria-labelledby="user-effective-permissions-heading" className="space-y-4">
+          <div>
+            <h3
+              id="user-effective-permissions-heading"
+              className="text-lg font-semibold text-foreground"
+            >
+              Permisos efectivos
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Vista consolidada de todos los permisos que posee el usuario y su origen.
+            </p>
+          </div>
 
-        <EffectivePermissionsView
-          entries={userAccess.effectivePermissions}
-          catalog={permissionsQuery.data}
-          headingLevel="h4"
-        />
-      </section>
+          <EffectivePermissionsView
+            entries={userAccess.effectivePermissions}
+            catalog={permissionsQuery.data}
+            headingLevel="h4"
+          />
+        </section>
+      )}
     </div>
   );
 }

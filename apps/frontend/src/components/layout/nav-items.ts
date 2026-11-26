@@ -19,106 +19,157 @@ import {
 } from 'lucide-react';
 
 export interface NavItem {
-  title: string;
-  href: string;
-  icon?: LucideIcon;
-  permission?: string;
+  readonly title: string;
+  readonly href: string;
+  readonly icon?: LucideIcon;
+  readonly permission?: string;
+  readonly activeMatch?: readonly string[];
 }
 
-export const MAIN_NAV_ITEMS: readonly NavItem[] = [
+export interface NavGroup {
+  readonly id: string;
+  readonly title: string;
+  readonly icon: LucideIcon;
+  readonly items: readonly NavItem[];
+}
+
+export const NAV_GROUPS: readonly NavGroup[] = [
   {
-    title: 'Panel',
-    href: '/',
+    id: 'inicio',
+    title: 'Inicio',
     icon: LayoutDashboard,
+    items: [
+      {
+        title: 'Panel',
+        href: '/',
+        icon: LayoutDashboard,
+      },
+    ],
   },
   {
-    title: 'Usuarios',
-    href: '/usuarios',
-    icon: Users,
-    permission: 'usuario.ver',
-  },
-  {
-    title: 'Roles',
-    href: '/roles',
+    id: 'administracion',
+    title: 'Administración',
     icon: ShieldCheck,
-    permission: 'rol.ver',
+    items: [
+      {
+        title: 'Usuarios',
+        href: '/usuarios',
+        icon: Users,
+        permission: 'usuario.ver',
+      },
+      {
+        title: 'Roles',
+        href: '/roles',
+        icon: ShieldCheck,
+        permission: 'rol.ver',
+      },
+    ],
   },
   {
-    title: 'Programa',
-    href: '/configuracion/programa',
-    icon: Building2,
-    permission: 'parametro.ver',
-  },
-  {
-    title: 'Semestres',
-    href: '/configuracion/semestres',
-    icon: CalendarRange,
-    permission: 'parametro.ver',
-  },
-  {
-    title: 'Parámetros',
-    href: '/configuracion/parametros',
+    id: 'configuracion',
+    title: 'Configuración',
     icon: SlidersHorizontal,
-    permission: 'parametro.ver',
+    items: [
+      {
+        title: 'Programa',
+        href: '/configuracion/programa',
+        icon: Building2,
+        permission: 'parametro.ver',
+      },
+      {
+        title: 'Semestres',
+        href: '/configuracion/semestres',
+        icon: CalendarRange,
+        permission: 'parametro.ver',
+      },
+      {
+        title: 'Parámetros',
+        href: '/configuracion/parametros',
+        icon: SlidersHorizontal,
+        permission: 'parametro.ver',
+      },
+      {
+        title: 'Escalas',
+        href: '/configuracion/escalas',
+        icon: ListChecks,
+        permission: 'parametro.ver',
+      },
+    ],
   },
   {
-    title: 'Escalas',
-    href: '/configuracion/escalas',
-    icon: ListChecks,
-    permission: 'parametro.ver',
-  },
-  {
-    title: 'Catálogo',
-    href: '/catalogo/versiones',
+    id: 'catalogo-documentos',
+    title: 'Catálogo y documentos',
     icon: BookMarked,
-    permission: 'catalogo.ver',
+    items: [
+      {
+        title: 'Catálogo',
+        href: '/catalogo/versiones',
+        icon: BookMarked,
+        permission: 'catalogo.ver',
+      },
+      {
+        title: 'Resoluciones',
+        href: '/resoluciones',
+        icon: FileCheck,
+        permission: 'resolucion.ver',
+      },
+      {
+        title: 'Plantillas',
+        href: '/plantillas',
+        icon: FileText,
+        permission: 'plantilla.ver',
+      },
+      {
+        title: 'Anexos',
+        href: '/anexos',
+        icon: FileDown,
+        permission: 'documento.descargar',
+      },
+    ],
   },
   {
-    title: 'Resoluciones',
-    href: '/resoluciones',
-    icon: FileCheck,
-    permission: 'resolucion.ver',
-  },
-  {
-    title: 'Plantillas',
-    href: '/plantillas',
-    icon: FileText,
-    permission: 'plantilla.ver',
-  },
-  {
-    title: 'Constituyentes',
-    href: '/constituyentes',
+    id: 'grupos-interes',
+    title: 'Grupos de interés',
     icon: UsersRound,
-    permission: 'constituyente.ver',
+    items: [
+      {
+        title: 'Constituyentes',
+        href: '/constituyentes',
+        icon: UsersRound,
+        permission: 'constituyente.ver',
+      },
+      {
+        title: 'Listas Anexo 3',
+        href: '/listas-constituyentes',
+        icon: ClipboardList,
+        permission: 'constituyente.ver',
+      },
+    ],
   },
   {
-    title: 'Listas Anexo 3',
-    href: '/listas-constituyentes',
-    icon: ClipboardList,
-    permission: 'constituyente.ver',
-  },
-  {
-    title: 'Comité de Calidad',
-    href: '/comite-calidad',
-    icon: BadgeCheck,
-    permission: 'comite.ver',
-  },
-  {
-    title: 'Ejecuciones',
-    href: '/ejecuciones',
+    id: 'gestion-calidad',
+    title: 'Gestión de calidad',
     icon: Workflow,
-    permission: 'ejecucion.ver',
-  },
-  {
-    title: 'Sesiones',
-    href: '/sesiones',
-    icon: CalendarClock,
-    permission: 'sesion.ver',
-  },
-  {
-    title: 'Anexos',
-    href: '/anexos',
-    icon: FileDown,
-    permission: 'documento.descargar',
+    items: [
+      {
+        title: 'Comité de Calidad',
+        href: '/comite-calidad',
+        icon: BadgeCheck,
+        permission: 'comite.ver',
+      },
+      {
+        title: 'Ejecuciones',
+        href: '/ejecuciones',
+        icon: Workflow,
+        permission: 'ejecucion.ver',
+        activeMatch: ['/cronograma'],
+      },
+      {
+        title: 'Sesiones',
+        href: '/sesiones',
+        icon: CalendarClock,
+        permission: 'sesion.ver',
+      },
+    ],
   },
 ] as const;

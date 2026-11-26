@@ -4,7 +4,6 @@ export * from './stakeholders-filters';
 export * from './stakeholders-page';
 export * from './stakeholders-pagination';
 export * from './stakeholders-table';
-export * from './void-stakeholder-form';
 export * from './stakeholder-list-member-picker';
 export * from './stakeholder-list-filters';
 export * from './create-stakeholder-list-form';

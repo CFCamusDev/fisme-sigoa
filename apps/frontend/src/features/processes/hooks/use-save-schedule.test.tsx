@@ -1,10 +1,9 @@
 import { StrictMode } from 'react';
-import { QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook } from '@testing-library/react';
-import { HttpResponse, delay, http } from 'msw';
+import { HttpResponse, http } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { server } from '@/test/msw/server';
-import { createTestQueryClient } from '@/test/render';
 import { scheduleKeys } from './schedule-keys';
 import { useSaveSchedule } from './use-save-schedule';
 
@@ -35,7 +34,9 @@ describe('useSaveSchedule (HU-028, T-028-13)', () => {
       http.put('*/process-executions/exec-1/schedule', () => HttpResponse.json(SAMPLE_RESPONSE)),
     );
 
-    const queryClient = createTestQueryClient();
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+    });
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     );
@@ -53,15 +54,21 @@ describe('useSaveSchedule (HU-028, T-028-13)', () => {
 
   it('shares one request for the same body', async () => {
     let putCalls = 0;
+    let releaseGate!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      releaseGate = resolve;
+    });
     server.use(
       http.put('*/process-executions/exec-1/schedule', async () => {
         putCalls += 1;
-        await delay(30);
+        await gate;
         return HttpResponse.json(SAMPLE_RESPONSE);
       }),
     );
 
-    const queryClient = createTestQueryClient();
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+    });
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <StrictMode>
         <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
@@ -74,10 +81,10 @@ describe('useSaveSchedule (HU-028, T-028-13)', () => {
     };
 
     await act(async () => {
-      const [first, second] = await Promise.all([
-        result.current.mutateAsync(payload),
-        result.current.mutateAsync(payload),
-      ]);
+      const firstPromise = result.current.mutateAsync(payload);
+      const secondPromise = result.current.mutateAsync(payload);
+      releaseGate();
+      const [first, second] = await Promise.all([firstPromise, secondPromise]);
       expect(first).toEqual(second);
     });
 

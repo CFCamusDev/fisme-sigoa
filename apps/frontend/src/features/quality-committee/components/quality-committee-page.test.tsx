@@ -289,9 +289,7 @@ describe('QualityCommitteePage (HU-025, T-025-28)', () => {
       ],
     });
 
-    expect(await screen.findByText('Solo lectura')).toBeInTheDocument();
-
-    const editButtons = screen.getAllByRole('button', { name: /Editar miembros/i });
+    const editButtons = await screen.findAllByRole('button', { name: /Editar miembros/i });
     expect(editButtons.length).toBeGreaterThanOrEqual(1);
     await user.click(editButtons[0]!);
 
@@ -424,5 +422,210 @@ describe('QualityCommitteePage (HU-025, T-025-28)', () => {
     expect(screen.getByLabelText('Fecha de inicio')).toBeInTheDocument();
     await user.tab();
     expect(document.activeElement).not.toBe(document.body);
+  });
+
+  it('renders the title with the shared page header', async () => {
+    server.use(
+      http.get('*/quality-committees/current', () =>
+        HttpResponse.json(makeCurrentCommitteeResponse({ committee: null })),
+      ),
+      http.get('*/quality-committees', () =>
+        HttpResponse.json(makeCommitteeListResponse({ items: [], total: 0 })),
+      ),
+    );
+
+    renderWithProviders(<QualityCommitteePage />, {
+      withRouter: true,
+      permissions: [{ code: 'comite.ver', scope: 'GLOBAL' }],
+    });
+
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Comité de Calidad' });
+    expect(heading).toHaveClass('text-h2', 'sm:text-h1');
+  });
+
+  it('shows current and history tabs and defaults to current', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get('*/quality-committees/current', () =>
+        HttpResponse.json(makeCurrentCommitteeResponse()),
+      ),
+      http.get('*/quality-committees', () =>
+        HttpResponse.json(
+          makeCommitteeListResponse({
+            items: [SAMPLE_CURRENT_COMMITTEE, SAMPLE_FINISHED_COMMITTEE],
+            total: 2,
+          }),
+        ),
+      ),
+    );
+
+    renderWithProviders(<QualityCommitteePage />, {
+      withRouter: true,
+      permissions: [{ code: 'comite.ver', scope: 'GLOBAL' }],
+    });
+
+    const currentTab = await screen.findByRole('tab', { name: 'Vigente' });
+    const historyTab = screen.getByRole('tab', { name: 'Historial' });
+    expect(currentTab).toHaveAttribute('aria-selected', 'true');
+    expect(historyTab).toHaveAttribute('aria-selected', 'false');
+
+    await user.click(historyTab);
+    expect(historyTab).toHaveAttribute('aria-selected', 'true');
+    expect(await screen.findByText('Solo lectura')).toBeInTheDocument();
+  });
+
+  it('falls back to current for an unknown tab', async () => {
+    server.use(
+      http.get('*/quality-committees/current', () =>
+        HttpResponse.json(makeCurrentCommitteeResponse()),
+      ),
+      http.get('*/quality-committees', () => HttpResponse.json(makeCommitteeListResponse())),
+    );
+
+    renderWithProviders(<QualityCommitteePage />, {
+      withRouter: true,
+      initialEntries: ['/comite-calidad?tab=desconocida'],
+      permissions: [{ code: 'comite.ver', scope: 'GLOBAL' }],
+    });
+
+    const currentTab = await screen.findByRole('tab', { name: 'Vigente' });
+    expect(currentTab).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('opens the registration panel from the header and from each edit action', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get('*/quality-committees/current', () =>
+        HttpResponse.json(makeCurrentCommitteeResponse()),
+      ),
+      http.get('*/quality-committees', () => HttpResponse.json(makeCommitteeListResponse())),
+    );
+
+    renderWithProviders(<QualityCommitteePage />, {
+      withRouter: true,
+      permissions: [
+        { code: 'comite.ver', scope: 'GLOBAL' },
+        { code: 'comite.editar', scope: 'GLOBAL' },
+      ],
+    });
+
+    const registerBtn = await screen.findByRole('button', { name: /Registrar Comité/i });
+    await user.click(registerBtn);
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Cancelar' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+
+    await user.click(screen.getByRole('button', { name: /Editar miembros/i }));
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByText(/Periodo \(solo lectura\)/i)).toBeInTheDocument();
+  });
+
+  it('keeps the save bar visible with thirty members', async () => {
+    const user = userEvent.setup();
+    const thirtyMembers = Array.from({ length: 30 }, (_, index) => ({
+      id: `mem-${index}`,
+      fullName: `Integrante ${index + 1}`,
+      degree: 'Ing.',
+      position: (index === 0 ? 'PRESIDENT' : 'MEMBER') as 'PRESIDENT' | 'MEMBER',
+      userId: null,
+      linkedUserName: null,
+    }));
+    const largeCommittee = { ...SAMPLE_CURRENT_COMMITTEE, members: thirtyMembers };
+
+    server.use(
+      http.get('*/quality-committees/current', () =>
+        HttpResponse.json(makeCurrentCommitteeResponse({ committee: largeCommittee })),
+      ),
+      http.get('*/quality-committees', () =>
+        HttpResponse.json(makeCommitteeListResponse({ items: [largeCommittee], total: 1 })),
+      ),
+    );
+
+    renderWithProviders(<QualityCommitteePage />, {
+      withRouter: true,
+      permissions: [
+        { code: 'comite.ver', scope: 'GLOBAL' },
+        { code: 'comite.editar', scope: 'GLOBAL' },
+      ],
+    });
+
+    await user.click(await screen.findByRole('button', { name: /Editar miembros/i }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('30 de 30 integrantes')).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Guardar Comité' })).toBeVisible();
+  });
+
+  it('returns focus to the opener after saving', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get('*/quality-committees/current', () =>
+        HttpResponse.json(makeCurrentCommitteeResponse()),
+      ),
+      http.get('*/quality-committees', () => HttpResponse.json(makeCommitteeListResponse())),
+      http.put('*/quality-committees/com-2027/members', () =>
+        HttpResponse.json(SAMPLE_CURRENT_COMMITTEE, { status: 200 }),
+      ),
+    );
+
+    renderWithProviders(<QualityCommitteePage />, {
+      withRouter: true,
+      permissions: [
+        { code: 'comite.ver', scope: 'GLOBAL' },
+        { code: 'comite.editar', scope: 'GLOBAL' },
+      ],
+    });
+
+    const editBtn = await screen.findByRole('button', { name: /Editar miembros/i });
+    await user.click(editBtn);
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar Comité' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    await waitFor(() => expect(editBtn).toHaveFocus());
+  });
+
+  it('saves the committee once when Guardar Comité is activated twice', async () => {
+    const user = userEvent.setup();
+    let putCalls = 0;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    server.use(
+      http.get('*/quality-committees/current', () =>
+        HttpResponse.json(makeCurrentCommitteeResponse()),
+      ),
+      http.get('*/quality-committees', () => HttpResponse.json(makeCommitteeListResponse())),
+      http.put('*/quality-committees/com-2027/members', async () => {
+        putCalls += 1;
+        await gate;
+        return HttpResponse.json(SAMPLE_CURRENT_COMMITTEE, { status: 200 });
+      }),
+    );
+
+    renderWithProviders(<QualityCommitteePage />, {
+      withRouter: true,
+      permissions: [
+        { code: 'comite.ver', scope: 'GLOBAL' },
+        { code: 'comite.editar', scope: 'GLOBAL' },
+      ],
+    });
+
+    await user.click(await screen.findByRole('button', { name: /Editar miembros/i }));
+    const dialog = await screen.findByRole('dialog');
+    const saveBtn = within(dialog).getByRole('button', { name: 'Guardar Comité' });
+
+    await user.dblClick(saveBtn);
+    await waitFor(() =>
+      expect(within(dialog).getByRole('button', { name: 'Guardando…' })).toBeDisabled(),
+    );
+    expect(putCalls).toBe(1);
+
+    release();
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(
+      await screen.findByText('Miembros del Comité de Calidad actualizados correctamente.'),
+    ).toBeInTheDocument();
   });
 });

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ANNEX_CATALOG, type AnnexCatalogEntry, type AnnexCode } from '@sigoa/shared';
 import { AlertCircle, CheckCircle2, FileDown, Loader2 } from 'lucide-react';
+import { PageHeader } from '@/components/common';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { saveBlobFile } from '@/lib/blob-download';
@@ -41,13 +42,10 @@ export function AnnexesPage() {
 
   return (
     <section className="space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-h2 font-semibold tracking-tight text-foreground">Anexos oficiales</h1>
-        <p className="text-body text-muted-foreground">
-          Descarga cualquiera de los 11 anexos del procedimiento en formato PDF desde su versión de
-          plantilla publicada.
-        </p>
-      </header>
+      <PageHeader
+        title="Anexos oficiales"
+        description="Descarga cualquiera de los 11 anexos del procedimiento en formato PDF desde su versión de plantilla publicada."
+      />
 
       {feedback?.kind === 'error' ? (
         <Alert variant="danger">

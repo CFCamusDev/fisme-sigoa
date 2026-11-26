@@ -4,12 +4,14 @@ import type { ResolutionDto } from '@sigoa/shared';
 import { Can } from '@/components/common/can';
 import { EmptyState } from '@/components/common/empty-state';
 import { ErrorState } from '@/components/common/error-state';
+import { FormDialog } from '@/components/common/form-dialog';
 import { LoadingState } from '@/components/common/loading-state';
 import { PageHeader } from '@/components/common/page-header';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useCatalogVersions } from '@/features/catalog';
 import { usePermission } from '@/hooks/use-permission';
+import { useRestoreFocus } from '@/hooks/use-restore-focus';
 import { useResolutions } from '../hooks/use-resolutions';
 import { getResolutionErrorMessage } from '../lib/resolution-error-message';
 import { formatResolutionType } from '../lib/resolution-labels';
@@ -26,6 +28,8 @@ export function ResolutionsPage() {
   const [registered, setRegistered] = useState<ResolutionDto | null>(null);
   const [approved, setApproved] = useState<ResolutionDto | null>(null);
   const messageRef = useRef<HTMLDivElement>(null);
+  const registeredJustNowRef = useRef(false);
+  const { remember, restore } = useRestoreFocus();
 
   const resolutions = data?.items ?? [];
   const allVersions = versionsQuery.data?.items ?? [];
@@ -38,13 +42,16 @@ export function ResolutionsPage() {
     }
   }, [registered, approved]);
 
-  function openForm() {
+  function openForm(opener: HTMLElement) {
+    remember(opener);
+    registeredJustNowRef.current = false;
     setRegistered(null);
     setApproved(null);
     setShowForm(true);
   }
 
   function handleRegistered(resolution: ResolutionDto) {
+    registeredJustNowRef.current = true;
     setShowForm(false);
     setApproved(null);
     setRegistered(resolution);
@@ -57,7 +64,7 @@ export function ResolutionsPage() {
 
   const registerButton = (
     <Can permission="resolucion.registrar" scope="GLOBAL">
-      <Button type="button" onClick={openForm} disabled={showForm}>
+      <Button type="button" onClick={(event) => openForm(event.currentTarget)}>
         <Plus aria-hidden="true" />
         Registrar resolución
       </Button>
@@ -87,15 +94,27 @@ export function ResolutionsPage() {
         </div>
       )}
 
-      {showForm && (
+      <FormDialog
+        open={showForm}
+        onOpenChange={setShowForm}
+        title="Registrar resolución"
+        description="Vincula la resolución emitida con una versión del catálogo en validación."
+        size="md"
+        onRestoreFocus={() => {
+          if (!registeredJustNowRef.current) {
+            restore();
+          }
+        }}
+      >
         <RegisterResolutionForm
           versions={inValidation}
           versionsLoading={versionsQuery.isLoading}
           versionsDenied={versionsQuery.isError && versionsQuery.error?.status === 403}
+          inDialog
           onCancel={() => setShowForm(false)}
           onRegistered={handleRegistered}
         />
-      )}
+      </FormDialog>
 
       {isLoading && <LoadingState message="Cargando resoluciones..." />}
 

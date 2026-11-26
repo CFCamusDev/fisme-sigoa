@@ -6,21 +6,26 @@ import {
   type StakeholderListDto,
 } from '@sigoa/shared';
 import { AlertTriangle, Download, FileSpreadsheet, Upload } from 'lucide-react';
+import { useReportBusy } from '@/components/common/form-busy-context';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 import { useConfirmStakeholderImport } from '../hooks/use-confirm-stakeholder-import';
 import { useDownloadStakeholderImportTemplate } from '../hooks/use-download-stakeholder-import-template';
 import { usePreviewStakeholderImport } from '../hooks/use-preview-stakeholder-import';
+import { getImportStep } from '../lib/import-steps';
 import { getStakeholderImportErrorMessage } from '../lib/stakeholder-import-error-message';
 import { STAKEHOLDER_LIST_TYPE_LABELS } from '../lib/stakeholder-list-labels';
+import { ImportStepIndicator } from './import-step-indicator';
 import { StakeholderImportPreviewTable } from './stakeholder-import-preview-table';
 
 const numberFormatter = new Intl.NumberFormat('es-PE');
 
 export interface StakeholderImportWizardProps {
   readonly list: StakeholderListDto;
+  readonly inDialog?: boolean;
   readonly onImported: (result: ConfirmStakeholderImportResponse) => void;
   readonly onCancel: () => void;
 }
@@ -51,12 +56,14 @@ function triggerBlobDownload(blob: Blob, fileName: string): void {
 
 export function StakeholderImportWizard({
   list,
+  inDialog = false,
   onImported,
   onCancel,
 }: StakeholderImportWizardProps) {
   const fileInputId = useId();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewData, setPreviewData] = useState<PreviewStakeholderImportResponse | null>(null);
+  const [inConfirmStep, setInConfirmStep] = useState(false);
   const [showOnlyErrors, setShowOnlyErrors] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -69,6 +76,8 @@ export function StakeholderImportWizard({
   const isBusy =
     downloadMutation.isPending || previewMutation.isPending || confirmMutation.isPending;
 
+  useReportBusy(previewMutation.isPending || confirmMutation.isPending);
+
   useEffect(() => {
     if (previewData) {
       summaryHeadingRef.current?.focus();
@@ -76,6 +85,9 @@ export function StakeholderImportWizard({
   }, [previewData]);
 
   useEffect(() => {
+    if (inDialog) {
+      return;
+    }
     function handleWindowKeyDown(event: globalThis.KeyboardEvent) {
       if (event.key === 'Escape' && !previewMutation.isPending && !confirmMutation.isPending) {
         event.preventDefault();
@@ -86,11 +98,12 @@ export function StakeholderImportWizard({
     return () => {
       window.removeEventListener('keydown', handleWindowKeyDown);
     };
-  }, [confirmMutation.isPending, onCancel, previewMutation.isPending]);
+  }, [confirmMutation.isPending, inDialog, onCancel, previewMutation.isPending]);
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
     setPreviewData(null);
+    setInConfirmStep(false);
     setShowOnlyErrors(false);
 
     if (!file) {
@@ -133,6 +146,7 @@ export function StakeholderImportWizard({
         file: selectedFile,
       });
       setPreviewData(preview);
+      setInConfirmStep(false);
       setShowOnlyErrors(false);
     } catch (error) {
       setErrorMessage(getStakeholderImportErrorMessage(error));
@@ -167,30 +181,39 @@ export function StakeholderImportWizard({
 
   function handleChooseAnotherFile() {
     setPreviewData(null);
+    setInConfirmStep(false);
     setSelectedFile(null);
     setShowOnlyErrors(false);
     setErrorMessage(null);
   }
 
   const validRowCount = previewData ? previewData.totals.new + previewData.totals.existing : 0;
+  const currentStep = getImportStep(Boolean(previewData), inConfirmStep);
 
   return (
     <div
-      role="region"
-      aria-label="Importar constituyentes desde Excel"
-      className="space-y-4 rounded-lg border border-border bg-card p-6 text-card-foreground"
+      role={inDialog ? undefined : 'region'}
+      aria-label={inDialog ? undefined : 'Importar constituyentes desde Excel'}
+      className={cn(
+        'space-y-4',
+        !inDialog && 'rounded-lg border border-border bg-card p-6 text-card-foreground',
+      )}
     >
-      <div className="space-y-1">
-        <h3 className="flex items-center gap-2 text-lg font-semibold text-foreground">
-          <FileSpreadsheet className="size-5" aria-hidden="true" />
-          Importar constituyentes desde Excel — {STAKEHOLDER_LIST_TYPE_LABELS[list.type]}{' '}
-          {list.year}
-        </h3>
-        <p className="text-sm text-muted-foreground">
-          Descarga la plantilla oficial, llénala con tus registros (máximo 500 filas y 2 MiB) y
-          revisa la vista previa antes de confirmar.
-        </p>
-      </div>
+      {!inDialog ? (
+        <div className="space-y-1">
+          <h3 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+            <FileSpreadsheet className="size-5" aria-hidden="true" />
+            Importar constituyentes desde Excel — {STAKEHOLDER_LIST_TYPE_LABELS[list.type]}{' '}
+            {list.year}
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            Descarga la plantilla oficial, llénala con tus registros (máximo 500 filas y 2 MiB) y
+            revisa la vista previa antes de confirmar.
+          </p>
+        </div>
+      ) : null}
+
+      <ImportStepIndicator currentStep={currentStep} />
 
       {errorMessage ? (
         <Alert variant="danger" role="alert">
@@ -199,7 +222,7 @@ export function StakeholderImportWizard({
         </Alert>
       ) : null}
 
-      {!previewData ? (
+      {currentStep === 1 ? (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
             <Button
@@ -230,7 +253,10 @@ export function StakeholderImportWizard({
             ) : null}
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button type="button" variant="outline" disabled={isBusy} onClick={onCancel}>
+              Cancelar
+            </Button>
             <Button
               type="button"
               disabled={!selectedFile || isBusy}
@@ -239,12 +265,9 @@ export function StakeholderImportWizard({
               <Upload className="mr-2 size-4" aria-hidden="true" />
               {previewMutation.isPending ? 'Analizando…' : 'Ver vista previa'}
             </Button>
-            <Button type="button" variant="ghost" disabled={isBusy} onClick={onCancel}>
-              Cancelar
-            </Button>
           </div>
         </div>
-      ) : (
+      ) : currentStep === 2 && previewData ? (
         <div className="space-y-4">
           <div aria-live="polite" className="space-y-1">
             <h4
@@ -269,7 +292,59 @@ export function StakeholderImportWizard({
             onToggleOnlyErrors={setShowOnlyErrors}
           />
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button type="button" variant="outline" onClick={handleChooseAnotherFile}>
+              Elegir otro archivo
+            </Button>
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              disabled={validRowCount === 0}
+              onClick={() => setInConfirmStep(true)}
+            >
+              Continuar
+            </Button>
+          </div>
+        </div>
+      ) : previewData ? (
+        <div className="space-y-4">
+          <div className="space-y-2 rounded-md border border-border bg-muted/40 p-4">
+            <h4 className="text-base font-semibold text-foreground">
+              Resumen de importación ({STAKEHOLDER_LIST_TYPE_LABELS[list.type]} {list.year})
+            </h4>
+            <p className="text-sm text-foreground">
+              Se incorporarán <strong>{numberFormatter.format(validRowCount)}</strong> filas válidas
+              ({numberFormatter.format(previewData.totals.new)} nuevas y{' '}
+              {numberFormatter.format(previewData.totals.existing)} ya registradas en el sistema).
+            </p>
+            {previewData.totals.invalid > 0 || previewData.totals.alreadyInList > 0 ? (
+              <p className="text-xs text-muted-foreground">
+                Se omitirán {numberFormatter.format(previewData.totals.invalid)} filas con errores y{' '}
+                {numberFormatter.format(previewData.totals.alreadyInList)} que ya pertenecen a la
+                lista.
+              </p>
+            ) : null}
+          </div>
+
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={confirmMutation.isPending}
+              onClick={() => setInConfirmStep(false)}
+            >
+              Volver a la vista previa
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={confirmMutation.isPending}
+              onClick={onCancel}
+            >
+              Cancelar
+            </Button>
             <Button
               type="button"
               disabled={validRowCount === 0 || confirmMutation.isPending}
@@ -277,25 +352,9 @@ export function StakeholderImportWizard({
             >
               {confirmMutation.isPending ? 'Importando…' : 'Confirmar importación'}
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={confirmMutation.isPending}
-              onClick={handleChooseAnotherFile}
-            >
-              Elegir otro archivo
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={confirmMutation.isPending}
-              onClick={onCancel}
-            >
-              Cancelar
-            </Button>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

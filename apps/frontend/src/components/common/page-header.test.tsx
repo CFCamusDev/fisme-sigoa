@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { PageHeader } from './page-header';
@@ -26,5 +28,21 @@ describe('PageHeader component', () => {
     );
 
     expect(screen.getByRole('button', { name: 'Nuevo plan' })).toBeInTheDocument();
+  });
+
+  it('ensures feature pages use PageHeader instead of custom h1 elements', () => {
+    const featuresDir = path.resolve(import.meta.dirname, '../../features');
+    const pageFiles = fs.globSync('**/components/*-page.tsx', { cwd: featuresDir });
+    expect(pageFiles.length).toBeGreaterThan(0);
+
+    const offenders = pageFiles.filter((relPath) => {
+      if (relPath.startsWith(`auth${path.sep}`) || relPath.startsWith('auth/')) {
+        return false;
+      }
+      const content = fs.readFileSync(path.join(featuresDir, relPath), 'utf8');
+      return /<h1[\s>]/.test(content);
+    });
+
+    expect(offenders).toEqual([]);
   });
 });

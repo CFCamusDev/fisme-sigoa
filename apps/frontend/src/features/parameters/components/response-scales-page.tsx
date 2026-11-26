@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import type { ResponseScaleDto } from '@sigoa/shared';
-import { PageHeader, LoadingState, ErrorState } from '@/components/common';
+import { PageHeader, LoadingState, ErrorState, FormDialog } from '@/components/common';
 import { Can } from '@/components/common/can';
 import { EmptyState } from '@/components/common/empty-state';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { usePermission } from '@/hooks/use-permission';
+import { useRestoreFocus } from '@/hooks/use-restore-focus';
 import { useResponseScales } from '../hooks/use-response-scales';
 import { DuplicateScaleForm } from './duplicate-scale-form';
 import { ResponseScaleCard } from './response-scale-card';
@@ -14,7 +15,7 @@ import { ResponseScaleForm } from './response-scale-form';
 type Panel =
   | { readonly kind: 'create' }
   | { readonly kind: 'edit'; readonly scale: ResponseScaleDto }
-  | { readonly kind: 'duplicate'; readonly scaleId: string }
+  | { readonly kind: 'duplicate'; readonly scale: ResponseScaleDto }
   | null;
 
 export function ResponseScalesPage() {
@@ -26,25 +27,16 @@ export function ResponseScalesPage() {
 
   const [panel, setPanel] = useState<Panel>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const openerRef = useRef<HTMLElement | null>(null);
-  const [restoreTick, setRestoreTick] = useState(0);
-
-  // Al cerrar un panel el foco vuelve al botón que lo abrió.
-  useEffect(() => {
-    if (restoreTick > 0) {
-      openerRef.current?.focus();
-    }
-  }, [restoreTick]);
+  const { remember, restore } = useRestoreFocus();
 
   const open = (next: Exclude<Panel, null>, opener: HTMLElement) => {
-    openerRef.current = opener;
+    remember(opener);
     setSuccess(null);
     setPanel(next);
   };
 
   const close = () => {
     setPanel(null);
-    setRestoreTick((tick) => tick + 1);
   };
 
   const saved = (message: string) => {
@@ -59,6 +51,24 @@ export function ResponseScalesPage() {
       </Button>
     </Can>
   );
+
+  const dialogTitle =
+    panel?.kind === 'create'
+      ? 'Nueva escala'
+      : panel?.kind === 'edit'
+        ? 'Editar escala'
+        : panel?.kind === 'duplicate'
+          ? 'Duplicar escala'
+          : '';
+
+  const dialogDescription =
+    panel?.kind === 'create'
+      ? 'Define el código, el nombre, el tipo y los niveles de la escala.'
+      : panel?.kind === 'edit'
+        ? 'Cambia el nombre o los niveles. El código y el tipo no se pueden modificar.'
+        : panel?.kind === 'duplicate'
+          ? `Se copian el tipo y los niveles de «${panel.scale.name}» en una escala nueva que sí puedes editar.`
+          : '';
 
   return (
     <div className="space-y-6">
@@ -85,15 +95,6 @@ export function ResponseScalesPage() {
         <Alert variant="success" role="status">
           <AlertDescription>{success}</AlertDescription>
         </Alert>
-      )}
-
-      {canEdit && panel && (panel.kind === 'create' || panel.kind === 'edit') && (
-        <ResponseScaleForm
-          key={panel.kind === 'edit' ? panel.scale.id : 'create'}
-          mode={panel}
-          onCancel={close}
-          onSaved={saved}
-        />
       )}
 
       {isLoading && <LoadingState message="Cargando escalas..." />}
@@ -123,29 +124,51 @@ export function ResponseScalesPage() {
       )}
 
       {!isLoading && !isError && data && data.items.length > 0 && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {data.items.map((scale) => (
             <ResponseScaleCard
               key={scale.id}
               scale={scale}
               canEdit={canEdit}
               onEdit={(target, opener) => open({ kind: 'edit', scale: target }, opener)}
-              onDuplicate={(target, opener) =>
-                open({ kind: 'duplicate', scaleId: target.id }, opener)
-              }
-              panel={
-                canEdit && panel?.kind === 'duplicate' && panel.scaleId === scale.id ? (
-                  <DuplicateScaleForm
-                    scale={scale}
-                    onCancel={close}
-                    onDuplicated={(created) => saved(`Escala duplicada como ${created.code}.`)}
-                  />
-                ) : undefined
-              }
+              onDuplicate={(target, opener) => open({ kind: 'duplicate', scale: target }, opener)}
             />
           ))}
         </div>
       )}
+
+      <FormDialog
+        open={canEdit && panel !== null}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            close();
+          }
+        }}
+        title={dialogTitle}
+        description={dialogDescription}
+        size="md"
+        onRestoreFocus={restore}
+      >
+        {panel && (panel.kind === 'create' || panel.kind === 'edit') && (
+          <ResponseScaleForm
+            key={panel.kind === 'edit' ? panel.scale.id : 'create'}
+            mode={panel}
+            inDialog
+            onCancel={close}
+            onSaved={saved}
+          />
+        )}
+
+        {panel?.kind === 'duplicate' && (
+          <DuplicateScaleForm
+            key={panel.scale.id}
+            scale={panel.scale}
+            inDialog
+            onCancel={close}
+            onDuplicated={(created) => saved(`Escala duplicada como ${created.code}.`)}
+          />
+        )}
+      </FormDialog>
     </div>
   );
 }

@@ -6,6 +6,9 @@ import vitestProjects from './vitest-projects.json' with { type: 'json' };
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const frontendPackage = JSON.parse(
+  fs.readFileSync(path.resolve(__dirname, 'package.json'), 'utf8'),
+) as { version: string };
 
 const allTestInclude = ['src/**/*.{test,spec}.{ts,tsx}', 'scripts/**/*.{test,spec}.mjs'];
 const nodeExceptionFiles = vitestProjects.nodeExceptions.map((entry) => entry.file);
@@ -21,6 +24,9 @@ function resolveNodeTestFiles(): string[] {
 const nodeTestFiles = resolveNodeTestFiles();
 
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(frontendPackage.version),
+  },
   test: {
     globals: true,
     env: {

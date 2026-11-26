@@ -1,9 +1,9 @@
 import * as React from 'react';
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
-import type { PermissionDto, RoleDto } from '@sigoa/shared';
+import { PROTECTED_ROLE_CODE, type PermissionDto, type RoleDto } from '@sigoa/shared';
 import { server } from '@/test/msw/server';
 import { renderWithProviders } from '@/test/render';
 import { RolePermissionsPage } from './role-permissions-page';
@@ -119,7 +119,16 @@ describe('RolePermissionsPage component (T-006-22c)', () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 2, name: 'M01 Seguridad' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 2, name: 'M02 Catálogo' })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { level: 2, name: 'M02 Catálogo' }),
+    ).not.toBeInTheDocument();
+    const moduleNav = screen.getByRole('navigation', { name: 'Módulos de permisos' });
+    expect(within(moduleNav).getByRole('button', { name: /M01 Seguridad/i })).toHaveTextContent(
+      '1/2',
+    );
+    expect(within(moduleNav).getByRole('button', { name: /M02 Catálogo/i })).toHaveTextContent(
+      '0/1',
+    );
   });
 
   it('shows not found for an unknown role', async () => {
@@ -173,7 +182,9 @@ describe('RolePermissionsPage component (T-006-22c)', () => {
       name: 'Permisos del rol: Docente Evaluador',
     });
 
-    // Modificamos catalogo.ver a GLOBAL
+    // Cambiamos al módulo M02 Catálogo y modificamos catalogo.ver a GLOBAL
+    const moduleNav = screen.getByRole('navigation', { name: 'Módulos de permisos' });
+    await user.click(within(moduleNav).getByRole('button', { name: /M02 Catálogo/i }));
     const catalogoSelect = screen.getByRole('combobox', { name: 'Acceso a catalogo.ver' });
     await user.selectOptions(catalogoSelect, 'GLOBAL');
 
@@ -215,6 +226,8 @@ describe('RolePermissionsPage component (T-006-22c)', () => {
       name: 'Permisos del rol: Docente Evaluador',
     });
 
+    const moduleNav = screen.getByRole('navigation', { name: 'Módulos de permisos' });
+    await user.click(within(moduleNav).getByRole('button', { name: /M02 Catálogo/i }));
     const catalogoSelect = screen.getByRole('combobox', { name: 'Acceso a catalogo.ver' });
     await user.selectOptions(catalogoSelect, 'GLOBAL');
 
@@ -270,5 +283,87 @@ describe('RolePermissionsPage component (T-006-22c)', () => {
     // TanStack Query deduplica peticiones en vuelo con la misma clave
     expect(rolesCalls).toBe(1);
     expect(catalogCalls).toBe(1);
+  });
+
+  it('validates ?module= against the catalog', async () => {
+    setupMswHandlers();
+
+    const { unmount } = renderWithProviders(<RolePermissionsPage roleId="role-123" />, {
+      initialEntries: ['/roles/role-123/permisos?module=M02%20Catálogo'],
+    });
+
+    expect(
+      await screen.findByRole('heading', { level: 2, name: 'M02 Catálogo' }),
+    ).toBeInTheDocument();
+    unmount();
+
+    renderWithProviders(<RolePermissionsPage roleId="role-123" />, {
+      initialEntries: ['/roles/role-123/permisos?module=Inexistente'],
+    });
+
+    expect(
+      await screen.findByRole('heading', { level: 2, name: 'M01 Seguridad' }),
+    ).toBeInTheDocument();
+  });
+
+  it('searches across modules', async () => {
+    const user = userEvent.setup();
+    setupMswHandlers();
+
+    renderWithProviders(<RolePermissionsPage roleId="role-123" />);
+
+    await screen.findByRole('heading', { level: 2, name: 'M01 Seguridad' });
+    await user.type(screen.getByLabelText('Buscar permisos'), 'catálogo');
+
+    expect(screen.getByRole('heading', { level: 2, name: 'M02 Catálogo' })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { level: 2, name: 'M01 Seguridad' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps protected permissions of the administrator role', async () => {
+    const adminRole: RoleDto = {
+      ...mockRole,
+      id: 'role-admin',
+      code: PROTECTED_ROLE_CODE,
+      name: 'Administrador',
+      permissions: [
+        { permissionCode: 'rol.ver', scope: 'GLOBAL' },
+        { permissionCode: 'rol.editar', scope: 'GLOBAL' },
+      ],
+    };
+    const adminCatalog: PermissionDto[] = [
+      ...mockCatalog,
+      { code: 'rol.ver', description: 'Ver roles', module: 'M01 Seguridad' },
+      { code: 'rol.editar', description: 'Editar roles', module: 'M01 Seguridad' },
+    ];
+    setupMswHandlers({ rolesData: [adminRole], permissionsData: adminCatalog });
+
+    renderWithProviders(<RolePermissionsPage roleId="role-admin" />);
+
+    expect(await screen.findByRole('combobox', { name: 'Acceso a rol.ver' })).toBeDisabled();
+    expect(screen.getByRole('combobox', { name: 'Acceso a rol.editar' })).toBeDisabled();
+  });
+
+  it('saves from the sticky bar', async () => {
+    const user = userEvent.setup();
+    setupMswHandlers();
+    server.use(
+      http.put('http://localhost:3000/roles/role-123/permissions', () =>
+        HttpResponse.json(mockRole, { status: 200 }),
+      ),
+    );
+
+    renderWithProviders(<RolePermissionsPage roleId="role-123" />);
+
+    await user.selectOptions(
+      await screen.findByRole('combobox', { name: 'Acceso a usuario.crear' }),
+      'OWN',
+    );
+    const stickyBar = screen.getByTestId('sticky-action-bar');
+    expect(stickyBar).toHaveTextContent('1 cambio sin guardar');
+    await user.click(within(stickyBar).getByRole('button', { name: 'Guardar cambios' }));
+
+    expect(await screen.findByText('Los permisos se guardaron exitosamente.')).toBeInTheDocument();
   });
 });

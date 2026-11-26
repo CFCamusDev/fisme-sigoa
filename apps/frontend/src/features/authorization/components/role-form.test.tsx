@@ -299,11 +299,14 @@ describe('RoleForm component (T-006-21b)', () => {
     expect(descInput).toHaveFocus();
 
     await user.tab();
+    expect(cancelBtn).toHaveFocus();
+
+    await user.tab();
     expect(submitBtn).toHaveFocus();
 
     await user.tab();
-    expect(cancelBtn).toHaveFocus();
-
+    // Avanzar no cambia el estado; volvemos al cancelar para probar Enter.
+    cancelBtn.focus();
     await user.keyboard('{Enter}');
     expect(onCancel).toHaveBeenCalledTimes(1);
   });

@@ -118,7 +118,8 @@ describe('ExecutionClosureActions (HU-030, T-030-16)', () => {
     });
 
     await user.click(await screen.findByRole('button', { name: /Anular ejecución/i }));
-    expect(screen.getByText(/0 \/ 500 \(mínimo 10 caracteres\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Mínimo 10 caracteres/i)).toBeInTheDocument();
+    expect(screen.getByText('0/500')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Confirmar anulación/i }));
 
     expect(
@@ -155,7 +156,7 @@ describe('ExecutionClosureActions (HU-030, T-030-16)', () => {
     );
     await user.click(screen.getByRole('button', { name: /Confirmar anulación/i }));
 
-    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(receivedBody).toEqual({ reason: 'Ejecución duplicada por error' });
   });
 

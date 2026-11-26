@@ -35,11 +35,15 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Templates', () => 
         page.waitForResponse(
           (res) => res.url().endsWith(`/templates/${templateId}`) && res.status() === 200,
         ),
-        page.getByRole('button', { name: 'Abrir FO-E2E' }).click(),
+        page.getByRole('link', { name: 'Abrir FO-E2E' }).click(),
       ]);
       await expect(page.getByRole('textbox', { name: 'Contenido HTML' })).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Insertar {{program.name}}' })).toBeVisible();
       await expectNoContrastViolations(page, { context: 'templates-editor-desktop' });
+
+      await page.getByRole('tab', { name: 'Variables' }).click();
+      await expect(page.getByRole('button', { name: 'Insertar {{program.name}}' })).toBeVisible();
+      await expectNoContrastViolations(page, { context: 'templates-variables-desktop' });
+      await page.getByRole('tab', { name: 'Contenido' }).click();
 
       await page.setViewportSize(MOBILE);
       await expect(page.getByRole('textbox', { name: 'Contenido HTML' })).toBeVisible();
@@ -48,15 +52,11 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Templates', () => 
       // Confirmación de publicar abierta
       await page.setViewportSize(DESKTOP);
       await page.getByRole('button', { name: 'Publicar versión 2' }).click();
-      await expect(
-        page.getByRole('alertdialog', { name: 'Confirmar la publicación' }),
-      ).toBeVisible();
+      await expect(page.getByRole('dialog', { name: 'Confirmar la publicación' })).toBeVisible();
       await expectNoContrastViolations(page, { context: 'templates-confirm-desktop' });
 
       await page.setViewportSize(MOBILE);
-      await expect(
-        page.getByRole('alertdialog', { name: 'Confirmar la publicación' }),
-      ).toBeVisible();
+      await expect(page.getByRole('dialog', { name: 'Confirmar la publicación' })).toBeVisible();
       await expectNoContrastViolations(page, { context: 'templates-confirm-mobile' });
     } finally {
       await resetTemplates();

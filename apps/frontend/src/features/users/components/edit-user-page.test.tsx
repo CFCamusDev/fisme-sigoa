@@ -173,15 +173,119 @@ describe('EditUserPage component (T-003-27)', () => {
       await screen.findByRole('heading', { level: 1, name: 'Editar usuario: Martha Quispe' }),
     ).toBeInTheDocument();
 
+    expect(screen.getByRole('tab', { name: 'Datos' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Roles' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Permisos directos' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Permisos efectivos' })).toBeInTheDocument();
+
     expect(screen.getByLabelText(/nombres/i)).toHaveValue('Martha');
     expect(screen.getByLabelText(/primer apellido/i)).toHaveValue('Quispe');
     expect(screen.getByLabelText(/segundo apellido/i)).toHaveValue('Flores');
     expect(screen.getByLabelText(/correo electrónico/i)).toHaveValue('martha.quispe@unterm.edu.pe');
     expect(screen.getByLabelText(/dni/i)).toHaveValue('78901234');
-    expect((await screen.findAllByText('Docente')).length).toBeGreaterThanOrEqual(1);
-    expect(await screen.findByRole('heading', { name: 'Roles asignados' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Permisos directos' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Permisos efectivos' })).toBeInTheDocument();
+    expect(screen.queryByText('Roles asignados (solo lectura)')).not.toBeInTheDocument();
+  });
+
+  it('shows four tabs with permiso.asignar and only Datos without it', async () => {
+    server.use(
+      http.get('http://localhost:3000/users/usr-123', () => HttpResponse.json(mockUser)),
+      http.get('http://localhost:3000/roles', () => HttpResponse.json({ items: mockRoles })),
+      http.get('http://localhost:3000/permissions', () =>
+        HttpResponse.json({ items: mockPermissions }),
+      ),
+      http.get('http://localhost:3000/users/usr-123/effective-permissions', () =>
+        HttpResponse.json(mockUserAccess),
+      ),
+    );
+
+    const { unmount } = renderWithProviders(<EditUserPage userId="usr-123" />);
+
+    expect(await screen.findByRole('tab', { name: 'Datos' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Roles' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Permisos directos' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Permisos efectivos' })).toBeInTheDocument();
+    unmount();
+
+    renderWithProviders(<EditUserPage userId="usr-123" />, {
+      permissions: [
+        { code: 'usuario.ver', scope: 'GLOBAL' },
+        { code: 'usuario.editar', scope: 'GLOBAL' },
+      ],
+    });
+
+    expect(await screen.findByRole('tab', { name: 'Datos' })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Roles' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Permisos directos' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Permisos efectivos' })).not.toBeInTheDocument();
+  });
+
+  it('renders a single roles block', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get('http://localhost:3000/users/usr-123', () => HttpResponse.json(mockUser)),
+      http.get('http://localhost:3000/roles', () => HttpResponse.json({ items: mockRoles })),
+      http.get('http://localhost:3000/permissions', () =>
+        HttpResponse.json({ items: mockPermissions }),
+      ),
+      http.get('http://localhost:3000/users/usr-123/effective-permissions', () =>
+        HttpResponse.json(mockUserAccess),
+      ),
+    );
+
+    renderWithProviders(<EditUserPage userId="usr-123" />);
+
+    await user.click(await screen.findByRole('tab', { name: 'Roles' }));
+    expect(await screen.findAllByRole('heading', { name: 'Roles asignados' })).toHaveLength(1);
+    expect(screen.queryByText('Roles asignados (solo lectura)')).not.toBeInTheDocument();
+  });
+
+  it('keeps unsaved direct permissions when switching tabs', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get('http://localhost:3000/users/usr-123', () => HttpResponse.json(mockUser)),
+      http.get('http://localhost:3000/roles', () => HttpResponse.json({ items: mockRoles })),
+      http.get('http://localhost:3000/permissions', () =>
+        HttpResponse.json({ items: mockPermissions }),
+      ),
+      http.get('http://localhost:3000/users/usr-123/effective-permissions', () =>
+        HttpResponse.json(mockUserAccess),
+      ),
+    );
+
+    renderWithProviders(<EditUserPage userId="usr-123" />);
+
+    await user.click(await screen.findByRole('tab', { name: 'Permisos directos' }));
+    await user.click(await screen.findByRole('button', { name: /M01 Seguridad/i }));
+    const select = await screen.findByLabelText(/Acceso a usuario\.ver/i);
+    await user.selectOptions(select, 'GLOBAL');
+    expect(screen.getByText(/1 cambio sin guardar/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'Datos' }));
+    await user.click(screen.getByRole('tab', { name: 'Permisos directos' }));
+    expect(screen.getByLabelText(/Acceso a usuario\.ver/i)).toHaveValue('GLOBAL');
+    expect(screen.getByText(/1 cambio sin guardar/i)).toBeInTheDocument();
+  });
+
+  it('falls back to Datos for an unknown tab', async () => {
+    server.use(
+      http.get('http://localhost:3000/users/usr-123', () => HttpResponse.json(mockUser)),
+      http.get('http://localhost:3000/roles', () => HttpResponse.json({ items: mockRoles })),
+      http.get('http://localhost:3000/permissions', () =>
+        HttpResponse.json({ items: mockPermissions }),
+      ),
+      http.get('http://localhost:3000/users/usr-123/effective-permissions', () =>
+        HttpResponse.json(mockUserAccess),
+      ),
+    );
+
+    renderWithProviders(<EditUserPage userId="usr-123" />, {
+      initialEntries: ['/usuarios/usr-123/editar?tab=desconocida'],
+    });
+
+    expect(await screen.findByRole('tab', { name: 'Datos' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
   });
 
   it('hides UserAccessPanel when the user has usuario.editar but lacks permiso.asignar (HU-008, T-008-08, CA3)', async () => {

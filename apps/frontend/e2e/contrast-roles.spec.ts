@@ -20,14 +20,14 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Roles', () => {
     await expectNoContrastViolations(page, { context: 'roles-list-mobile' });
     await page.setViewportSize(DESKTOP);
 
-    // Confirmación de desactivación
-    const deactivateButton = page.getByRole('button', { name: /desactivar rol/i }).first();
+    // Confirmación de inactivación
+    const deactivateButton = page.getByRole('button', { name: /inactivar rol/i }).first();
     if (await deactivateButton.isVisible()) {
       await deactivateButton.click();
-      await expect(page.getByRole('alertdialog')).toBeVisible();
+      await expect(page.getByRole('dialog')).toBeVisible();
       await expectNoContrastViolations(page, { context: 'roles-deactivation-alertdialog' });
       await page.keyboard.press('Escape');
-      await expect(page.getByRole('alertdialog')).toHaveCount(0);
+      await expect(page.getByRole('dialog')).toHaveCount(0);
     }
 
     // Formulario de alta: vacío (escritorio y móvil) y con errores

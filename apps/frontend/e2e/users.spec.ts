@@ -7,8 +7,8 @@ test.describe('HU-003 — Gestión de usuarios E2E', () => {
   test('administrator creates a user and deactivates another (CA1, CA3, CA4)', async ({
     page,
     browser,
-  }) => {
-    const timestamp = Date.now();
+  }, testInfo) => {
+    const timestamp = Date.now() * 10 + testInfo.repeatEachIndex;
     const adminEmail = `admin-${timestamp}@example.test`;
     const adminPassword = 'Password123!';
     const adminDni = String(10000000 + (timestamp % 10000000));
@@ -52,7 +52,10 @@ test.describe('HU-003 — Gestión de usuarios E2E', () => {
     await expect(page.getByRole('heading', { name: 'FISME-SIGOA' })).toBeVisible();
 
     // 3. Navega al módulo de usuarios
-    const usersNavItem = page.getByRole('link', { name: /^usuarios$/i });
+    await page.getByRole('button', { name: 'Administración' }).click();
+    const usersNavItem = page
+      .getByRole('navigation', { name: 'Navegación principal' })
+      .getByRole('link', { name: /^usuarios$/i });
     await usersNavItem.click();
 
     await expect(page).toHaveURL(/\/usuarios/);
@@ -99,7 +102,7 @@ test.describe('HU-003 — Gestión de usuarios E2E', () => {
     });
     await deactivateBtn.click();
 
-    const dialog = page.getByRole('alertdialog');
+    const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
     await expect(
       dialog.getByText(
@@ -111,7 +114,7 @@ test.describe('HU-003 — Gestión de usuarios E2E', () => {
     ).toBeVisible();
 
     const confirmDeactivateBtn = dialog.getByRole('button', {
-      name: /confirmar inactivación/i,
+      name: /^inactivar$/i,
     });
     await confirmDeactivateBtn.click();
 
@@ -146,6 +149,10 @@ test.describe('HU-003 — Gestión de usuarios E2E', () => {
       name: new RegExp(`reactivar a docente ${uniqueDocenteSurname}`, 'i'),
     });
     await reactivateBtn.click();
+
+    const reactivateDialog = page.getByRole('dialog');
+    await expect(reactivateDialog).toBeVisible();
+    await reactivateDialog.getByRole('button', { name: /^reactivar$/i }).click();
 
     await expect(
       page.getByText(

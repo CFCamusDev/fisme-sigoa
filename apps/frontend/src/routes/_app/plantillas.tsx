@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 import { z } from 'zod';
 import { TemplatesPage } from '@/features/templates';
 import { guardPermission } from '@/lib/permission-guard';
@@ -9,21 +9,19 @@ const templatesSearchSchema = z.object({
 });
 
 export const Route = createFileRoute('/_app/plantillas')({
-  beforeLoad: () => guardPermission('plantilla.ver'),
   validateSearch: (search: Record<string, unknown>) => templatesSearchSchema.parse(search),
+  beforeLoad: async ({ search }) => {
+    await guardPermission('plantilla.ver');
+    if (search.id) {
+      throw redirect({
+        to: '/plantillas/$templateId',
+        params: { templateId: search.id },
+      });
+    }
+  },
   component: TemplatesRouteComponent,
 });
 
 function TemplatesRouteComponent() {
-  const search = Route.useSearch();
-  const navigate = Route.useNavigate();
-
-  return (
-    <TemplatesPage
-      selectedId={search.id}
-      onSelectedChange={(id) => {
-        void navigate({ search: { id } });
-      }}
-    />
-  );
+  return <TemplatesPage />;
 }

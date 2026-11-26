@@ -207,6 +207,7 @@ describe('StakeholderImportWizard (HU-023, T-023-18)', () => {
 
     await user.upload(screen.getByLabelText(/Archivo Excel \(\.xlsx\)/i), makeXlsxFile());
     await user.click(screen.getByRole('button', { name: /Ver vista previa/i }));
+    await user.click(await screen.findByRole('button', { name: /^Continuar$/i }));
     const confirmButton = await screen.findByRole('button', { name: /Confirmar importación/i });
 
     await user.dblClick(confirmButton);
@@ -251,8 +252,8 @@ describe('StakeholderImportWizard (HU-023, T-023-18)', () => {
     await user.upload(screen.getByLabelText(/Archivo Excel \(\.xlsx\)/i), makeXlsxFile());
     await user.click(screen.getByRole('button', { name: /Ver vista previa/i }));
 
-    const confirmButton = await screen.findByRole('button', { name: /Confirmar importación/i });
-    expect(confirmButton).toBeDisabled();
+    const continueButton = await screen.findByRole('button', { name: /^Continuar$/i });
+    expect(continueButton).toBeDisabled();
   });
 
   it('shows a specific message for each error status including blob download failure', async () => {
@@ -370,5 +371,101 @@ describe('StakeholderImportWizard (HU-023, T-023-18)', () => {
     await user.click(screen.getByLabelText(/Mostrar solo filas con errores/i));
     expect(screen.queryByText('Nueva Empresa SAC')).not.toBeInTheDocument();
     expect(screen.getByText('Fila Con Varios Errores')).toBeInTheDocument();
+  });
+
+  it('shows the 3-step indicator and advances through steps without extra requests', async () => {
+    const user = userEvent.setup();
+    let previewCalls = 0;
+
+    server.use(
+      http.post('*/stakeholder-lists/:id/import/preview', () => {
+        previewCalls += 1;
+        return HttpResponse.json(MIXED_PREVIEW);
+      }),
+    );
+
+    renderWithProviders(
+      <StakeholderImportWizard list={EMPLOYER_LIST_DTO} onImported={vi.fn()} onCancel={vi.fn()} />,
+      { withRouter: false },
+    );
+
+    expect(screen.getByText('1. Plantilla').closest('li')).toHaveAttribute('aria-current', 'step');
+
+    await user.upload(screen.getByLabelText(/Archivo Excel \(\.xlsx\)/i), makeXlsxFile());
+    await user.click(screen.getByRole('button', { name: /Ver vista previa/i }));
+
+    expect(await screen.findByText(/3 filas:/i)).toBeInTheDocument();
+    expect(screen.getByText('2. Vista previa').closest('li')).toHaveAttribute(
+      'aria-current',
+      'step',
+    );
+    expect(previewCalls).toBe(1);
+
+    await user.click(screen.getByRole('button', { name: /^Continuar$/i }));
+    expect(screen.getByText('3. Confirmación').closest('li')).toHaveAttribute(
+      'aria-current',
+      'step',
+    );
+    expect(screen.getByText(/Resumen de importación/i)).toBeInTheDocument();
+    expect(previewCalls).toBe(1);
+
+    await user.click(screen.getByRole('button', { name: /Volver a la vista previa/i }));
+    expect(screen.getByText('2. Vista previa').closest('li')).toHaveAttribute(
+      'aria-current',
+      'step',
+    );
+    expect(previewCalls).toBe(1);
+  });
+
+  it('sends a single confirmation request when Confirmar importación is activated twice', async () => {
+    const user = userEvent.setup();
+    const onImported = vi.fn();
+    let confirmCalls = 0;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    server.use(
+      http.post('*/stakeholder-lists/:id/import/preview', () => HttpResponse.json(MIXED_PREVIEW)),
+      http.post('*/stakeholder-lists/:id/import/confirm', async () => {
+        confirmCalls += 1;
+        await gate;
+        return HttpResponse.json(
+          {
+            importId: 'imp-concurrent',
+            listId: EMPLOYER_LIST_DTO.id,
+            totals: { created: 1, reused: 1, added: 2, alreadyInList: 0, rejected: 1 },
+            rejectedRows: [],
+          },
+          { status: 201 },
+        );
+      }),
+    );
+
+    renderWithProviders(
+      <StakeholderImportWizard
+        list={EMPLOYER_LIST_DTO}
+        onImported={onImported}
+        onCancel={vi.fn()}
+      />,
+      { withRouter: false },
+    );
+
+    await user.upload(screen.getByLabelText(/Archivo Excel \(\.xlsx\)/i), makeXlsxFile());
+    await user.click(screen.getByRole('button', { name: /Ver vista previa/i }));
+    await user.click(await screen.findByRole('button', { name: /^Continuar$/i }));
+
+    const confirmButton = await screen.findByRole('button', { name: /Confirmar importación/i });
+    await user.click(confirmButton);
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /Importando…/i })).toBeDisabled(),
+    );
+    await user.click(screen.getByRole('button', { name: /Importando…/i }));
+
+    expect(confirmCalls).toBe(1);
+
+    release();
+    await waitFor(() => expect(onImported).toHaveBeenCalledTimes(1));
   });
 });

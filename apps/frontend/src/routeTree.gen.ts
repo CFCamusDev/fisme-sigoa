@@ -31,6 +31,7 @@ import { Route as AppConfiguracionProgramaRouteImport } from './routes/_app/conf
 import { Route as AppConfiguracionSemestresRouteImport } from './routes/_app/configuracion/semestres'
 import { Route as AppCronogramaExecutionIdRouteImport } from './routes/_app/cronograma.$executionId'
 import { Route as AppEjecucionesExecutionIdRouteImport } from './routes/_app/ejecuciones_.$executionId'
+import { Route as AppPlantillasTemplateIdRouteImport } from './routes/_app/plantillas_.$templateId'
 import { Route as AppRolesIndexRouteImport } from './routes/_app/roles/index'
 import { Route as AppRolesNuevoRouteImport } from './routes/_app/roles/nuevo'
 import { Route as AppUsuariosIndexRouteImport } from './routes/_app/usuarios/index'
@@ -155,6 +156,11 @@ const AppEjecucionesExecutionIdRoute =
     path: '/ejecuciones/$executionId',
     getParentRoute: () => AppRoute,
   } as any)
+const AppPlantillasTemplateIdRoute = AppPlantillasTemplateIdRouteImport.update({
+  id: '/plantillas_/$templateId',
+  path: '/plantillas/$templateId',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppRolesIndexRoute = AppRolesIndexRouteImport.update({
   id: '/roles/',
   path: '/roles/',
@@ -228,6 +234,7 @@ export interface FileRoutesByFullPath {
   '/configuracion/semestres': typeof AppConfiguracionSemestresRoute
   '/cronograma/$executionId': typeof AppCronogramaExecutionIdRoute
   '/ejecuciones/$executionId': typeof AppEjecucionesExecutionIdRoute
+  '/plantillas/$templateId': typeof AppPlantillasTemplateIdRoute
   '/roles/nuevo': typeof AppRolesNuevoRoute
   '/usuarios/nuevo': typeof AppUsuariosNuevoRoute
   '/activar/$token': typeof AuthActivarTokenRoute
@@ -260,6 +267,7 @@ export interface FileRoutesByTo {
   '/configuracion/semestres': typeof AppConfiguracionSemestresRoute
   '/cronograma/$executionId': typeof AppCronogramaExecutionIdRoute
   '/ejecuciones/$executionId': typeof AppEjecucionesExecutionIdRoute
+  '/plantillas/$templateId': typeof AppPlantillasTemplateIdRoute
   '/roles/nuevo': typeof AppRolesNuevoRoute
   '/usuarios/nuevo': typeof AppUsuariosNuevoRoute
   '/activar/$token': typeof AuthActivarTokenRoute
@@ -295,6 +303,7 @@ export interface FileRoutesById {
   '/_app/configuracion/semestres': typeof AppConfiguracionSemestresRoute
   '/_app/cronograma/$executionId': typeof AppCronogramaExecutionIdRoute
   '/_app/ejecuciones_/$executionId': typeof AppEjecucionesExecutionIdRoute
+  '/_app/plantillas_/$templateId': typeof AppPlantillasTemplateIdRoute
   '/_app/roles/nuevo': typeof AppRolesNuevoRoute
   '/_app/usuarios/nuevo': typeof AppUsuariosNuevoRoute
   '/_auth/activar/$token': typeof AuthActivarTokenRoute
@@ -329,6 +338,7 @@ export interface FileRouteTypes {
     | '/configuracion/semestres'
     | '/cronograma/$executionId'
     | '/ejecuciones/$executionId'
+    | '/plantillas/$templateId'
     | '/roles/nuevo'
     | '/usuarios/nuevo'
     | '/activar/$token'
@@ -361,6 +371,7 @@ export interface FileRouteTypes {
     | '/configuracion/semestres'
     | '/cronograma/$executionId'
     | '/ejecuciones/$executionId'
+    | '/plantillas/$templateId'
     | '/roles/nuevo'
     | '/usuarios/nuevo'
     | '/activar/$token'
@@ -395,6 +406,7 @@ export interface FileRouteTypes {
     | '/_app/configuracion/semestres'
     | '/_app/cronograma/$executionId'
     | '/_app/ejecuciones_/$executionId'
+    | '/_app/plantillas_/$templateId'
     | '/_app/roles/nuevo'
     | '/_app/usuarios/nuevo'
     | '/_auth/activar/$token'
@@ -569,6 +581,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppEjecucionesExecutionIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/plantillas_/$templateId': {
+      id: '/_app/plantillas_/$templateId'
+      path: '/plantillas/$templateId'
+      fullPath: '/plantillas/$templateId'
+      preLoaderRoute: typeof AppPlantillasTemplateIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/roles/': {
       id: '/_app/roles/'
       path: '/roles'
@@ -660,6 +679,7 @@ interface AppRouteChildren {
   AppConfiguracionSemestresRoute: typeof AppConfiguracionSemestresRoute
   AppCronogramaExecutionIdRoute: typeof AppCronogramaExecutionIdRoute
   AppEjecucionesExecutionIdRoute: typeof AppEjecucionesExecutionIdRoute
+  AppPlantillasTemplateIdRoute: typeof AppPlantillasTemplateIdRoute
   AppRolesNuevoRoute: typeof AppRolesNuevoRoute
   AppUsuariosNuevoRoute: typeof AppUsuariosNuevoRoute
   AppRolesIndexRoute: typeof AppRolesIndexRoute
@@ -688,6 +708,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppConfiguracionSemestresRoute: AppConfiguracionSemestresRoute,
   AppCronogramaExecutionIdRoute: AppCronogramaExecutionIdRoute,
   AppEjecucionesExecutionIdRoute: AppEjecucionesExecutionIdRoute,
+  AppPlantillasTemplateIdRoute: AppPlantillasTemplateIdRoute,
   AppRolesNuevoRoute: AppRolesNuevoRoute,
   AppUsuariosNuevoRoute: AppUsuariosNuevoRoute,
   AppRolesIndexRoute: AppRolesIndexRoute,

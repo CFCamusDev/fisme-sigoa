@@ -8,12 +8,14 @@ describe('ParametersRoute (/configuracion/parametros) (HU-011, T-011-13)', () =>
     expect(typeof Route.options.beforeLoad).toBe('function');
   });
 
-  it('renders ParametersPage component', () => {
+  it('renders ParametersPage component', async () => {
     const Component = Route.options.component;
     expect(Component).toBeDefined();
     if (Component) {
-      renderWithProviders(<Component />, { withRouter: false });
-      expect(screen.getByRole('heading', { level: 1, name: /parámetros/i })).toBeInTheDocument();
+      renderWithProviders(<Component />);
+      expect(
+        await screen.findByRole('heading', { level: 1, name: /parámetros/i }),
+      ).toBeInTheDocument();
     }
   });
 });

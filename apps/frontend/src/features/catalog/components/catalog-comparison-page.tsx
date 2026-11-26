@@ -10,10 +10,13 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useTabParam } from '@/hooks/use-tab-param';
 import { getStatusDescriptor } from '@/lib/status';
 import { useCatalogComparison } from '../hooks/use-catalog-comparison';
 import { useCatalogVersions } from '../hooks/use-catalog-versions';
 import { getCatalogErrorMessage } from '../lib/catalog-error-message';
+import { countComparisonChanges } from '../lib/comparison-counts';
 import { CatalogComparisonDiff, CatalogItemChangeBadge } from './catalog-comparison-diff';
 import { CatalogVersionHistoryPanel } from './catalog-version-history-panel';
 import { formatVersionLabel } from './catalog-versions-table';
@@ -51,10 +54,13 @@ function defaultSelection(versions: readonly CatalogVersionDto[]): CatalogCompar
   return { base: base?.id, target: target.id };
 }
 
+const COMPARISON_TABS = ['objetivos', 'atributos'] as const;
+
 export function CatalogComparisonPage({
   selection,
   onSelectionChange,
 }: CatalogComparisonPageProps) {
+  const [tab, setTab] = useTabParam(COMPARISON_TABS, 'objetivos');
   const baseSelectId = useId();
   const targetSelectId = useId();
   const unchangedId = useId();
@@ -262,16 +268,32 @@ export function CatalogComparisonPage({
             </div>
           </section>
 
-          <CatalogComparisonDiff
-            title="Objetivos educacionales"
-            items={data.objectives}
-            showUnchanged={showUnchanged}
-          />
-          <CatalogComparisonDiff
-            title="Atributos del graduado"
-            items={data.attributes}
-            showUnchanged={showUnchanged}
-          />
+          <Tabs value={tab} onValueChange={setTab} className="space-y-4">
+            <TabsList aria-label="Secciones de la comparación">
+              <TabsTrigger value="objetivos">
+                {`Objetivos educacionales (${countComparisonChanges(data.objectives)})`}
+              </TabsTrigger>
+              <TabsTrigger value="atributos">
+                {`Atributos del graduado (${countComparisonChanges(data.attributes)})`}
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="objetivos">
+              <CatalogComparisonDiff
+                title="Objetivos educacionales"
+                items={data.objectives}
+                showUnchanged={showUnchanged}
+              />
+            </TabsContent>
+
+            <TabsContent value="atributos">
+              <CatalogComparisonDiff
+                title="Atributos del graduado"
+                items={data.attributes}
+                showUnchanged={showUnchanged}
+              />
+            </TabsContent>
+          </Tabs>
         </div>
       )}
     </div>

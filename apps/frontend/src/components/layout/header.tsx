@@ -4,17 +4,17 @@ import { Logo } from '@/components/common/logo';
 
 export interface HeaderProps {
   isMobileMenuOpen: boolean;
-  onToggleMobileMenu: () => void;
+  onToggleMobileMenu: (opener: HTMLElement) => void;
   userMenu?: ReactNode;
 }
 
 export function Header({ isMobileMenuOpen, onToggleMobileMenu, userMenu }: HeaderProps) {
   return (
-    <header className="sticky top-0 z-40 flex h-16 w-full items-center justify-between bg-topbar text-topbar-foreground shadow-sm px-4 lg:px-8">
+    <header className="sticky top-0 z-50 flex h-16 w-full items-center justify-between bg-topbar text-topbar-foreground shadow-sm px-4 lg:px-8">
       <div className="flex items-center gap-3 sm:gap-4">
         <button
           type="button"
-          onClick={onToggleMobileMenu}
+          onClick={(event) => onToggleMobileMenu(event.currentTarget)}
           aria-expanded={isMobileMenuOpen}
           aria-controls="app-sidebar"
           aria-label={isMobileMenuOpen ? 'Cerrar menú de navegación' : 'Abrir menú de navegación'}

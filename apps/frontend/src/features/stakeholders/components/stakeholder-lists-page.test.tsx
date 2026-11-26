@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, delay, http } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
@@ -9,6 +9,7 @@ import {
   EMPLOYER_LIST_DTO,
   makeStakeholderListsResponse,
 } from '../test/stakeholder-lists-fixtures';
+import { INSTITUTION_STAKEHOLDER, makeListResponse } from '../test/stakeholders-fixtures';
 import { StakeholderListsPage } from './stakeholder-lists-page';
 
 const EDIT_PERMISSIONS = [
@@ -83,9 +84,11 @@ describe('StakeholderListsPage (HU-022, T-022-28)', () => {
     await user.type(yearInput, '2027');
     await user.click(screen.getByRole('button', { name: /Ver lista/i }));
 
-    await screen.findByRole('button', { name: /Crear lista/i });
-    await user.type(screen.getByLabelText(/N\.° de plan de estudios/i), '2024-II');
-    await user.click(screen.getByRole('button', { name: /Crear lista/i }));
+    await user.click(await screen.findByRole('button', { name: /Crear lista/i }));
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toHaveClass('w-[640px]');
+    await user.type(within(dialog).getByLabelText(/N\.° de plan de estudios/i), '2024-II');
+    await user.click(within(dialog).getByRole('button', { name: /Crear lista/i }));
 
     expect(await screen.findByRole('status')).toHaveTextContent(/creada correctamente/i);
   });
@@ -229,10 +232,13 @@ describe('StakeholderListsPage (HU-022, T-022-28)', () => {
       permissions: EDIT_PERMISSIONS,
     });
 
-    const submitButton = await screen.findByRole('button', { name: /Crear lista/i });
-    await user.click(submitButton);
+    await user.click(await screen.findByRole('button', { name: /Crear lista/i }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: /Crear lista/i }));
 
-    await waitFor(() => expect(screen.getByRole('button', { name: /Guardando…/i })).toBeDisabled());
+    await waitFor(() =>
+      expect(within(dialog).getByRole('button', { name: /Guardando…/i })).toBeDisabled(),
+    );
 
     resolvePost();
     await waitFor(() => expect(screen.getByRole('status')).toBeInTheDocument());
@@ -271,16 +277,12 @@ describe('StakeholderListsPage (HU-022, T-022-28)', () => {
 
     const importButton = await screen.findByRole('button', { name: /Importar desde Excel/i });
     await user.click(importButton);
-    expect(
-      screen.getByRole('region', { name: /Importar constituyentes desde Excel/i }),
-    ).toBeInTheDocument();
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toHaveClass('w-[960px]');
+    expect(dialog).toHaveTextContent(/Importar constituyentes desde Excel/i);
 
     await user.keyboard('{Escape}');
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('region', { name: /Importar constituyentes desde Excel/i }),
-      ).not.toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(importButton).toHaveFocus();
   });
 
@@ -461,5 +463,76 @@ describe('StakeholderListsPage (HU-022, T-022-28)', () => {
     const reason = screen.getByText(/Agrega al menos un miembro para descargar el PDF/i);
     expect(downloadButton).toBeDisabled();
     expect(downloadButton).toHaveAttribute('aria-describedby', reason.id);
+  });
+
+  it('adds members in a 640px side panel without closing it', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get('*/me/permissions', () => HttpResponse.json({ permissions: EDIT_PERMISSIONS })),
+      http.get('*/stakeholder-lists', () =>
+        HttpResponse.json(makeStakeholderListsResponse([EMPLOYER_LIST_DTO])),
+      ),
+      http.get('*/stakeholders', () =>
+        HttpResponse.json(
+          makeListResponse([
+            {
+              ...INSTITUTION_STAKEHOLDER,
+              id: 'sh-extra',
+              fullName: 'Selva Soft SAC',
+              ruc: '20987654321',
+            },
+          ]),
+        ),
+      ),
+      http.post('*/stakeholder-lists/:id/members', () =>
+        HttpResponse.json(
+          {
+            ...EMPLOYER_LIST_DTO.members![0],
+            id: 'mem-new',
+            stakeholderId: 'sh-extra',
+            fullName: 'Selva Soft SAC',
+            ruc: '20987654321',
+          },
+          { status: 201 },
+        ),
+      ),
+    );
+
+    renderWithProviders(<StakeholderListsPage />, {
+      withRouter: false,
+      permissions: EDIT_PERMISSIONS,
+    });
+
+    await user.click(await screen.findByRole('button', { name: /Agregar constituyentes/i }));
+    const sheet = await screen.findByRole('dialog');
+    expect(sheet).toHaveClass('w-[640px]');
+
+    await user.click(
+      await within(sheet).findByRole('button', { name: /Agregar Selva Soft SAC a la lista/i }),
+    );
+    await user.type(within(sheet).getByLabelText(/Representante legal/i), 'Carlos Mendoza');
+    await user.click(within(sheet).getByRole('button', { name: /^Confirmar$/i }));
+    expect(await screen.findByText(/Se agregó "Selva Soft SAC" a la lista/i)).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBe(sheet);
+  });
+
+  it('copies a list in a 480px side panel', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get('*/me/permissions', () => HttpResponse.json({ permissions: EDIT_PERMISSIONS })),
+      http.get('*/stakeholder-lists', () =>
+        HttpResponse.json(makeStakeholderListsResponse([EMPLOYER_LIST_DTO])),
+      ),
+    );
+
+    renderWithProviders(<StakeholderListsPage />, {
+      withRouter: false,
+      permissions: EDIT_PERMISSIONS,
+    });
+
+    await user.click(await screen.findByRole('button', { name: /Copiar para nuevo año/i }));
+    const sheet = await screen.findByRole('dialog');
+    expect(sheet).toHaveClass('w-[480px]');
+    expect(sheet).toHaveTextContent(/Copiar lista de Empleadores/i);
   });
 });

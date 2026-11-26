@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { StickyActionBar } from '@/components/common';
 import { Can } from '@/components/common/can';
 import { cn } from '@/lib/utils';
 import { useCreateUser, useRoles, useUpdateUser } from '../hooks';
@@ -230,7 +231,7 @@ export function UserForm({ mode, initialUser, onSuccess }: UserFormProps) {
     };
 
     return (
-      <form onSubmit={handleSubmit(handleCreateSubmit)} className="space-y-6" noValidate>
+      <form onSubmit={handleSubmit(handleCreateSubmit)} className="space-y-6 pb-24" noValidate>
         {generalError && (
           <Alert variant="danger">
             <AlertTitle>Error al crear usuario</AlertTitle>
@@ -412,16 +413,16 @@ export function UserForm({ mode, initialUser, onSuccess }: UserFormProps) {
         </fieldset>
 
         {/* Botones de acción */}
-        <div className="flex items-center gap-4 pt-4 border-t border-border">
+        <StickyActionBar>
+          <Link to="/usuarios" className={cn(buttonVariants({ variant: 'outline' }))}>
+            Cancelar
+          </Link>
           <Can permission="usuario.crear">
             <Button type="submit" disabled={isPending || rolesQuery.isError}>
               {isPending ? 'Creando usuario...' : 'Crear usuario'}
             </Button>
           </Can>
-          <Link to="/usuarios" className={cn(buttonVariants({ variant: 'outline' }))}>
-            Cancelar
-          </Link>
-        </div>
+        </StickyActionBar>
       </form>
     );
   }
@@ -433,18 +434,8 @@ export function UserForm({ mode, initialUser, onSuccess }: UserFormProps) {
     formState: { errors },
   } = editForm;
 
-  const rolesMap = new Map<string, string>();
-  for (const role of roles) {
-    rolesMap.set(role.id, role.name);
-  }
-  const assignedRoleNames =
-    initialUser?.roleIds
-      ?.map((id) => rolesMap.get(id))
-      .filter(Boolean)
-      .join(', ') || '—';
-
   return (
-    <form onSubmit={handleSubmit(handleEditSubmit)} className="space-y-6" noValidate>
+    <form onSubmit={handleSubmit(handleEditSubmit)} className="space-y-6 pb-24" noValidate>
       {generalError && (
         <Alert variant="danger">
           <AlertTitle>Error al guardar cambios</AlertTitle>
@@ -569,30 +560,17 @@ export function UserForm({ mode, initialUser, onSuccess }: UserFormProps) {
         </div>
       </div>
 
-      {/* Roles de solo lectura */}
-      <div className="space-y-1.5 pt-2">
-        <span className="text-label font-medium text-foreground block">
-          Roles asignados (solo lectura)
-        </span>
-        <p className="surface rounded-md border border-input p-3 text-body text-foreground">
-          {assignedRoleNames}
-        </p>
-        <p className="text-meta text-muted-foreground">
-          Los roles de usuario se asignan y gestionan en su módulo correspondiente.
-        </p>
-      </div>
-
       {/* Botones de acción */}
-      <div className="flex items-center gap-4 pt-4 border-t border-border">
+      <StickyActionBar>
+        <Link to="/usuarios" className={cn(buttonVariants({ variant: 'outline' }))}>
+          Cancelar
+        </Link>
         <Can permission="usuario.editar">
           <Button type="submit" disabled={isPending}>
             {isPending ? 'Guardando cambios...' : 'Guardar cambios'}
           </Button>
         </Can>
-        <Link to="/usuarios" className={cn(buttonVariants({ variant: 'outline' }))}>
-          Cancelar
-        </Link>
-      </div>
+      </StickyActionBar>
     </form>
   );
 }

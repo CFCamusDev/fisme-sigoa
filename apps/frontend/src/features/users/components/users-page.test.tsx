@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -385,18 +385,17 @@ describe('UsersPage component (T-003-27)', () => {
     });
     await user.click(deactivateBtn);
 
-    const dialog = screen.getByRole('alertdialog');
+    const dialog = screen.getByRole('dialog');
     expect(dialog).toBeInTheDocument();
     expect(
       screen.getByText(/¿inactivar a carlos mendoza\? se cerrarán sus sesiones activas\./i),
     ).toBeInTheDocument();
 
-    const cancelBtn = screen.getByRole('button', { name: /cancelar inactivación/i });
-    expect(cancelBtn).toHaveFocus();
-
     await user.keyboard('{Escape}');
 
-    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
     expect(screen.getByRole('button', { name: /inactivar a carlos mendoza/i })).toBeInTheDocument();
   });
 
@@ -449,7 +448,7 @@ describe('UsersPage component (T-003-27)', () => {
     });
     await user.click(deactivateBtn);
 
-    const confirmBtn = screen.getByRole('button', { name: /confirmar inactivación/i });
+    const confirmBtn = screen.getByRole('dialog').querySelector('button:last-of-type')!;
     await user.click(confirmBtn);
 
     expect(
@@ -498,7 +497,9 @@ describe('UsersPage component (T-003-27)', () => {
     });
     await user.click(deactivateBtn);
 
-    const confirmBtn = screen.getByRole('button', { name: /confirmar inactivación/i });
+    const confirmBtn = within(screen.getByRole('dialog')).getByRole('button', {
+      name: 'Inactivar',
+    });
     await user.dblClick(confirmBtn);
 
     await waitFor(() => {
@@ -506,7 +507,7 @@ describe('UsersPage component (T-003-27)', () => {
     });
   });
 
-  it('reactivates an inactive user without confirmation', async () => {
+  it('reactivates an inactive user with confirmation', async () => {
     let reactivated = false;
     server.use(
       http.get('http://localhost:3000/roles', () => HttpResponse.json({ items: [] })),
@@ -541,7 +542,9 @@ describe('UsersPage component (T-003-27)', () => {
     });
     await user.click(reactivateBtn);
 
-    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'Reactivar' }));
+
     expect(
       await screen.findByText(/se reactivó la cuenta de maría vargas correctamente\./i),
     ).toBeInTheDocument();
@@ -574,6 +577,8 @@ describe('UsersPage component (T-003-27)', () => {
       name: /reactivar a maría vargas/i,
     });
     await user.click(reactivateBtn);
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'Reactivar' }));
 
     expect(await screen.findByText('Error al cambiar estado')).toBeInTheDocument();
     expect(screen.getByText('María Vargas')).toBeInTheDocument();

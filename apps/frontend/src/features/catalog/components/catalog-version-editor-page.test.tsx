@@ -113,17 +113,20 @@ describe('CatalogVersionEditorPage (HU-014, T-014-17, CA1, CA2, CA3)', () => {
     });
 
     it('shows an empty state for a version without objectives or attributes', async () => {
+      const user = userEvent.setup();
       mockVersions(buildCatalogVersionDetail({ objectiveCount: 0, attributeCount: 0 }));
 
       renderEditor();
 
       expect(await screen.findByText(/aún no hay objetivos educacionales/i)).toBeInTheDocument();
+      await user.click(screen.getByRole('tab', { name: 'Atributos del graduado' }));
       expect(screen.getByText(/aún no hay atributos del graduado/i)).toBeInTheDocument();
     });
   });
 
   describe('editable draft', () => {
     it('lists both sections with edit and order controls', async () => {
+      const user = userEvent.setup();
       mockVersions();
 
       renderEditor();
@@ -133,13 +136,15 @@ describe('CatalogVersionEditorPage (HU-014, T-014-17, CA1, CA2, CA3)', () => {
       ).toBeInTheDocument();
       const objectives = await screen.findByRole('list', { name: 'Objetivos educacionales' });
       expect(within(objectives).getAllByRole('listitem')).toHaveLength(3);
-      expect(screen.getByRole('list', { name: 'Atributos del graduado' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Editar OEP2' })).toBeEnabled();
       expect(screen.getByRole('button', { name: 'Subir OEP2' })).toBeEnabled();
       expect(screen.getByRole('button', { name: 'Bajar OEP2' })).toBeEnabled();
       expect(screen.getByRole('button', { name: 'Subir OEP1' })).toBeDisabled();
       expect(screen.getByRole('button', { name: 'Bajar OEP3' })).toBeDisabled();
       expect(screen.queryByText(/campos están bloqueados/i)).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole('tab', { name: 'Atributos del graduado' }));
+      expect(screen.getByRole('list', { name: 'Atributos del graduado' })).toBeInTheDocument();
     });
 
     it('shows the difference with the current version after saving', async () => {
@@ -158,6 +163,7 @@ describe('CatalogVersionEditorPage (HU-014, T-014-17, CA1, CA2, CA3)', () => {
       const user = userEvent.setup();
 
       renderEditor();
+      await user.click(await screen.findByRole('tab', { name: 'Atributos del graduado' }));
       const attributes = await screen.findByRole('list', { name: 'Atributos del graduado' });
       expect(within(attributes).queryByText(/modificado/i)).not.toBeInTheDocument();
 
@@ -613,4 +619,57 @@ describe('CatalogVersionEditorPage send to validation (HU-015, T-015-09, CA1, CA
       expect(screen.queryByRole('button', { name: 'Enviar a validación' })).not.toBeInTheDocument();
     },
   );
+
+  it('shows objectives attributes and history tabs', async () => {
+    mockVersions();
+
+    renderEditor();
+
+    const objTab = await screen.findByRole('tab', { name: 'Objetivos educacionales' });
+    expect(objTab).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Atributos del graduado' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Historial' })).toBeInTheDocument();
+  });
+
+  it('keeps an item form draft when switching tabs', async () => {
+    const user = userEvent.setup();
+    mockVersions();
+
+    renderEditor();
+
+    await user.click(await screen.findByRole('button', { name: 'Editar OEP2' }));
+    const statement = await screen.findByLabelText('Enunciado');
+    await user.clear(statement);
+    await user.type(statement, 'Texto sin guardar');
+
+    await user.click(screen.getByRole('tab', { name: 'Atributos del graduado' }));
+    await user.click(screen.getByRole('tab', { name: 'Objetivos educacionales' }));
+
+    expect(screen.getByLabelText('Enunciado')).toHaveValue('Texto sin guardar');
+  });
+
+  it('shows an empty history for a draft version', async () => {
+    const user = userEvent.setup();
+    mockVersions();
+
+    renderEditor();
+
+    await user.click(await screen.findByRole('tab', { name: 'Historial' }));
+    expect(screen.getByText('Sin historial disponible')).toBeInTheDocument();
+    expect(
+      screen.getByText('El historial se genera cuando se aprueba la versión.'),
+    ).toBeInTheDocument();
+  });
+
+  it('keeps the send to validation panel above the tabs', async () => {
+    mockVersions();
+
+    renderEditor();
+
+    const sendBtn = await screen.findByRole('button', { name: 'Enviar a validación' });
+    const tablist = screen.getByRole('tablist', { name: 'Secciones de la versión del catálogo' });
+    expect(
+      sendBtn.compareDocumentPosition(tablist) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
 });

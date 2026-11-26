@@ -7,12 +7,18 @@ import {
 } from '../api/get-process-executions';
 import { processExecutionKeys } from './process-execution-keys';
 
+export interface UseProcessExecutionsOptions {
+  readonly enabled?: boolean;
+}
+
 export function useProcessExecutions(
   params: GetProcessExecutionsParams = {},
+  options: UseProcessExecutionsOptions = {},
 ): UseQueryResult<ListProcessExecutionsResponse, ApiError> {
   return useQuery<ListProcessExecutionsResponse, ApiError>({
     queryKey: processExecutionKeys.list(params),
     queryFn: () => getProcessExecutions(params),
+    enabled: options.enabled ?? true,
     staleTime: 30_000,
     retry: false,
   });

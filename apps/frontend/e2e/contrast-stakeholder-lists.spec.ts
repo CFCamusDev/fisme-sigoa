@@ -28,6 +28,13 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Stakeholder Lists'
     await expect(page.getByRole('button', { name: 'Crear lista' })).toBeVisible();
     await expectNoContrastViolations(page, { context: 'stakeholder-lists-empty-desktop' });
 
+    await page.getByRole('button', { name: 'Crear lista' }).click();
+    const createDialog = page.getByRole('dialog');
+    await expect(createDialog).toBeVisible();
+    await expectNoContrastViolations(page, { context: 'stakeholder-lists-create-dialog-desktop' });
+    await page.setViewportSize(MOBILE);
+    await expectNoContrastViolations(page, { context: 'stakeholder-lists-create-dialog-mobile' });
+    await page.setViewportSize(DESKTOP);
     await Promise.all([
       page.waitForResponse(
         (res) =>
@@ -35,7 +42,7 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Stakeholder Lists'
           res.request().method() === 'POST' &&
           res.status() === 201,
       ),
-      page.getByRole('button', { name: 'Crear lista' }).click(),
+      createDialog.getByRole('button', { name: 'Crear lista' }).click(),
     ]);
 
     await Promise.all([
@@ -64,7 +71,11 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Stakeholder Lists'
       page.getByRole('button', { name: 'Confirmar' }).click(),
     ]);
 
-    await page.getByRole('button', { name: 'Cerrar selector' }).click();
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Cerrar', exact: true })
+      .first()
+      .click();
     await expect(page.getByRole('cell', { name: 'Tech Amazonas SAC' })).toBeVisible();
     await expectNoContrastViolations(page, { context: 'stakeholder-lists-table-desktop' });
 

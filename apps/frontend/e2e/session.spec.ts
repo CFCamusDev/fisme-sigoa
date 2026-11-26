@@ -25,7 +25,7 @@ test.describe('HU-002 — Mantener y cerrar sesión E2E', () => {
     await page.getByRole('button', { name: /acceder al sistema/i }).click();
 
     await expect(page).toHaveURL('/');
-    await expect(page.getByRole('button', { name: /cerrar sesión/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /menú de usuario/i })).toBeVisible();
 
     // JavaScript nunca puede leer la cookie HttpOnly
     const jsCookies = await page.evaluate(() => document.cookie);
@@ -67,7 +67,7 @@ test.describe('HU-002 — Mantener y cerrar sesión E2E', () => {
 
     // La sesión debe restaurarse automáticamente sin expulsar a /login
     await expect(page).toHaveURL('/');
-    await expect(page.getByRole('button', { name: /cerrar sesión/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /menú de usuario/i })).toBeVisible();
     await expect(page.getByText(/Rodrigo Sánchez/i)).toBeVisible();
   });
 
@@ -91,7 +91,7 @@ test.describe('HU-002 — Mantener y cerrar sesión E2E', () => {
     await page.getByRole('button', { name: /acceder al sistema/i }).click();
 
     await expect(page).toHaveURL('/');
-    await expect(page.getByRole('button', { name: /cerrar sesión/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /menú de usuario/i })).toBeVisible();
 
     // Interceptar una petición para simular 401 una única vez
     let simulated401Occurred = false;
@@ -125,7 +125,7 @@ test.describe('HU-002 — Mantener y cerrar sesión E2E', () => {
 
     // Se mantiene autenticado en la misma página
     await expect(page).toHaveURL('/');
-    await expect(page.getByRole('button', { name: /cerrar sesión/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /menú de usuario/i })).toBeVisible();
     expect(healthResponseStatus).not.toBe(0);
   });
 
@@ -150,11 +150,12 @@ test.describe('HU-002 — Mantener y cerrar sesión E2E', () => {
     await page.getByRole('button', { name: /acceder al sistema/i }).click();
 
     await expect(page).toHaveURL('/');
-    const logoutBtn = page.getByRole('button', { name: /cerrar sesión/i });
-    await expect(logoutBtn).toBeVisible();
+    const userMenuBtn = page.getByRole('button', { name: /menú de usuario/i });
+    await expect(userMenuBtn).toBeVisible();
 
-    // Hacer click en Cerrar sesión
-    await logoutBtn.click();
+    // Abrir menú y hacer click en Cerrar sesión
+    await userMenuBtn.click();
+    await page.getByRole('menuitem', { name: /cerrar sesión/i }).click();
 
     // Redirige al login
     await expect(page).toHaveURL(/\/login/);

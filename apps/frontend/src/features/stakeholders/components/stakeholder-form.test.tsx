@@ -128,7 +128,7 @@ describe('StakeholderForm (HU-021, T-021-18, T-021-29)', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('Ana Lucia Torres')).toBeInTheDocument();
 
-    const editBtn = screen.getByRole('button', { name: /editar este constituyente/i });
+    const editBtn = await screen.findByRole('button', { name: /editar este constituyente/i });
     await user.click(editBtn);
     expect(onSelectExisting).toHaveBeenCalledWith(PERSON_STAKEHOLDER);
   });

@@ -31,6 +31,16 @@ test.describe('Color Contrast Accessibility (WCAG 2.1 AA) — Resolutions', () =
       await expect(page.getByText('Aún no hay resoluciones registradas')).toBeVisible();
       await expectNoContrastViolations(page, { context: 'resolutions-empty-desktop' });
 
+      // Diálogo de registro de resolución (escritorio y móvil)
+      await page.getByRole('button', { name: 'Registrar resolución' }).click();
+      await expect(page.getByRole('dialog')).toBeVisible();
+      await expectNoContrastViolations(page, { context: 'resolutions-register-dialog-desktop' });
+      await page.setViewportSize(MOBILE);
+      await expect(page.getByRole('dialog')).toBeVisible();
+      await expectNoContrastViolations(page, { context: 'resolutions-register-dialog-mobile' });
+      await page.getByRole('button', { name: 'Cancelar' }).click();
+      await page.setViewportSize(DESKTOP);
+
       // Una fila Registrada con el formulario de aprobación abierto
       await seedResolution({ number: 'RD-001/2027', status: 'REGISTERED' });
       await waitForApi(page, '/resolutions', () => page.reload());

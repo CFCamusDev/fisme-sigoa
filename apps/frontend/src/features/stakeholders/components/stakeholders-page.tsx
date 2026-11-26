@@ -1,20 +1,28 @@
 import { useEffect, useRef, useState } from 'react';
 import { CheckCircle2, Plus } from 'lucide-react';
-import type { StakeholderDto } from '@sigoa/shared';
+import {
+  STAKEHOLDER_VOID_REASON_MAX_LENGTH,
+  STAKEHOLDER_VOID_REASON_MIN_LENGTH,
+  type StakeholderDto,
+} from '@sigoa/shared';
 import { Can } from '@/components/common/can';
+import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import { EmptyState } from '@/components/common/empty-state';
 import { ErrorState } from '@/components/common/error-state';
+import { FormDialog } from '@/components/common/form-dialog';
 import { LoadingState } from '@/components/common/loading-state';
 import { PageHeader } from '@/components/common/page-header';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { useRestoreFocus } from '@/hooks/use-restore-focus';
 import { useStakeholders } from '../hooks/use-stakeholders';
+import { useVoidStakeholder } from '../hooks/use-void-stakeholder';
 import { getStakeholderErrorMessage } from '../lib/stakeholder-error-message';
+import { getStakeholderDocumentLabel } from '../lib/stakeholder-labels';
 import { StakeholderForm } from './stakeholder-form';
 import { StakeholdersFilters, type StakeholdersFiltersState } from './stakeholders-filters';
 import { StakeholdersPagination } from './stakeholders-pagination';
 import { StakeholdersTable } from './stakeholders-table';
-import { VoidStakeholderForm } from './void-stakeholder-form';
 
 const PAGE_SIZE = 20;
 
@@ -39,6 +47,13 @@ export function StakeholdersPage({ initialEditId }: StakeholdersPageProps = {}) 
   const [dismissedEditId, setDismissedEditId] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const successAlertRef = useRef<HTMLDivElement>(null);
+  const submittedJustNowRef = useRef(false);
+  const { remember: rememberFocus, restore: restoreFocus } = useRestoreFocus();
+
+  function captureActiveElement() {
+    rememberFocus(document.activeElement instanceof HTMLElement ? document.activeElement : null);
+  }
+  const voidMutation = useVoidStakeholder();
 
   const query = useStakeholders({
     search: filters.search || undefined,
@@ -67,6 +82,7 @@ export function StakeholdersPage({ initialEditId }: StakeholdersPageProps = {}) 
   }
 
   function handleSaved(stakeholder: StakeholderDto, mode: 'register' | 'edit') {
+    submittedJustNowRef.current = true;
     setPanel({ type: 'none' });
     setSuccessMessage(
       mode === 'register'
@@ -113,7 +129,8 @@ export function StakeholdersPage({ initialEditId }: StakeholdersPageProps = {}) 
           <Can permission="constituyente.editar">
             <Button
               type="button"
-              onClick={() => {
+              onClick={(event) => {
+                rememberFocus(event.currentTarget);
                 setSuccessMessage(null);
                 setPanel({ type: 'register' });
               }}
@@ -138,35 +155,89 @@ export function StakeholdersPage({ initialEditId }: StakeholdersPageProps = {}) 
         </Alert>
       ) : null}
 
-      {panel.type === 'register' ? (
-        <StakeholderForm
-          key="register-new"
-          mode="register"
-          onCancel={() => setPanel({ type: 'none' })}
-          onSaved={handleSaved}
-          onSelectExisting={(existing) => setPanel({ type: 'edit', stakeholder: existing })}
-        />
-      ) : null}
+      <FormDialog
+        open={panel.type === 'register' || panel.type === 'edit'}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPanel({ type: 'none' });
+          }
+        }}
+        title={panel.type === 'edit' ? 'Editar constituyente' : 'Registrar constituyente'}
+        description={
+          panel.type === 'edit'
+            ? 'Actualiza los datos de contacto y rol del constituyente.'
+            : 'Registra una persona o institución vinculada al programa.'
+        }
+        size="md"
+        onRestoreFocus={() => {
+          if (submittedJustNowRef.current) {
+            submittedJustNowRef.current = false;
+            return;
+          }
+          restoreFocus();
+        }}
+      >
+        {panel.type === 'register' ? (
+          <StakeholderForm
+            key="register-new"
+            mode="register"
+            inDialog
+            onCancel={() => setPanel({ type: 'none' })}
+            onSaved={handleSaved}
+            onSelectExisting={(existing) => setPanel({ type: 'edit', stakeholder: existing })}
+          />
+        ) : panel.type === 'edit' ? (
+          <StakeholderForm
+            key={`edit-${panel.stakeholder.id}`}
+            mode="edit"
+            inDialog
+            initialStakeholder={panel.stakeholder}
+            onCancel={() => setPanel({ type: 'none' })}
+            onSaved={handleSaved}
+            onSelectExisting={(existing) => setPanel({ type: 'edit', stakeholder: existing })}
+          />
+        ) : null}
+      </FormDialog>
 
-      {panel.type === 'edit' ? (
-        <StakeholderForm
-          key={`edit-${panel.stakeholder.id}`}
-          mode="edit"
-          initialStakeholder={panel.stakeholder}
-          onCancel={() => setPanel({ type: 'none' })}
-          onSaved={handleSaved}
-          onSelectExisting={(existing) => setPanel({ type: 'edit', stakeholder: existing })}
-        />
-      ) : null}
-
-      {panel.type === 'void' ? (
-        <VoidStakeholderForm
-          key={`void-${panel.stakeholder.id}`}
-          stakeholder={panel.stakeholder}
-          onCancel={() => setPanel({ type: 'none' })}
-          onVoided={handleVoided}
-        />
-      ) : null}
+      <ConfirmDialog
+        open={panel.type === 'void'}
+        onOpenChange={(open) => {
+          if (!open) {
+            voidMutation.reset();
+            setPanel({ type: 'none' });
+          }
+        }}
+        title="Anular constituyente"
+        description={
+          panel.type === 'void'
+            ? `${panel.stakeholder.fullName} · ${getStakeholderDocumentLabel(panel.stakeholder)}. El constituyente no se elimina: queda en el registro como anulado.`
+            : ''
+        }
+        confirmLabel="Confirmar anulación"
+        pendingLabel="Anulando…"
+        tone="destructive"
+        isPending={voidMutation.isPending}
+        error={voidMutation.error ? getStakeholderErrorMessage(voidMutation.error) : null}
+        reason={{
+          label: 'Motivo de la anulación',
+          minLength: STAKEHOLDER_VOID_REASON_MIN_LENGTH,
+          maxLength: STAKEHOLDER_VOID_REASON_MAX_LENGTH,
+        }}
+        onConfirm={async (reason) => {
+          if (voidMutation.isPending || !reason || panel.type !== 'void') {
+            return;
+          }
+          try {
+            const updated = await voidMutation.mutateAsync({
+              id: panel.stakeholder.id,
+              payload: { reason },
+            });
+            handleVoided(updated);
+          } catch {
+            // El error de servidor queda disponible en voidMutation.error.
+          }
+        }}
+      />
 
       <StakeholdersFilters value={filters} onApply={handleApplyFilters} />
 
@@ -205,6 +276,7 @@ export function StakeholdersPage({ initialEditId }: StakeholdersPageProps = {}) 
           <StakeholdersTable
             items={items}
             onEdit={(stakeholder) => {
+              captureActiveElement();
               setSuccessMessage(null);
               setPanel({ type: 'edit', stakeholder });
             }}

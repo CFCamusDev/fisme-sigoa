@@ -50,6 +50,14 @@ export async function expectNoContrastViolations(
     builder = builder.exclude(options.exclude);
   }
 
+  // Esperar a que terminen las animaciones CSS (p. ej. fade-in de pestañas/diálogos)
+  // antes de medir contraste para evitar lecturas con opacidad intermedia.
+  await page.evaluate(() =>
+    Promise.all(
+      document.getAnimations().map((animation) => animation.finished.catch(() => undefined)),
+    ),
+  );
+
   const results = await builder.analyze();
   const screenName = options.screen ?? 'la pantalla';
 

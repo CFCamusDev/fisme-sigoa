@@ -174,9 +174,9 @@ describe('ProcessExecutionsPage (HU-027, T-027-21)', () => {
 
     await screen.findByText(/Aún no hay ejecuciones/i);
     await user.click(screen.getByRole('button', { name: /Nueva ejecución/i }));
-    const formHeading = await screen.findByRole('heading', { name: /Nueva ejecución de proceso/i });
-    const formSection = formHeading.closest('section') as HTMLElement;
-    await user.selectOptions(within(formSection).getByLabelText(/^Proceso$/i), 'P612');
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toHaveClass('w-[640px]');
+    await user.selectOptions(within(dialog).getByLabelText(/^Proceso$/i), 'P612');
 
     const versionSelect = await screen.findByLabelText(/Versión de catálogo/i);
     await waitFor(() => expect((versionSelect as HTMLSelectElement).value).toBe('cv-approved-1'));
@@ -188,6 +188,7 @@ describe('ProcessExecutionsPage (HU-027, T-027-21)', () => {
         /Ejecución «Medición anual de OE 2027» creada en estado Planificado/i,
       ),
     ).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(await screen.findByText('Medición anual de OE 2027')).toBeInTheDocument();
     const table = screen.getByRole('table');
     expect(within(table).getByText('Planificado')).toBeInTheDocument();

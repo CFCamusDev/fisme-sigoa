@@ -176,7 +176,9 @@ describe('ResolutionsPage Component (HU-048, T-048-23, CA1-CA3)', () => {
     async function openForm(user: ReturnType<typeof userEvent.setup>) {
       await screen.findByText('Aún no hay resoluciones registradas');
       await user.click(await screen.findByRole('button', { name: 'Registrar resolución' }));
-      return await screen.findByRole('form', { name: 'Registrar resolución' });
+      const dialog = await screen.findByRole('dialog');
+      expect(dialog).toHaveClass('w-[640px]');
+      return within(dialog).getByRole('form', { name: 'Registrar resolución' });
     }
 
     it('registers a resolution, shows the confirmation and refreshes the list', async () => {

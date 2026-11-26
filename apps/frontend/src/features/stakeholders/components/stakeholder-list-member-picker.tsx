@@ -4,11 +4,13 @@ import { AlertTriangle, CheckCircle2, Search, UserPlus, X } from 'lucide-react';
 import type { StakeholderDto, StakeholderListDto, StakeholderListMemberDto } from '@sigoa/shared';
 import { EmptyState } from '@/components/common/empty-state';
 import { ErrorState } from '@/components/common/error-state';
+import { useReportBusy } from '@/components/common/form-busy-context';
 import { LoadingState } from '@/components/common/loading-state';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { SheetBody, SheetFooter } from '@/components/ui/sheet';
 import {
   Table,
   TableBody,
@@ -35,12 +37,14 @@ const PICKER_PAGE_SIZE = 10;
 
 export interface StakeholderListMemberPickerProps {
   readonly list: StakeholderListDto;
+  readonly inPanel?: boolean;
   readonly onMemberAdded?: (member: StakeholderListMemberDto) => void;
   readonly onClose?: () => void;
 }
 
 export function StakeholderListMemberPicker({
   list,
+  inPanel = false,
   onMemberAdded,
   onClose,
 }: StakeholderListMemberPickerProps) {
@@ -68,6 +72,7 @@ export function StakeholderListMemberPicker({
   });
 
   const addMutation = useAddStakeholderListMember();
+  useReportBusy(addMutation.isPending);
 
   useEffect(() => {
     if (missingFields.length > 0 || actionError) {
@@ -142,6 +147,223 @@ export function StakeholderListMemberPicker({
     void submitMember(stakeholder, trimmed);
   }
 
+  const bodyContent = (
+    <div className="space-y-4">
+      {missingFields.length > 0 ? (
+        <Alert ref={alertRef} variant="warning" role="alert" tabIndex={-1}>
+          <AlertTriangle className="size-4" aria-hidden="true" />
+          <AlertTitle>Datos incompletos en el registro maestro</AlertTitle>
+          <AlertDescription className="space-y-2">
+            <p>Falta en el registro del constituyente: {missingFields.join(', ')}.</p>
+            <Link
+              to="/constituyentes"
+              search={incompleteStakeholderId ? { editar: incompleteStakeholderId } : undefined}
+              className="inline-block font-medium text-foreground underline underline-offset-4"
+            >
+              Completar el registro
+            </Link>
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {actionError ? (
+        <Alert ref={alertRef} variant="danger" role="alert" tabIndex={-1}>
+          <AlertTriangle className="size-4" aria-hidden="true" />
+          <AlertDescription>{actionError}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      <form onSubmit={handleSearchSubmit} className="flex flex-wrap items-end gap-3">
+        <div className="min-w-60 flex-1 space-y-1.5">
+          <Label htmlFor="picker-search">Buscar por nombre, DNI o RUC</Label>
+          <Input
+            id="picker-search"
+            type="text"
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+            placeholder="Ej. Tech Amazonas, 20123456789 o 45678912"
+          />
+        </div>
+        <Button type="submit" variant="outline">
+          <Search className="mr-2 size-4" aria-hidden="true" />
+          Buscar
+        </Button>
+      </form>
+
+      {query.isLoading ? <LoadingState message="Buscando constituyentes…" /> : null}
+
+      {query.isError ? (
+        <ErrorState
+          message={getStakeholderListErrorMessage(query.error)}
+          onRetry={() => void query.refetch()}
+        />
+      ) : null}
+
+      {!query.isLoading && !query.isError && items.length === 0 ? (
+        list.type === 'EMPLOYER' ? (
+          <EmptyState
+            title="No se encontraron instituciones activas"
+            description="Registra la institución en Constituyentes o prueba con otro término de búsqueda."
+            action={
+              <Button type="button" variant="outline" asChild>
+                <Link to="/constituyentes">Ir a Constituyentes</Link>
+              </Button>
+            }
+          />
+        ) : (
+          <EmptyState
+            title="No se encontraron constituyentes activos"
+            description="Prueba con otro término de búsqueda o registra el constituyente en el maestro."
+          />
+        )
+      ) : null}
+
+      {!query.isLoading && !query.isError && items.length > 0 ? (
+        <div className="space-y-3">
+          <div className="overflow-x-auto rounded-lg border border-border">
+            <Table>
+              <caption className="sr-only">
+                Constituyentes activos disponibles para agregar a la lista
+              </caption>
+              <TableHeader>
+                <TableRow>
+                  <TableHead scope="col">Nombre o razón social</TableHead>
+                  <TableHead scope="col">Tipo</TableHead>
+                  <TableHead scope="col">Documento</TableHead>
+                  <TableHead scope="col">Cargo / Institución</TableHead>
+                  <TableHead scope="col" className="text-right">
+                    Acción
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items.map((item) => {
+                  const alreadyInList = existingIds.has(item.id);
+                  const isPending = addMutation.isPending && pendingStakeholderId === item.id;
+                  const isExpanded = expandedId === item.id;
+                  const detailParts = [item.position, item.institution].filter(
+                    (part): part is string => Boolean(part),
+                  );
+                  const detail = detailParts.length > 0 ? detailParts.join(' · ') : '—';
+
+                  return (
+                    <Fragment key={item.id}>
+                      <TableRow>
+                        <TableCell className="font-medium text-foreground">
+                          {item.fullName}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {STAKEHOLDER_KIND_LABELS[item.kind]}
+                        </TableCell>
+                        <TableCell className="text-foreground">
+                          {getStakeholderDocumentLabel(item)}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{detail}</TableCell>
+                        <TableCell className="text-right">
+                          {alreadyInList ? (
+                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                              <CheckCircle2 className="size-4" aria-hidden="true" />
+                              En la lista
+                            </span>
+                          ) : (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={addMutation.isPending}
+                              aria-label={`Agregar ${item.fullName} a la lista`}
+                              onClick={() => handleAddClick(item)}
+                            >
+                              <UserPlus className="mr-1.5 size-4" aria-hidden="true" />
+                              {isPending ? 'Agregando…' : 'Agregar'}
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+
+                      {isExpanded && extraField ? (
+                        <TableRow className="bg-muted/40">
+                          <TableCell colSpan={5} className="p-4">
+                            <form
+                              onSubmit={(event) => handleExtraSubmit(event, item)}
+                              className="flex flex-wrap items-end gap-3"
+                            >
+                              <div className="min-w-64 flex-1 space-y-1.5">
+                                <Label htmlFor={`picker-extra-${item.id}`}>
+                                  {extraField.label}
+                                </Label>
+                                <Input
+                                  id={`picker-extra-${item.id}`}
+                                  type="text"
+                                  value={extraValue}
+                                  onChange={(event) => setExtraValue(event.target.value)}
+                                  placeholder={extraField.placeholder}
+                                />
+                                {extraError ? (
+                                  <p className="text-xs text-destructive">{extraError}</p>
+                                ) : null}
+                              </div>
+                              <div className="flex gap-2">
+                                <Button type="submit" size="sm" disabled={addMutation.isPending}>
+                                  {isPending ? 'Agregando…' : 'Confirmar'}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  disabled={addMutation.isPending}
+                                  onClick={() => {
+                                    setExpandedId(null);
+                                    setExtraValue('');
+                                    setExtraError(null);
+                                  }}
+                                >
+                                  Cancelar
+                                </Button>
+                              </div>
+                            </form>
+                          </TableCell>
+                        </TableRow>
+                      ) : null}
+                    </Fragment>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+
+          <StakeholdersPagination
+            page={page}
+            pageSize={PICKER_PAGE_SIZE}
+            totalPages={totalPages}
+            total={total}
+            onPageChange={setPage}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+
+  if (inPanel) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col">
+        <SheetBody>{bodyContent}</SheetBody>
+        {onClose ? (
+          <SheetFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={addMutation.isPending}
+              onClick={onClose}
+            >
+              Cerrar
+            </Button>
+          </SheetFooter>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 rounded-lg border border-border bg-card p-6 text-card-foreground">
       <div className="flex flex-row items-start justify-between gap-4">
@@ -167,201 +389,7 @@ export function StakeholderListMemberPicker({
           </Button>
         ) : null}
       </div>
-
-      <div className="space-y-4">
-        {missingFields.length > 0 ? (
-          <Alert ref={alertRef} variant="warning" role="alert" tabIndex={-1}>
-            <AlertTriangle className="size-4" aria-hidden="true" />
-            <AlertTitle>Datos incompletos en el registro maestro</AlertTitle>
-            <AlertDescription className="space-y-2">
-              <p>Falta en el registro del constituyente: {missingFields.join(', ')}.</p>
-              <Link
-                to="/constituyentes"
-                search={incompleteStakeholderId ? { editar: incompleteStakeholderId } : undefined}
-                className="inline-block font-medium text-foreground underline underline-offset-4"
-              >
-                Completar el registro
-              </Link>
-            </AlertDescription>
-          </Alert>
-        ) : null}
-
-        {actionError ? (
-          <Alert ref={alertRef} variant="danger" role="alert" tabIndex={-1}>
-            <AlertTriangle className="size-4" aria-hidden="true" />
-            <AlertDescription>{actionError}</AlertDescription>
-          </Alert>
-        ) : null}
-
-        <form onSubmit={handleSearchSubmit} className="flex flex-wrap items-end gap-3">
-          <div className="min-w-60 flex-1 space-y-1.5">
-            <Label htmlFor="picker-search">Buscar por nombre, DNI o RUC</Label>
-            <Input
-              id="picker-search"
-              type="text"
-              value={searchInput}
-              onChange={(event) => setSearchInput(event.target.value)}
-              placeholder="Ej. Tech Amazonas, 20123456789 o 45678912"
-            />
-          </div>
-          <Button type="submit" variant="outline">
-            <Search className="mr-2 size-4" aria-hidden="true" />
-            Buscar
-          </Button>
-        </form>
-
-        {query.isLoading ? <LoadingState message="Buscando constituyentes…" /> : null}
-
-        {query.isError ? (
-          <ErrorState
-            message={getStakeholderListErrorMessage(query.error)}
-            onRetry={() => void query.refetch()}
-          />
-        ) : null}
-
-        {!query.isLoading && !query.isError && items.length === 0 ? (
-          list.type === 'EMPLOYER' ? (
-            <EmptyState
-              title="No se encontraron instituciones activas"
-              description="Registra la institución en Constituyentes o prueba con otro término de búsqueda."
-              action={
-                <Button type="button" variant="outline" asChild>
-                  <Link to="/constituyentes">Ir a Constituyentes</Link>
-                </Button>
-              }
-            />
-          ) : (
-            <EmptyState
-              title="No se encontraron constituyentes activos"
-              description="Prueba con otro término de búsqueda o registra el constituyente en el maestro."
-            />
-          )
-        ) : null}
-
-        {!query.isLoading && !query.isError && items.length > 0 ? (
-          <div className="space-y-3">
-            <div className="overflow-x-auto rounded-lg border border-border">
-              <Table>
-                <caption className="sr-only">
-                  Constituyentes activos disponibles para agregar a la lista
-                </caption>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead scope="col">Nombre o razón social</TableHead>
-                    <TableHead scope="col">Tipo</TableHead>
-                    <TableHead scope="col">Documento</TableHead>
-                    <TableHead scope="col">Cargo / Institución</TableHead>
-                    <TableHead scope="col" className="text-right">
-                      Acción
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {items.map((item) => {
-                    const alreadyInList = existingIds.has(item.id);
-                    const isPending = addMutation.isPending && pendingStakeholderId === item.id;
-                    const isExpanded = expandedId === item.id;
-                    const detailParts = [item.position, item.institution].filter(
-                      (part): part is string => Boolean(part),
-                    );
-                    const detail = detailParts.length > 0 ? detailParts.join(' · ') : '—';
-
-                    return (
-                      <Fragment key={item.id}>
-                        <TableRow>
-                          <TableCell className="font-medium text-foreground">
-                            {item.fullName}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {STAKEHOLDER_KIND_LABELS[item.kind]}
-                          </TableCell>
-                          <TableCell className="text-foreground">
-                            {getStakeholderDocumentLabel(item)}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">{detail}</TableCell>
-                          <TableCell className="text-right">
-                            {alreadyInList ? (
-                              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                                <CheckCircle2 className="size-4" aria-hidden="true" />
-                                En la lista
-                              </span>
-                            ) : (
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                disabled={addMutation.isPending}
-                                aria-label={`Agregar ${item.fullName} a la lista`}
-                                onClick={() => handleAddClick(item)}
-                              >
-                                <UserPlus className="mr-1.5 size-4" aria-hidden="true" />
-                                {isPending ? 'Agregando…' : 'Agregar'}
-                              </Button>
-                            )}
-                          </TableCell>
-                        </TableRow>
-
-                        {isExpanded && extraField ? (
-                          <TableRow className="bg-muted/40">
-                            <TableCell colSpan={5} className="p-4">
-                              <form
-                                onSubmit={(event) => handleExtraSubmit(event, item)}
-                                className="flex flex-wrap items-end gap-3"
-                              >
-                                <div className="min-w-64 flex-1 space-y-1.5">
-                                  <Label htmlFor={`picker-extra-${item.id}`}>
-                                    {extraField.label}
-                                  </Label>
-                                  <Input
-                                    id={`picker-extra-${item.id}`}
-                                    type="text"
-                                    value={extraValue}
-                                    onChange={(event) => setExtraValue(event.target.value)}
-                                    placeholder={extraField.placeholder}
-                                  />
-                                  {extraError ? (
-                                    <p className="text-xs text-destructive">{extraError}</p>
-                                  ) : null}
-                                </div>
-                                <div className="flex gap-2">
-                                  <Button type="submit" size="sm" disabled={addMutation.isPending}>
-                                    {isPending ? 'Agregando…' : 'Confirmar'}
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="ghost"
-                                    disabled={addMutation.isPending}
-                                    onClick={() => {
-                                      setExpandedId(null);
-                                      setExtraValue('');
-                                      setExtraError(null);
-                                    }}
-                                  >
-                                    Cancelar
-                                  </Button>
-                                </div>
-                              </form>
-                            </TableCell>
-                          </TableRow>
-                        ) : null}
-                      </Fragment>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-
-            <StakeholdersPagination
-              page={page}
-              pageSize={PICKER_PAGE_SIZE}
-              totalPages={totalPages}
-              total={total}
-              onPageChange={setPage}
-            />
-          </div>
-        ) : null}
-      </div>
+      {bodyContent}
     </div>
   );
 }

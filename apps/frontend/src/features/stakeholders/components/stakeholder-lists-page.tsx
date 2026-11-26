@@ -10,10 +10,13 @@ import type {
 import { Can } from '@/components/common/can';
 import { EmptyState } from '@/components/common/empty-state';
 import { ErrorState } from '@/components/common/error-state';
+import { FormDialog } from '@/components/common/form-dialog';
+import { FormSheet } from '@/components/common/form-sheet';
 import { LoadingState } from '@/components/common/loading-state';
 import { PageHeader } from '@/components/common/page-header';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { useRestoreFocus } from '@/hooks/use-restore-focus';
 import { saveBlobFile } from '@/lib/blob-download';
 import { useDownloadStakeholderListPdf } from '../hooks/use-download-stakeholder-list-pdf';
 import { useStakeholderLists } from '../hooks/use-stakeholder-lists';
@@ -30,7 +33,7 @@ import {
 import { StakeholderListMemberPicker } from './stakeholder-list-member-picker';
 import { StakeholderListMembersTable } from './stakeholder-list-members-table';
 
-type ActivePanel = 'none' | 'picker' | 'copy' | 'import';
+type ActivePanel = 'none' | 'create' | 'picker' | 'copy' | 'import';
 
 const numberFormatter = new Intl.NumberFormat('es-PE');
 
@@ -46,6 +49,8 @@ export function StakeholderListsPage() {
   const [pdfError, setPdfError] = useState<string | null>(null);
   const successAlertRef = useRef<HTMLDivElement>(null);
   const importButtonRef = useRef<HTMLButtonElement>(null);
+  const submittedImportRef = useRef(false);
+  const { remember: rememberFocus, restore: restoreFocus } = useRestoreFocus();
 
   const query = useStakeholderLists({
     type: filters.type,
@@ -55,10 +60,10 @@ export function StakeholderListsPage() {
   const downloadPdfMutation = useDownloadStakeholderListPdf();
 
   useEffect(() => {
-    if (successMessage || importResult) {
+    if ((successMessage || importResult) && activePanel !== 'picker') {
       successAlertRef.current?.focus();
     }
-  }, [successMessage, importResult]);
+  }, [successMessage, importResult, activePanel]);
 
   const list: StakeholderListDto | null = query.data?.items[0] ?? null;
   const members = list?.members ?? [];
@@ -108,6 +113,7 @@ export function StakeholderListsPage() {
   }
 
   function handleImported(result: ConfirmStakeholderImportResponse) {
+    submittedImportRef.current = true;
     setActivePanel('none');
     setSkippedItems([]);
     setSuccessMessage(null);
@@ -116,7 +122,6 @@ export function StakeholderListsPage() {
 
   function handleCancelImport() {
     setActivePanel('none');
-    importButtonRef.current?.focus();
   }
 
   return (
@@ -168,14 +173,42 @@ export function StakeholderListsPage() {
           <EmptyState
             title={`No existe lista de ${STAKEHOLDER_LIST_TYPE_LABELS[filters.type]} para ${filters.year}`}
             description="Crea la lista para empezar a incorporar constituyentes del registro maestro."
+            action={
+              <Can permission="constituyente.editar">
+                <Button
+                  type="button"
+                  onClick={(event) => {
+                    rememberFocus(event.currentTarget);
+                    setActivePanel('create');
+                  }}
+                >
+                  Crear lista
+                </Button>
+              </Can>
+            }
           />
-          <Can permission="constituyente.editar">
-            <CreateStakeholderListForm
-              type={filters.type}
-              year={filters.year}
-              onCreated={handleCreated}
-            />
-          </Can>
+          <FormDialog
+            open={activePanel === 'create'}
+            onOpenChange={(open) => {
+              if (!open) {
+                setActivePanel('none');
+              }
+            }}
+            title={`Crear lista de ${STAKEHOLDER_LIST_TYPE_LABELS[filters.type]} ${filters.year}`}
+            description="Completa los datos opcionales de cabecera del Anexo 3 para habilitar la lista."
+            size="md"
+            onRestoreFocus={restoreFocus}
+          >
+            {activePanel === 'create' ? (
+              <CreateStakeholderListForm
+                type={filters.type}
+                year={filters.year}
+                inDialog
+                onCancel={() => setActivePanel('none')}
+                onCreated={handleCreated}
+              />
+            ) : null}
+          </FormDialog>
         </div>
       ) : null}
 
@@ -198,9 +231,10 @@ export function StakeholderListsPage() {
                 <Can permission="constituyente.editar">
                   <Button
                     type="button"
-                    onClick={() =>
-                      setActivePanel((current) => (current === 'picker' ? 'none' : 'picker'))
-                    }
+                    onClick={(event) => {
+                      rememberFocus(event.currentTarget);
+                      setActivePanel((current) => (current === 'picker' ? 'none' : 'picker'));
+                    }}
                   >
                     <UserPlus className="mr-2 size-4" aria-hidden="true" />
                     Agregar constituyentes
@@ -208,9 +242,10 @@ export function StakeholderListsPage() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() =>
-                      setActivePanel((current) => (current === 'copy' ? 'none' : 'copy'))
-                    }
+                    onClick={(event) => {
+                      rememberFocus(event.currentTarget);
+                      setActivePanel((current) => (current === 'copy' ? 'none' : 'copy'));
+                    }}
                   >
                     <Copy className="mr-2 size-4" aria-hidden="true" />
                     Copiar para nuevo año
@@ -269,32 +304,84 @@ export function StakeholderListsPage() {
             ) : null}
           </div>
 
-          {activePanel === 'picker' ? (
-            <StakeholderListMemberPicker
-              list={list}
-              onMemberAdded={(added) => {
-                setSkippedItems([]);
-                setSuccessMessage(`Se agregó "${added.fullName}" a la lista.`);
-              }}
-              onClose={() => setActivePanel('none')}
-            />
-          ) : null}
+          <FormSheet
+            open={activePanel === 'picker'}
+            onOpenChange={(open) => {
+              if (!open) {
+                setActivePanel('none');
+              }
+            }}
+            title="Agregar constituyentes del registro maestro"
+            description={`Lista de ${STAKEHOLDER_LIST_TYPE_LABELS[list.type]} ${list.year}. ${
+              list.type === 'EMPLOYER'
+                ? 'Solo se muestran instituciones activas del registro maestro.'
+                : 'Solo se muestran constituyentes activos.'
+            }`}
+            size="md"
+            onRestoreFocus={restoreFocus}
+          >
+            {activePanel === 'picker' ? (
+              <StakeholderListMemberPicker
+                list={list}
+                inPanel
+                onMemberAdded={(added) => {
+                  setSkippedItems([]);
+                  setSuccessMessage(`Se agregó "${added.fullName}" a la lista.`);
+                }}
+                onClose={() => setActivePanel('none')}
+              />
+            ) : null}
+          </FormSheet>
 
-          {activePanel === 'copy' ? (
-            <CopyStakeholderListForm
-              sourceList={list}
-              onCopied={handleCopied}
-              onCancel={() => setActivePanel('none')}
-            />
-          ) : null}
+          <FormSheet
+            open={activePanel === 'copy'}
+            onOpenChange={(open) => {
+              if (!open) {
+                setActivePanel('none');
+              }
+            }}
+            title={`Copiar lista de ${STAKEHOLDER_LIST_TYPE_LABELS[list.type]} ${list.year}`}
+            description="Se creará una nueva lista para el año destino con los miembros activos y completos del registro maestro."
+            size="sm"
+            onRestoreFocus={restoreFocus}
+          >
+            {activePanel === 'copy' ? (
+              <CopyStakeholderListForm
+                sourceList={list}
+                inPanel
+                onCopied={handleCopied}
+                onCancel={() => setActivePanel('none')}
+              />
+            ) : null}
+          </FormSheet>
 
-          {activePanel === 'import' ? (
-            <StakeholderImportWizard
-              list={list}
-              onImported={handleImported}
-              onCancel={handleCancelImport}
-            />
-          ) : null}
+          <FormDialog
+            open={activePanel === 'import'}
+            onOpenChange={(open) => {
+              if (!open) {
+                handleCancelImport();
+              }
+            }}
+            title={`Importar constituyentes desde Excel — ${STAKEHOLDER_LIST_TYPE_LABELS[list.type]} ${list.year}`}
+            description="Descarga la plantilla oficial, llénala con tus registros (máximo 500 filas y 2 MiB) y revisa la vista previa antes de confirmar."
+            size="lg"
+            onRestoreFocus={() => {
+              if (submittedImportRef.current) {
+                submittedImportRef.current = false;
+                return;
+              }
+              importButtonRef.current?.focus();
+            }}
+          >
+            {activePanel === 'import' ? (
+              <StakeholderImportWizard
+                list={list}
+                inDialog
+                onImported={handleImported}
+                onCancel={handleCancelImport}
+              />
+            ) : null}
+          </FormDialog>
 
           {members.length > 0 ? (
             <StakeholderListMembersTable type={list.type} year={list.year} members={members} />

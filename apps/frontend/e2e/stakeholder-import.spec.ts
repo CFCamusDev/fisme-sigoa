@@ -25,7 +25,10 @@ async function openCreatedEmployersList2027(page: import('@playwright/test').Pag
     page.getByRole('button', { name: 'Ver lista' }).click(),
   ]);
 
-  await page.getByLabel(/N\.° de plan de estudios/i).fill('2024-II');
+  await page.getByRole('button', { name: 'Crear lista' }).click();
+  const createDialog = page.getByRole('dialog');
+  await expect(createDialog).toBeVisible();
+  await createDialog.getByLabel(/N\.° de plan de estudios/i).fill('2024-II');
   await Promise.all([
     page.waitForResponse(
       (res) =>
@@ -33,7 +36,7 @@ async function openCreatedEmployersList2027(page: import('@playwright/test').Pag
         res.request().method() === 'POST' &&
         res.status() === 201,
     ),
-    page.getByRole('button', { name: 'Crear lista' }).click(),
+    createDialog.getByRole('button', { name: 'Crear lista' }).click(),
   ]);
 
   await expect(page.getByRole('status')).toContainText('creada correctamente');
@@ -166,6 +169,8 @@ test.describe('Stakeholder Import E2E Flow (HU-023, T-023-19, CA1, CA2, CA3)', (
       page.getByRole('button', { name: 'Ver vista previa' }).click(),
     ]);
 
+    await page.getByRole('button', { name: 'Continuar' }).click();
+
     const [confirmResponse] = await Promise.all([
       page.waitForResponse(
         (res) =>
@@ -243,9 +248,7 @@ test.describe('Stakeholder Import E2E Flow (HU-023, T-023-19, CA1, CA2, CA3)', (
 
     await page.getByRole('button', { name: 'Cancelar' }).click();
 
-    await expect(
-      page.getByRole('region', { name: /Importar constituyentes desde Excel/i }),
-    ).not.toBeVisible();
+    await expect(page.getByRole('dialog')).not.toBeVisible();
     await expect(page.getByText('La lista aún no tiene miembros')).toBeVisible();
     expect(confirmRequests).toBe(0);
     expect(pageErrors).toEqual([]);
