@@ -72,6 +72,26 @@ jobs:
           fi
           echo "Convenciones correctas."
 
+  publicacion:
+    name: Seguridad de publicación
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - name: Autoprueba del verificador de seguridad pública
+        run: node --test scripts/ci/check-public-safety.test.mjs
+      - name: Verificar seguridad de publicación en el PR
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: node scripts/ci/check-public-safety.mjs --range "$BASE_SHA"
+
   estaticas:
     name: Calidad · Estáticas
     runs-on: ubuntu-latest

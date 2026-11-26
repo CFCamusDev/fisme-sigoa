@@ -183,6 +183,7 @@ describe('verify-pr-local pure logic (T-002-22 / G1)', () => {
     expect(quickIds).toContain('branch-name');
     expect(quickIds).toContain('commit-messages');
     expect(quickIds).toContain('forbidden-files');
+    expect(quickIds).toContain('public-safety');
     expect(quickIds).toContain('env-parity');
     expect(quickIds).toContain('windows-paths');
     expect(quickIds).toContain('test-patterns');
@@ -632,6 +633,20 @@ describe('verify-pr-local pure logic (T-002-22 / G1)', () => {
         `Se encontraron pasos en pr-checks.yml no mapeados en verify-pr-local:\n${driftResult.unmappedCommands.join('\n')}`,
       ).toBe(true);
       expect(driftResult.unmappedCommands).toEqual([]);
+    });
+
+    it('maps the public safety step in the workflow drift guard', () => {
+      const sampleYaml = [
+        'jobs:',
+        '  publicacion:',
+        '    steps:',
+        '      - run: node --test scripts/ci/check-public-safety.test.mjs',
+        '      - run: node scripts/ci/check-public-safety.mjs --range "$BASE_SHA"',
+      ].join('\n');
+
+      const drift = checkWorkflowDrift(sampleYaml);
+      expect(drift.inParity).toBe(true);
+      expect(drift.unmappedCommands).toEqual([]);
     });
 
     it('package.json exposes the five verify scripts', () => {

@@ -233,6 +233,15 @@ export function buildExecutionPlan(mode, options = {}) {
       'Elimina del commit archivos locales (AGENTS.md, plans, .env) o quítalos con git rm --cached.',
   });
   plan.push({
+    id: 'public-safety',
+    name: 'Seguridad de publicación (AGENTS §11)',
+    group: 'convenciones',
+    command: `node scripts/ci/check-public-safety.mjs --range ${options.baseBranch || 'origin/develop'}`,
+    actionSuggestion:
+      'Elimina rutas fuera de la lista permitida, archivos de datos/entorno o secretos detectados por check-public-safety.',
+    timeoutMs: 30_000,
+  });
+  plan.push({
     id: 'branch-sync',
     name: 'Sincronía con rama base y sin conflictos',
     group: 'convenciones',
@@ -1206,6 +1215,12 @@ export function checkWorkflowDrift(workflowYamlContent, mappedChecks = buildExec
       if (rawCommand.includes('smoke-fresh-deploy.sh') && mc.includes('smoke-fresh-deploy.sh'))
         return true;
       if (rawCommand.includes('test:e2e') && mc.includes('test:e2e')) return true;
+      if (
+        (rawCommand.includes('check-public-safety.test.mjs') ||
+          rawCommand.includes('check-public-safety.mjs')) &&
+        mc.includes('check-public-safety')
+      )
+        return true;
       return false;
     });
 
@@ -1240,6 +1255,7 @@ const STEP_PARALLEL_GROUP = {
   'branch-name': 'convenciones',
   'commit-messages': 'convenciones',
   'forbidden-files': 'convenciones',
+  'public-safety': 'convenciones',
   'branch-sync': 'convenciones',
   'env-parity': 'estaticas',
   'windows-paths': 'estaticas',
