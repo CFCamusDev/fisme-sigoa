@@ -45,26 +45,56 @@ export function parseArgs(argv) {
 
 /**
  * Recolecta los archivos cambiados desde `base` (incluye no confirmados y sin seguimiento).
+ * Con `mergeBase: true` compara contra `git merge-base <base> HEAD` (equivalente a `base...HEAD`).
  * Devuelve `null` si no se puede calcular el diff (por ejemplo, base inexistente).
- * @param {string} base
- * @param {string} [root]
+ * @param {string | { base?: string, root?: string, mergeBase?: boolean, exec?: typeof execFileSync }} [baseOrOptions]
+ * @param {string} [rootArg]
  * @returns {string[] | null}
  */
-export function collectChangedFiles(base = 'develop', root = repoRoot) {
+export function collectChangedFiles(baseOrOptions = 'develop', rootArg = repoRoot) {
+  const opts =
+    typeof baseOrOptions === 'object' && baseOrOptions !== null
+      ? {
+          base: baseOrOptions.base ?? 'develop',
+          root: baseOrOptions.root ?? repoRoot,
+          mergeBase: Boolean(baseOrOptions.mergeBase),
+          exec: baseOrOptions.exec ?? execFileSync,
+        }
+      : {
+          base: baseOrOptions,
+          root: rootArg,
+          mergeBase: false,
+          exec: execFileSync,
+        };
+
   try {
-    const changed = execFileSync(
-      'git',
-      ['-c', 'core.quotepath=false', 'diff', '--name-only', '--diff-filter=d', base],
-      { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
-    )
+    let diffTarget = opts.base;
+    if (opts.mergeBase) {
+      diffTarget = opts
+        .exec('git', ['merge-base', opts.base, 'HEAD'], {
+          cwd: opts.root,
+          encoding: 'utf8',
+          stdio: ['ignore', 'pipe', 'pipe'],
+        })
+        .trim();
+      if (!diffTarget) return null;
+    }
+
+    const changed = opts
+      .exec('git', ['-c', 'core.quotepath=false', 'diff', '--name-only', '--diff-filter=d', diffTarget], {
+        cwd: opts.root,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+      })
       .split(/\r?\n/)
       .filter(Boolean);
 
-    const untracked = execFileSync('git', ['ls-files', '--others', '--exclude-standard'], {
-      cwd: root,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe'],
-    })
+    const untracked = opts
+      .exec('git', ['ls-files', '--others', '--exclude-standard'], {
+        cwd: opts.root,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+      })
       .split(/\r?\n/)
       .filter(Boolean);
 
@@ -302,7 +332,7 @@ export function selectAffected({ changedFiles, graph, rules = loadRules() }) {
 
 /**
  * Construye el grafo del repositorio, refina `@sigoa/shared` y calcula la selección.
- * @param {{ base?: string, root?: string, changedFiles?: string[] | null }} [options]
+ * @param {{ base?: string, root?: string, mergeBase?: boolean, changedFiles?: string[] | null }} [options]
  */
 export function runSelection(options = {}) {
   const root = options.root ?? repoRoot;
@@ -312,7 +342,11 @@ export function runSelection(options = {}) {
   const changedFiles =
     options.changedFiles !== undefined
       ? options.changedFiles
-      : collectChangedFiles(options.base ?? 'develop', root);
+      : collectChangedFiles({
+          base: options.base ?? 'develop',
+          root,
+          mergeBase: Boolean(options.mergeBase),
+        });
 
   return selectAffected({ changedFiles, graph, rules });
 }

@@ -9,6 +9,7 @@ import {
   // @ts-expect-error script ESM sin declaraciones .d.ts
 } from '../../../../scripts/ci/affected/rules.mjs';
 import {
+  collectChangedFiles,
   decideE2eScope,
   parseArgs,
   selectAffected,
@@ -268,5 +269,36 @@ describe('affected selection engine (T-085-18, CA1, CA3, CA4, CA7)', () => {
         selection: { ...selectionResult, mode: 'all' },
       }),
     ).toEqual([]);
+  });
+
+  it('computes the diff against the merge base', () => {
+    const calls: string[][] = [];
+    const fakeExec = (_cmd: string, args: string[]) => {
+      calls.push(args);
+      if (args[0] === 'merge-base') return 'abc1234\n';
+      if (args.includes('diff')) return 'apps/backend/src/a.ts\n';
+      return 'apps/backend/src/untracked.ts\n';
+    };
+
+    const files = collectChangedFiles({
+      base: 'develop',
+      root: '/repo',
+      mergeBase: true,
+      exec: fakeExec,
+    });
+
+    expect(calls[0]).toEqual(['merge-base', 'develop', 'HEAD']);
+    expect(calls[1]).toContain('abc1234');
+    expect(files).toEqual(['apps/backend/src/a.ts', 'apps/backend/src/untracked.ts']);
+
+    const failed = collectChangedFiles({
+      base: 'missing-ref',
+      root: '/repo',
+      mergeBase: true,
+      exec: () => {
+        throw new Error('bad revision');
+      },
+    });
+    expect(failed).toBeNull();
   });
 });
