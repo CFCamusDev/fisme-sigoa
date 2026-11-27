@@ -6,6 +6,7 @@ import os from 'node:os';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { resolveBashPath } from './resolve-bash-path.mjs';
+import { collectChangedFiles, runSelection } from './affected/select.mjs';
 
 /**
  * Valida el nombre de la rama según convenciones institucionales (AGENTS §8.1).
@@ -569,6 +570,7 @@ export function createReportJson(data) {
     parallel: (data.jobs || 1) > 1,
     repeatScope: data.repeatScope || 'all',
     repeatedTests: data.repeatedTests || [],
+    scope: data.scope || null,
     timings: data.timings || null,
     timeWarnings: data.timings?.warnings || [],
     cleanWorkingTree: Boolean(data.cleanWorkingTree),
@@ -591,6 +593,15 @@ export function formatReportTable(report) {
   lines.push('======================================================================');
   lines.push(` REPORTE DE VERIFICACIÓN LOCAL DE PR (Modo: ${report.mode})`);
   lines.push(` Rama: ${report.branch} | Commit: ${report.headSha}`);
+  if (report.scope) {
+    const scopeLabel = report.scope.mode === 'affected' ? 'afectadas' : 'todo';
+    const counts =
+      typeof report.scope.selected === 'number' && typeof report.scope.total === 'number'
+        ? ` · seleccionadas ${report.scope.selected} de ${report.scope.total}`
+        : '';
+    const reasonText = report.scope.reason ? ` (${report.scope.reason})` : '';
+    lines.push(` Alcance: ${scopeLabel}${counts}${reasonText}`);
+  }
   lines.push('======================================================================');
 
   for (const check of report.checks) {
@@ -776,6 +787,239 @@ export function decideScopeSkips(changedFiles, options = {}) {
     .filter(Boolean)
     .some(touchesImageOrPdfScope);
   return { skipIds: touches ? [] : [...SCOPE_SKIPPABLE_STEP_IDS], reason: SCOPE_SKIP_REASON };
+}
+
+export const MAX_COMMAND_LENGTH = 6000;
+
+function stripPackagePrefix(files, prefix) {
+  return files.map((file) => (file.startsWith(prefix) ? file.slice(prefix.length) : file));
+}
+
+function buildVitestScopedCommand(filter, extraArgs, relFiles, fallbackCommand, maxLen) {
+  const args = [`pnpm --filter ${filter} exec vitest run`, ...extraArgs, ...relFiles.map((f) => `"${f}"`)];
+  const cmd = args.join(' ');
+  if (cmd.length > maxLen) {
+    return { command: fallbackCommand, tooLong: true };
+  }
+  return { command: cmd, tooLong: false };
+}
+
+function touchesAppOrPackageCode(changedFiles) {
+  const testRegex = /\.(test|spec)\.(ts|tsx|mjs|js)$/;
+  return (changedFiles || []).some((raw) => {
+    const file = raw.trim().replace(/\\/g, '/');
+    if (!file) return false;
+    if (!file.startsWith('apps/') && !file.startsWith('packages/')) return false;
+    if (file.startsWith('apps/frontend/e2e/')) return false;
+    if (testRegex.test(file)) return false;
+    return true;
+  });
+}
+
+/**
+ * Construye el resumen de alcance para el informe `last-report.json`.
+ */
+export function buildScopeSummary(selectionResult, options = {}) {
+  const forced = Boolean(options.ci || options.forceAll);
+  if (forced || !selectionResult || selectionResult.mode === 'all') {
+    const totals = selectionResult?.totals ?? {};
+    const total =
+      (totals.backendUnit?.total ?? 0) +
+      (totals.backendIntegration?.total ?? 0) +
+      (totals.frontend?.total ?? 0) +
+      (totals.shared?.total ?? 0);
+    return {
+      mode: 'all',
+      reason: options.forceAll
+        ? 'Ejecución completa solicitada con --force-all'
+        : options.ci
+          ? 'Ejecución completa obligatoria en CI'
+          : (selectionResult?.reason ?? 'Ejecución completa'),
+      selected: total,
+      total,
+      e2e: selectionResult?.selection?.e2e ?? { scope: 'full', reason: 'Ejecución completa' },
+      forced,
+    };
+  }
+
+  const t = selectionResult.totals ?? {};
+  const selected =
+    (t.backendUnit?.selected ?? 0) +
+    (t.backendIntegration?.selected ?? 0) +
+    (t.frontend?.selected ?? 0) +
+    (t.shared?.selected ?? 0);
+  const total =
+    (t.backendUnit?.total ?? 0) +
+    (t.backendIntegration?.total ?? 0) +
+    (t.frontend?.total ?? 0) +
+    (t.shared?.total ?? 0);
+
+  return {
+    mode: 'affected',
+    reason: selectionResult.reason,
+    selected,
+    total,
+    e2e: selectionResult.selection?.e2e ?? { scope: 'none', reason: 'Sin cambios que afecten E2E' },
+    forced: false,
+  };
+}
+
+/**
+ * Aplica la selección del motor sobre los pasos de `buildExecutionPlan` sin alterar los comandos base.
+ * Agrega `scopedCommand`, `skippedByScope` y `scopeReason`.
+ * @param {Array<Record<string, any>>} plan
+ * @param {Record<string, any> | null | undefined} selectionResult
+ * @param {{ ci?: boolean, forceAll?: boolean, changedFiles?: string[] | null, maxCommandLength?: number }} [options]
+ */
+export function applyScopeToPlan(plan, selectionResult, options = {}) {
+  const maxLen = options.maxCommandLength ?? MAX_COMMAND_LENGTH;
+  if (options.ci || options.forceAll || !selectionResult || selectionResult.mode === 'all') {
+    return plan;
+  }
+
+  const sel = selectionResult.selection ?? {};
+  const changedFiles = Array.isArray(options.changedFiles) ? options.changedFiles : [];
+  const imageSkipDecision = decideScopeSkips(changedFiles, {
+    ci: options.ci,
+    forceAll: options.forceAll,
+  });
+  const imageSkipSet = new Set(imageSkipDecision.skipIds);
+
+  return plan.map((step) => {
+    if (step.id === 'integration-tests') {
+      const files = stripPackagePrefix(sel.backendIntegration ?? [], 'apps/backend/');
+      if (files.length === 0) {
+        return {
+          ...step,
+          skippedByScope: true,
+          scopeReason: 'Sin pruebas de integración afectadas.',
+        };
+      }
+      const built = buildVitestScopedCommand(
+        'backend',
+        ['--project', 'integration'],
+        files,
+        step.command,
+        maxLen,
+      );
+      if (built.tooLong) {
+        return {
+          ...step,
+          scopeReason: 'Lista demasiado larga; se ejecuta la categoría completa.',
+        };
+      }
+      return {
+        ...step,
+        scopedCommand: built.command,
+        scopeReason: `${files.length} prueba(s) de integración seleccionada(s).`,
+      };
+    }
+
+    if (step.id === 'test-coverage') {
+      const backendFiles = stripPackagePrefix(sel.backendUnit ?? [], 'apps/backend/');
+      const frontendFiles = stripPackagePrefix(sel.frontend ?? [], 'apps/frontend/');
+      const sharedFiles = stripPackagePrefix(sel.shared ?? [], 'packages/shared/');
+
+      if (backendFiles.length === 0 && frontendFiles.length === 0 && sharedFiles.length === 0) {
+        return {
+          ...step,
+          skippedByScope: true,
+          scopeReason: 'Sin pruebas unitarias afectadas.',
+        };
+      }
+
+      const subCommands = [];
+      let anyTooLong = false;
+
+      if (backendFiles.length > 0) {
+        const built = buildVitestScopedCommand(
+          'backend',
+          ['--project', 'unit'],
+          backendFiles,
+          'pnpm --filter backend test:coverage',
+          maxLen,
+        );
+        subCommands.push(built.command);
+        if (built.tooLong) anyTooLong = true;
+      }
+      if (frontendFiles.length > 0) {
+        const built = buildVitestScopedCommand(
+          'frontend',
+          [],
+          frontendFiles,
+          'pnpm --filter frontend test:coverage',
+          maxLen,
+        );
+        subCommands.push(built.command);
+        if (built.tooLong) anyTooLong = true;
+      }
+      if (sharedFiles.length > 0) {
+        const built = buildVitestScopedCommand(
+          '@sigoa/shared',
+          [],
+          sharedFiles,
+          'pnpm --filter @sigoa/shared test',
+          maxLen,
+        );
+        subCommands.push(built.command);
+        if (built.tooLong) anyTooLong = true;
+      }
+
+      return {
+        ...step,
+        scopedCommand: subCommands.join(' && '),
+        scopeReason: anyTooLong
+          ? 'Lista demasiado larga en algún paquete; se ejecuta completo.'
+          : 'Pruebas unitarias afectadas.',
+      };
+    }
+
+    if (step.id === 'pdf-stability') {
+      const touchesPdf =
+        (sel.backendIntegration ?? []).some((f) => f.includes('/src/shared/pdf/')) ||
+        changedFiles.some((f) => touchesImageOrPdfScope(f.trim().replace(/\\/g, '/')));
+      if (!touchesPdf) {
+        return {
+          ...step,
+          skippedByScope: true,
+          scopeReason: 'Sin cambios ni pruebas afectadas de PDF.',
+        };
+      }
+      return step;
+    }
+
+    if (step.id === 'e2e') {
+      if (sel.e2e?.scope === 'none') {
+        return {
+          ...step,
+          skippedByScope: true,
+          scopeReason: sel.e2e.reason || 'Sin cambios que afecten E2E.',
+        };
+      }
+      return step;
+    }
+
+    if (step.id === 'build') {
+      if (!touchesAppOrPackageCode(changedFiles)) {
+        return {
+          ...step,
+          skippedByScope: true,
+          scopeReason: 'Sin cambios de código en apps/ ni packages/.',
+        };
+      }
+      return step;
+    }
+
+    if (imageSkipSet.has(step.id)) {
+      return {
+        ...step,
+        skippedByScope: true,
+        scopeReason: SCOPE_SKIP_REASON,
+      };
+    }
+
+    return step;
+  });
 }
 
 /** Máximo de archivos de prueba que se repiten con --repeat-scope changed (HU-078, D3). */
@@ -1392,7 +1636,7 @@ export function buildGroupEnvironment(groupId, options = {}) {
  * @returns {string | undefined}
  */
 export function commandForParallelRun(step) {
-  return step.parallelCommand ?? step.command;
+  return step.scopedCommand ?? step.parallelCommand ?? step.command;
 }
 
 const IS_WINDOWS = os.type() === 'Windows_NT';
@@ -1674,30 +1918,38 @@ async function runCli() {
     );
   }
   const forceAll = args.includes('--force-all');
-  let changedFilesForScope = null;
-  try {
-    changedFilesForScope = execSync(
-      `git -c core.quotepath=false diff --name-only ${baseBranch}...HEAD`,
-      {
-        encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'ignore'],
-      },
-    )
-      .split(/\r?\n/)
-      .filter(Boolean);
-  } catch {
-    changedFilesForScope = null;
-  }
-  const scopeDecision = decideScopeSkips(changedFilesForScope, {
-    ci: Boolean(process.env.CI),
+  const explainMode = args.includes('--explain');
+  const isCi = Boolean(process.env.CI);
+  const changedFilesForScope = collectChangedFiles({
+    base: baseBranch,
+    mergeBase: true,
+  });
+  const selectionResult = runSelection({
+    base: baseBranch,
+    mergeBase: true,
+    changedFiles: changedFilesForScope,
+  });
+  const scopeSummary = buildScopeSummary(selectionResult, {
+    ci: isCi,
     forceAll,
   });
-  const plan = planRepeatedSteps(rawPlan, repeat, {
+
+  if (explainMode) {
+    console.log(`Alcance: ${scopeSummary.mode} · Motivo: ${scopeSummary.reason}`);
+    for (const item of selectionResult.explain ?? []) {
+      console.log(`  - ${item.target}: ${item.reason}`);
+    }
+  }
+
+  const repeatedPlan = planRepeatedSteps(rawPlan, repeat, {
     scope: repeatScope,
     changedTests: changedTests.files,
-  }).map((step) =>
-    scopeDecision.skipIds.includes(step.id) ? { ...step, skippedByScope: true } : step,
-  );
+  });
+  const plan = applyScopeToPlan(repeatedPlan, selectionResult, {
+    ci: isCi,
+    forceAll,
+    changedFiles: changedFilesForScope,
+  });
   const groups = planParallelGroups(plan);
   const results = new Map();
 
@@ -1730,13 +1982,14 @@ async function runCli() {
     };
 
     if (check.skippedByScope) {
+      const skipReason = check.scopeReason || SCOPE_SKIP_REASON;
       const result = {
         ...check,
         status: 'omitted',
         durationMs: 0,
-        reason: SCOPE_SKIP_REASON,
+        reason: skipReason,
       };
-      console.log(`⚠ [${check.parallelGroup}] ${check.name} (${SCOPE_SKIP_REASON})`);
+      console.log(`⚠ [${check.parallelGroup}] ${check.name} (${skipReason})`);
       return result;
     }
 
@@ -1951,6 +2204,7 @@ async function runCli() {
     repeat,
     repeatScope,
     repeatedTests: changedTests.files,
+    scope: scopeSummary,
     cleanWorkingTree: isTreeClean,
     startedAt,
     completedAt,
