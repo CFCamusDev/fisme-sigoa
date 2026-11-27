@@ -1,0 +1,21 @@
+{
+  "description": "Muestras ficticias/estructurales del repositorio para el arnés de inyección de defectos (T-085-14).",
+  "samples": [
+    {
+      "category": "application",
+      "file": "apps/backend/src/modules/users/application/bootstrap-admin.ts"
+    },
+    {
+      "category": "shared",
+      "file": "packages/shared/src/annexes.ts"
+    },
+    {
+      "category": "frontend",
+      "file": "apps/frontend/src/lib/date.ts"
+    },
+    {
+      "category": "compositionRoot",
+      "file": "apps/backend/src/routes.ts"
+    }
+  ]
+}

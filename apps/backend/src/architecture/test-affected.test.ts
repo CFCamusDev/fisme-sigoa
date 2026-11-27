@@ -4,17 +4,20 @@ import { describe, expect, it } from 'vitest';
 import {
   PACKAGES,
   buildAffectedCommands,
+  buildCommandsFromSelection,
   classifyChangedFiles,
   parseArgs,
   // @ts-expect-error script sin archivo de declaraciones .d.ts
 } from '../../../../scripts/perf/test-affected.mjs';
 
-describe('test-affected script (T-078-18)', () => {
-  it('parses --base and --dry-run and rejects unknown arguments', () => {
-    expect(parseArgs([])).toEqual({ base: 'develop', dryRun: false });
-    expect(parseArgs(['--base', 'origin/develop', '--dry-run'])).toEqual({
+describe('test-affected script (T-078-18, T-085-07)', () => {
+  it('parses --base, --dry-run, --explain and --all and rejects unknown arguments', () => {
+    expect(parseArgs([])).toEqual({ base: 'develop', dryRun: false, explain: false, all: false });
+    expect(parseArgs(['--base', 'origin/develop', '--dry-run', '--explain', '--all'])).toEqual({
       base: 'origin/develop',
       dryRun: true,
+      explain: true,
+      all: true,
     });
     expect(() => parseArgs(['--base'])).toThrow(/--base requiere/);
     expect(() => parseArgs(['--base', '--dry-run'])).toThrow(/--base requiere/);
@@ -80,6 +83,55 @@ describe('test-affected script (T-078-18)', () => {
       'pnpm --filter @sigoa/shared exec vitest related "src/s.ts"',
     );
     expect(commands[1].command).not.toContain('--project');
+  });
+
+  it('builds unit and integration commands from engine selection and supports --all', () => {
+    const commands = buildCommandsFromSelection({
+      mode: 'affected',
+      selection: {
+        backendUnit: ['apps/backend/src/modules/users/user.test.ts'],
+        backendIntegration: ['apps/backend/src/modules/users/users.integration.test.ts'],
+        frontend: ['apps/frontend/src/features/users/users-page.test.tsx'],
+        shared: ['packages/shared/src/schemas/user.test.ts'],
+      },
+    });
+
+    expect(commands.map((c: { id: string }) => c.id)).toEqual([
+      'backend-unit',
+      'backend-integration',
+      'frontend',
+      'shared',
+    ]);
+    expect(commands[0].command).toBe(
+      'pnpm --filter backend exec vitest run --project unit "src/modules/users/user.test.ts"',
+    );
+    expect(commands[1].command).toBe(
+      'pnpm --filter backend exec vitest run --project integration "src/modules/users/users.integration.test.ts"',
+    );
+    expect(commands[1].requiresPostgres).toBe(true);
+    expect(commands[2].command).toBe(
+      'pnpm --filter frontend exec vitest run "src/features/users/users-page.test.tsx"',
+    );
+    expect(commands[3].command).toBe(
+      'pnpm --filter @sigoa/shared exec vitest run "src/schemas/user.test.ts"',
+    );
+
+    const allCommands = buildCommandsFromSelection(
+      {
+        mode: 'affected',
+        selection: { backendUnit: [], backendIntegration: [], frontend: [], shared: [] },
+      },
+      { all: true },
+    );
+    expect(allCommands.map((c: { id: string }) => c.id)).toEqual([
+      'backend-unit',
+      'backend-integration',
+      'frontend',
+      'shared',
+    ]);
+    expect(allCommands[1].command).toBe(
+      'pnpm --filter backend exec vitest run --project integration',
+    );
   });
 
   it('builds nothing when no package changed', () => {

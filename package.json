@@ -39,6 +39,7 @@
     "check:env-parity": "node scripts/ci/check-env-parity.mjs",
     "ci:timing": "node scripts/ci/ci-timing.mjs",
     "perf:tests": "node scripts/perf/measure-tests.mjs",
+    "perf:affected:baseline": "node scripts/perf/affected-baseline.mjs",
     "perf:api": "node scripts/perf/api-load.mjs",
     "check:windows-paths": "node scripts/ci/check-windows-paths.mjs",
     "check:test-patterns": "node scripts/ci/check-test-patterns.mjs",

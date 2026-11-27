@@ -15,6 +15,21 @@
     "standard": 420,
     "full": 480
   },
+  "affected": {
+    "groups": {
+      "convenciones": 10,
+      "estaticas": 90,
+      "integracion": 150,
+      "cobertura": 150,
+      "imagenes": 150,
+      "e2e": 150
+    },
+    "total": {
+      "quick": 60,
+      "standard": 250,
+      "full": 300
+    }
+  },
   "perTest": {
     "unit": 2000,
     "integration": 5000,

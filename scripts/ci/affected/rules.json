@@ -1,0 +1,66 @@
+{
+  "compositionRoots": [
+    "apps/backend/src/routes.ts",
+    "apps/backend/src/app.ts",
+    "apps/backend/src/server.ts"
+  ],
+  "globalTriggers": [
+    "pnpm-lock.yaml",
+    "package.json",
+    "apps/*/package.json",
+    "packages/*/package.json",
+    "tsconfig*.json",
+    "apps/*/tsconfig*.json",
+    "packages/*/tsconfig*.json",
+    "apps/*/vitest*.config.*",
+    "packages/*/vitest*.config.*",
+    "apps/frontend/vitest-projects.json",
+    "apps/backend/prisma/**",
+    "apps/backend/src/test/**",
+    "apps/frontend/src/test/**",
+    ".github/workflows/**",
+    "apps/frontend/playwright.config.*"
+  ],
+  "inertPatterns": [
+    "docs/**",
+    "**/*.md",
+    "**/*.csv",
+    "**/*.png",
+    "**/*.jpg",
+    "**/*.jpeg",
+    "**/*.svg",
+    "**/*.webp",
+    "**/*.gif",
+    "**/*.ico",
+    ".agents/**",
+    ".claude/**"
+  ],
+  "moduleAffinity": {
+    "modulePrefix": "apps/backend/src/modules/",
+    "rootIntegrationPrefix": "apps/backend/src/"
+  },
+  "e2eFullTriggers": [
+    "apps/frontend/src/**",
+    "packages/shared/**",
+    "apps/backend/src/routes.ts",
+    "apps/frontend/src/routes/**",
+    "apps/backend/src/modules/auth/**",
+    "apps/frontend/src/features/auth/**",
+    "apps/backend/prisma/**",
+    "apps/frontend/e2e/**"
+  ],
+  "knownCodePatterns": [
+    "apps/backend/src/**",
+    "apps/frontend/src/**",
+    "apps/frontend/e2e/**",
+    "packages/shared/src/**",
+    "scripts/**"
+  ],
+  "testPatterns": {
+    "backendIntegration": ["apps/backend/src/**/*.integration.test.ts"],
+    "backendUnit": ["apps/backend/src/**/*.test.ts"],
+    "frontend": ["apps/frontend/src/**/*.{test,spec}.{ts,tsx}"],
+    "shared": ["packages/shared/src/**/*.{test,spec}.ts"],
+    "e2e": ["apps/frontend/e2e/**/*.spec.ts"]
+  }
+}

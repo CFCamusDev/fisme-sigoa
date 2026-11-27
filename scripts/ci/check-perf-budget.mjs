@@ -46,6 +46,31 @@ export function inferTierFromFile(filePath) {
   return 'unit';
 }
 
+/**
+ * Valida la forma de la sección opcional `affected` en `perf-budget.json`.
+ * @param {Record<string, any>} budget
+ * @returns {{ valid: boolean, error?: string }}
+ */
+export function validatePerfBudgetModes(budget) {
+  if (!budget || budget.affected === undefined) {
+    return { valid: true };
+  }
+  const isPositive = (v) => typeof v === 'number' && Number.isFinite(v) && v > 0;
+  const isMap = (v) =>
+    v !== null &&
+    typeof v === 'object' &&
+    !Array.isArray(v) &&
+    Object.keys(v).length > 0 &&
+    Object.values(v).every(isPositive);
+  if (!budget.affected || !isMap(budget.affected.groups) || !isMap(budget.affected.total)) {
+    return {
+      valid: false,
+      error: 'La sección "affected" de perf-budget.json debe definir "groups" y "total" con segundos positivos.',
+    };
+  }
+  return { valid: true };
+}
+
 export function extractTestsFromReports(vitestReports = [], playwrightReports = [], repoRoot = process.cwd()) {
   const raw = slowestTests(vitestReports, playwrightReports, Number.POSITIVE_INFINITY);
   return raw.map((item) => ({

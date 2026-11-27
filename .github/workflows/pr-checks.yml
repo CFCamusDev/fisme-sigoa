@@ -151,6 +151,12 @@ jobs:
         run: node scripts/ci/ci-summary.mjs --mode tests --vitest tmp/ci-reports/unit-backend.json,tmp/ci-reports/unit-frontend.json
       - name: Verificar presupuesto por prueba (unitarias)
         run: node scripts/ci/check-perf-budget.mjs --tier unit --vitest tmp/ci-reports/unit-backend.json,tmp/ci-reports/unit-frontend.json
+      - name: Auditar selección de pruebas afectadas (unitarias)
+        if: always()
+        continue-on-error: true
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: node scripts/ci/affected/audit.mjs --vitest tmp/ci-reports/unit-backend.json,tmp/ci-reports/unit-frontend.json --base "origin/${BASE_REF:-develop}"
 
   integracion:
     name: Calidad · Integración (shard ${{ matrix.shard }}/1)
@@ -271,6 +277,12 @@ jobs:
         run: node scripts/ci/ci-summary.mjs --mode tests --vitest tmp/ci-reports/integration-report.json,tmp/ci-reports/isolation-integration.json
       - name: Verificar presupuesto por prueba (integración)
         run: node scripts/ci/check-perf-budget.mjs --tier integration --vitest tmp/ci-reports/integration-report.json,tmp/ci-reports/isolation-integration.json
+      - name: Auditar selección de pruebas afectadas (integración)
+        if: always()
+        continue-on-error: true
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: node scripts/ci/affected/audit.mjs --vitest tmp/ci-reports/integration-report.json,tmp/ci-reports/isolation-integration.json --base "origin/${BASE_REF:-develop}"
 
   aislamiento:
     name: Calidad y E2E · Aislamiento de workers

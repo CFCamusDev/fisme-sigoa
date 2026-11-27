@@ -6,6 +6,8 @@ import os from 'node:os';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { resolveBashPath } from './resolve-bash-path.mjs';
+import { isGlobalTrigger, loadRules } from './affected/rules.mjs';
+import { collectChangedFiles, runSelection } from './affected/select.mjs';
 
 /**
  * Valida el nombre de la rama según convenciones institucionales (AGENTS §8.1).
@@ -500,17 +502,49 @@ export function parsePerfBudget(jsonText) {
         'scripts/ci/perf-budget.json tiene una forma inválida (groups y total deben ser mapas de segundos positivos); se omiten los presupuestos.',
     };
   }
+  if (data.affected !== undefined) {
+    if (
+      !data.affected ||
+      typeof data.affected !== 'object' ||
+      !isBudgetMap(data.affected.groups) ||
+      !isBudgetMap(data.affected.total)
+    ) {
+      return {
+        budget: null,
+        warning:
+          'scripts/ci/perf-budget.json tiene una sección affected inválida (groups y total deben ser mapas de segundos positivos); se omiten los presupuestos.',
+      };
+    }
+    return {
+      budget: {
+        groups: data.groups,
+        total: data.total,
+        affected: { groups: data.affected.groups, total: data.affected.total },
+      },
+    };
+  }
   return { budget: { groups: data.groups, total: data.total } };
+}
+
+/**
+ * Selecciona el presupuesto de grupos y totales según el modo de alcance (`affected` o `all`).
+ */
+export function resolveBudgetForScope(budget, scopeMode) {
+  if (scopeMode === 'affected' && budget?.affected) {
+    return budget.affected;
+  }
+  return budget;
 }
 
 /**
  * Calcula los tiempos por grupo contra sus presupuestos. Solo informa: no cambia el estado global.
  * Con --repeat-scope all el presupuesto de integración y E2E se multiplica por las pasadas.
  * @param {Array<{ parallelGroup?: string, durationMs?: number }>} checks
- * @param {{ groups: Record<string, number>, total: Record<string, number> } | null} budget
- * @param {{ mode: string, repeat?: number, repeatScope?: string, totalDurationMs?: number }} options
+ * @param {{ groups: Record<string, number>, total: Record<string, number>, affected?: { groups: Record<string, number>, total: Record<string, number> } } | null} budget
+ * @param {{ mode: string, repeat?: number, repeatScope?: string, scopeMode?: string, totalDurationMs?: number }} options
  */
 export function computeTimings(checks, budget, options) {
+  const activeBudget = resolveBudgetForScope(budget, options.scopeMode);
   const repeat = options.repeat || 1;
   const scaled = new Set(['integracion', 'e2e']);
   const byGroup = new Map();
@@ -525,7 +559,7 @@ export function computeTimings(checks, budget, options) {
   const warnings = [];
   const groups = PARALLEL_GROUP_ORDER.filter((id) => byGroup.has(id)).map((id) => {
     const durationMs = byGroup.get(id);
-    const seconds = budget?.groups[id];
+    const seconds = activeBudget?.groups[id];
     const factor = options.repeatScope === 'all' && scaled.has(id) ? repeat : 1;
     const budgetMs = seconds ? seconds * 1000 * factor : null;
     const exceededBudget = budgetMs !== null && durationMs > budgetMs;
@@ -537,7 +571,7 @@ export function computeTimings(checks, budget, options) {
     return { id, durationMs, budgetMs, exceededBudget };
   });
 
-  const totalSeconds = budget?.total[options.mode];
+  const totalSeconds = activeBudget?.total[options.mode];
   const totalBudgetMs = totalSeconds ? totalSeconds * 1000 : null;
   const totalDurationMs = options.totalDurationMs ?? null;
   const exceededTotal =
@@ -569,6 +603,7 @@ export function createReportJson(data) {
     parallel: (data.jobs || 1) > 1,
     repeatScope: data.repeatScope || 'all',
     repeatedTests: data.repeatedTests || [],
+    scope: data.scope || null,
     timings: data.timings || null,
     timeWarnings: data.timings?.warnings || [],
     cleanWorkingTree: Boolean(data.cleanWorkingTree),
@@ -591,6 +626,15 @@ export function formatReportTable(report) {
   lines.push('======================================================================');
   lines.push(` REPORTE DE VERIFICACIÓN LOCAL DE PR (Modo: ${report.mode})`);
   lines.push(` Rama: ${report.branch} | Commit: ${report.headSha}`);
+  if (report.scope) {
+    const scopeLabel = report.scope.mode === 'affected' ? 'afectadas' : 'todo';
+    const counts =
+      typeof report.scope.selected === 'number' && typeof report.scope.total === 'number'
+        ? ` · seleccionadas ${report.scope.selected} de ${report.scope.total}`
+        : '';
+    const reasonText = report.scope.reason ? ` (${report.scope.reason})` : '';
+    lines.push(` Alcance: ${scopeLabel}${counts}${reasonText}`);
+  }
   lines.push('======================================================================');
 
   for (const check of report.checks) {
@@ -778,6 +822,474 @@ export function decideScopeSkips(changedFiles, options = {}) {
   return { skipIds: touches ? [] : [...SCOPE_SKIPPABLE_STEP_IDS], reason: SCOPE_SKIP_REASON };
 }
 
+export const MAX_COMMAND_LENGTH = 6000;
+
+function stripPackagePrefix(files, prefix) {
+  return files.map((file) => (file.startsWith(prefix) ? file.slice(prefix.length) : file));
+}
+
+function buildVitestScopedCommand(filter, extraArgs, relFiles, fallbackCommand, maxLen) {
+  const args = [`pnpm --filter ${filter} exec vitest run`, ...extraArgs, ...relFiles.map((f) => `"${f}"`)];
+  const cmd = args.join(' ');
+  if (cmd.length > maxLen) {
+    return { command: fallbackCommand, tooLong: true };
+  }
+  return { command: cmd, tooLong: false };
+}
+
+const STATIC_PACKAGES = [
+  { id: 'shared', filter: '@sigoa/shared', prefix: 'packages/shared/' },
+  { id: 'backend', filter: 'backend', prefix: 'apps/backend/' },
+  { id: 'frontend', filter: 'frontend', prefix: 'apps/frontend/' },
+];
+
+/**
+ * Agrupa rutas en tandas para no superar `maxLen` en la línea de comandos.
+ * @param {string[]} files
+ * @param {string} baseCommand
+ * @param {number} [maxLen=MAX_COMMAND_LENGTH]
+ * @returns {string[]}
+ */
+export function batchChangedFiles(files, baseCommand, maxLen = MAX_COMMAND_LENGTH) {
+  if (!files || files.length === 0) return [];
+  const commands = [];
+  let current = baseCommand;
+
+  for (const file of files) {
+    const quoted = `"${file}"`;
+    if (current !== baseCommand && current.length + 1 + quoted.length > maxLen) {
+      commands.push(current);
+      current = `${baseCommand} ${quoted}`;
+    } else {
+      current = `${current} ${quoted}`;
+    }
+  }
+  if (current !== baseCommand) {
+    commands.push(current);
+  }
+  return commands;
+}
+
+function groupPackageFiles(changedFiles, extRegex) {
+  const byPkg = { shared: [], backend: [], frontend: [] };
+  for (const raw of changedFiles || []) {
+    const file = raw.trim().replace(/\\/g, '/');
+    if (!file || !extRegex.test(file)) continue;
+    for (const pkg of STATIC_PACKAGES) {
+      if (file.startsWith(`${pkg.prefix}src/`)) {
+        byPkg[pkg.id].push(file.slice(pkg.prefix.length));
+        break;
+      }
+    }
+  }
+  for (const key of Object.keys(byPkg)) {
+    byPkg[key].sort();
+  }
+  return byPkg;
+}
+
+/**
+ * Construye comandos de Prettier solo sobre archivos cambiados por paquete.
+ */
+export function buildScopedFormatCommand(changedFiles, maxLen = MAX_COMMAND_LENGTH) {
+  const byPkg = groupPackageFiles(changedFiles, /\.(ts|tsx|json)$/);
+  const cmds = [];
+  for (const pkg of STATIC_PACKAGES) {
+    const files = byPkg[pkg.id];
+    if (files.length === 0) continue;
+    cmds.push(
+      ...batchChangedFiles(files, `pnpm --filter ${pkg.filter} exec prettier --check`, maxLen),
+    );
+  }
+  return cmds.length > 0 ? cmds.join(' && ') : null;
+}
+
+/**
+ * Construye comandos de ESLint con caché solo sobre archivos `.ts`/`.tsx` cambiados.
+ * Incluye `check-design-tokens.mjs` solo si cambió `apps/frontend/src/`.
+ */
+export function buildScopedLintCommand(changedFiles, maxLen = MAX_COMMAND_LENGTH) {
+  const byPkg = groupPackageFiles(changedFiles, /\.(ts|tsx)$/);
+  const cmds = [];
+  for (const pkg of STATIC_PACKAGES) {
+    const files = byPkg[pkg.id];
+    if (files.length === 0) continue;
+    const cacheFile = `../../node_modules/.cache/sigoa-affected/${pkg.id}.eslintcache`;
+    cmds.push(
+      ...batchChangedFiles(
+        files,
+        `pnpm --filter ${pkg.filter} exec eslint --cache --cache-location "${cacheFile}"`,
+        maxLen,
+      ),
+    );
+  }
+  if (byPkg.frontend.length > 0) {
+    cmds.push('pnpm --filter frontend exec node scripts/check-design-tokens.mjs');
+  }
+  return cmds.length > 0 ? cmds.join(' && ') : null;
+}
+
+/**
+ * Construye comandos `tsc --noEmit --incremental` para paquetes afectados.
+ * Si cambió `packages/shared`, comprueba los tres paquetes.
+ */
+export function buildScopedTypecheckCommand(changedFiles) {
+  const byPkg = groupPackageFiles(changedFiles, /\.(ts|tsx)$/);
+  const targets = new Set();
+  if (byPkg.shared.length > 0) {
+    targets.add('shared');
+    targets.add('backend');
+    targets.add('frontend');
+  } else {
+    if (byPkg.backend.length > 0) targets.add('backend');
+    if (byPkg.frontend.length > 0) targets.add('frontend');
+  }
+
+  if (targets.size === 0) return null;
+
+  const cmds = [];
+  for (const pkg of STATIC_PACKAGES) {
+    if (!targets.has(pkg.id)) continue;
+    const tsBuildInfo = `../../node_modules/.cache/sigoa-affected/${pkg.id}.tsbuildinfo`;
+    cmds.push(
+      `pnpm --filter ${pkg.filter} exec tsc --noEmit --incremental --tsBuildInfoFile "${tsBuildInfo}"`,
+    );
+  }
+  return cmds.join(' && ');
+}
+
+function touchesAppOrPackageCode(changedFiles) {
+  const testRegex = /\.(test|spec)\.(ts|tsx|mjs|js)$/;
+  return (changedFiles || []).some((raw) => {
+    const file = raw.trim().replace(/\\/g, '/');
+    if (!file) return false;
+    if (!file.startsWith('apps/') && !file.startsWith('packages/')) return false;
+    if (file.startsWith('apps/frontend/e2e/')) return false;
+    if (testRegex.test(file)) return false;
+    return true;
+  });
+}
+
+const BACKEND_COVERAGE_INCLUDE_REGEX = /^apps\/backend\/(src\/modules\/[^/]+\/(?:domain|application)\/.+\.ts)$/;
+const BACKEND_COVERAGE_EXCLUDE_REGEX =
+  /(?:\.(?:test|spec|integration\.test)\.ts$|\/index\.ts$|\.d\.ts$|\/domain\/ports\/)/;
+
+/**
+ * Devuelve los archivos cambiados cubiertos por la configuración de cobertura del backend
+ * (`modules/<m>/domain` y `application`), con rutas relativas a `apps/backend/`.
+ * @param {string[]} changedFiles
+ * @returns {string[]}
+ */
+export function getBackendCoverageTargets(changedFiles) {
+  const targets = new Set();
+  for (const raw of changedFiles || []) {
+    const file = raw.trim().replace(/\\/g, '/');
+    const match = file.match(BACKEND_COVERAGE_INCLUDE_REGEX);
+    if (!match) continue;
+    if (BACKEND_COVERAGE_EXCLUDE_REGEX.test(file)) continue;
+    targets.add(match[1]);
+  }
+  return Array.from(targets).sort();
+}
+
+/**
+ * Construye el comando de cobertura acotado para el backend sobre los archivos cambiados.
+ * @param {string[]} coverageTargets
+ * @param {string[]} backendUnitFiles
+ * @param {number} [maxLen=MAX_COMMAND_LENGTH]
+ * @returns {{ command: string, tooLong: boolean } | null}
+ */
+export function buildScopedBackendCoverageCommand(
+  coverageTargets,
+  backendUnitFiles,
+  maxLen = MAX_COMMAND_LENGTH,
+) {
+  if (!coverageTargets || coverageTargets.length === 0) {
+    return null;
+  }
+  if (!backendUnitFiles || backendUnitFiles.length === 0) {
+    return { command: 'pnpm --filter backend test:coverage', tooLong: false };
+  }
+  const includeFlags = coverageTargets.map((t) => `--coverage.include="${t}"`);
+  const args = [
+    'pnpm --filter backend exec vitest run --project unit --coverage',
+    ...includeFlags,
+    ...backendUnitFiles.map((f) => `"${f}"`),
+  ];
+  const cmd = args.join(' ');
+  if (cmd.length > maxLen) {
+    return { command: 'pnpm --filter backend test:coverage', tooLong: true };
+  }
+  return { command: cmd, tooLong: false };
+}
+
+/**
+ * Construye el resumen de alcance para el informe `last-report.json`.
+ */
+export function buildScopeSummary(selectionResult, options = {}) {
+  const forced = Boolean(options.ci || options.forceAll);
+  if (forced || !selectionResult || selectionResult.mode === 'all') {
+    const totals = selectionResult?.totals ?? {};
+    const total =
+      (totals.backendUnit?.total ?? 0) +
+      (totals.backendIntegration?.total ?? 0) +
+      (totals.frontend?.total ?? 0) +
+      (totals.shared?.total ?? 0);
+    return {
+      mode: 'all',
+      reason: options.forceAll
+        ? 'Ejecución completa solicitada con --force-all'
+        : options.ci
+          ? 'Ejecución completa obligatoria en CI'
+          : (selectionResult?.reason ?? 'Ejecución completa'),
+      selected: total,
+      total,
+      e2e: selectionResult?.selection?.e2e ?? { scope: 'full', reason: 'Ejecución completa' },
+      forced,
+    };
+  }
+
+  const t = selectionResult.totals ?? {};
+  const selected =
+    (t.backendUnit?.selected ?? 0) +
+    (t.backendIntegration?.selected ?? 0) +
+    (t.frontend?.selected ?? 0) +
+    (t.shared?.selected ?? 0);
+  const total =
+    (t.backendUnit?.total ?? 0) +
+    (t.backendIntegration?.total ?? 0) +
+    (t.frontend?.total ?? 0) +
+    (t.shared?.total ?? 0);
+
+  return {
+    mode: 'affected',
+    reason: selectionResult.reason,
+    selected,
+    total,
+    e2e: selectionResult.selection?.e2e ?? { scope: 'none', reason: 'Sin cambios que afecten E2E' },
+    forced: false,
+  };
+}
+
+/**
+ * Aplica la selección del motor sobre los pasos de `buildExecutionPlan` sin alterar los comandos base.
+ * Agrega `scopedCommand`, `skippedByScope` y `scopeReason`.
+ * @param {Array<Record<string, any>>} plan
+ * @param {Record<string, any> | null | undefined} selectionResult
+ * @param {{ ci?: boolean, forceAll?: boolean, changedFiles?: string[] | null, maxCommandLength?: number }} [options]
+ */
+export function applyScopeToPlan(plan, selectionResult, options = {}) {
+  const maxLen = options.maxCommandLength ?? MAX_COMMAND_LENGTH;
+  if (options.ci || options.forceAll || !selectionResult || selectionResult.mode === 'all') {
+    return plan;
+  }
+
+  const sel = selectionResult.selection ?? {};
+  const changedFiles = Array.isArray(options.changedFiles) ? options.changedFiles : [];
+  const imageSkipDecision = decideScopeSkips(changedFiles, {
+    ci: options.ci,
+    forceAll: options.forceAll,
+  });
+  const imageSkipSet = new Set(imageSkipDecision.skipIds);
+
+  return plan.map((step) => {
+    if (step.id === 'format') {
+      const cmd = buildScopedFormatCommand(changedFiles, maxLen);
+      if (!cmd) {
+        return {
+          ...step,
+          skippedByScope: true,
+          scopeReason: 'Sin archivos aplicables cambiados para formato.',
+        };
+      }
+      return {
+        ...step,
+        scopedCommand: cmd,
+        scopeReason: 'Formato verificado solo sobre archivos cambiados.',
+      };
+    }
+
+    if (step.id === 'lint') {
+      const cmd = buildScopedLintCommand(changedFiles, maxLen);
+      if (!cmd) {
+        return {
+          ...step,
+          skippedByScope: true,
+          scopeReason: 'Sin archivos .ts/.tsx cambiados para lint.',
+        };
+      }
+      return {
+        ...step,
+        scopedCommand: cmd,
+        scopeReason: 'Lint con caché solo sobre archivos cambiados.',
+      };
+    }
+
+    if (step.id === 'typecheck') {
+      const cmd = buildScopedTypecheckCommand(changedFiles);
+      if (!cmd) {
+        return {
+          ...step,
+          skippedByScope: true,
+          scopeReason: 'Sin archivos .ts/.tsx cambiados para typecheck.',
+        };
+      }
+      return {
+        ...step,
+        scopedCommand: cmd,
+        scopeReason: 'Typecheck incremental solo sobre paquetes afectados.',
+      };
+    }
+
+    if (step.id === 'integration-tests') {
+      const files = stripPackagePrefix(sel.backendIntegration ?? [], 'apps/backend/');
+      if (files.length === 0) {
+        return {
+          ...step,
+          skippedByScope: true,
+          scopeReason: 'Sin pruebas de integración afectadas.',
+        };
+      }
+      const built = buildVitestScopedCommand(
+        'backend',
+        ['--project', 'integration'],
+        files,
+        step.command,
+        maxLen,
+      );
+      if (built.tooLong) {
+        return {
+          ...step,
+          scopeReason: 'Lista demasiado larga; se ejecuta la categoría completa.',
+        };
+      }
+      return {
+        ...step,
+        scopedCommand: built.command,
+        scopeReason: `${files.length} prueba(s) de integración seleccionada(s).`,
+      };
+    }
+
+    if (step.id === 'test-coverage') {
+      const backendFiles = stripPackagePrefix(sel.backendUnit ?? [], 'apps/backend/');
+      const frontendFiles = stripPackagePrefix(sel.frontend ?? [], 'apps/frontend/');
+      const sharedFiles = stripPackagePrefix(sel.shared ?? [], 'packages/shared/');
+      const coverageTargets = getBackendCoverageTargets(changedFiles);
+
+      if (
+        coverageTargets.length === 0 &&
+        backendFiles.length === 0 &&
+        frontendFiles.length === 0 &&
+        sharedFiles.length === 0
+      ) {
+        return {
+          ...step,
+          skippedByScope: true,
+          scopeReason: 'Sin pruebas unitarias ni archivos de dominio/aplicación afectados.',
+        };
+      }
+
+      const subCommands = [];
+      let anyTooLong = false;
+
+      const covCmd = buildScopedBackendCoverageCommand(coverageTargets, backendFiles, maxLen);
+      if (covCmd) {
+        subCommands.push(covCmd.command);
+        if (covCmd.tooLong) anyTooLong = true;
+      } else if (backendFiles.length > 0) {
+        const built = buildVitestScopedCommand(
+          'backend',
+          ['--project', 'unit'],
+          backendFiles,
+          'pnpm --filter backend exec vitest run --project unit',
+          maxLen,
+        );
+        subCommands.push(built.command);
+        if (built.tooLong) anyTooLong = true;
+      }
+
+      if (frontendFiles.length > 0) {
+        const built = buildVitestScopedCommand(
+          'frontend',
+          [],
+          frontendFiles,
+          'pnpm --filter frontend test:coverage',
+          maxLen,
+        );
+        subCommands.push(built.command);
+        if (built.tooLong) anyTooLong = true;
+      }
+      if (sharedFiles.length > 0) {
+        const built = buildVitestScopedCommand(
+          '@sigoa/shared',
+          [],
+          sharedFiles,
+          'pnpm --filter @sigoa/shared test',
+          maxLen,
+        );
+        subCommands.push(built.command);
+        if (built.tooLong) anyTooLong = true;
+      }
+
+      return {
+        ...step,
+        scopedCommand: subCommands.join(' && '),
+        scopeReason: anyTooLong
+          ? 'Lista demasiado larga en algún paquete; se ejecuta completo.'
+          : coverageTargets.length > 0
+            ? `Cobertura sobre ${coverageTargets.length} archivo(s) cambiado(s) de dominio/aplicación.`
+            : 'Sin cambios en domain/application; unitarias afectadas sin umbral de cobertura.',
+      };
+    }
+
+    if (step.id === 'pdf-stability') {
+      const touchesPdf =
+        (sel.backendIntegration ?? []).some((f) => f.includes('/src/shared/pdf/')) ||
+        changedFiles.some((f) => touchesImageOrPdfScope(f.trim().replace(/\\/g, '/')));
+      if (!touchesPdf) {
+        return {
+          ...step,
+          skippedByScope: true,
+          scopeReason: 'Sin cambios ni pruebas afectadas de PDF.',
+        };
+      }
+      return step;
+    }
+
+    if (step.id === 'e2e') {
+      if (sel.e2e?.scope === 'none') {
+        return {
+          ...step,
+          skippedByScope: true,
+          scopeReason: sel.e2e.reason || 'Sin cambios que afecten E2E.',
+        };
+      }
+      return step;
+    }
+
+    if (step.id === 'build') {
+      if (!touchesAppOrPackageCode(changedFiles)) {
+        return {
+          ...step,
+          skippedByScope: true,
+          scopeReason: 'Sin cambios de código en apps/ ni packages/.',
+        };
+      }
+      return step;
+    }
+
+    if (imageSkipSet.has(step.id)) {
+      return {
+        ...step,
+        skippedByScope: true,
+        scopeReason: SCOPE_SKIP_REASON,
+      };
+    }
+
+    return step;
+  });
+}
+
 /** Máximo de archivos de prueba que se repiten con --repeat-scope changed (HU-078, D3). */
 export const MAX_REPEATED_TEST_FILES = 10;
 
@@ -813,6 +1325,50 @@ export function parseRepeatScope(args, repeat) {
     throw new Error(`--repeat-scope debe ser 'changed' o 'all' (recibido: '${raw ?? ''}').`);
   }
   return raw;
+}
+
+/**
+ * Lee --repeat-max de los argumentos: entero positivo (MAX_REPEATED_TEST_FILES por defecto).
+ * @param {string[]} args
+ * @returns {number}
+ */
+export function parseRepeatMax(args) {
+  const index = args.indexOf('--repeat-max');
+  if (index === -1) return MAX_REPEATED_TEST_FILES;
+  const raw = args[index + 1];
+  if (raw === undefined || !/^[0-9]+$/.test(raw) || Number(raw) < 1) {
+    throw new Error(`--repeat-max debe ser un entero positivo (recibido: '${raw ?? ''}').`);
+  }
+  return Number(raw);
+}
+
+/**
+ * Selecciona pruebas nuevas/modificadas más las directamente afectadas (`explain` con `direct: true`),
+ * ordenadas alfabéticamente y acotadas por `max`.
+ * @param {Record<string, any> | null | undefined} selectionResult
+ * @param {string[] | null | undefined} changedFiles
+ * @param {number} [max=MAX_REPEATED_TEST_FILES]
+ * @returns {{ files: string[], total: number, truncated: boolean }}
+ */
+export function selectRepeatableTests(
+  selectionResult,
+  changedFiles,
+  max = MAX_REPEATED_TEST_FILES,
+) {
+  const files = new Set();
+  for (const raw of changedFiles || []) {
+    const normalized = raw.trim().replace(/\\/g, '/');
+    if (normalized && TEST_FILE_REGEX.test(normalized)) {
+      files.add(normalized);
+    }
+  }
+  for (const item of selectionResult?.explain ?? []) {
+    if (item?.direct && item?.target && TEST_FILE_REGEX.test(item.target)) {
+      files.add(item.target.replace(/\\/g, '/'));
+    }
+  }
+  const sorted = [...files].sort();
+  return { files: sorted.slice(0, max), total: sorted.length, truncated: sorted.length > max };
 }
 
 /**
@@ -893,7 +1449,7 @@ export function planRepeatedSteps(steps, repeatCount = 1, options = {}) {
   const result = [];
 
   for (const step of steps) {
-    if (!REPEATABLE_STEP_IDS.has(step.id) || repeatCount <= 1) {
+    if (step.skippedByScope || !REPEATABLE_STEP_IDS.has(step.id) || repeatCount <= 1) {
       result.push(step);
       continue;
     }
@@ -1105,6 +1661,33 @@ export function verifyReportStatus(report, currentContext, options = {}) {
     }
   }
 
+  // Regla (g): coherencia del alcance (scope) con los disparadores globales del diff
+  if (!report.scope) {
+    if (options.requireScope) {
+      errors.push(
+        'El informe no registra el alcance de ejecución (scope); con --require full es obligatorio. Ejecuta pnpm verify:pr:clean.',
+      );
+    } else {
+      warnings.push(
+        'El informe anterior no registra el alcance (scope); considera regenerarlo con pnpm verify:pr:clean.',
+      );
+    }
+  } else if (report.scope.mode === 'affected') {
+    if (currentContext.changedFiles === null) {
+      errors.push(
+        'Alcance incoherente: no se pudo calcular el diff actual, por lo que se exige ejecutar todo.',
+      );
+    } else if (Array.isArray(currentContext.changedFiles)) {
+      const rules = options.rules ?? loadRules();
+      const globalHit = currentContext.changedFiles.find((file) => isGlobalTrigger(file, rules));
+      if (globalHit) {
+        errors.push(
+          `Alcance incoherente: el diff exige ejecutar todo por el disparador global '${globalHit}'.`,
+        );
+      }
+    }
+  }
+
   return {
     valid: errors.length === 0,
     errors,
@@ -1135,6 +1718,10 @@ export const WORKFLOW_EXCLUSIONS = [
   {
     pattern: /NEEDS_RESULTS/,
     reason: 'Paso agregador del estado de jobs requeridos en el CI.',
+  },
+  {
+    pattern: /scripts\/ci\/affected\/audit\.mjs/,
+    reason: 'Auditor de selección en el resumen del PR de GitHub Actions; solo aplica en CI.',
   },
   {
     pattern: /mkdir -p tmp\//,
@@ -1372,7 +1959,7 @@ export function buildGroupEnvironment(groupId, options = {}) {
     const baseUrl =
       baseEnv.TEST_DATABASE_URL ||
       baseEnv.DATABASE_URL ||
-      'postgresql://postgres:postgres@localhost:5432/sigoa_test?schema=public';
+      'postgresql://postgres:postgres@localhost:5433/sigoa_test?schema=public';
     const url = new URL(baseUrl);
     url.pathname = `/${options.dbName}`;
     env.DATABASE_URL = url.toString();
@@ -1388,7 +1975,7 @@ export function buildGroupEnvironment(groupId, options = {}) {
  * @returns {string | undefined}
  */
 export function commandForParallelRun(step) {
-  return step.parallelCommand ?? step.command;
+  return step.scopedCommand ?? step.parallelCommand ?? step.command;
 }
 
 const IS_WINDOWS = os.type() === 'Windows_NT';
@@ -1424,7 +2011,7 @@ async function openAdminClient(baseEnv) {
   const baseUrl =
     baseEnv.TEST_DATABASE_URL ||
     baseEnv.DATABASE_URL ||
-    'postgresql://postgres:postgres@localhost:5432/sigoa_test?schema=public';
+    'postgresql://postgres:postgres@localhost:5433/sigoa_test?schema=public';
   const adminUrl = new URL(baseUrl);
   adminUrl.pathname = '/postgres';
   const client = new pg.Client({
@@ -1552,6 +2139,8 @@ async function runCli() {
   const args = process.argv.slice(2);
   const isStatus = args.includes('--status');
   const cacheDir = path.resolve('node_modules', '.cache', 'sigoa-verify');
+  const affectedCacheDir = path.resolve('node_modules', '.cache', 'sigoa-affected');
+  fs.mkdirSync(affectedCacheDir, { recursive: true });
   const reportPath = path.join(cacheDir, 'last-report.json');
 
   const { execSync } = await import('node:child_process');
@@ -1568,6 +2157,8 @@ async function runCli() {
   const currentBranch = getGit('git branch --show-current');
   const currentStatus = getGit('git status --porcelain');
   const isTreeClean = currentStatus === '';
+
+  const baseBranchForStatus = args.includes('--base') ? args[args.indexOf('--base') + 1] : 'develop';
 
   // Modo Status Gate
   if (isStatus) {
@@ -1595,11 +2186,25 @@ async function runCli() {
       process.exit(1);
     }
 
+    const statusChangedFiles = collectChangedFiles({
+      base: baseBranchForStatus,
+      mergeBase: true,
+    });
     const verification = verifyReportStatus(
       reportData,
-      { currentHeadSha, currentBranch, isTreeClean, now: new Date() },
-      { requireMode },
+      {
+        currentHeadSha,
+        currentBranch,
+        isTreeClean,
+        changedFiles: statusChangedFiles,
+        now: new Date(),
+      },
+      { requireMode, requireScope: requireMode === 'full' },
     );
+
+    for (const warn of verification.warnings) {
+      console.warn(`⚠ [verify:pr:status] ${warn}`);
+    }
 
     if (!verification.valid) {
       console.error(
@@ -1626,9 +2231,11 @@ async function runCli() {
 
   let repeat;
   let repeatScope;
+  let repeatMax;
   try {
     repeat = parseRepeat(args);
     repeatScope = parseRepeatScope(args, repeat);
+    repeatMax = parseRepeatMax(args);
   } catch (error) {
     console.error(`❌ ${error.message}`);
     process.exit(1);
@@ -1658,42 +2265,49 @@ async function runCli() {
   );
 
   const rawPlan = buildExecutionPlan(mode, { only, baseBranch });
+  const forceAll = args.includes('--force-all');
+  const explainMode = args.includes('--explain');
+  const isCi = Boolean(process.env.CI);
+  const changedFilesForScope = collectChangedFiles({
+    base: baseBranch,
+    mergeBase: true,
+  });
+  const selectionResult = runSelection({
+    base: baseBranch,
+    mergeBase: true,
+    changedFiles: changedFilesForScope,
+  });
+  const scopeSummary = buildScopeSummary(selectionResult, {
+    ci: isCi,
+    forceAll,
+  });
+
   const changedTests =
     repeat > 1 && repeatScope === 'changed'
-      ? selectChangedTests(
-          getGit(`git -c core.quotepath=false diff --name-status ${baseBranch}...HEAD`),
-        )
+      ? selectRepeatableTests(selectionResult, changedFilesForScope, repeatMax)
       : { files: [], total: 0, truncated: false };
   if (changedTests.truncated) {
     console.warn(
-      `Advertencia: hay ${changedTests.total} pruebas nuevas o modificadas; se repiten solo las primeras ${MAX_REPEATED_TEST_FILES} por orden alfabético.`,
+      `Advertencia: hay ${changedTests.total} pruebas nuevas, modificadas o directamente afectadas; se repiten solo las primeras ${repeatMax} por orden alfabético.`,
     );
   }
-  const forceAll = args.includes('--force-all');
-  let changedFilesForScope = null;
-  try {
-    changedFilesForScope = execSync(
-      `git -c core.quotepath=false diff --name-only ${baseBranch}...HEAD`,
-      {
-        encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'ignore'],
-      },
-    )
-      .split(/\r?\n/)
-      .filter(Boolean);
-  } catch {
-    changedFilesForScope = null;
+
+  if (explainMode) {
+    console.log(`Alcance: ${scopeSummary.mode} · Motivo: ${scopeSummary.reason}`);
+    for (const item of selectionResult.explain ?? []) {
+      console.log(`  - ${item.target}: ${item.reason}`);
+    }
   }
-  const scopeDecision = decideScopeSkips(changedFilesForScope, {
-    ci: Boolean(process.env.CI),
+
+  const scopedPlan = applyScopeToPlan(rawPlan, selectionResult, {
+    ci: isCi,
     forceAll,
+    changedFiles: changedFilesForScope,
   });
-  const plan = planRepeatedSteps(rawPlan, repeat, {
+  const plan = planRepeatedSteps(scopedPlan, repeat, {
     scope: repeatScope,
     changedTests: changedTests.files,
-  }).map((step) =>
-    scopeDecision.skipIds.includes(step.id) ? { ...step, skippedByScope: true } : step,
-  );
+  });
   const groups = planParallelGroups(plan);
   const results = new Map();
 
@@ -1726,13 +2340,14 @@ async function runCli() {
     };
 
     if (check.skippedByScope) {
+      const skipReason = check.scopeReason || SCOPE_SKIP_REASON;
       const result = {
         ...check,
         status: 'omitted',
         durationMs: 0,
-        reason: SCOPE_SKIP_REASON,
+        reason: skipReason,
       };
-      console.log(`⚠ [${check.parallelGroup}] ${check.name} (${SCOPE_SKIP_REASON})`);
+      console.log(`⚠ [${check.parallelGroup}] ${check.name} (${skipReason})`);
       return result;
     }
 
@@ -1932,6 +2547,7 @@ async function runCli() {
     mode,
     repeat,
     repeatScope,
+    scopeMode: scopeSummary.mode,
     totalDurationMs: new Date(completedAt).getTime() - new Date(startedAt).getTime(),
   });
   if (parsedBudget.warning) timings.warnings.unshift(parsedBudget.warning);
@@ -1947,6 +2563,7 @@ async function runCli() {
     repeat,
     repeatScope,
     repeatedTests: changedTests.files,
+    scope: scopeSummary,
     cleanWorkingTree: isTreeClean,
     startedAt,
     completedAt,

@@ -1,13 +1,15 @@
 #!/usr/bin/env node
-import { execFileSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { collectChangedFiles, runSelection } from '../ci/affected/select.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
+export { collectChangedFiles };
+
 /**
- * Paquetes con pruebas unitarias relacionadas por `vitest related` (HU-078, D8).
- * Los archivos de E2E y las pruebas de integración no entran: tienen su propio comando.
+ * Paquetes con pruebas unitarias (HU-078, D8).
  */
 export const PACKAGES = [
   { id: 'backend', prefix: 'apps/backend/', filter: 'backend', extraArgs: ['--project', 'unit'] },
@@ -21,10 +23,10 @@ const IGNORED_FRAGMENTS = ['/node_modules/', '/dist/', '/coverage/', '/test-resu
 /**
  * Interpreta los argumentos.
  * @param {string[]} argv
- * @returns {{ base: string, dryRun: boolean }}
+ * @returns {{ base: string, dryRun: boolean, explain: boolean, all: boolean }}
  */
 export function parseArgs(argv) {
-  const result = { base: 'develop', dryRun: false };
+  const result = { base: 'develop', dryRun: false, explain: false, all: false };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--base') {
@@ -34,6 +36,10 @@ export function parseArgs(argv) {
       i += 1;
     } else if (arg === '--dry-run') {
       result.dryRun = true;
+    } else if (arg === '--explain') {
+      result.explain = true;
+    } else if (arg === '--all') {
+      result.all = true;
     } else {
       throw new Error(`Argumento desconocido: ${arg}`);
     }
@@ -43,7 +49,6 @@ export function parseArgs(argv) {
 
 /**
  * Reparte los archivos cambiados por paquete, con rutas relativas al paquete y separadores `/`.
- * Descarta lo que no es código, los archivos de E2E, las salidas generadas y lo de otros paquetes.
  * @param {string[]} files
  * @returns {{ backend: string[], frontend: string[], shared: string[] }}
  */
@@ -72,9 +77,8 @@ function quote(value) {
 }
 
 /**
- * Construye un comando `vitest related` por cada paquete con archivos cambiados.
+ * Construye comandos `vitest related` por paquete (compatibilidad con pruebas previas).
  * @param {{ backend: string[], frontend: string[], shared: string[] }} groups
- * @returns {Array<{ id: string, command: string, files: string[] }>}
  */
 export function buildAffectedCommands(groups) {
   const commands = [];
@@ -93,45 +97,121 @@ export function buildAffectedCommands(groups) {
   return commands;
 }
 
-function git(args) {
-  return execFileSync('git', args, { cwd: repoRoot, encoding: 'utf8' })
-    .split(/\r?\n/)
-    .filter(Boolean);
-}
+const SELECTION_SUITES = [
+  {
+    key: 'backendUnit',
+    id: 'backend-unit',
+    prefix: 'apps/backend/',
+    filter: 'backend',
+    extraArgs: ['--project', 'unit'],
+  },
+  {
+    key: 'backendIntegration',
+    id: 'backend-integration',
+    prefix: 'apps/backend/',
+    filter: 'backend',
+    extraArgs: ['--project', 'integration'],
+    requiresPostgres: true,
+  },
+  {
+    key: 'frontend',
+    id: 'frontend',
+    prefix: 'apps/frontend/',
+    filter: 'frontend',
+    extraArgs: [],
+  },
+  {
+    key: 'shared',
+    id: 'shared',
+    prefix: '@sigoa/shared/',
+    repoPrefix: 'packages/shared/',
+    filter: '@sigoa/shared',
+    extraArgs: [],
+  },
+];
 
-/** Archivos cambiados desde `base` (incluye lo no confirmado) más los archivos sin seguimiento. */
-export function collectChangedFiles(base) {
-  const changed = git([
-    '-c',
-    'core.quotepath=false',
-    'diff',
-    '--name-only',
-    '--diff-filter=d',
-    base,
-  ]);
-  const untracked = git(['ls-files', '--others', '--exclude-standard']);
-  return [...changed, ...untracked];
+/**
+ * Construye comandos `vitest run` a partir del resultado del motor de selección.
+ * @param {ReturnType<typeof runSelection>} result
+ * @param {{ all?: boolean }} [options]
+ */
+export function buildCommandsFromSelection(result, options = {}) {
+  const forceAll = Boolean(options.all) || result.mode === 'all';
+  const commands = [];
+
+  for (const suite of SELECTION_SUITES) {
+    const stripPrefix = suite.repoPrefix ?? suite.prefix;
+    const rawFiles = result.selection?.[suite.key] ?? [];
+    const relFiles = rawFiles.map((file) =>
+      file.startsWith(stripPrefix) ? file.slice(stripPrefix.length) : file,
+    );
+
+    if (forceAll) {
+      const args = [`pnpm --filter ${suite.filter} exec vitest run`, ...suite.extraArgs];
+      commands.push({
+        id: suite.id,
+        command: args.join(' '),
+        files: relFiles,
+        requiresPostgres: Boolean(suite.requiresPostgres),
+      });
+      continue;
+    }
+
+    if (relFiles.length === 0) continue;
+
+    const args = [
+      `pnpm --filter ${suite.filter} exec vitest run`,
+      ...suite.extraArgs,
+      ...relFiles.map(quote),
+    ];
+    commands.push({
+      id: suite.id,
+      command: args.join(' '),
+      files: relFiles,
+      requiresPostgres: Boolean(suite.requiresPostgres),
+    });
+  }
+
+  return commands;
 }
 
 function main() {
   const args = parseArgs(process.argv.slice(2));
-  const groups = classifyChangedFiles(collectChangedFiles(args.base));
-  const commands = buildAffectedCommands(groups);
+  const result = runSelection({ base: args.base });
+  const commands = buildCommandsFromSelection(result, { all: args.all });
+
+  if (args.explain) {
+    console.log(`Modo: ${args.all ? 'all (--all)' : result.mode} · Motivo: ${result.reason}`);
+    for (const item of result.explain) {
+      console.log(`  - ${item.target}: ${item.reason}`);
+    }
+  }
 
   if (commands.length === 0) {
-    console.log('No hay archivos de código cambiados: no se ejecuta ninguna prueba.');
+    console.log('No hay pruebas afectadas seleccionadas.');
     return;
   }
 
   let failed = false;
-  for (const { id, command, files } of commands) {
-    console.log(`\n[${id}] ${files.length} archivo(s) cambiado(s)`);
+  for (const { id, command, files, requiresPostgres } of commands) {
+    const countLabel = args.all || result.mode === 'all' ? 'suite completa' : `${files.length} archivo(s)`;
+    console.log(`\n[${id}] ${countLabel}`);
+    if (requiresPostgres) {
+      console.log('Nota: las pruebas de integración requieren PostgreSQL activo.');
+    }
     if (args.dryRun) {
       console.log(command);
       continue;
     }
-    const result = spawnSync(command, { cwd: repoRoot, shell: true, stdio: 'inherit' });
-    if (result.status !== 0) failed = true;
+    const execResult = spawnSync(command, { cwd: repoRoot, shell: true, stdio: 'inherit' });
+    if (execResult.status !== 0) {
+      if (requiresPostgres) {
+        console.error(
+          '[backend-integration] Falló la ejecución. Verifica que PostgreSQL esté levantado.',
+        );
+      }
+      failed = true;
+    }
   }
   process.exitCode = failed ? 1 : 0;
 }
