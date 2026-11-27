@@ -3,9 +3,16 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 // @ts-expect-error script sin archivo de declaraciones .d.ts
 import * as checkPerfBudgetModule from '../../../../scripts/ci/check-perf-budget.mjs';
+// @ts-expect-error script sin archivo de declaraciones .d.ts
+import * as verifyPrModule from '../../../../scripts/ci/verify-pr-local.mjs';
 
-const { checkPerfBudget, extractTestsFromReports, normalizeRepoRelativePath } =
-  checkPerfBudgetModule;
+const {
+  checkPerfBudget,
+  extractTestsFromReports,
+  normalizeRepoRelativePath,
+  validatePerfBudgetModes,
+} = checkPerfBudgetModule;
+const { parsePerfBudget, resolveBudgetForScope } = verifyPrModule;
 
 const sampleBudget = {
   perTest: { unit: 2000, integration: 5000, e2e: 20000 },
@@ -199,5 +206,47 @@ describe('check-perf-budget (HU-080, T-080-22)', () => {
       expect(exc.reason.trim().length).toBeGreaterThan(0);
       expect(exc.ms).toBeGreaterThan(0);
     }
+    expect(validatePerfBudgetModes(budget).valid).toBe(true);
+  });
+
+  it('reads the budget by mode, falls back to all and rejects an invalid affected section', () => {
+    const withAffected = parsePerfBudget(
+      JSON.stringify({
+        groups: { e2e: 150 },
+        total: { full: 480 },
+        affected: { groups: { e2e: 100 }, total: { full: 300 } },
+      }),
+    );
+    expect(withAffected.warning).toBeUndefined();
+    expect(resolveBudgetForScope(withAffected.budget, 'affected')).toEqual({
+      groups: { e2e: 100 },
+      total: { full: 300 },
+    });
+    expect(resolveBudgetForScope(withAffected.budget, 'all')).toEqual({
+      groups: { e2e: 150 },
+      total: { full: 480 },
+      affected: { groups: { e2e: 100 }, total: { full: 300 } },
+    });
+
+    const withoutAffected = parsePerfBudget(
+      JSON.stringify({ groups: { e2e: 150 }, total: { full: 480 } }),
+    );
+    expect(resolveBudgetForScope(withoutAffected.budget, 'affected')).toEqual({
+      groups: { e2e: 150 },
+      total: { full: 480 },
+    });
+
+    const invalidAffected = parsePerfBudget(
+      JSON.stringify({
+        groups: { e2e: 150 },
+        total: { full: 480 },
+        affected: { groups: { e2e: 0 }, total: { full: 300 } },
+      }),
+    );
+    expect(invalidAffected.budget).toBeNull();
+    expect(invalidAffected.warning).toMatch(/affected inválida/i);
+    expect(
+      validatePerfBudgetModes({ affected: { groups: { e2e: -1 }, total: { full: 300 } } }).valid,
+    ).toBe(false);
   });
 });

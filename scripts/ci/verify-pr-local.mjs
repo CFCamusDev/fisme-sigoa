@@ -502,17 +502,49 @@ export function parsePerfBudget(jsonText) {
         'scripts/ci/perf-budget.json tiene una forma inválida (groups y total deben ser mapas de segundos positivos); se omiten los presupuestos.',
     };
   }
+  if (data.affected !== undefined) {
+    if (
+      !data.affected ||
+      typeof data.affected !== 'object' ||
+      !isBudgetMap(data.affected.groups) ||
+      !isBudgetMap(data.affected.total)
+    ) {
+      return {
+        budget: null,
+        warning:
+          'scripts/ci/perf-budget.json tiene una sección affected inválida (groups y total deben ser mapas de segundos positivos); se omiten los presupuestos.',
+      };
+    }
+    return {
+      budget: {
+        groups: data.groups,
+        total: data.total,
+        affected: { groups: data.affected.groups, total: data.affected.total },
+      },
+    };
+  }
   return { budget: { groups: data.groups, total: data.total } };
+}
+
+/**
+ * Selecciona el presupuesto de grupos y totales según el modo de alcance (`affected` o `all`).
+ */
+export function resolveBudgetForScope(budget, scopeMode) {
+  if (scopeMode === 'affected' && budget?.affected) {
+    return budget.affected;
+  }
+  return budget;
 }
 
 /**
  * Calcula los tiempos por grupo contra sus presupuestos. Solo informa: no cambia el estado global.
  * Con --repeat-scope all el presupuesto de integración y E2E se multiplica por las pasadas.
  * @param {Array<{ parallelGroup?: string, durationMs?: number }>} checks
- * @param {{ groups: Record<string, number>, total: Record<string, number> } | null} budget
- * @param {{ mode: string, repeat?: number, repeatScope?: string, totalDurationMs?: number }} options
+ * @param {{ groups: Record<string, number>, total: Record<string, number>, affected?: { groups: Record<string, number>, total: Record<string, number> } } | null} budget
+ * @param {{ mode: string, repeat?: number, repeatScope?: string, scopeMode?: string, totalDurationMs?: number }} options
  */
 export function computeTimings(checks, budget, options) {
+  const activeBudget = resolveBudgetForScope(budget, options.scopeMode);
   const repeat = options.repeat || 1;
   const scaled = new Set(['integracion', 'e2e']);
   const byGroup = new Map();
@@ -527,7 +559,7 @@ export function computeTimings(checks, budget, options) {
   const warnings = [];
   const groups = PARALLEL_GROUP_ORDER.filter((id) => byGroup.has(id)).map((id) => {
     const durationMs = byGroup.get(id);
-    const seconds = budget?.groups[id];
+    const seconds = activeBudget?.groups[id];
     const factor = options.repeatScope === 'all' && scaled.has(id) ? repeat : 1;
     const budgetMs = seconds ? seconds * 1000 * factor : null;
     const exceededBudget = budgetMs !== null && durationMs > budgetMs;
@@ -539,7 +571,7 @@ export function computeTimings(checks, budget, options) {
     return { id, durationMs, budgetMs, exceededBudget };
   });
 
-  const totalSeconds = budget?.total[options.mode];
+  const totalSeconds = activeBudget?.total[options.mode];
   const totalBudgetMs = totalSeconds ? totalSeconds * 1000 : null;
   const totalDurationMs = options.totalDurationMs ?? null;
   const exceededTotal =
@@ -2515,6 +2547,7 @@ async function runCli() {
     mode,
     repeat,
     repeatScope,
+    scopeMode: scopeSummary.mode,
     totalDurationMs: new Date(completedAt).getTime() - new Date(startedAt).getTime(),
   });
   if (parsedBudget.warning) timings.warnings.unshift(parsedBudget.warning);
