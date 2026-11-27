@@ -1959,7 +1959,7 @@ export function buildGroupEnvironment(groupId, options = {}) {
     const baseUrl =
       baseEnv.TEST_DATABASE_URL ||
       baseEnv.DATABASE_URL ||
-      'postgresql://postgres:postgres@localhost:5432/sigoa_test?schema=public';
+      'postgresql://postgres:postgres@localhost:5433/sigoa_test?schema=public';
     const url = new URL(baseUrl);
     url.pathname = `/${options.dbName}`;
     env.DATABASE_URL = url.toString();
@@ -2011,7 +2011,7 @@ async function openAdminClient(baseEnv) {
   const baseUrl =
     baseEnv.TEST_DATABASE_URL ||
     baseEnv.DATABASE_URL ||
-    'postgresql://postgres:postgres@localhost:5432/sigoa_test?schema=public';
+    'postgresql://postgres:postgres@localhost:5433/sigoa_test?schema=public';
   const adminUrl = new URL(baseUrl);
   adminUrl.pathname = '/postgres';
   const client = new pg.Client({
