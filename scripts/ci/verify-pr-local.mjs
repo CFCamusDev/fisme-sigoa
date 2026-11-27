@@ -1295,6 +1295,50 @@ export function parseRepeatScope(args, repeat) {
 }
 
 /**
+ * Lee --repeat-max de los argumentos: entero positivo (MAX_REPEATED_TEST_FILES por defecto).
+ * @param {string[]} args
+ * @returns {number}
+ */
+export function parseRepeatMax(args) {
+  const index = args.indexOf('--repeat-max');
+  if (index === -1) return MAX_REPEATED_TEST_FILES;
+  const raw = args[index + 1];
+  if (raw === undefined || !/^[0-9]+$/.test(raw) || Number(raw) < 1) {
+    throw new Error(`--repeat-max debe ser un entero positivo (recibido: '${raw ?? ''}').`);
+  }
+  return Number(raw);
+}
+
+/**
+ * Selecciona pruebas nuevas/modificadas más las directamente afectadas (`explain` con `direct: true`),
+ * ordenadas alfabéticamente y acotadas por `max`.
+ * @param {Record<string, any> | null | undefined} selectionResult
+ * @param {string[] | null | undefined} changedFiles
+ * @param {number} [max=MAX_REPEATED_TEST_FILES]
+ * @returns {{ files: string[], total: number, truncated: boolean }}
+ */
+export function selectRepeatableTests(
+  selectionResult,
+  changedFiles,
+  max = MAX_REPEATED_TEST_FILES,
+) {
+  const files = new Set();
+  for (const raw of changedFiles || []) {
+    const normalized = raw.trim().replace(/\\/g, '/');
+    if (normalized && TEST_FILE_REGEX.test(normalized)) {
+      files.add(normalized);
+    }
+  }
+  for (const item of selectionResult?.explain ?? []) {
+    if (item?.direct && item?.target && TEST_FILE_REGEX.test(item.target)) {
+      files.add(item.target.replace(/\\/g, '/'));
+    }
+  }
+  const sorted = [...files].sort();
+  return { files: sorted.slice(0, max), total: sorted.length, truncated: sorted.length > max };
+}
+
+/**
  * Selecciona las pruebas nuevas o modificadas a partir de `git diff --name-status`.
  * Descarta los borrados; de un renombrado toma la ruta nueva. Si hay más de `max`, conserva las
  * primeras por orden alfabético y lo indica en `truncated`.
@@ -1372,7 +1416,7 @@ export function planRepeatedSteps(steps, repeatCount = 1, options = {}) {
   const result = [];
 
   for (const step of steps) {
-    if (!REPEATABLE_STEP_IDS.has(step.id) || repeatCount <= 1) {
+    if (step.skippedByScope || !REPEATABLE_STEP_IDS.has(step.id) || repeatCount <= 1) {
       result.push(step);
       continue;
     }
@@ -2111,9 +2155,11 @@ async function runCli() {
 
   let repeat;
   let repeatScope;
+  let repeatMax;
   try {
     repeat = parseRepeat(args);
     repeatScope = parseRepeatScope(args, repeat);
+    repeatMax = parseRepeatMax(args);
   } catch (error) {
     console.error(`❌ ${error.message}`);
     process.exit(1);
@@ -2143,17 +2189,6 @@ async function runCli() {
   );
 
   const rawPlan = buildExecutionPlan(mode, { only, baseBranch });
-  const changedTests =
-    repeat > 1 && repeatScope === 'changed'
-      ? selectChangedTests(
-          getGit(`git -c core.quotepath=false diff --name-status ${baseBranch}...HEAD`),
-        )
-      : { files: [], total: 0, truncated: false };
-  if (changedTests.truncated) {
-    console.warn(
-      `Advertencia: hay ${changedTests.total} pruebas nuevas o modificadas; se repiten solo las primeras ${MAX_REPEATED_TEST_FILES} por orden alfabético.`,
-    );
-  }
   const forceAll = args.includes('--force-all');
   const explainMode = args.includes('--explain');
   const isCi = Boolean(process.env.CI);
@@ -2171,6 +2206,16 @@ async function runCli() {
     forceAll,
   });
 
+  const changedTests =
+    repeat > 1 && repeatScope === 'changed'
+      ? selectRepeatableTests(selectionResult, changedFilesForScope, repeatMax)
+      : { files: [], total: 0, truncated: false };
+  if (changedTests.truncated) {
+    console.warn(
+      `Advertencia: hay ${changedTests.total} pruebas nuevas, modificadas o directamente afectadas; se repiten solo las primeras ${repeatMax} por orden alfabético.`,
+    );
+  }
+
   if (explainMode) {
     console.log(`Alcance: ${scopeSummary.mode} · Motivo: ${scopeSummary.reason}`);
     for (const item of selectionResult.explain ?? []) {
@@ -2178,14 +2223,14 @@ async function runCli() {
     }
   }
 
-  const repeatedPlan = planRepeatedSteps(rawPlan, repeat, {
-    scope: repeatScope,
-    changedTests: changedTests.files,
-  });
-  const plan = applyScopeToPlan(repeatedPlan, selectionResult, {
+  const scopedPlan = applyScopeToPlan(rawPlan, selectionResult, {
     ci: isCi,
     forceAll,
     changedFiles: changedFilesForScope,
+  });
+  const plan = planRepeatedSteps(scopedPlan, repeat, {
+    scope: repeatScope,
+    changedTests: changedTests.files,
   });
   const groups = planParallelGroups(plan);
   const results = new Map();
