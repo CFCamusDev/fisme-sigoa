@@ -11,6 +11,7 @@ import {
   isInertFile,
   isKnownCodeFile,
   loadRules,
+  matchesE2eFullTrigger,
 } from './rules.mjs';
 import { refineSharedEdges } from './symbols.mjs';
 
@@ -107,6 +108,29 @@ function buildTotals(selection, allTests) {
 
 function isStaticCodeFile(filePath) {
   return CODE_EXTENSIONS.has(path.posix.extname(filePath).toLowerCase());
+}
+
+/**
+ * Decide el alcance de E2E (`full` o `none`) según las reglas de disparadores y archivos inertes.
+ * @param {string[]} changedFiles
+ * @param {ReturnType<typeof loadRules>} rules
+ * @returns {{ scope: 'full' | 'none', reason: string }}
+ */
+export function decideE2eScope(changedFiles, rules = loadRules()) {
+  if (!changedFiles || changedFiles.length === 0) {
+    return { scope: 'none', reason: 'No hay archivos cambiados' };
+  }
+
+  if (changedFiles.every((file) => isInertFile(file, rules))) {
+    return { scope: 'none', reason: 'Solo cambiaron archivos de documentación o inertes' };
+  }
+
+  const triggers = changedFiles.filter((file) => matchesE2eFullTrigger(file, rules));
+  if (triggers.length > 0) {
+    return { scope: 'full', reason: `Cambios que afectan E2E: ${triggers.join(', ')}` };
+  }
+
+  return { scope: 'none', reason: 'Sin cambios que afecten E2E' };
 }
 
 /**
@@ -263,7 +287,7 @@ export function selectAffected({ changedFiles, graph, rules = loadRules() }) {
     backendIntegration: Array.from(selectedSets.backendIntegration).sort(),
     frontend: Array.from(selectedSets.frontend).sort(),
     shared: Array.from(selectedSets.shared).sort(),
-    e2e: { scope: 'none', reason: 'Pendiente de evaluar alcance E2E' },
+    e2e: decideE2eScope(normalizedChanged, rules),
     staticFiles: Array.from(staticFiles).sort(),
   };
 
