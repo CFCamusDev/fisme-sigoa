@@ -6,6 +6,7 @@ import os from 'node:os';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { resolveBashPath } from './resolve-bash-path.mjs';
+import { isGlobalTrigger, loadRules } from './affected/rules.mjs';
 import { collectChangedFiles, runSelection } from './affected/select.mjs';
 
 /**
@@ -1628,6 +1629,33 @@ export function verifyReportStatus(report, currentContext, options = {}) {
     }
   }
 
+  // Regla (g): coherencia del alcance (scope) con los disparadores globales del diff
+  if (!report.scope) {
+    if (requireMode === 'full') {
+      errors.push(
+        'El informe no registra el alcance de ejecución (scope); con --require full es obligatorio. Ejecuta pnpm verify:pr:clean.',
+      );
+    } else {
+      warnings.push(
+        'El informe anterior no registra el alcance (scope); considera regenerarlo con pnpm verify:pr:clean.',
+      );
+    }
+  } else if (report.scope.mode === 'affected') {
+    if (currentContext.changedFiles === null) {
+      errors.push(
+        'Alcance incoherente: no se pudo calcular el diff actual, por lo que se exige ejecutar todo.',
+      );
+    } else if (Array.isArray(currentContext.changedFiles)) {
+      const rules = options.rules ?? loadRules();
+      const globalHit = currentContext.changedFiles.find((file) => isGlobalTrigger(file, rules));
+      if (globalHit) {
+        errors.push(
+          `Alcance incoherente: el diff exige ejecutar todo por el disparador global '${globalHit}'.`,
+        );
+      }
+    }
+  }
+
   return {
     valid: errors.length === 0,
     errors,
@@ -2098,6 +2126,8 @@ async function runCli() {
   const currentStatus = getGit('git status --porcelain');
   const isTreeClean = currentStatus === '';
 
+  const baseBranchForStatus = args.includes('--base') ? args[args.indexOf('--base') + 1] : 'develop';
+
   // Modo Status Gate
   if (isStatus) {
     let requireMode = 'quick';
@@ -2124,11 +2154,25 @@ async function runCli() {
       process.exit(1);
     }
 
+    const statusChangedFiles = collectChangedFiles({
+      base: baseBranchForStatus,
+      mergeBase: true,
+    });
     const verification = verifyReportStatus(
       reportData,
-      { currentHeadSha, currentBranch, isTreeClean, now: new Date() },
+      {
+        currentHeadSha,
+        currentBranch,
+        isTreeClean,
+        changedFiles: statusChangedFiles,
+        now: new Date(),
+      },
       { requireMode },
     );
+
+    for (const warn of verification.warnings) {
+      console.warn(`⚠ [verify:pr:status] ${warn}`);
+    }
 
     if (!verification.valid) {
       console.error(
