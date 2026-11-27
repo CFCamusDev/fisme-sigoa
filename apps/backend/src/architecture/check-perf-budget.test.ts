@@ -12,7 +12,7 @@ const {
   normalizeRepoRelativePath,
   validatePerfBudgetModes,
 } = checkPerfBudgetModule;
-const { parsePerfBudget, resolveBudgetForScope } = verifyPrModule;
+const { parsePerfBudget, resolveBudgetForScope, computeTimings } = verifyPrModule;
 
 const sampleBudget = {
   perTest: { unit: 2000, integration: 5000, e2e: 20000 },
@@ -207,6 +207,15 @@ describe('check-perf-budget (HU-080, T-080-22)', () => {
       expect(exc.ms).toBeGreaterThan(0);
     }
     expect(validatePerfBudgetModes(budget).valid).toBe(true);
+    expect(budget.affected.groups.e2e).toBe(budget.groups.e2e);
+
+    const parsed = parsePerfBudget(JSON.stringify(budget));
+    const timings = computeTimings([{ parallelGroup: 'e2e', durationMs: 108_700 }], parsed.budget, {
+      mode: 'full',
+      scopeMode: 'affected',
+      totalDurationMs: 208_700,
+    });
+    expect(timings.warnings).toEqual([]);
   });
 
   it('reads the budget by mode, falls back to all and rejects an invalid affected section', () => {

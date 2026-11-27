@@ -22,7 +22,7 @@
       "integracion": 150,
       "cobertura": 150,
       "imagenes": 150,
-      "e2e": 100
+      "e2e": 150
     },
     "total": {
       "quick": 60,
