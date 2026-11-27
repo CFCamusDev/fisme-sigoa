@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -29,6 +30,7 @@ import {
   compareInjectFailureWithSelection,
   injectThrowIntoSource,
   restoreFileWithGit,
+  runDiffsMode,
   // @ts-expect-error script ESM sin declaraciones .d.ts
 } from '../../../../scripts/perf/affected-harness.mjs';
 
@@ -192,5 +194,92 @@ describe('affected engine on fixture repository (T-085-20, CA5, CA9)', () => {
     expect(comparisonMissing.missingTests).toEqual([
       'apps/backend/src/modules/beta/application/create-beta.test.ts',
     ]);
+  });
+
+  function initTempRepo() {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sigoa-harness-git-'));
+    const git = (args: string[]) =>
+      execFileSync('git', args, { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    git(['init', '-b', 'develop']);
+    git(['config', 'user.email', 'test@example.com']);
+    git(['config', 'user.name', 'Test User']);
+    return { dir, git };
+  }
+
+  it('analyzes linear squash commits and fails when 0 commits match', () => {
+    const { dir, git } = initTempRepo();
+    try {
+      const write = (rel: string, content: string) => {
+        const abs = path.join(dir, rel);
+        fs.mkdirSync(path.dirname(abs), { recursive: true });
+        fs.writeFileSync(abs, content, 'utf8');
+      };
+
+      write('docs/init.md', '# Init\n');
+      git(['add', 'docs/init.md']);
+      git(['commit', '-m', 'docs: initial setup']);
+
+      const emptyRes = runDiffsMode({ root: dir, baseRef: 'develop', count: 5 });
+      expect(emptyRes.commitsAnalyzed).toBe(0);
+      expect(emptyRes.ok).toBe(false);
+      expect(emptyRes.error).toContain('0 casos analizados');
+
+      write('apps/backend/src/modules/alpha/a.ts', 'export const a = 1;\n');
+      write(
+        'apps/backend/src/modules/alpha/a.test.ts',
+        "import { a } from './a'; export const t = a;\n",
+      );
+      git([
+        'add',
+        'apps/backend/src/modules/alpha/a.ts',
+        'apps/backend/src/modules/alpha/a.test.ts',
+      ]);
+      git(['commit', '-m', 'feat(alpha): add alpha module']);
+
+      const res = runDiffsMode({ root: dir, baseRef: 'develop', count: 5 });
+      expect(res.commitsAnalyzed).toBe(1);
+      expect(res.ok).toBe(true);
+      expect(res.items[0]?.selectedTotal).toBe(1);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('analyzes merge commits against their first parent', () => {
+    const { dir, git } = initTempRepo();
+    try {
+      const write = (rel: string, content: string) => {
+        const abs = path.join(dir, rel);
+        fs.mkdirSync(path.dirname(abs), { recursive: true });
+        fs.writeFileSync(abs, content, 'utf8');
+      };
+
+      write('docs/init.md', '# Init\n');
+      git(['add', 'docs/init.md']);
+      git(['commit', '-m', 'chore: init']);
+
+      git(['switch', '-c', 'feature/alpha']);
+      write('apps/backend/src/modules/alpha/a.ts', 'export const a = 1;\n');
+      write(
+        'apps/backend/src/modules/alpha/a.test.ts',
+        "import { a } from './a'; export const t = a;\n",
+      );
+      git([
+        'add',
+        'apps/backend/src/modules/alpha/a.ts',
+        'apps/backend/src/modules/alpha/a.test.ts',
+      ]);
+      git(['commit', '-m', 'feat(alpha): add a']);
+
+      git(['switch', 'develop']);
+      git(['merge', '--no-ff', 'feature/alpha', '-m', 'feat(alpha): merge feature alpha']);
+
+      const res = runDiffsMode({ root: dir, baseRef: 'develop', count: 5 });
+      expect(res.commitsAnalyzed).toBe(1);
+      expect(res.ok).toBe(true);
+      expect(res.items[0]?.changedCount).toBe(2);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

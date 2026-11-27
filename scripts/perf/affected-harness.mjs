@@ -159,29 +159,92 @@ export function restoreFileWithGit(filePath, root = repoRoot, execFn = execFileS
   });
 }
 
-function runDiffsMode(args) {
-  const commitsRaw = execFileSync(
+const SUBJECT_PREFIX_REGEX = /^(feat|fix|refactor|test|perf)(?:\([^)]+\))?!?:\s+/i;
+
+/**
+ * Selecciona hasta `count` commits del primer padre de `baseRef` cuyo asunto empiece por
+ * `feat`, `fix`, `refactor`, `test` o `perf` (compatible con historial lineal squash y merges).
+ * @param {{ baseRef?: string, count?: number, root?: string, exec?: typeof execFileSync }} [options]
+ * @returns {Array<{ sha: string, subject: string }>}
+ */
+export function selectHarnessCommits(options = {}) {
+  const baseRef = options.baseRef ?? 'develop';
+  const count = options.count ?? 12;
+  const root = options.root ?? repoRoot;
+  const execFn = options.exec ?? execFileSync;
+
+  const logRaw = execFn(
     'git',
-    ['log', 'develop', '--first-parent', '--merges', `-n`, String(args.count), '--format=%H'],
-    { cwd: repoRoot, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
-  )
-    .split(/\r?\n/)
-    .filter(Boolean);
+    ['log', baseRef, '--first-parent', '--format=%H%x09%s'],
+    { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+  );
+
+  const selected = [];
+  for (const line of logRaw.split(/\r?\n/)) {
+    if (!line) continue;
+    const tabIdx = line.indexOf('\t');
+    if (tabIdx === -1) continue;
+    const sha = line.slice(0, tabIdx).trim();
+    const subject = line.slice(tabIdx + 1).trim();
+    if (!sha || !SUBJECT_PREFIX_REGEX.test(subject)) continue;
+    selected.push({ sha, subject });
+    if (selected.length >= count) break;
+  }
+  return selected;
+}
+
+/**
+ * Ejecuta el modo `diffs` sobre los últimos N commits elegibles del primer padre de `baseRef`.
+ * Si `commitsAnalyzed` es 0, devuelve `ok: false` y `error` («0 casos analizados»).
+ */
+export function runDiffsMode(args = {}) {
+  const root = args.root ?? repoRoot;
+  const baseRef = args.baseRef ?? 'develop';
+  const count = args.count ?? 12;
+  const execFn = args.exec ?? execFileSync;
+
+  const commits = selectHarnessCommits({ baseRef, count, root, exec: execFn });
+  if (commits.length === 0) {
+    return {
+      mode: 'diffs',
+      checkedAt: new Date().toISOString(),
+      commitsAnalyzed: 0,
+      ok: false,
+      error: '0 casos analizados: no se encontraron commits feat/fix/refactor/test/perf en el primer padre.',
+      items: [],
+    };
+  }
 
   const items = [];
   let hasFailures = false;
 
-  for (const sha of commitsRaw) {
-    const diffFiles = execFileSync(
-      'git',
-      ['-c', 'core.quotepath=false', 'diff', '--name-only', '--diff-filter=d', `${sha}^1..${sha}`],
-      { cwd: repoRoot, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
-    )
+  for (const { sha, subject } of commits) {
+    const parentsRaw = execFn('git', ['rev-list', '--parents', '-n', '1', sha], {
+      cwd: root,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    }).trim();
+    const parentCount = parentsRaw.split(/\s+/).length - 1;
+
+    const diffRaw =
+      parentCount >= 1
+        ? execFn(
+            'git',
+            ['-c', 'core.quotepath=false', 'diff', '--name-only', '--diff-filter=d', `${sha}^1..${sha}`],
+            { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+          )
+        : execFn(
+            'git',
+            ['-c', 'core.quotepath=false', 'diff-tree', '--no-commit-id', '--name-only', '-r', sha],
+            { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+          );
+
+    const diffFiles = diffRaw
       .split(/\r?\n/)
       .map((f) => toPosixPath(f))
       .filter(Boolean);
 
-    const selectionResult = runSelection({ root: repoRoot, changedFiles: diffFiles });
+    const selectionResult = runSelection({ root, changedFiles: diffFiles });
     const inv = checkDiffInvariants({ changedFiles: diffFiles, selectionResult });
     if (!inv.ok) hasFailures = true;
 
@@ -193,6 +256,7 @@ function runDiffsMode(args) {
 
     items.push({
       commit: sha.slice(0, 8),
+      subject,
       changedCount: diffFiles.length,
       mode: selectionResult.mode,
       selectedTotal,
@@ -327,6 +391,9 @@ function main() {
   fs.writeFileSync(args.outPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
 
   console.log(`Informe del arnés (${report.mode}) guardado en ${path.relative(repoRoot, args.outPath)}`);
+  if (report.error) {
+    console.error(`Error: ${report.error}`);
+  }
   console.log(`Resultado: ${report.ok ? 'OK' : 'CON OBSERVACIONES'}`);
   if (!report.ok) {
     process.exitCode = 1;
