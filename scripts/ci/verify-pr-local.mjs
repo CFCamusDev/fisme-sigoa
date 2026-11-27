@@ -804,6 +804,127 @@ function buildVitestScopedCommand(filter, extraArgs, relFiles, fallbackCommand, 
   return { command: cmd, tooLong: false };
 }
 
+const STATIC_PACKAGES = [
+  { id: 'shared', filter: '@sigoa/shared', prefix: 'packages/shared/' },
+  { id: 'backend', filter: 'backend', prefix: 'apps/backend/' },
+  { id: 'frontend', filter: 'frontend', prefix: 'apps/frontend/' },
+];
+
+/**
+ * Agrupa rutas en tandas para no superar `maxLen` en la línea de comandos.
+ * @param {string[]} files
+ * @param {string} baseCommand
+ * @param {number} [maxLen=MAX_COMMAND_LENGTH]
+ * @returns {string[]}
+ */
+export function batchChangedFiles(files, baseCommand, maxLen = MAX_COMMAND_LENGTH) {
+  if (!files || files.length === 0) return [];
+  const commands = [];
+  let current = baseCommand;
+
+  for (const file of files) {
+    const quoted = `"${file}"`;
+    if (current !== baseCommand && current.length + 1 + quoted.length > maxLen) {
+      commands.push(current);
+      current = `${baseCommand} ${quoted}`;
+    } else {
+      current = `${current} ${quoted}`;
+    }
+  }
+  if (current !== baseCommand) {
+    commands.push(current);
+  }
+  return commands;
+}
+
+function groupPackageFiles(changedFiles, extRegex) {
+  const byPkg = { shared: [], backend: [], frontend: [] };
+  for (const raw of changedFiles || []) {
+    const file = raw.trim().replace(/\\/g, '/');
+    if (!file || !extRegex.test(file)) continue;
+    for (const pkg of STATIC_PACKAGES) {
+      if (file.startsWith(`${pkg.prefix}src/`)) {
+        byPkg[pkg.id].push(file.slice(pkg.prefix.length));
+        break;
+      }
+    }
+  }
+  for (const key of Object.keys(byPkg)) {
+    byPkg[key].sort();
+  }
+  return byPkg;
+}
+
+/**
+ * Construye comandos de Prettier solo sobre archivos cambiados por paquete.
+ */
+export function buildScopedFormatCommand(changedFiles, maxLen = MAX_COMMAND_LENGTH) {
+  const byPkg = groupPackageFiles(changedFiles, /\.(ts|tsx|json)$/);
+  const cmds = [];
+  for (const pkg of STATIC_PACKAGES) {
+    const files = byPkg[pkg.id];
+    if (files.length === 0) continue;
+    cmds.push(
+      ...batchChangedFiles(files, `pnpm --filter ${pkg.filter} exec prettier --check`, maxLen),
+    );
+  }
+  return cmds.length > 0 ? cmds.join(' && ') : null;
+}
+
+/**
+ * Construye comandos de ESLint con caché solo sobre archivos `.ts`/`.tsx` cambiados.
+ * Incluye `check-design-tokens.mjs` solo si cambió `apps/frontend/src/`.
+ */
+export function buildScopedLintCommand(changedFiles, maxLen = MAX_COMMAND_LENGTH) {
+  const byPkg = groupPackageFiles(changedFiles, /\.(ts|tsx)$/);
+  const cmds = [];
+  for (const pkg of STATIC_PACKAGES) {
+    const files = byPkg[pkg.id];
+    if (files.length === 0) continue;
+    const cacheFile = `../../node_modules/.cache/sigoa-affected/${pkg.id}.eslintcache`;
+    cmds.push(
+      ...batchChangedFiles(
+        files,
+        `pnpm --filter ${pkg.filter} exec eslint --cache --cache-location "${cacheFile}"`,
+        maxLen,
+      ),
+    );
+  }
+  if (byPkg.frontend.length > 0) {
+    cmds.push('pnpm --filter frontend exec node scripts/check-design-tokens.mjs');
+  }
+  return cmds.length > 0 ? cmds.join(' && ') : null;
+}
+
+/**
+ * Construye comandos `tsc --noEmit --incremental` para paquetes afectados.
+ * Si cambió `packages/shared`, comprueba los tres paquetes.
+ */
+export function buildScopedTypecheckCommand(changedFiles) {
+  const byPkg = groupPackageFiles(changedFiles, /\.(ts|tsx)$/);
+  const targets = new Set();
+  if (byPkg.shared.length > 0) {
+    targets.add('shared');
+    targets.add('backend');
+    targets.add('frontend');
+  } else {
+    if (byPkg.backend.length > 0) targets.add('backend');
+    if (byPkg.frontend.length > 0) targets.add('frontend');
+  }
+
+  if (targets.size === 0) return null;
+
+  const cmds = [];
+  for (const pkg of STATIC_PACKAGES) {
+    if (!targets.has(pkg.id)) continue;
+    const tsBuildInfo = `../../node_modules/.cache/sigoa-affected/${pkg.id}.tsbuildinfo`;
+    cmds.push(
+      `pnpm --filter ${pkg.filter} exec tsc --noEmit --incremental --tsBuildInfoFile "${tsBuildInfo}"`,
+    );
+  }
+  return cmds.join(' && ');
+}
+
 function touchesAppOrPackageCode(changedFiles) {
   const testRegex = /\.(test|spec)\.(ts|tsx|mjs|js)$/;
   return (changedFiles || []).some((raw) => {
@@ -939,6 +1060,54 @@ export function applyScopeToPlan(plan, selectionResult, options = {}) {
   const imageSkipSet = new Set(imageSkipDecision.skipIds);
 
   return plan.map((step) => {
+    if (step.id === 'format') {
+      const cmd = buildScopedFormatCommand(changedFiles, maxLen);
+      if (!cmd) {
+        return {
+          ...step,
+          skippedByScope: true,
+          scopeReason: 'Sin archivos aplicables cambiados para formato.',
+        };
+      }
+      return {
+        ...step,
+        scopedCommand: cmd,
+        scopeReason: 'Formato verificado solo sobre archivos cambiados.',
+      };
+    }
+
+    if (step.id === 'lint') {
+      const cmd = buildScopedLintCommand(changedFiles, maxLen);
+      if (!cmd) {
+        return {
+          ...step,
+          skippedByScope: true,
+          scopeReason: 'Sin archivos .ts/.tsx cambiados para lint.',
+        };
+      }
+      return {
+        ...step,
+        scopedCommand: cmd,
+        scopeReason: 'Lint con caché solo sobre archivos cambiados.',
+      };
+    }
+
+    if (step.id === 'typecheck') {
+      const cmd = buildScopedTypecheckCommand(changedFiles);
+      if (!cmd) {
+        return {
+          ...step,
+          skippedByScope: true,
+          scopeReason: 'Sin archivos .ts/.tsx cambiados para typecheck.',
+        };
+      }
+      return {
+        ...step,
+        scopedCommand: cmd,
+        scopeReason: 'Typecheck incremental solo sobre paquetes afectados.',
+      };
+    }
+
     if (step.id === 'integration-tests') {
       const files = stripPackagePrefix(sel.backendIntegration ?? [], 'apps/backend/');
       if (files.length === 0) {
@@ -1866,6 +2035,8 @@ async function runCli() {
   const args = process.argv.slice(2);
   const isStatus = args.includes('--status');
   const cacheDir = path.resolve('node_modules', '.cache', 'sigoa-verify');
+  const affectedCacheDir = path.resolve('node_modules', '.cache', 'sigoa-affected');
+  fs.mkdirSync(affectedCacheDir, { recursive: true });
   const reportPath = path.join(cacheDir, 'last-report.json');
 
   const { execSync } = await import('node:child_process');
