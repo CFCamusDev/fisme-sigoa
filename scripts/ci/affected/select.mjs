@@ -257,11 +257,14 @@ export function selectAffected({ changedFiles, graph, rules = loadRules() }) {
   const explainMap = new Map();
   const staticFiles = new Set();
 
-  function addSelectedTest(testFile, category, reason, via) {
+  function addSelectedTest(testFile, category, reason, via, direct = false) {
     if (!selectedSets[category]) return;
     selectedSets[category].add(testFile);
-    if (!explainMap.has(testFile)) {
-      explainMap.set(testFile, { target: testFile, category, reason, via });
+    const existing = explainMap.get(testFile);
+    if (!existing) {
+      explainMap.set(testFile, { target: testFile, category, reason, via, direct });
+    } else if (direct && !existing.direct) {
+      existing.direct = true;
     }
   }
 
@@ -276,7 +279,7 @@ export function selectAffected({ changedFiles, graph, rules = loadRules() }) {
 
     const directCategory = classifyTestFile(file, rules);
     if (directCategory && directCategory !== 'e2e') {
-      addSelectedTest(file, directCategory, 'prueba modificada directamente', file);
+      addSelectedTest(file, directCategory, 'prueba modificada directamente', file, true);
       continue;
     }
 
@@ -291,7 +294,7 @@ export function selectAffected({ changedFiles, graph, rules = loadRules() }) {
       for (const dep of dependents) {
         const depCat = classifyTestFile(dep, rules);
         if (depCat && depCat !== 'e2e') {
-          addSelectedTest(dep, depCat, `importa ${node} (cambio en ${file})`, file);
+          addSelectedTest(dep, depCat, `importa ${node} (cambio en ${file})`, file, depth === 0);
         }
 
         if (!visited.has(dep)) {

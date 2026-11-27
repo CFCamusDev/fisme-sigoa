@@ -301,4 +301,43 @@ describe('affected selection engine (T-085-18, CA1, CA3, CA4, CA7)', () => {
     });
     expect(failed).toBeNull();
   });
+
+  it('flags direct dependents in the explain output', () => {
+    const files = {
+      'apps/backend/src/modules/users/domain/entity.ts': 'export const Entity = {};',
+      'apps/backend/src/modules/users/application/use-case.ts': `
+        import { Entity } from '../domain/entity';
+        export const useCase = Entity;
+      `,
+      'apps/backend/src/modules/users/domain/entity.test.ts': `
+        import { Entity } from './entity';
+        export const t = Entity;
+      `,
+      'apps/backend/src/modules/users/application/use-case.test.ts': `
+        import { useCase } from './use-case';
+        export const t = useCase;
+      `,
+    };
+    const graph = buildGraph({
+      root: '/repo',
+      files: Object.keys(files),
+      host: createVirtualHost(files),
+    });
+    const result = selectAffected({
+      changedFiles: ['apps/backend/src/modules/users/domain/entity.ts'],
+      graph,
+      rules,
+    });
+
+    const directExplain = result.explain.find(
+      (item: { target: string }) =>
+        item.target === 'apps/backend/src/modules/users/domain/entity.test.ts',
+    );
+    const transitiveExplain = result.explain.find(
+      (item: { target: string }) =>
+        item.target === 'apps/backend/src/modules/users/application/use-case.test.ts',
+    );
+    expect(directExplain?.direct).toBe(true);
+    expect(transitiveExplain?.direct).toBe(false);
+  });
 });
