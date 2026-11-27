@@ -14,13 +14,13 @@ const SCAN_ROOTS = [
 const VI_MODULE_METHODS = new Set(['mock', 'doMock', 'importActual', 'importMock']);
 
 /**
- * Normaliza una ruta con separadores POSIX `/` usando `path.win32` cuando hay barras invertidas.
+ * Normaliza una ruta con separadores POSIX `/`.
  * @param {string} value
  * @returns {string}
  */
 export function toPosixPath(value) {
   if (!value) return '';
-  const normalized = value.includes('\\') ? path.win32.normalize(value).replace(/\\/g, '/') : path.posix.normalize(value);
+  const normalized = path.posix.normalize(value.replace(/\\/g, '/'));
   return normalized.replace(/^\.\//, '').replace(/\/$/, '');
 }
 
