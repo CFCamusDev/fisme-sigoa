@@ -23,6 +23,17 @@ const {
   checkLockfileConsistency,
   verifyReportStatus,
   checkWorkflowDrift,
+  applyScopeToPlan,
+  buildScopeSummary,
+  commandForParallelRun,
+  getBackendCoverageTargets,
+  buildScopedBackendCoverageCommand,
+  batchChangedFiles,
+  buildScopedFormatCommand,
+  buildScopedLintCommand,
+  buildScopedTypecheckCommand,
+  parseRepeatMax,
+  selectRepeatableTests,
 } = verifyPr;
 
 describe('verify-pr-local pure logic (T-002-22 / G1)', () => {
@@ -1599,6 +1610,300 @@ describe('verify-pr-local time budgets (T-078-17)', () => {
       );
       expect(withPerTest.warning).toBeUndefined();
       expect(withPerTest.budget).toEqual({ groups: { e2e: 150 }, total: { full: 480 } });
+    });
+  });
+
+  describe('scoped verification flow (T-085-19, CA5, CA6)', () => {
+    const sampleSelection = {
+      mode: 'affected',
+      reason: 'Selección calculada para 1 archivo(s) cambiado(s)',
+      selection: {
+        backendUnit: ['apps/backend/src/modules/users/application/create-user.test.ts'],
+        backendIntegration: ['apps/backend/src/modules/users/users.integration.test.ts'],
+        frontend: [],
+        shared: [],
+        e2e: { scope: 'none', reason: 'Sin cambios que afecten E2E' },
+        staticFiles: ['apps/backend/src/modules/users/application/create-user.ts'],
+      },
+      totals: {
+        backendUnit: { selected: 1, total: 10 },
+        backendIntegration: { selected: 1, total: 5 },
+        frontend: { selected: 0, total: 8 },
+        shared: { selected: 0, total: 3 },
+      },
+      explain: [
+        {
+          target: 'apps/backend/src/modules/users/application/create-user.test.ts',
+          category: 'backendUnit',
+          reason: 'importa create-user.ts',
+          via: 'apps/backend/src/modules/users/application/create-user.ts',
+          direct: true,
+        },
+        {
+          target: 'apps/backend/src/modules/users/users.integration.test.ts',
+          category: 'backendIntegration',
+          reason: 'afinidad de módulo',
+          via: 'apps/backend/src/modules/users/application/create-user.ts',
+          direct: false,
+        },
+      ],
+    };
+
+    it('keeps the full commands in the execution plan', () => {
+      const plan = buildExecutionPlan('full');
+      const integration = plan.find((s: { id: string }) => s.id === 'integration-tests');
+      const coverage = plan.find((s: { id: string }) => s.id === 'test-coverage');
+      expect(integration?.command).toBe('pnpm --filter backend test:integration');
+      expect(coverage?.command).toBe('pnpm test:coverage');
+    });
+
+    it('adds scoped commands from the selection and prefers scopedCommand', () => {
+      const plan = buildExecutionPlan('full');
+      const changedFiles = ['apps/backend/src/modules/users/application/create-user.ts'];
+      const scoped = applyScopeToPlan(plan, sampleSelection, { changedFiles });
+
+      const integration = scoped.find((s: { id: string }) => s.id === 'integration-tests');
+      expect(integration?.scopedCommand).toBe(
+        'pnpm --filter backend exec vitest run --project integration "src/modules/users/users.integration.test.ts"',
+      );
+      expect(commandForParallelRun(integration)).toBe(integration?.scopedCommand);
+    });
+
+    it('runs everything with force-all and in the CI', () => {
+      const plan = buildExecutionPlan('full');
+      const changedFiles = ['apps/backend/src/modules/users/application/create-user.ts'];
+      const forced = applyScopeToPlan(plan, sampleSelection, { forceAll: true, changedFiles });
+      const ci = applyScopeToPlan(plan, sampleSelection, { ci: true, changedFiles });
+
+      expect(
+        forced.every(
+          (s: { scopedCommand?: string; skippedByScope?: boolean }) =>
+            !s.scopedCommand && !s.skippedByScope,
+        ),
+      ).toBe(true);
+      expect(
+        ci.every(
+          (s: { scopedCommand?: string; skippedByScope?: boolean }) =>
+            !s.scopedCommand && !s.skippedByScope,
+        ),
+      ).toBe(true);
+    });
+
+    it('runs everything when the diff cannot be computed', () => {
+      const plan = buildExecutionPlan('full');
+      const allResult = { ...sampleSelection, mode: 'all', reason: 'No se pudo calcular el diff' };
+      const scoped = applyScopeToPlan(plan, allResult, { changedFiles: null });
+      expect(
+        scoped.every(
+          (s: { scopedCommand?: string; skippedByScope?: boolean }) =>
+            !s.scopedCommand && !s.skippedByScope,
+        ),
+      ).toBe(true);
+    });
+
+    it('skips the integration step when no integration test is selected', () => {
+      const plan = buildExecutionPlan('full');
+      const noIntegration = {
+        ...sampleSelection,
+        selection: { ...sampleSelection.selection, backendIntegration: [] },
+      };
+      const scoped = applyScopeToPlan(plan, noIntegration, {
+        changedFiles: ['apps/backend/src/modules/users/application/create-user.ts'],
+      });
+      const integration = scoped.find((s: { id: string }) => s.id === 'integration-tests');
+      expect(integration?.skippedByScope).toBe(true);
+    });
+
+    it('runs the whole category when the command line is too long', () => {
+      const plan = buildExecutionPlan('full');
+      const manyTests = Array.from(
+        { length: 10 },
+        (_, i) => `apps/backend/src/modules/users/u${i}.integration.test.ts`,
+      );
+      const longSelection = {
+        ...sampleSelection,
+        selection: { ...sampleSelection.selection, backendIntegration: manyTests },
+      };
+      const scoped = applyScopeToPlan(plan, longSelection, {
+        changedFiles: ['apps/backend/src/modules/users/application/create-user.ts'],
+        maxCommandLength: 120,
+      });
+      const integration = scoped.find((s: { id: string }) => s.id === 'integration-tests');
+      expect(integration?.scopedCommand).toBeUndefined();
+      expect(integration?.scopeReason).toMatch(/demasiado larga/i);
+    });
+
+    it('omits e2e when only documentation changed', () => {
+      const plan = buildExecutionPlan('full');
+      const docSelection = {
+        ...sampleSelection,
+        selection: {
+          backendUnit: [],
+          backendIntegration: [],
+          frontend: [],
+          shared: [],
+          e2e: { scope: 'none', reason: 'Solo cambiaron archivos de documentación o inertes' },
+          staticFiles: [],
+        },
+      };
+      const scoped = applyScopeToPlan(plan, docSelection, { changedFiles: ['docs/historias.md'] });
+      const e2e = scoped.find((s: { id: string }) => s.id === 'e2e');
+      expect(e2e?.skippedByScope).toBe(true);
+    });
+
+    it('omits the build step when nothing under apps or packages changed', () => {
+      const plan = buildExecutionPlan('full');
+      const scoped = applyScopeToPlan(plan, sampleSelection, {
+        changedFiles: ['scripts/ci/affected/select.mjs'],
+      });
+      const buildStep = scoped.find((s: { id: string }) => s.id === 'build');
+      expect(buildStep?.skippedByScope).toBe(true);
+    });
+
+    it('prints selected versus total in the report', () => {
+      const scope = buildScopeSummary(sampleSelection, {});
+      const report = createReportJson({
+        branch: 'feature/HU-085-pruebas-afectadas',
+        headSha: 'abc1234',
+        baseSha: 'develop',
+        mode: 'full',
+        scope,
+        checks: [],
+      });
+      const text = formatReportTable(report);
+      expect(text).toContain('Alcance: afectadas · seleccionadas 2 de 26');
+    });
+
+    it('limits coverage to changed files covered by the backend configuration and omits when none changed', () => {
+      const targets = getBackendCoverageTargets([
+        'apps/backend/src/modules/users/application/create-user.ts',
+        'apps/backend/src/modules/users/application/create-user.test.ts',
+        'apps/backend/src/modules/users/domain/ports/user-repo.ts',
+        'apps/backend/src/modules/users/infrastructure/http/users.routes.ts',
+      ]);
+      expect(targets).toEqual(['src/modules/users/application/create-user.ts']);
+
+      const cov = buildScopedBackendCoverageCommand(targets, [
+        'src/modules/users/application/create-user.test.ts',
+      ]);
+      expect(cov?.command).toBe(
+        'pnpm --filter backend exec vitest run --project unit --coverage --coverage.include="src/modules/users/application/create-user.ts" "src/modules/users/application/create-user.test.ts"',
+      );
+
+      expect(getBackendCoverageTargets(['apps/backend/src/server.ts'])).toEqual([]);
+      expect(buildScopedBackendCoverageCommand([], ['src/a.test.ts'])).toBeNull();
+    });
+
+    it('batches changed files per package within the command length limit and skips when empty', () => {
+      const batches = batchChangedFiles(
+        ['src/a.ts', 'src/b.ts', 'src/c.ts'],
+        'pnpm --filter backend exec prettier --check',
+        60,
+      );
+      expect(batches.length).toBeGreaterThan(1);
+      expect(batches.every((cmd: string) => cmd.length <= 60)).toBe(true);
+
+      expect(buildScopedFormatCommand(['docs/readme.md'])).toBeNull();
+      expect(buildScopedLintCommand(['docs/readme.md'])).toBeNull();
+
+      const lintBackendOnly = buildScopedLintCommand(['apps/backend/src/a.ts']);
+      expect(lintBackendOnly).not.toContain('check-design-tokens.mjs');
+
+      const lintFrontend = buildScopedLintCommand(['apps/frontend/src/a.tsx']);
+      expect(lintFrontend).toContain('check-design-tokens.mjs');
+
+      const typecheckShared = buildScopedTypecheckCommand(['packages/shared/src/user.ts']);
+      expect(typecheckShared).toContain('--filter @sigoa/shared');
+      expect(typecheckShared).toContain('--filter backend');
+      expect(typecheckShared).toContain('--filter frontend');
+    });
+
+    it('repeats changed and directly affected tests only and caps with repeat-max', () => {
+      expect(parseRepeatMax([])).toBe(10);
+      expect(parseRepeatMax(['--repeat-max', '4'])).toBe(4);
+      expect(() => parseRepeatMax(['--repeat-max', '0'])).toThrow(/--repeat-max/);
+      expect(() => parseRepeatMax(['--repeat-max', 'abc'])).toThrow(/--repeat-max/);
+
+      const repeatable = selectRepeatableTests(
+        sampleSelection,
+        ['apps/backend/src/modules/roles/role.integration.test.ts'],
+        5,
+      );
+      expect(repeatable.files).toEqual([
+        'apps/backend/src/modules/roles/role.integration.test.ts',
+        'apps/backend/src/modules/users/application/create-user.test.ts',
+      ]);
+
+      const capped = selectRepeatableTests(
+        sampleSelection,
+        [
+          'apps/backend/src/a.integration.test.ts',
+          'apps/backend/src/b.integration.test.ts',
+          'apps/backend/src/c.integration.test.ts',
+        ],
+        2,
+      );
+      expect(capped.files).toHaveLength(2);
+      expect(capped.truncated).toBe(true);
+
+      const integrationStep = {
+        id: 'integration-tests',
+        name: 'Integración',
+        command: 'pnpm --filter backend test:integration',
+      };
+      const repeated = planRepeatedSteps([integrationStep], 3, {
+        scope: 'changed',
+        changedTests: ['apps/backend/src/modules/users/application/create-user.test.ts'],
+      });
+      expect(repeated).toHaveLength(1);
+    });
+
+    it('records scope in the report and validates rule (g) in verifyReportStatus', () => {
+      const baseCtx = {
+        currentHeadSha: 'abc1234',
+        currentBranch: 'feature/HU-085-pruebas-afectadas',
+        isTreeClean: true,
+        now: new Date('2026-11-26T20:00:00.000Z'),
+      };
+      const baseReport = {
+        headSha: 'abc1234',
+        branch: 'feature/HU-085-pruebas-afectadas',
+        cleanWorkingTree: true,
+        mode: 'full',
+        overallStatus: 'ok',
+        completedAt: '2026-11-26T19:50:00.000Z',
+      };
+
+      const withoutScopeStandard = verifyReportStatus(baseReport, baseCtx, {
+        requireMode: 'standard',
+      });
+      expect(withoutScopeStandard.valid).toBe(true);
+      expect(withoutScopeStandard.warnings.length).toBeGreaterThan(0);
+
+      const withoutScopeFull = verifyReportStatus(baseReport, baseCtx, {
+        requireMode: 'full',
+      });
+      expect(withoutScopeFull.valid).toBe(false);
+      expect(withoutScopeFull.errors.join(' ')).toContain('scope');
+
+      const affectedWithGlobal = verifyReportStatus(
+        {
+          ...baseReport,
+          scope: { mode: 'affected', reason: 'test', selected: 1, total: 10 },
+        },
+        {
+          ...baseCtx,
+          changedFiles: ['pnpm-lock.yaml'],
+        },
+        { requireMode: 'full' },
+      );
+      expect(affectedWithGlobal.valid).toBe(false);
+      expect(affectedWithGlobal.errors.join(' ')).toMatch(/incoherente/i);
+
+      const accented = buildScopedFormatCommand([
+        'apps/backend/src/carpeta con espacio/análisis.ts',
+      ]);
+      expect(accented).toContain('"src/carpeta con espacio/análisis.ts"');
     });
   });
 });
