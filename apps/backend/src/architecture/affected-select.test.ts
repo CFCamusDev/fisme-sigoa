@@ -14,6 +14,10 @@ import {
   selectAffected,
   // @ts-expect-error script ESM sin declaraciones .d.ts
 } from '../../../../scripts/ci/affected/select.mjs';
+import {
+  findInsufficientSelection,
+  // @ts-expect-error script ESM sin declaraciones .d.ts
+} from '../../../../scripts/ci/affected/audit.mjs';
 
 function createVirtualHost(files: Record<string, string>) {
   const normalized = new Map<string, string>();
@@ -230,5 +234,39 @@ describe('affected selection engine (T-085-18, CA1, CA3, CA4, CA7)', () => {
     });
     expect(withSpacesAndAccents.mode).toBe('affected');
     expect(withSpacesAndAccents.selection.backendUnit).toEqual([]);
+  });
+
+  it('reports tests that failed without being selected', () => {
+    const selectionResult = {
+      mode: 'affected',
+      selection: {
+        backendUnit: ['apps/backend/src/modules/users/application/create-user.test.ts'],
+        backendIntegration: [],
+        frontend: [],
+        shared: [],
+        e2e: { scope: 'none', reason: 'Sin cambios que afecten E2E' },
+      },
+    };
+
+    expect(
+      findInsufficientSelection({
+        failedTests: [
+          'apps/backend/src/modules/users/application/create-user.test.ts',
+          'apps/backend/src/modules/roles/application/create-role.test.ts',
+          'apps/frontend/e2e/users.spec.ts',
+        ],
+        selection: selectionResult,
+      }),
+    ).toEqual([
+      'apps/backend/src/modules/roles/application/create-role.test.ts',
+      'apps/frontend/e2e/users.spec.ts',
+    ]);
+
+    expect(
+      findInsufficientSelection({
+        failedTests: ['apps/backend/src/modules/roles/application/create-role.test.ts'],
+        selection: { ...selectionResult, mode: 'all' },
+      }),
+    ).toEqual([]);
   });
 });

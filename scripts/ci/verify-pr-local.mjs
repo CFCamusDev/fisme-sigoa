@@ -1137,6 +1137,10 @@ export const WORKFLOW_EXCLUSIONS = [
     reason: 'Paso agregador del estado de jobs requeridos en el CI.',
   },
   {
+    pattern: /scripts\/ci\/affected\/audit\.mjs/,
+    reason: 'Auditor de selección en el resumen del PR de GitHub Actions; solo aplica en CI.',
+  },
+  {
     pattern: /mkdir -p tmp\//,
     reason: 'Preparación de directorios temporales de informes y shards en el CI.',
   },
