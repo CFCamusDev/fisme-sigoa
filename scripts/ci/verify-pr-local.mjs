@@ -1663,7 +1663,7 @@ export function verifyReportStatus(report, currentContext, options = {}) {
 
   // Regla (g): coherencia del alcance (scope) con los disparadores globales del diff
   if (!report.scope) {
-    if (requireMode === 'full') {
+    if (options.requireScope) {
       errors.push(
         'El informe no registra el alcance de ejecución (scope); con --require full es obligatorio. Ejecuta pnpm verify:pr:clean.',
       );
@@ -2199,7 +2199,7 @@ async function runCli() {
         changedFiles: statusChangedFiles,
         now: new Date(),
       },
-      { requireMode },
+      { requireMode, requireScope: requireMode === 'full' },
     );
 
     for (const warn of verification.warnings) {

@@ -1882,6 +1882,7 @@ describe('verify-pr-local time budgets (T-078-17)', () => {
 
       const withoutScopeFull = verifyReportStatus(baseReport, baseCtx, {
         requireMode: 'full',
+        requireScope: true,
       });
       expect(withoutScopeFull.valid).toBe(false);
       expect(withoutScopeFull.errors.join(' ')).toContain('scope');
