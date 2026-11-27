@@ -816,6 +816,59 @@ function touchesAppOrPackageCode(changedFiles) {
   });
 }
 
+const BACKEND_COVERAGE_INCLUDE_REGEX = /^apps\/backend\/(src\/modules\/[^/]+\/(?:domain|application)\/.+\.ts)$/;
+const BACKEND_COVERAGE_EXCLUDE_REGEX =
+  /(?:\.(?:test|spec|integration\.test)\.ts$|\/index\.ts$|\.d\.ts$|\/domain\/ports\/)/;
+
+/**
+ * Devuelve los archivos cambiados cubiertos por la configuración de cobertura del backend
+ * (`modules/<m>/domain` y `application`), con rutas relativas a `apps/backend/`.
+ * @param {string[]} changedFiles
+ * @returns {string[]}
+ */
+export function getBackendCoverageTargets(changedFiles) {
+  const targets = new Set();
+  for (const raw of changedFiles || []) {
+    const file = raw.trim().replace(/\\/g, '/');
+    const match = file.match(BACKEND_COVERAGE_INCLUDE_REGEX);
+    if (!match) continue;
+    if (BACKEND_COVERAGE_EXCLUDE_REGEX.test(file)) continue;
+    targets.add(match[1]);
+  }
+  return Array.from(targets).sort();
+}
+
+/**
+ * Construye el comando de cobertura acotado para el backend sobre los archivos cambiados.
+ * @param {string[]} coverageTargets
+ * @param {string[]} backendUnitFiles
+ * @param {number} [maxLen=MAX_COMMAND_LENGTH]
+ * @returns {{ command: string, tooLong: boolean } | null}
+ */
+export function buildScopedBackendCoverageCommand(
+  coverageTargets,
+  backendUnitFiles,
+  maxLen = MAX_COMMAND_LENGTH,
+) {
+  if (!coverageTargets || coverageTargets.length === 0) {
+    return null;
+  }
+  if (!backendUnitFiles || backendUnitFiles.length === 0) {
+    return { command: 'pnpm --filter backend test:coverage', tooLong: false };
+  }
+  const includeFlags = coverageTargets.map((t) => `--coverage.include="${t}"`);
+  const args = [
+    'pnpm --filter backend exec vitest run --project unit --coverage',
+    ...includeFlags,
+    ...backendUnitFiles.map((f) => `"${f}"`),
+  ];
+  const cmd = args.join(' ');
+  if (cmd.length > maxLen) {
+    return { command: 'pnpm --filter backend test:coverage', tooLong: true };
+  }
+  return { command: cmd, tooLong: false };
+}
+
 /**
  * Construye el resumen de alcance para el informe `last-report.json`.
  */
@@ -919,29 +972,40 @@ export function applyScopeToPlan(plan, selectionResult, options = {}) {
       const backendFiles = stripPackagePrefix(sel.backendUnit ?? [], 'apps/backend/');
       const frontendFiles = stripPackagePrefix(sel.frontend ?? [], 'apps/frontend/');
       const sharedFiles = stripPackagePrefix(sel.shared ?? [], 'packages/shared/');
+      const coverageTargets = getBackendCoverageTargets(changedFiles);
 
-      if (backendFiles.length === 0 && frontendFiles.length === 0 && sharedFiles.length === 0) {
+      if (
+        coverageTargets.length === 0 &&
+        backendFiles.length === 0 &&
+        frontendFiles.length === 0 &&
+        sharedFiles.length === 0
+      ) {
         return {
           ...step,
           skippedByScope: true,
-          scopeReason: 'Sin pruebas unitarias afectadas.',
+          scopeReason: 'Sin pruebas unitarias ni archivos de dominio/aplicación afectados.',
         };
       }
 
       const subCommands = [];
       let anyTooLong = false;
 
-      if (backendFiles.length > 0) {
+      const covCmd = buildScopedBackendCoverageCommand(coverageTargets, backendFiles, maxLen);
+      if (covCmd) {
+        subCommands.push(covCmd.command);
+        if (covCmd.tooLong) anyTooLong = true;
+      } else if (backendFiles.length > 0) {
         const built = buildVitestScopedCommand(
           'backend',
           ['--project', 'unit'],
           backendFiles,
-          'pnpm --filter backend test:coverage',
+          'pnpm --filter backend exec vitest run --project unit',
           maxLen,
         );
         subCommands.push(built.command);
         if (built.tooLong) anyTooLong = true;
       }
+
       if (frontendFiles.length > 0) {
         const built = buildVitestScopedCommand(
           'frontend',
@@ -970,7 +1034,9 @@ export function applyScopeToPlan(plan, selectionResult, options = {}) {
         scopedCommand: subCommands.join(' && '),
         scopeReason: anyTooLong
           ? 'Lista demasiado larga en algún paquete; se ejecuta completo.'
-          : 'Pruebas unitarias afectadas.',
+          : coverageTargets.length > 0
+            ? `Cobertura sobre ${coverageTargets.length} archivo(s) cambiado(s) de dominio/aplicación.`
+            : 'Sin cambios en domain/application; unitarias afectadas sin umbral de cobertura.',
       };
     }
 
